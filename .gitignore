@@ -28,6 +28,9 @@ yarn-error.log*
 .env*.local
 .env
 
+# connection strings (contains sensitive data)
+NEON_CONNECTION_STRING.md
+
 # vercel
 .vercel
 
