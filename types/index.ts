@@ -1,0 +1,58 @@
+export interface Customer {
+  id: string
+  name: string
+  phone: string
+  email: string
+  address: string
+  message?: string
+  createdAt: string
+}
+
+export interface MenuItem {
+  id: string
+  name: string
+  type: string
+  description?: string
+  isActive: boolean
+}
+
+export interface OrderItem {
+  menuItemId: string
+  quantity?: number
+}
+
+export interface Order {
+  id: string
+  customerId: string
+  customer?: Customer
+  items: OrderItem[]
+  totalAmount: number
+  advancePaid: number
+  remainingAmount: number
+  status: 'pending' | 'in-progress' | 'completed' | 'cancelled'
+  supervisorId: string
+  createdAt: string
+  updatedAt: string
+}
+
+export interface Bill {
+  id: string
+  orderId: string
+  order?: Order
+  totalAmount: number
+  advancePaid: number
+  remainingAmount: number
+  paidAmount: number
+  status: 'pending' | 'partial' | 'paid'
+  createdAt: string
+  updatedAt: string
+}
+
+export interface Supervisor {
+  id: string
+  name: string
+  email: string
+  phone: string
+  cateringServiceName: string
+  isActive: boolean
+}

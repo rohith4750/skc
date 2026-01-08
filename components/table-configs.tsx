@@ -1,0 +1,215 @@
+'use client'
+
+import { ReactNode } from 'react'
+import { Customer, Supervisor, MenuItem, Bill, Order } from '@/types'
+import { formatDate, formatCurrency, formatDateTime } from '@/lib/utils'
+import { FaEdit, FaTrash, FaEnvelope, FaWhatsapp, FaSms, FaCheck, FaPrint } from 'react-icons/fa'
+import { TableColumn } from './Table'
+
+export interface TableConfig<T> {
+  columns: TableColumn<T>[]
+  itemName: string
+  emptyMessage: string
+  showCheckbox?: boolean
+  getItemId: (item: T) => string
+}
+
+// Customer Table Configuration Factory
+export function getCustomerTableConfig(): TableConfig<Customer> {
+  return {
+    getItemId: (customer) => customer.id,
+    itemName: 'customers',
+    emptyMessage: 'No customers found. Add your first customer to get started.',
+    showCheckbox: true,
+    columns: [
+      {
+        key: 'name',
+        header: 'Name',
+        render: (customer) => <div className="text-sm font-medium text-gray-900">{customer.name}</div>,
+      },
+      {
+        key: 'phone',
+        header: 'Phone',
+        render: (customer) => <div className="text-sm text-gray-900">{customer.phone}</div>,
+      },
+      {
+        key: 'email',
+        header: 'Email',
+        render: (customer) => <div className="text-sm text-gray-900">{customer.email}</div>,
+      },
+      {
+        key: 'address',
+        header: 'Address',
+        render: (customer) => <div className="text-sm text-gray-900">{customer.address}</div>,
+        className: '',
+      },
+      {
+        key: 'createdAt',
+        header: 'Created',
+        render: (customer) => <div className="text-sm text-gray-500">{formatDate(customer.createdAt)}</div>,
+      },
+    ],
+  }
+}
+
+// Supervisor Table Configuration Factory
+export function getSupervisorTableConfig(): TableConfig<Supervisor> {
+  return {
+    getItemId: (supervisor) => supervisor.id,
+    itemName: 'supervisors',
+    emptyMessage: 'No supervisors found. Add your first supervisor to get started.',
+    columns: [
+      {
+        key: 'name',
+        header: 'Name',
+        render: (supervisor) => <div className="text-sm font-medium text-gray-900">{supervisor.name}</div>,
+      },
+      {
+        key: 'email',
+        header: 'Email',
+        render: (supervisor) => <div className="text-sm text-gray-900">{supervisor.email}</div>,
+      },
+      {
+        key: 'phone',
+        header: 'Phone',
+        render: (supervisor) => <div className="text-sm text-gray-900">{supervisor.phone}</div>,
+      },
+      {
+        key: 'cateringServiceName',
+        header: 'Catering Service',
+        render: (supervisor) => <div className="text-sm text-gray-900">{supervisor.cateringServiceName}</div>,
+      },
+      {
+        key: 'status',
+        header: 'Status',
+        render: (supervisor) => (
+          <button
+            onClick={(e) => {
+              e.stopPropagation()
+            }}
+            className={`px-3 py-1 rounded-full text-xs font-medium ${
+              supervisor.isActive 
+                ? 'bg-green-100 text-green-800' 
+                : 'bg-red-100 text-red-800'
+            }`}
+          >
+            {supervisor.isActive ? 'Active' : 'Inactive'}
+          </button>
+        ),
+      },
+    ],
+  }
+}
+
+// Menu Item Table Configuration Factory
+export function getMenuItemTableConfig(): TableConfig<MenuItem> {
+  return {
+    getItemId: (item) => item.id,
+    itemName: 'menu items',
+    emptyMessage: 'No menu items found. Add your first menu item to get started.',
+    columns: [
+      {
+        key: 'name',
+        header: 'Menu Name',
+        render: (item) => <div className="text-sm font-medium text-gray-900">{item.name}</div>,
+      },
+      {
+        key: 'type',
+        header: 'Menu Type',
+        render: (item) => <div className="text-sm text-gray-900">{item.type}</div>,
+      },
+      {
+        key: 'description',
+        header: 'Description',
+        render: (item) => <div className="text-sm text-gray-900 max-w-md">{item.description || '-'}</div>,
+        className: '',
+      },
+      {
+        key: 'status',
+        header: 'Status',
+        render: (item) => (
+          <button
+            onClick={(e) => {
+              e.stopPropagation()
+            }}
+            className={`px-3 py-1 rounded-full text-xs font-medium ${
+              item.isActive 
+                ? 'bg-green-100 text-green-800' 
+                : 'bg-red-100 text-red-800'
+            }`}
+          >
+            {item.isActive ? 'Active' : 'Inactive'}
+          </button>
+        ),
+      },
+    ],
+  }
+}
+
+// Bill Table Configuration Factory
+type BillWithOrder = Bill & { order?: Order & { customer?: Customer } }
+
+export function getBillTableConfig(): TableConfig<BillWithOrder> {
+  return {
+    getItemId: (bill) => bill.id,
+    itemName: 'bills',
+    emptyMessage: 'No bills found. Bills are created automatically when orders are placed.',
+    columns: [
+      {
+        key: 'id',
+        header: 'Bill ID',
+        render: (bill) => <div className="text-sm font-medium text-gray-900">#{bill.id.slice(0, 8).toUpperCase()}</div>,
+      },
+      {
+        key: 'customer',
+        header: 'Customer',
+        render: (bill) => (
+          <>
+            <div className="text-sm text-gray-900">{bill.order?.customer?.name || 'Unknown Customer'}</div>
+            {bill.order?.customer?.phone && (
+              <div className="text-sm text-gray-500">{bill.order.customer.phone}</div>
+            )}
+          </>
+        ),
+      },
+      {
+        key: 'createdAt',
+        header: 'Date',
+        render: (bill) => <div className="text-sm text-gray-900">{formatDateTime(bill.createdAt)}</div>,
+      },
+      {
+        key: 'totalAmount',
+        header: 'Total Amount',
+        render: (bill) => <div className="text-sm font-medium text-gray-900">{formatCurrency(bill.totalAmount)}</div>,
+      },
+      {
+        key: 'advancePaid',
+        header: 'Advance Paid',
+        render: (bill) => <div className="text-sm text-green-600">{formatCurrency(bill.advancePaid)}</div>,
+      },
+      {
+        key: 'paidAmount',
+        header: 'Paid Amount',
+        render: (bill) => <div className="text-sm text-blue-600">{formatCurrency(bill.paidAmount)}</div>,
+      },
+      {
+        key: 'remainingAmount',
+        header: 'Remaining',
+        render: (bill) => <div className="text-sm font-medium text-red-600">{formatCurrency(bill.remainingAmount)}</div>,
+      },
+      {
+        key: 'status',
+        header: 'Status',
+        render: (bill) => (
+          <span className={`px-3 py-1 rounded-full text-xs font-medium ${
+            bill.status === 'paid' ? 'bg-green-100 text-green-800' :
+            bill.status === 'partial' ? 'bg-yellow-100 text-yellow-800' :
+            'bg-red-100 text-red-800'
+          }`}>
+            {bill.status.charAt(0).toUpperCase() + bill.status.slice(1)}
+          </span>
+        ),
+      },
+    ],
+  }
+}
