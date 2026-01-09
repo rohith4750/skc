@@ -2,9 +2,23 @@
 
 import { useEffect, useState } from 'react'
 import { Storage } from '@/lib/storage-api'
-import { formatCurrency } from '@/lib/utils'
+import { formatCurrency, formatDateTime } from '@/lib/utils'
 import Link from 'next/link'
-import { FaUsers, FaUtensils, FaShoppingCart, FaFileInvoiceDollar } from 'react-icons/fa'
+import { 
+  FaUsers, 
+  FaUtensils, 
+  FaShoppingCart, 
+  FaFileInvoiceDollar, 
+  FaMoneyBillWave,
+  FaUserShield,
+  FaUserTie,
+  FaBox,
+  FaWarehouse,
+  FaChartLine,
+  FaArrowUp,
+  FaArrowDown
+} from 'react-icons/fa'
+import { isSuperAdmin } from '@/lib/auth'
 
 export default function Dashboard() {
   const [stats, setStats] = useState({
@@ -12,75 +26,210 @@ export default function Dashboard() {
     menuItems: 0,
     orders: 0,
     bills: 0,
+    expenses: 0,
+    users: 0,
+    workforce: 0,
     totalRevenue: 0,
+    totalExpenses: 0,
+    pendingOrders: 0,
+    completedOrders: 0,
+    paidBills: 0,
+    pendingBills: 0,
   })
+  const [loading, setLoading] = useState(true)
+  const [isSuperAdminUser, setIsSuperAdminUser] = useState(false)
+
+  useEffect(() => {
+    setIsSuperAdminUser(isSuperAdmin())
+  }, [])
 
   useEffect(() => {
     const loadStats = async () => {
       try {
-        const [customers, menuItems, orders, bills] = await Promise.all([
+        const [customers, menuItems, orders, bills, expenses] = await Promise.all([
           Storage.getCustomers(),
           Storage.getMenuItems(),
           Storage.getOrders(),
           Storage.getBills(),
+          Storage.getExpenses(),
         ])
-        
+
+        // Calculate revenue from paid bills
         const totalRevenue = bills.reduce((sum: number, bill: any) => sum + (bill.paidAmount || 0), 0)
+        const totalExpenses = expenses.reduce((sum: number, expense: any) => sum + (expense.amount || 0), 0)
+        
+        // Order status counts
+        const pendingOrders = orders.filter((o: any) => o.status === 'pending' || o.status === 'in-progress').length
+        const completedOrders = orders.filter((o: any) => o.status === 'completed').length
+
+        // Bill status counts
+        const paidBills = bills.filter((b: any) => b.status === 'paid').length
+        const pendingBills = bills.filter((b: any) => b.status === 'pending' || b.status === 'partial').length
+
+        // Get user and workforce counts (only for super admin)
+        let usersCount = 0
+        let workforceCount = 0
+        if (isSuperAdminUser) {
+          try {
+            const [usersRes, workforceRes] = await Promise.all([
+              fetch('/api/users'),
+              fetch('/api/workforce'),
+            ])
+            if (usersRes.ok) {
+              const usersData = await usersRes.json()
+              usersCount = usersData.length
+            }
+            if (workforceRes.ok) {
+              const workforceData = await workforceRes.json()
+              workforceCount = workforceData.length
+            }
+          } catch (error) {
+            console.error('Error fetching admin stats:', error)
+          }
+        }
 
         setStats({
           customers: customers.length,
           menuItems: menuItems.length,
           orders: orders.length,
           bills: bills.length,
+          expenses: expenses.length,
+          users: usersCount,
+          workforce: workforceCount,
           totalRevenue,
+          totalExpenses,
+          pendingOrders,
+          completedOrders,
+          paidBills,
+          pendingBills,
         })
       } catch (error) {
         console.error('Failed to load stats:', error)
+      } finally {
+        setLoading(false)
       }
     }
     loadStats()
-  }, [])
+  }, [isSuperAdminUser])
 
-  const statCards = [
+  const mainStatCards = [
     {
       title: 'Total Customers',
       value: stats.customers,
       icon: FaUsers,
-      color: 'bg-blue-500',
+      color: 'bg-primary-500',
       href: '/customers',
-    },
-    {
-      title: 'Menu Items',
-      value: stats.menuItems,
-      icon: FaUtensils,
-      color: 'bg-green-500',
-      href: '/menu',
     },
     {
       title: 'Total Orders',
       value: stats.orders,
       icon: FaShoppingCart,
-      color: 'bg-yellow-500',
-      href: '/orders',
+      color: 'bg-accent-500',
+      href: '/orders/history',
+      subValue: `${stats.pendingOrders} pending`,
     },
     {
-      title: 'Total Bills',
-      value: stats.bills,
+      title: 'Total Revenue',
+      value: formatCurrency(stats.totalRevenue),
       icon: FaFileInvoiceDollar,
-      color: 'bg-purple-500',
+      color: 'bg-green-500',
       href: '/bills',
+      subValue: `${stats.paidBills} paid bills`,
+    },
+    {
+      title: 'Total Expenses',
+      value: formatCurrency(stats.totalExpenses),
+      icon: FaMoneyBillWave,
+      color: 'bg-secondary-500',
+      href: '/expenses',
     },
   ]
+
+  const adminStatCards = isSuperAdminUser ? [
+    {
+      title: 'Menu Items',
+      value: stats.menuItems,
+      icon: FaUtensils,
+      color: 'bg-primary-600',
+      href: '/menu',
+    },
+    {
+      title: 'Users',
+      value: stats.users,
+      icon: FaUserShield,
+      color: 'bg-purple-500',
+      href: '/users',
+    },
+    {
+      title: 'Workforce',
+      value: stats.workforce,
+      icon: FaUserTie,
+      color: 'bg-blue-500',
+      href: '/workforce',
+    },
+    {
+      title: 'Stock Management',
+      value: 'Coming Soon',
+      icon: FaBox,
+      color: 'bg-yellow-500',
+      href: '#',
+      disabled: true,
+    },
+  ] : []
+
+  const analyticsCards = [
+    {
+      title: 'Order Status',
+      icon: FaChartLine,
+      items: [
+        { label: 'Completed', value: stats.completedOrders, color: 'text-green-600' },
+        { label: 'Pending', value: stats.pendingOrders, color: 'text-yellow-600' },
+        { label: 'Total', value: stats.orders, color: 'text-gray-600' },
+      ],
+    },
+    {
+      title: 'Payment Status',
+      icon: FaFileInvoiceDollar,
+      items: [
+        { label: 'Paid Bills', value: stats.paidBills, color: 'text-green-600' },
+        { label: 'Pending Bills', value: stats.pendingBills, color: 'text-red-600' },
+        { label: 'Total Bills', value: stats.bills, color: 'text-gray-600' },
+      ],
+    },
+    {
+      title: 'Financial Summary',
+      icon: FaMoneyBillWave,
+      items: [
+        { label: 'Revenue', value: formatCurrency(stats.totalRevenue), color: 'text-green-600', icon: FaArrowUp },
+        { label: 'Expenses', value: formatCurrency(stats.totalExpenses), color: 'text-red-600', icon: FaArrowDown },
+        { label: 'Net Profit', value: formatCurrency(stats.totalRevenue - stats.totalExpenses), color: stats.totalRevenue - stats.totalExpenses >= 0 ? 'text-green-600' : 'text-red-600' },
+      ],
+    },
+  ]
+
+  if (loading) {
+    return (
+      <div className="p-4 sm:p-6 lg:p-8 pt-16 lg:pt-8 min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
+          <p className="mt-4 text-gray-600">Loading dashboard...</p>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="p-4 sm:p-6 lg:p-8 pt-16 lg:pt-8">
       <div className="mb-6 sm:mb-8">
         <h1 className="text-2xl sm:text-3xl font-bold text-gray-800">Dashboard</h1>
-        <p className="text-gray-600 mt-1 sm:mt-2 text-sm sm:text-base">Welcome to Catering Management System</p>
+        <p className="text-gray-600 mt-1 sm:mt-2 text-sm sm:text-base">
+          {isSuperAdminUser ? 'Complete Business Analytics & Management Overview' : 'Business Overview'}
+        </p>
       </div>
 
+      {/* Main Statistics Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 mb-6 sm:mb-8">
-        {statCards.map((stat) => {
+        {mainStatCards.map((stat) => {
           const Icon = stat.icon
           return (
             <Link
@@ -92,6 +241,9 @@ export default function Dashboard() {
                 <div className="flex-1 min-w-0">
                   <p className="text-gray-600 text-xs sm:text-sm font-medium truncate">{stat.title}</p>
                   <p className="text-2xl sm:text-3xl font-bold text-gray-800 mt-1 sm:mt-2">{stat.value}</p>
+                  {stat.subValue && (
+                    <p className="text-xs text-gray-500 mt-1">{stat.subValue}</p>
+                  )}
                 </div>
                 <div className={`${stat.color} p-3 sm:p-4 rounded-full flex-shrink-0 ml-3`}>
                   <Icon className="w-6 h-6 sm:w-8 sm:h-8 text-white" />
@@ -102,9 +254,106 @@ export default function Dashboard() {
         })}
       </div>
 
+      {/* Admin Statistics Cards */}
+      {isSuperAdminUser && adminStatCards.length > 0 && (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 mb-6 sm:mb-8">
+          {adminStatCards.map((stat) => {
+            const Icon = stat.icon
+            if (stat.disabled) {
+              return (
+                <div
+                  key={stat.title}
+                  className="bg-white rounded-lg shadow-md p-4 sm:p-6 opacity-60 cursor-not-allowed"
+                >
+                  <div className="flex items-center justify-between">
+                    <div className="flex-1 min-w-0">
+                      <p className="text-gray-600 text-xs sm:text-sm font-medium truncate">{stat.title}</p>
+                      <p className="text-2xl sm:text-3xl font-bold text-gray-800 mt-1 sm:mt-2">{stat.value}</p>
+                    </div>
+                    <div className={`${stat.color} p-3 sm:p-4 rounded-full flex-shrink-0 ml-3`}>
+                      <Icon className="w-6 h-6 sm:w-8 sm:h-8 text-white" />
+                    </div>
+                  </div>
+                </div>
+              )
+            }
+            return (
+              <Link
+                key={stat.title}
+                href={stat.href}
+                className="bg-white rounded-lg shadow-md p-4 sm:p-6 hover:shadow-lg transition-shadow"
+              >
+                <div className="flex items-center justify-between">
+                  <div className="flex-1 min-w-0">
+                    <p className="text-gray-600 text-xs sm:text-sm font-medium truncate">{stat.title}</p>
+                    <p className="text-2xl sm:text-3xl font-bold text-gray-800 mt-1 sm:mt-2">{stat.value}</p>
+                  </div>
+                  <div className={`${stat.color} p-3 sm:p-4 rounded-full flex-shrink-0 ml-3`}>
+                    <Icon className="w-6 h-6 sm:w-8 sm:h-8 text-white" />
+                  </div>
+                </div>
+              </Link>
+            )
+          })}
+        </div>
+      )}
+
+      {/* Analytics Cards */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6 mb-6 sm:mb-8">
+        {analyticsCards.map((card) => {
+          const Icon = card.icon
+          return (
+            <div key={card.title} className="bg-white rounded-lg shadow-md p-4 sm:p-6">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="bg-primary-100 p-2 rounded-lg">
+                  <Icon className="w-5 h-5 text-primary-600" />
+                </div>
+                <h2 className="text-lg font-bold text-gray-800">{card.title}</h2>
+              </div>
+              <div className="space-y-3">
+                {card.items.map((item, idx) => {
+                  const ItemIcon = 'icon' in item ? item.icon : null
+                  return (
+                    <div key={idx} className="flex items-center justify-between py-2 border-b border-gray-100 last:border-0">
+                      <span className="text-sm text-gray-600">{item.label}</span>
+                      <div className="flex items-center gap-2">
+                        {ItemIcon && <ItemIcon className={`w-4 h-4 ${item.color}`} />}
+                        <span className={`text-sm font-semibold ${item.color}`}>{item.value}</span>
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
+          )
+        })}
+      </div>
+
+      {/* Quick Links */}
       <div className="bg-white rounded-lg shadow-md p-4 sm:p-6">
-        <h2 className="text-lg sm:text-xl font-bold text-gray-800 mb-3 sm:mb-4">Total Revenue</h2>
-        <p className="text-3xl sm:text-4xl font-bold text-green-600">{formatCurrency(stats.totalRevenue)}</p>
+        <h2 className="text-lg sm:text-xl font-bold text-gray-800 mb-4">Quick Actions</h2>
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+          <Link href="/customers" className="p-3 bg-primary-50 rounded-lg hover:bg-primary-100 transition-colors text-center">
+            <FaUsers className="w-6 h-6 text-primary-600 mx-auto mb-2" />
+            <p className="text-xs font-medium text-gray-700">Customers</p>
+          </Link>
+          <Link href="/orders" className="p-3 bg-accent-50 rounded-lg hover:bg-accent-100 transition-colors text-center">
+            <FaShoppingCart className="w-6 h-6 text-accent-600 mx-auto mb-2" />
+            <p className="text-xs font-medium text-gray-700">New Order</p>
+          </Link>
+          <Link href="/orders/history" className="p-3 bg-blue-50 rounded-lg hover:bg-blue-100 transition-colors text-center">
+            <FaFileInvoiceDollar className="w-6 h-6 text-blue-600 mx-auto mb-2" />
+            <p className="text-xs font-medium text-gray-700">Orders</p>
+          </Link>
+          <Link href="/bills" className="p-3 bg-green-50 rounded-lg hover:bg-green-100 transition-colors text-center">
+            <FaFileInvoiceDollar className="w-6 h-6 text-green-600 mx-auto mb-2" />
+            <p className="text-xs font-medium text-gray-700">Bills</p>
+          </Link>
+          <Link href="/expenses" className="p-3 bg-red-50 rounded-lg hover:bg-red-100 transition-colors text-center">
+            <FaMoneyBillWave className="w-6 h-6 text-red-600 mx-auto mb-2" />
+            <p className="text-xs font-medium text-gray-700">Expenses</p>
+          </Link>
+        </div>
       </div>
     </div>
   )

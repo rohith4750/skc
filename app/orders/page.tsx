@@ -289,17 +289,21 @@ export default function OrdersPage() {
         supervisorId = supervisors.length > 0 ? supervisors[0].id : null
       }
 
-      const orderData = {
+      const orderData: any = {
         customerId: formData.customerId,
         items: orderItems,
         totalAmount,
         advancePaid,
         remainingAmount,
         status: isEditMode ? currentOrderStatus : 'pending',
-        supervisorId,
         mealTypeAmounts,
         stalls: showStalls ? formData.stalls : [],
         discount: parseFloat(formData.discount) || 0,
+      }
+      
+      // Only include supervisorId if it has a value (not null/empty)
+      if (supervisorId) {
+        orderData.supervisorId = supervisorId
       }
 
       if (isEditMode && editOrderId) {
@@ -481,7 +485,7 @@ export default function OrdersPage() {
                 required
                 value={formData.customerId}
                 onChange={(e: any) => setFormData({ ...formData, customerId: e.target.value })}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
               >
                 <option value="">Select Customer</option>
                 {customers.map((customer: any) => (
@@ -499,7 +503,7 @@ export default function OrdersPage() {
                 <button
                   type="button"
                   onClick={handleAddMealType}
-                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2"
+                  className="px-4 py-2 bg-primary-500 text-white rounded-lg hover:bg-primary-600 transition-colors flex items-center gap-2"
                 >
                   <FaPlus /> Add Meal Type
                 </button>
@@ -543,7 +547,7 @@ export default function OrdersPage() {
                                 required
                                 value={mealType.menuType}
                                 onChange={(e: any) => handleUpdateMealType(mealType.id, 'menuType', e.target.value)}
-                                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
                               >
                                 <option value="">Select Menu Type</option>
                                 <option value="breakfast">Breakfast</option>
@@ -562,7 +566,7 @@ export default function OrdersPage() {
                                 required
                                 value={mealType.date}
                                 onChange={(e: any) => handleUpdateMealType(mealType.id, 'date', e.target.value)}
-                                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
                               />
                             </div>
                           </div>
@@ -584,7 +588,7 @@ export default function OrdersPage() {
                                       onClick={() => setSelectedSubFilter(prev => ({ ...prev, [mealType.id]: 'all' }))}
                                       className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
                                         subFilter === 'all'
-                                          ? 'bg-green-600 text-white'
+                                          ? 'bg-primary-500 text-white'
                                           : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                                       }`}
                                     >
@@ -620,7 +624,7 @@ export default function OrdersPage() {
                                     value={search}
                                     onChange={(e: any) => setMenuItemSearch(prev => ({ ...prev, [mealType.id]: e.target.value }))}
                                     placeholder="Search menu items by name or description..."
-                                    className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                    className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
                                   />
                                 </div>
                               </div>
@@ -644,7 +648,7 @@ export default function OrdersPage() {
                                           type="checkbox"
                                           checked={mealType.selectedMenuItems.includes(menuItem.id)}
                                           onChange={() => handleMenuItemToggle(mealType.id, menuItem.id)}
-                                          className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500 mr-3"
+                                          className="w-4 h-4 text-primary-600 border-gray-300 rounded focus:ring-primary-500 mr-3"
                                         />
                                         <div className="flex-1">
                                           <span className="text-sm font-medium text-gray-900">{menuItem.name}</span>
@@ -676,8 +680,8 @@ export default function OrdersPage() {
                               <button
                                 type="button"
                                 onClick={() => handleUpdateMealType(mealType.id, 'pricingMethod', mealType.pricingMethod === 'manual' ? 'plate-based' : 'manual')}
-                                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${
-                                  mealType.pricingMethod === 'plate-based' ? 'bg-blue-600' : 'bg-gray-300'
+                                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 ${
+                                  mealType.pricingMethod === 'plate-based' ? 'bg-primary-500' : 'bg-gray-300'
                                 }`}
                               >
                                 <span className="sr-only">Toggle Plate-based Calculation</span>
@@ -705,7 +709,7 @@ export default function OrdersPage() {
                                     required
                                     value={mealType.numberOfPlates}
                                     onChange={(e: any) => handleUpdateMealType(mealType.id, 'numberOfPlates', e.target.value)}
-                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
                                     placeholder="0"
                                   />
                                 </div>
@@ -720,7 +724,7 @@ export default function OrdersPage() {
                                     required
                                     value={mealType.platePrice}
                                     onChange={(e: any) => handleUpdateMealType(mealType.id, 'platePrice', e.target.value)}
-                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
                                     placeholder="0.00"
                                   />
                                 </div>
@@ -734,7 +738,7 @@ export default function OrdersPage() {
                                     min="0"
                                     value={mealType.transportCost}
                                     onChange={(e: any) => handleUpdateMealType(mealType.id, 'transportCost', e.target.value)}
-                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
                                     placeholder="0.00"
                                   />
                                 </div>
@@ -751,7 +755,7 @@ export default function OrdersPage() {
                                   required
                                   value={mealType.manualAmount}
                                   onChange={(e: any) => handleUpdateMealType(mealType.id, 'manualAmount', e.target.value)}
-                                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
                                   placeholder="0.00"
                                 />
                               </div>
@@ -778,8 +782,8 @@ export default function OrdersPage() {
                     <button
                       type="button"
                       onClick={() => setShowStalls(!showStalls)}
-                      className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${
-                        showStalls ? 'bg-blue-600' : 'bg-gray-300'
+                      className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 ${
+                        showStalls ? 'bg-primary-500' : 'bg-gray-300'
                       }`}
                     >
                       <span className="sr-only">Toggle Stalls</span>
@@ -797,7 +801,7 @@ export default function OrdersPage() {
                     <button
                       type="button"
                       onClick={handleAddStall}
-                      className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-sm"
+                      className="px-4 py-2 bg-primary-500 text-white rounded-lg hover:bg-primary-600 transition-colors text-sm"
                     >
                       + Add Stall
                     </button>
@@ -835,7 +839,7 @@ export default function OrdersPage() {
                             <select
                               value={stall.category}
                               onChange={(e: any) => handleUpdateStall(index, 'category', e.target.value)}
-                              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
                             >
                               <option value="">Select Stall Category</option>
                               <option value="Sweet Stall">Sweet Stall</option>
@@ -854,7 +858,7 @@ export default function OrdersPage() {
                               value={stall.description}
                               onChange={(e: any) => handleUpdateStall(index, 'description', e.target.value)}
                               rows={2}
-                              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
                               placeholder="Enter description or tag for this stall..."
                             />
                           </div>
@@ -869,7 +873,7 @@ export default function OrdersPage() {
                               min="0"
                               value={stall.cost}
                               onChange={(e: any) => handleUpdateStall(index, 'cost', e.target.value)}
-                              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
                               placeholder="0.00"
                             />
                           </div>
@@ -900,7 +904,7 @@ export default function OrdersPage() {
                     min="0"
                     value={formData.discount}
                     onChange={(e: any) => setFormData({ ...formData, discount: e.target.value })}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
                     placeholder="0.00"
                   />
                 </div>
@@ -914,7 +918,7 @@ export default function OrdersPage() {
                     min="0"
                     value={formData.advancePaid}
                     onChange={(e: any) => setFormData({ ...formData, advancePaid: e.target.value })}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
                     placeholder="0.00"
                   />
                 </div>
@@ -930,7 +934,7 @@ export default function OrdersPage() {
                   required
                   value={formData.totalAmount}
                   readOnly
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-gray-50"
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 bg-gray-50"
                   placeholder="0.00"
                 />
               </div>
@@ -947,7 +951,7 @@ export default function OrdersPage() {
               <button
                 type="submit"
                 disabled={formData.mealTypes.length === 0 || formData.mealTypes.some(mt => mt.selectedMenuItems.length === 0)}
-                className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed"
+                className="px-6 py-2 bg-primary-500 text-white rounded-lg hover:bg-primary-600 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed"
               >
                 {isEditMode ? 'Update Order' : 'Create Order'}
               </button>

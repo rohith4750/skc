@@ -11,8 +11,10 @@ export async function PUT(
       where: { id: params.id },
       data: {
         name: data.name,
+        nameTelugu: data.nameTelugu,
         type: data.type,
         description: data.description,
+        descriptionTelugu: data.descriptionTelugu,
         isActive: data.isActive,
       }
     })

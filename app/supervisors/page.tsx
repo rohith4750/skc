@@ -157,7 +157,7 @@ export default function SupervisorsPage() {
             resetForm()
             setShowModal(true)
           }}
-          className="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2"
+          className="bg-primary-500 text-white px-6 py-3 rounded-lg hover:bg-primary-600 transition-colors flex items-center gap-2"
         >
           <FaPlus /> Add Supervisor
         </button>
@@ -178,14 +178,14 @@ export default function SupervisorsPage() {
           <div className="flex items-center gap-2">
             <button
               onClick={() => handleEdit(supervisor)}
-              className="text-yellow-600 hover:text-yellow-900 p-2 hover:bg-yellow-50 rounded"
+              className="text-primary-500 hover:text-primary-700 p-2 hover:bg-primary-50 rounded"
               title="Edit"
             >
               <FaEdit />
             </button>
             <button
               onClick={() => handleDelete(supervisor.id)}
-              className="text-red-600 hover:text-red-900 p-2 hover:bg-red-50 rounded"
+              className="text-secondary-500 hover:text-secondary-700 p-2 hover:bg-secondary-50 rounded"
               title="Delete"
             >
               <FaTrash />
@@ -213,7 +213,7 @@ export default function SupervisorsPage() {
                     required
                     value={formData.name}
                     onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
                   />
                 </div>
                 <div>
@@ -225,7 +225,7 @@ export default function SupervisorsPage() {
                     required
                     value={formData.email}
                     onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
                   />
                 </div>
                 <div>
@@ -237,7 +237,7 @@ export default function SupervisorsPage() {
                     required
                     value={formData.phone}
                     onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
                   />
                 </div>
                 <div>
@@ -249,7 +249,7 @@ export default function SupervisorsPage() {
                     required
                     value={formData.cateringServiceName}
                     onChange={(e) => setFormData({ ...formData, cateringServiceName: e.target.value })}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
                   />
                 </div>
                 <div className="flex items-center gap-2">
@@ -258,7 +258,7 @@ export default function SupervisorsPage() {
                     id="isActive"
                     checked={formData.isActive}
                     onChange={(e) => setFormData({ ...formData, isActive: e.target.checked })}
-                    className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                    className="w-4 h-4 text-primary-600 border-gray-300 rounded focus:ring-primary-500"
                   />
                   <label htmlFor="isActive" className="text-sm font-medium text-gray-700">
                     Active
@@ -275,7 +275,7 @@ export default function SupervisorsPage() {
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                  className="px-4 py-2 bg-primary-500 text-white rounded-lg hover:bg-primary-600 transition-colors"
                 >
                   {editingSupervisor ? 'Update' : 'Create'}
                 </button>

@@ -1,10 +1,15 @@
 import type { Metadata } from 'next'
-import { Inter } from 'next/font/google'
+import { Poppins } from 'next/font/google'
 import './globals.css'
 import Sidebar from '@/components/layout/Sidebar'
 import { Toaster } from 'react-hot-toast'
+import AuthGuard from '@/components/AuthGuard'
 
-const inter = Inter({ subsets: ['latin'] })
+const poppins = Poppins({ 
+  subsets: ['latin'],
+  weight: ['300', '400', '500', '600', '700'],
+  variable: '--font-poppins'
+})
 
 export const metadata: Metadata = {
   title: 'SKC Caterers - Management System',
@@ -18,13 +23,10 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      <body className={inter.className}>
-        <div className="flex h-screen bg-gray-100">
-          <Sidebar />
-          <main className="flex-1 overflow-y-auto lg:ml-0">
-            {children}
-          </main>
-        </div>
+      <body className={poppins.className}>
+        <AuthGuard>
+          {children}
+        </AuthGuard>
         <Toaster
           position="top-center"
           containerClassName="!top-16"

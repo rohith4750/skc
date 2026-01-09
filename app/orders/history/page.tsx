@@ -7,6 +7,7 @@ import { Order } from '@/types'
 import { FaTrash, FaFilePdf, FaFilter, FaChevronLeft, FaChevronRight, FaEdit, FaCheck, FaTimes } from 'react-icons/fa'
 import Link from 'next/link'
 import jsPDF from 'jspdf'
+import html2canvas from 'html2canvas'
 import toast from 'react-hot-toast'
 import ConfirmModal from '@/components/ConfirmModal'
 
@@ -102,100 +103,165 @@ export default function OrdersHistoryPage() {
     }
   }
 
-  const handleGeneratePDF = (order: any) => {
-    const doc = new jsPDF()
+  const handleGeneratePDF = async (order: any) => {
     const customer = order.customer
     const supervisor = order.supervisor
 
-    // Header
-    doc.setFontSize(20)
-    doc.text('CATERING ORDER', 105, 20, { align: 'center' })
+    // Create a temporary HTML element to render Telugu text properly
+    const tempDiv = document.createElement('div')
+    tempDiv.style.position = 'absolute'
+    tempDiv.style.left = '-9999px'
+    tempDiv.style.width = '210mm' // A4 width
+    tempDiv.style.padding = '15mm'
+    tempDiv.style.fontFamily = 'Poppins, "Segoe UI", Tahoma, Geneva, Verdana, sans-serif'
+    tempDiv.style.fontSize = '11px'
+    tempDiv.style.lineHeight = '1.6'
+    tempDiv.style.background = 'white'
+    tempDiv.style.color = '#333'
     
-    // Customer Information
-    doc.setFontSize(12)
-    doc.setFont('helvetica', 'bold')
-    doc.text('Customer Details:', 20, 35)
-    doc.setFont('helvetica', 'normal')
-    doc.text(`Name: ${customer?.name || 'N/A'}`, 20, 42)
-    doc.text(`Phone: ${customer?.phone || 'N/A'}`, 20, 49)
-    doc.text(`Email: ${customer?.email || 'N/A'}`, 20, 56)
-    doc.text(`Address: ${customer?.address || 'N/A'}`, 20, 63)
-
-    // Order Information
-    doc.setFont('helvetica', 'bold')
-    doc.text('Order Information:', 20, 75)
-    doc.setFont('helvetica', 'normal')
-    doc.text(`Date: ${formatDateTime(order.createdAt)}`, 20, 82)
-    doc.text(`Supervisor: ${supervisor?.name || 'N/A'}`, 20, 89)
-    doc.text(`Order ID: ${order.id.slice(0, 8).toUpperCase()}`, 20, 96)
-
-    // Menu Items (without quantity)
-    let yPos = 110
-    doc.setFont('helvetica', 'bold')
-    doc.text('Menu Items:', 20, yPos)
-    yPos += 10
-    
-    doc.setFont('helvetica', 'normal')
-    doc.setFontSize(10)
-    
-    order.items.forEach((item: any, idx: number) => {
-      const itemName = item.menuItem?.name || 'Unknown Item'
+    let htmlContent = `
+      <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+      <style>
+        * { font-family: 'Poppins', sans-serif !important; }
+        .header { text-align: center; margin-bottom: 25px; padding-bottom: 15px; border-bottom: 2px solid #333; }
+        .header-top { display: flex; justify-content: space-between; font-size: 10px; margin-bottom: 10px; color: #555; font-family: 'Poppins', sans-serif; }
+        .header-main { font-size: 32px; font-weight: 700; margin: 15px 0 8px 0; letter-spacing: 2px; color: #1a1a1a; font-family: 'Poppins', sans-serif; }
+        .header-subtitle { font-size: 14px; color: #666; margin-bottom: 12px; font-style: italic; font-family: 'Poppins', sans-serif; }
+        .header-details { font-size: 9px; line-height: 1.6; color: #444; margin-top: 10px; font-family: 'Poppins', sans-serif; }
+        .header-details div { margin-bottom: 3px; }
+        .section { margin-bottom: 20px; font-family: 'Poppins', sans-serif; }
+        .section-title { font-size: 14px; font-weight: 600; margin-bottom: 10px; padding-bottom: 5px; border-bottom: 1px solid #ddd; color: #222; font-family: 'Poppins', sans-serif; }
+        .info-row { margin-bottom: 6px; font-family: 'Poppins', sans-serif; }
+        .info-label { font-weight: 600; display: inline-block; width: 120px; font-family: 'Poppins', sans-serif; }
+        .menu-item { padding: 4px 0; border-bottom: 1px dotted #ccc; font-family: 'Poppins', sans-serif; }
+        .financial-row { display: flex; justify-content: space-between; padding: 6px 0; border-bottom: 1px solid #eee; font-family: 'Poppins', sans-serif; }
+        .financial-row.total { font-weight: 700; font-size: 13px; border-top: 2px solid #333; border-bottom: 2px solid #333; margin-top: 5px; padding-top: 8px; }
+        .financial-label { font-weight: 600; }
+      </style>
       
-      // Check if we need a new page
-      if (yPos > 270) {
-        doc.addPage()
-        yPos = 20
+      <div class="header">
+        <div class="header-top">
+          <div>Telidevara Rajendraprasad</div>
+          <div>ART FOOD ZONE (A Food Caterers)</div>
+        </div>
+        <div class="header-main">SRIVATSASA & KOWNDINYA CATERERS</div>
+        <div class="header-subtitle">(Pure Vegetarian)</div>
+        <div class="header-details">
+          <div>Regd. No: 2361930100031</div>
+          <div>Plot No. 115, Padmavathi Nagar, Bank Colony, Saheb Nag Vanathalipuram, Hyderabad - 500070.</div>
+          <div>Email: pujaysri1989@gmail.com, Cell: 98666521502, 9900119302, 9656501388</div>
+        </div>
+      </div>
+      
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 25px;">
+        <div class="section">
+          <div class="section-title">Customer Details</div>
+          <div class="info-row"><span class="info-label">Name:</span> ${customer?.name || 'N/A'}</div>
+          <div class="info-row"><span class="info-label">Phone:</span> ${customer?.phone || 'N/A'}</div>
+          <div class="info-row"><span class="info-label">Email:</span> ${customer?.email || 'N/A'}</div>
+          <div class="info-row"><span class="info-label">Address:</span> ${customer?.address || 'N/A'}</div>
+        </div>
+        
+        <div class="section">
+          <div class="section-title">Order Information</div>
+          <div class="info-row"><span class="info-label">Date:</span> ${formatDateTime(order.createdAt)}</div>
+          <div class="info-row"><span class="info-label">Supervisor:</span> ${supervisor?.name || 'N/A'}</div>
+          <div class="info-row"><span class="info-label">Order ID:</span> ${order.id.slice(0, 8).toUpperCase()}</div>
+        </div>
+      </div>
+      
+      <div class="section">
+        <div class="section-title">Menu Items</div>
+        <div style="font-size: 11px;">
+    `
+    
+    // Group items by type
+    const itemsByType: Record<string, any[]> = {}
+    order.items.forEach((item: any) => {
+      const type = item.menuItem?.type || 'OTHER'
+      if (!itemsByType[type]) {
+        itemsByType[type] = []
       }
-      
-      doc.text(`${idx + 1}. ${itemName}`, 20, yPos)
-      yPos += 7
+      itemsByType[type].push(item)
     })
-
-    // Stalls (if any)
-    if (order.stalls && Array.isArray(order.stalls) && order.stalls.length > 0) {
-      yPos += 5
-      if (yPos > 270) {
-        doc.addPage()
-        yPos = 20
-      }
-      doc.setFont('helvetica', 'bold')
-      doc.text('Stalls:', 20, yPos)
-      yPos += 7
-      doc.setFont('helvetica', 'normal')
-      
-      order.stalls.forEach((stall: any, idx: number) => {
-        if (yPos > 270) {
-          doc.addPage()
-          yPos = 20
-        }
-        doc.text(`${idx + 1}. ${stall.category}${stall.description ? ` - ${stall.description}` : ''}`, 20, yPos)
-        yPos += 7
-      })
-    }
-
-    // Financial Summary
-    yPos += 10
-    if (yPos > 270) {
-      doc.addPage()
-      yPos = 20
-    }
-    doc.setFont('helvetica', 'bold')
-    doc.setFontSize(12)
-    doc.text('Financial Summary:', 20, yPos)
-    yPos += 10
-    doc.setFont('helvetica', 'normal')
     
-    if (order.discount && order.discount > 0) {
-      doc.text(`Discount: ${formatCurrency(order.discount)}`, 20, yPos)
-      yPos += 7
+    // Display items grouped by type
+    let itemIndex = 1
+    Object.keys(itemsByType).forEach((type) => {
+      // Add type heading
+      htmlContent += `<div style="font-weight: 700; font-size: 12px; margin-top: ${itemIndex > 1 ? '12px' : '0'}; margin-bottom: 6px; color: #222; text-transform: uppercase; font-family: 'Poppins', sans-serif;">${type}</div>`
+      
+      // Add items for this type
+      itemsByType[type].forEach((item: any) => {
+        // Use Telugu name if available, otherwise fall back to English name
+        const itemName = item.menuItem?.nameTelugu || item.menuItem?.name || 'Unknown Item'
+        htmlContent += `<div class="menu-item">${itemIndex}. ${itemName}</div>`
+        itemIndex++
+      })
+    })
+    
+    htmlContent += `
+        </div>
+      </div>
+    `
+    
+    // Add stalls if any
+    if (order.stalls && Array.isArray(order.stalls) && order.stalls.length > 0) {
+      htmlContent += `
+        <div class="section">
+          <div class="section-title">Stalls</div>
+          <div style="font-size: 11px;">
+      `
+      order.stalls.forEach((stall: any, idx: number) => {
+        htmlContent += `<div class="menu-item">${idx + 1}. ${stall.category}${stall.description ? ` - ${stall.description}` : ''}</div>`
+      })
+      htmlContent += `
+          </div>
+        </div>
+      `
     }
-    doc.text(`Total Amount: ${formatCurrency(order.totalAmount)}`, 20, yPos)
-    yPos += 7
-    doc.text(`Advance Paid: ${formatCurrency(order.advancePaid)}`, 20, yPos)
-    yPos += 7
-    doc.text(`Remaining Amount: ${formatCurrency(order.remainingAmount)}`, 20, yPos)
-
-    doc.save(`order-${order.id.slice(0, 8)}.pdf`)
+    
+    tempDiv.innerHTML = htmlContent
+    document.body.appendChild(tempDiv)
+    
+    try {
+      // Convert HTML to canvas
+      const canvas = await html2canvas(tempDiv, {
+        scale: 2,
+        useCORS: true,
+        logging: false,
+        backgroundColor: '#ffffff'
+      })
+      
+      // Remove temporary element
+      document.body.removeChild(tempDiv)
+      
+      // Create PDF from canvas
+      const imgData = canvas.toDataURL('image/png')
+      const pdf = new jsPDF('p', 'mm', 'a4')
+      const imgWidth = 210 // A4 width in mm
+      const pageHeight = 297 // A4 height in mm
+      const imgHeight = (canvas.height * imgWidth) / canvas.width
+      let heightLeft = imgHeight
+      
+      let position = 0
+      
+      pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight)
+      heightLeft -= pageHeight
+      
+      while (heightLeft >= 0) {
+        position = heightLeft - imgHeight
+        pdf.addPage()
+        pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight)
+        heightLeft -= pageHeight
+      }
+      
+      pdf.save(`order-${order.id.slice(0, 8)}.pdf`)
+    } catch (error) {
+      document.body.removeChild(tempDiv)
+      console.error('Error generating PDF:', error)
+      toast.error('Failed to generate PDF. Please try again.')
+    }
   }
 
   return (
@@ -209,7 +275,7 @@ export default function OrdersHistoryPage() {
           <select
             value={filterSupervisor}
             onChange={(e) => setFilterSupervisor(e.target.value)}
-            className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
           >
             <option value="all">All Supervisors</option>
             {supervisors.map((supervisor: any) => (
@@ -280,7 +346,7 @@ export default function OrdersHistoryPage() {
                             <select
                               value={tempSupervisorId}
                               onChange={(e) => setTempSupervisorId(e.target.value)}
-                              className="px-2 py-1 text-sm border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                              className="px-2 py-1 text-sm border border-gray-300 rounded focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
                             >
                               <option value="">Select Supervisor</option>
                               {supervisors.map((supervisor: any) => (
@@ -298,7 +364,7 @@ export default function OrdersHistoryPage() {
                             </button>
                             <button
                               onClick={handleCancelEditSupervisor}
-                              className="text-red-600 hover:text-red-800 p-1"
+                              className="text-secondary-500 hover:text-secondary-700 p-1"
                               title="Cancel"
                             >
                               <FaTimes />
@@ -309,7 +375,7 @@ export default function OrdersHistoryPage() {
                             <div className="text-sm text-gray-900">{order.supervisor?.name || 'Unassigned'}</div>
                             <button
                               onClick={() => handleStartEditSupervisor(order)}
-                              className="text-blue-600 hover:text-blue-800 p-1"
+                              className="text-primary-600 hover:text-primary-700 p-1"
                               title="Edit Supervisor"
                             >
                               <FaEdit className="text-xs" />
@@ -325,7 +391,7 @@ export default function OrdersHistoryPage() {
                             return (
                               <div key={mealType} className="flex items-center justify-between">
                                 <span className="capitalize font-medium">{mealType}:</span>
-                                <span className="ml-2 text-blue-600">{amount !== null ? formatCurrency(amount) : '-'}</span>
+                                <span className="ml-2 text-primary-600">{amount !== null ? formatCurrency(amount) : '-'}</span>
                               </div>
                             )
                           })}
@@ -395,14 +461,14 @@ export default function OrdersHistoryPage() {
                           </Link>
                           <button
                             onClick={() => handleGeneratePDF(order)}
-                            className="text-red-600 hover:text-red-900 p-2 hover:bg-red-50 rounded"
+                            className="text-secondary-500 hover:text-secondary-700 p-2 hover:bg-secondary-50 rounded"
                             title="Download PDF"
                           >
                             <FaFilePdf />
                           </button>
                           <button
                             onClick={() => handleDelete(order.id)}
-                            className="text-red-600 hover:text-red-900 p-2 hover:bg-red-50 rounded"
+                            className="text-secondary-500 hover:text-secondary-700 p-2 hover:bg-secondary-50 rounded"
                             title="Delete"
                           >
                             <FaTrash />

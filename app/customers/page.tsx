@@ -211,7 +211,7 @@ export default function CustomersPage() {
               setCustomMessage('')
               setShowMessageModal(true)
             }}
-            className="bg-green-600 text-white px-4 sm:px-6 py-2 sm:py-3 rounded-lg hover:bg-green-700 transition-colors flex items-center justify-center gap-2 text-sm sm:text-base"
+            className="bg-primary-500 text-white px-4 sm:px-6 py-2 sm:py-3 rounded-lg hover:bg-primary-600 transition-colors flex items-center justify-center gap-2 text-sm sm:text-base"
           >
             <FaPaperPlane /> <span className="hidden sm:inline">Send Custom Message</span><span className="sm:hidden">Send Message</span>
           </button>
@@ -220,7 +220,7 @@ export default function CustomersPage() {
               resetForm()
               setShowModal(true)
             }}
-            className="bg-blue-600 text-white px-4 sm:px-6 py-2 sm:py-3 rounded-lg hover:bg-blue-700 transition-colors flex items-center justify-center gap-2 text-sm sm:text-base"
+            className="bg-primary-500 text-white px-4 sm:px-6 py-2 sm:py-3 rounded-lg hover:bg-primary-600 transition-colors flex items-center justify-center gap-2 text-sm sm:text-base"
           >
             <FaPlus /> Add Customer
           </button>
@@ -236,7 +236,7 @@ export default function CustomersPage() {
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             placeholder="Search customers..."
-            className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm sm:text-base"
+            className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 text-sm sm:text-base"
           />
         </div>
       </div>
@@ -260,35 +260,35 @@ export default function CustomersPage() {
           <div className="flex items-center gap-2">
             <button
               onClick={() => handleSendMessage(customer, 'email')}
-              className="text-blue-600 hover:text-blue-900 p-2 hover:bg-blue-50 rounded"
+              className="text-primary-600 hover:text-primary-700 p-2 hover:bg-primary-50 rounded"
               title="Send Email"
             >
               <FaEnvelope />
             </button>
             <button
               onClick={() => handleSendMessage(customer, 'whatsapp')}
-              className="text-green-600 hover:text-green-900 p-2 hover:bg-green-50 rounded"
+              className="text-primary-500 hover:text-primary-700 p-2 hover:bg-primary-50 rounded"
               title="Send WhatsApp"
             >
               <FaWhatsapp />
             </button>
             <button
               onClick={() => handleSendMessage(customer, 'sms')}
-              className="text-purple-600 hover:text-purple-900 p-2 hover:bg-purple-50 rounded"
+              className="text-accent-600 hover:text-accent-700 p-2 hover:bg-accent-50 rounded"
               title="Send SMS"
             >
               <FaSms />
             </button>
             <button
               onClick={() => handleEdit(customer)}
-              className="text-yellow-600 hover:text-yellow-900 p-2 hover:bg-yellow-50 rounded"
+              className="text-primary-500 hover:text-primary-700 p-2 hover:bg-primary-50 rounded"
               title="Edit"
             >
               <FaEdit />
             </button>
             <button
               onClick={() => handleDelete(customer.id)}
-              className="text-red-600 hover:text-red-900 p-2 hover:bg-red-50 rounded"
+              className="text-secondary-500 hover:text-secondary-700 p-2 hover:bg-secondary-50 rounded"
               title="Delete"
             >
               <FaTrash />
@@ -316,7 +316,7 @@ export default function CustomersPage() {
                     required
                     value={formData.name}
                     onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                    className="w-full px-3 sm:px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm sm:text-base"
+                    className="w-full px-3 sm:px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 text-sm sm:text-base"
                   />
                 </div>
                 <div>
@@ -328,7 +328,7 @@ export default function CustomersPage() {
                     required
                     value={formData.phone}
                     onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                    className="w-full px-3 sm:px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm sm:text-base"
+                    className="w-full px-3 sm:px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 text-sm sm:text-base"
                   />
                 </div>
                 <div>
@@ -340,7 +340,7 @@ export default function CustomersPage() {
                     required
                     value={formData.email}
                     onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                    className="w-full px-3 sm:px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm sm:text-base"
+                    className="w-full px-3 sm:px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 text-sm sm:text-base"
                   />
                 </div>
                 <div>
@@ -352,7 +352,7 @@ export default function CustomersPage() {
                     value={formData.address}
                     onChange={(e) => setFormData({ ...formData, address: e.target.value })}
                     rows={3}
-                    className="w-full px-3 sm:px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm sm:text-base"
+                    className="w-full px-3 sm:px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 text-sm sm:text-base"
                   />
                 </div>
                 <div>
@@ -364,7 +364,7 @@ export default function CustomersPage() {
                     onChange={(e) => setFormData({ ...formData, message: e.target.value })}
                     rows={3}
                     placeholder="Custom greeting message for this customer..."
-                    className="w-full px-3 sm:px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm sm:text-base"
+                    className="w-full px-3 sm:px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 text-sm sm:text-base"
                   />
                 </div>
               </div>
@@ -378,7 +378,7 @@ export default function CustomersPage() {
                 </button>
                 <button
                   type="submit"
-                  className="px-4 sm:px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm sm:text-base"
+                  className="px-4 sm:px-6 py-2 bg-primary-500 text-white rounded-lg hover:bg-primary-600 transition-colors text-sm sm:text-base"
                 >
                   {editingCustomer ? 'Update' : 'Create'} Customer
                 </button>
@@ -413,7 +413,7 @@ export default function CustomersPage() {
                               type="checkbox"
                               checked={selectedCustomers.includes(customer.id)}
                               onChange={() => handleToggleCustomer(customer.id)}
-                              className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                              className="w-4 h-4 text-primary-600 border-gray-300 rounded focus:ring-primary-500"
                             />
                             <div>
                               <div className="text-sm font-medium text-gray-900">{customer.name}</div>
@@ -487,7 +487,7 @@ export default function CustomersPage() {
                   type="button"
                   onClick={handleSendCustomMessage}
                   disabled={selectedCustomers.length === 0 || !customMessage.trim()}
-                  className="px-4 sm:px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors disabled:bg-gray-300 disabled:cursor-not-allowed flex items-center justify-center gap-2 text-sm sm:text-base"
+                  className="px-4 sm:px-6 py-2 bg-primary-500 text-white rounded-lg hover:bg-primary-600 transition-colors disabled:bg-gray-300 disabled:cursor-not-allowed flex items-center justify-center gap-2 text-sm sm:text-base"
                 >
                   <FaPaperPlane /> Send via WhatsApp
                 </button>

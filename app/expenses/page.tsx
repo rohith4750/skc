@@ -365,7 +365,7 @@ export default function ExpensesPage() {
               <p className="text-sm text-gray-600">Total Expenses</p>
               <p className="text-2xl font-bold text-gray-800">{formatCurrency(totalExpenses)}</p>
             </div>
-            <FaDollarSign className="text-3xl text-blue-500" />
+            <FaDollarSign className="text-3xl text-primary-500" />
           </div>
         </div>
         {Object.entries(categoryTotals).slice(0, 3).map(([category, total]) => (
@@ -420,7 +420,7 @@ export default function ExpensesPage() {
             setSelectedOrder(e.target.value)
             setCurrentPage(1)
           }}
-          className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+          className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
         >
           <option value="all">All Events/Orders</option>
           {orders.map((order: any) => (
@@ -438,7 +438,7 @@ export default function ExpensesPage() {
           }}
           className={`px-4 py-2 rounded-lg transition-colors ${
             selectedCategory === 'all'
-              ? 'bg-blue-600 text-white'
+              ? 'bg-primary-500 text-white'
               : 'bg-white text-gray-700 hover:bg-gray-100'
           }`}
         >
@@ -478,14 +478,14 @@ export default function ExpensesPage() {
           <div className="flex items-center gap-2">
             <button
               onClick={() => handleEdit(expense)}
-              className="text-yellow-600 hover:text-yellow-900 p-2 hover:bg-yellow-50 rounded"
+              className="text-primary-500 hover:text-primary-700 p-2 hover:bg-primary-50 rounded"
               title="Edit"
             >
               <FaEdit />
             </button>
             <button
               onClick={() => handleDelete(expense.id)}
-              className="text-red-600 hover:text-red-900 p-2 hover:bg-red-50 rounded"
+              className="text-secondary-500 hover:text-secondary-700 p-2 hover:bg-secondary-50 rounded"
               title="Delete"
             >
               <FaTrash />
@@ -511,7 +511,7 @@ export default function ExpensesPage() {
                   <select
                     value={formData.orderId}
                     onChange={(e) => setFormData({ ...formData, orderId: e.target.value })}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
                   >
                     <option value="">No specific event/order</option>
                     {orders.map((order: any) => (
@@ -545,7 +545,7 @@ export default function ExpensesPage() {
                         boyAmount: '',
                       })
                     }}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
                   >
                     {EXPENSE_CATEGORIES.map(cat => (
                       <option key={cat} value={cat}>
@@ -565,7 +565,7 @@ export default function ExpensesPage() {
                       required
                       value={formData.calculationMethod}
                       onChange={(e) => setFormData({ ...formData, calculationMethod: e.target.value as 'plate-wise' | 'total', amount: '', plates: '' })}
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
                     >
                       <option value="total">Total Amount</option>
                       <option value="plate-wise">Plate-wise</option>
@@ -586,7 +586,7 @@ export default function ExpensesPage() {
                         required
                         value={formData.plates}
                         onChange={(e) => setFormData({ ...formData, plates: e.target.value })}
-                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
                         placeholder="0"
                       />
                     </div>
@@ -600,7 +600,7 @@ export default function ExpensesPage() {
                         required
                         value={formData.amount}
                         onChange={(e) => setFormData({ ...formData, amount: e.target.value })}
-                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
                         placeholder="0.00"
                       />
                     </div>
@@ -626,7 +626,7 @@ export default function ExpensesPage() {
                       required
                       value={formData.amount}
                       onChange={(e) => setFormData({ ...formData, amount: e.target.value })}
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
                       placeholder="0.00"
                     />
                   </div>
@@ -644,7 +644,7 @@ export default function ExpensesPage() {
                       required
                       value={formData.amount}
                       onChange={(e) => setFormData({ ...formData, amount: e.target.value })}
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
                       placeholder="0.00"
                     />
                   </div>
@@ -662,7 +662,7 @@ export default function ExpensesPage() {
                         required
                         value={formData.eventDate}
                         onChange={(e) => setFormData({ ...formData, eventDate: e.target.value })}
-                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
                       />
                     </div>
                     <div>
@@ -675,7 +675,7 @@ export default function ExpensesPage() {
                         required
                         value={formData.numberOfLabours}
                         onChange={(e) => setFormData({ ...formData, numberOfLabours: e.target.value })}
-                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
                         placeholder="0"
                       />
                     </div>
@@ -689,7 +689,7 @@ export default function ExpensesPage() {
                         required
                         value={formData.labourAmount}
                         onChange={(e) => setFormData({ ...formData, labourAmount: e.target.value })}
-                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
                         placeholder="0.00"
                       />
                     </div>
@@ -715,7 +715,7 @@ export default function ExpensesPage() {
                         required
                         value={formData.eventDate}
                         onChange={(e) => setFormData({ ...formData, eventDate: e.target.value })}
-                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
                       />
                     </div>
                     <div>
@@ -728,7 +728,7 @@ export default function ExpensesPage() {
                         required
                         value={formData.numberOfBoys}
                         onChange={(e) => setFormData({ ...formData, numberOfBoys: e.target.value })}
-                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
                         placeholder="0"
                       />
                     </div>
@@ -742,7 +742,7 @@ export default function ExpensesPage() {
                         required
                         value={formData.boyAmount}
                         onChange={(e) => setFormData({ ...formData, boyAmount: e.target.value })}
-                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
                         placeholder="0.00"
                       />
                     </div>
@@ -768,7 +768,7 @@ export default function ExpensesPage() {
                       required
                       value={formData.amount}
                       onChange={(e) => setFormData({ ...formData, amount: e.target.value })}
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
                       placeholder="0.00"
                     />
                   </div>
@@ -783,7 +783,7 @@ export default function ExpensesPage() {
                     required
                     value={formData.paymentDate}
                     onChange={(e) => setFormData({ ...formData, paymentDate: e.target.value })}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
                   />
                 </div>
 
@@ -795,7 +795,7 @@ export default function ExpensesPage() {
                     type="text"
                     value={formData.recipient}
                     onChange={(e) => setFormData({ ...formData, recipient: e.target.value })}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
                     placeholder="Name of recipient"
                   />
                 </div>
@@ -837,7 +837,7 @@ export default function ExpensesPage() {
                 </button>
                 <button
                   type="submit"
-                  className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                  className="px-6 py-2 bg-primary-500 text-white rounded-lg hover:bg-primary-600 transition-colors"
                 >
                   {editingExpense ? 'Update Expense' : 'Add Expense'}
                 </button>

@@ -25,12 +25,14 @@ model Customer {
 }
 
 model MenuItem {
-  id          String  @id @default(uuid())
-  name        String
-  type        String
-  description String?
-  isActive    Boolean @default(true)
-  orders      OrderItem[]
+  id              String  @id @default(uuid())
+  name            String
+  nameTelugu      String?
+  type            String
+  description     String?
+  descriptionTelugu String?
+  isActive        Boolean @default(true)
+  orders          OrderItem[]
 
   @@map("menu_items")
 }
@@ -111,4 +113,30 @@ model Expense {
   updatedAt          DateTime @updatedAt
 
   @@map("expenses")
+}
+
+model User {
+  id                String   @id @default(uuid())
+  username          String   @unique
+  email             String   @unique
+  passwordHash      String
+  role              String   @default("admin") // "admin" or "super_admin" only
+  resetToken        String?
+  resetTokenExpiry  DateTime?
+  isActive          Boolean  @default(true)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@map("users")
+}
+
+model Workforce {
+  id        String   @id @default(uuid())
+  name      String
+  role      String   // "chef", "supervisor", "transport"
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("workforce")
 }

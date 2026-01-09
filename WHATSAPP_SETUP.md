@@ -43,7 +43,19 @@ To send messages **automatically from your business account (919701417885) witho
 
 ### Option 2: Third-Party Providers (Easier)
 
-**Twilio WhatsApp API** (Recommended for beginners)
+**Gupshup WhatsApp API** 🇮🇳 (Highly Recommended for Indian Businesses)
+- Sign up: https://www.gupshup.io/developer/whatsapp-api
+- **Popular in India** - Market leader for WhatsApp Business API in India
+- **Indian pricing** - Competitive rates optimized for Indian market
+- **Easy onboarding** - Streamlined setup process for Indian businesses
+- **Excellent support** - Local support team familiar with Indian business needs
+- Faster approval process
+- Good documentation and resources
+- **Cost**: Competitive pricing (contact for exact rates based on volume)
+- Pay-as-you-go or subscription plans available
+- Free trial/credits often available
+
+**Twilio WhatsApp API** (Recommended for beginners, global)
 - Sign up: https://www.twilio.com/whatsapp
 - Faster approval than direct API
 - Good documentation
@@ -92,6 +104,16 @@ To send messages **automatically from your business account (919701417885) witho
 When you get WhatsApp Business API access, you'll need to:
 
 1. **Add API credentials** to `.env`:
+
+   **For Gupshup:**
+   ```
+   GUPSHUP_API_KEY=xxx
+   GUPSHUP_APP_NAME=xxx
+   GUPSHUP_USER_ID=xxx
+   GUPSHUP_PASSWORD=xxx
+   ```
+
+   **For Twilio:**
    ```
    TWILIO_ACCOUNT_SID=xxx
    TWILIO_AUTH_TOKEN=xxx
@@ -123,10 +145,12 @@ For now, use the current free method:
 
 - **For Now**: Use free method (manual send)
 - **For Production**: Get WhatsApp Business API for automatic sending
-- **Best Option**: Start with Twilio (easiest setup)
+- **Best Option for Indian Businesses**: **Gupshup** - Popular in India, Indian pricing, easy onboarding, excellent support
+- **Alternative Global Option**: Twilio (good for beginners, works worldwide)
 
 ## Need Help?
 
 See WhatsApp Business API documentation:
-- Twilio: https://www.twilio.com/docs/whatsapp
-- Meta Cloud API: https://developers.facebook.com/docs/whatsapp/cloud-api
+- **Gupshup**: https://docs.gupshup.io/docs/whatsapp-api-overview
+- **Twilio**: https://www.twilio.com/docs/whatsapp
+- **Meta Cloud API**: https://developers.facebook.com/docs/whatsapp/cloud-api

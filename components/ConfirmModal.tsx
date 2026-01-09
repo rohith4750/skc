@@ -25,16 +25,16 @@ export default function ConfirmModal({
 
   const variantStyles = {
     danger: {
-      button: 'bg-red-600 hover:bg-red-700 text-white',
-      icon: 'text-red-600',
+      button: 'bg-secondary-500 hover:bg-secondary-600 text-white',
+      icon: 'text-secondary-500',
     },
     warning: {
-      button: 'bg-yellow-600 hover:bg-yellow-700 text-white',
-      icon: 'text-yellow-600',
+      button: 'bg-accent-500 hover:bg-accent-600 text-white',
+      icon: 'text-accent-500',
     },
     info: {
-      button: 'bg-blue-600 hover:bg-blue-700 text-white',
-      icon: 'text-blue-600',
+      button: 'bg-primary-500 hover:bg-primary-600 text-white',
+      icon: 'text-primary-500',
     },
   }
 

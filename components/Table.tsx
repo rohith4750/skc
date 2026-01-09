@@ -109,7 +109,7 @@ export default function Table<T>({
                       type="checkbox"
                       checked={selectedItems.length === data.length && data.length > 0}
                       onChange={onSelectAll}
-                      className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                      className="w-4 h-4 text-primary-600 border-gray-300 rounded focus:ring-primary-500"
                     />
                   )}
                 </th>
@@ -154,7 +154,7 @@ export default function Table<T>({
                             type="checkbox"
                             checked={selectedItems.includes(itemId)}
                             onChange={() => onSelectItem(itemId)}
-                            className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                            className="w-4 h-4 text-primary-600 border-gray-300 rounded focus:ring-primary-500"
                           />
                         )}
                       </td>
@@ -247,7 +247,7 @@ export default function Table<T>({
                       onClick={() => handlePageChange(page)}
                       className={`px-2 sm:px-3 py-2 rounded-lg text-xs sm:text-sm font-medium transition-colors ${
                         currentPage === page
-                          ? 'bg-blue-600 text-white'
+                          ? 'bg-primary-500 text-white'
                           : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
                       }`}
                     >

@@ -18,8 +18,10 @@ export async function POST(request: NextRequest) {
     const menuItem = await prisma.menuItem.create({
       data: {
         name: data.name,
+        nameTelugu: data.nameTelugu,
         type: data.type,
         description: data.description,
+        descriptionTelugu: data.descriptionTelugu,
         isActive: data.isActive !== undefined ? data.isActive : true,
       }
     })

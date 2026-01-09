@@ -11,8 +11,10 @@ export interface Customer {
 export interface MenuItem {
   id: string
   name: string
+  nameTelugu?: string
   type: string
   description?: string
+  descriptionTelugu?: string
   isActive: boolean
 }
 

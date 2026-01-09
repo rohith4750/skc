@@ -82,7 +82,7 @@ export default function BillsPage() {
             {bill.status !== 'paid' && (
               <button
                 onClick={() => handleMarkPaid(bill.id)}
-                className="text-green-600 hover:text-green-900 p-2 hover:bg-green-50 rounded"
+                className="text-primary-600 hover:text-primary-700 p-2 hover:bg-primary-50 rounded"
                 title="Mark as Paid"
               >
                 <FaCheck />
@@ -90,7 +90,7 @@ export default function BillsPage() {
             )}
             <button
               onClick={() => handlePrint(bill)}
-              className="text-blue-600 hover:text-blue-900 p-2 hover:bg-blue-50 rounded"
+              className="text-primary-600 hover:text-primary-700 p-2 hover:bg-primary-50 rounded"
               title="Print"
             >
               <FaPrint />

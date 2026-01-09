@@ -249,7 +249,7 @@ export default function MenuPage() {
             onClick={() => handleMainCategoryChange('all')}
             className={`px-4 sm:px-6 py-2 rounded-lg text-sm sm:text-base font-medium transition-colors ${
               selectedFilter === 'all'
-                ? 'bg-blue-600 text-white'
+                ? 'bg-primary-500 text-white'
                 : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
             }`}
           >
@@ -259,7 +259,7 @@ export default function MenuPage() {
             onClick={() => handleMainCategoryChange('breakfast')}
             className={`px-4 sm:px-6 py-2 rounded-lg text-sm sm:text-base font-medium transition-colors ${
               selectedFilter === 'breakfast'
-                ? 'bg-blue-600 text-white'
+                ? 'bg-primary-500 text-white'
                 : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
             }`}
           >
@@ -269,7 +269,7 @@ export default function MenuPage() {
             onClick={() => handleMainCategoryChange('lunch')}
             className={`px-4 sm:px-6 py-2 rounded-lg text-sm sm:text-base font-medium transition-colors ${
               selectedFilter === 'lunch'
-                ? 'bg-blue-600 text-white'
+                ? 'bg-primary-500 text-white'
                 : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
             }`}
           >
@@ -279,7 +279,7 @@ export default function MenuPage() {
             onClick={() => handleMainCategoryChange('dinner')}
             className={`px-4 sm:px-6 py-2 rounded-lg text-sm sm:text-base font-medium transition-colors ${
               selectedFilter === 'dinner'
-                ? 'bg-blue-600 text-white'
+                ? 'bg-primary-500 text-white'
                 : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
             }`}
           >
@@ -289,7 +289,7 @@ export default function MenuPage() {
             onClick={() => handleMainCategoryChange('snacks')}
             className={`px-4 sm:px-6 py-2 rounded-lg text-sm sm:text-base font-medium transition-colors ${
               selectedFilter === 'snacks'
-                ? 'bg-blue-600 text-white'
+                ? 'bg-primary-500 text-white'
                 : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
             }`}
           >
@@ -299,7 +299,7 @@ export default function MenuPage() {
             onClick={() => handleMainCategoryChange('sweets')}
             className={`px-4 sm:px-6 py-2 rounded-lg text-sm sm:text-base font-medium transition-colors ${
               selectedFilter === 'sweets'
-                ? 'bg-blue-600 text-white'
+                ? 'bg-primary-500 text-white'
                 : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
             }`}
           >
@@ -321,7 +321,7 @@ export default function MenuPage() {
               onClick={() => setSelectedSubFilter('all')}
               className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
                 selectedSubFilter === 'all'
-                  ? 'bg-green-600 text-white'
+                  ? 'bg-primary-500 text-white'
                   : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
               }`}
             >
@@ -435,7 +435,7 @@ export default function MenuPage() {
                     id="isActive"
                     checked={formData.isActive}
                     onChange={(e) => setFormData({ ...formData, isActive: e.target.checked })}
-                    className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                    className="w-4 h-4 text-primary-600 border-gray-300 rounded focus:ring-primary-500"
                   />
                   <label htmlFor="isActive" className="ml-2 text-sm font-medium text-gray-700">
                     Active
@@ -452,7 +452,7 @@ export default function MenuPage() {
                 </button>
                 <button
                   type="submit"
-                  className="px-4 sm:px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm sm:text-base"
+                  className="px-4 sm:px-6 py-2 bg-primary-500 text-white rounded-lg hover:bg-primary-600 transition-colors text-sm sm:text-base"
                 >
                   {editingItem ? 'Update' : 'Create'} Menu Item
                 </button>
