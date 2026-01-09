@@ -281,17 +281,12 @@ export default function OrdersPage() {
         }))
       )
 
-      // Use first supervisor as default for new orders (since schema requires supervisorId)
-      // For edit mode, use the existing supervisorId
-      let supervisorId = ''
+      // Supervisor is optional - use existing one in edit mode, or first available, or null
+      let supervisorId: string | null = null
       if (isEditMode) {
-        supervisorId = currentOrderSupervisorId || (supervisors.length > 0 ? supervisors[0].id : '')
+        supervisorId = currentOrderSupervisorId || (supervisors.length > 0 ? supervisors[0].id : null)
       } else {
-        supervisorId = supervisors.length > 0 ? supervisors[0].id : ''
-        if (!supervisorId) {
-          toast.error('Please add at least one supervisor before creating orders')
-          return
-        }
+        supervisorId = supervisors.length > 0 ? supervisors[0].id : null
       }
 
       const orderData = {

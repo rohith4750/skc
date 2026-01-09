@@ -51,8 +51,8 @@ model Order {
   id             String    @id @default(uuid())
   customerId     String
   customer       Customer  @relation(fields: [customerId], references: [id])
-  supervisorId   String
-  supervisor     Supervisor @relation(fields: [supervisorId], references: [id])
+  supervisorId   String?
+  supervisor     Supervisor? @relation(fields: [supervisorId], references: [id])
   items          OrderItem[]
   totalAmount    Float
   advancePaid    Float     @default(0)
