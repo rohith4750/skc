@@ -25,24 +25,31 @@ export async function POST(request: NextRequest) {
   try {
     const data = await request.json()
     
+    // Build order data, only include supervisorId if it has a valid value
+    const orderData: any = {
+      customerId: data.customerId,
+      totalAmount: data.totalAmount,
+      advancePaid: data.advancePaid,
+      remainingAmount: data.remainingAmount,
+      status: data.status || 'pending',
+      mealTypeAmounts: data.mealTypeAmounts && Object.keys(data.mealTypeAmounts).length > 0 ? data.mealTypeAmounts : null,
+      stalls: data.stalls && Array.isArray(data.stalls) && data.stalls.length > 0 ? data.stalls : null,
+      discount: data.discount || 0,
+      items: {
+        create: data.items.map((item: any) => ({
+          menuItemId: item.menuItemId,
+          quantity: item.quantity || 1,
+        }))
+      }
+    }
+    
+    // Only include supervisorId if it has a valid value (not empty string or null)
+    if (data.supervisorId && data.supervisorId.trim && data.supervisorId.trim() !== '') {
+      orderData.supervisorId = data.supervisorId
+    }
+    
     const order = await prisma.order.create({
-      data: {
-        customerId: data.customerId,
-        supervisorId: data.supervisorId || null,
-        totalAmount: data.totalAmount,
-        advancePaid: data.advancePaid,
-        remainingAmount: data.remainingAmount,
-        status: data.status || 'pending',
-        mealTypeAmounts: data.mealTypeAmounts && Object.keys(data.mealTypeAmounts).length > 0 ? data.mealTypeAmounts : null,
-        stalls: data.stalls && Array.isArray(data.stalls) && data.stalls.length > 0 ? data.stalls : null,
-        discount: data.discount || 0,
-        items: {
-          create: data.items.map((item: any) => ({
-            menuItemId: item.menuItemId,
-            quantity: item.quantity || 1,
-          }))
-        }
-      },
+      data: orderData,
       include: {
         customer: true,
         supervisor: true,
