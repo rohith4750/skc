@@ -21,20 +21,22 @@ export default function RootLayout({
       <body className={inter.className}>
         <div className="flex h-screen bg-gray-100">
           <Sidebar />
-          <main className="flex-1 overflow-y-auto">
+          <main className="flex-1 overflow-y-auto lg:ml-0">
             {children}
           </main>
         </div>
         <Toaster
-          position="top-right"
+          position="top-center"
+          containerClassName="!top-16"
           toastOptions={{
             duration: 4000,
             style: {
               background: '#fff',
               color: '#1f2937',
-              padding: '16px',
+              padding: '12px 16px',
               borderRadius: '8px',
               boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
+              maxWidth: '90vw',
             },
             success: {
               iconTheme: {

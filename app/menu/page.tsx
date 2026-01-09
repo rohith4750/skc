@@ -217,25 +217,25 @@ export default function MenuPage() {
   }
 
   return (
-    <div className="p-8">
-      <div className="flex justify-between items-center mb-8">
+    <div className="p-4 sm:p-6 lg:p-8 pt-16 lg:pt-8">
+      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 mb-6 sm:mb-8">
         <div>
-          <h1 className="text-3xl font-bold text-gray-800">Menu Management</h1>
-          <p className="text-gray-600 mt-2">Manage your catering menu items</p>
+          <h1 className="text-2xl sm:text-3xl font-bold text-gray-800">Menu Management</h1>
+          <p className="text-gray-600 mt-1 sm:mt-2 text-sm sm:text-base">Manage your catering menu items</p>
         </div>
-        <div className="flex gap-3">
+        <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
           <button
             onClick={handleInitialize}
-            className="bg-green-600 text-white px-6 py-3 rounded-lg hover:bg-green-700 transition-colors flex items-center gap-2"
+            className="bg-green-600 text-white px-4 sm:px-6 py-2 sm:py-3 rounded-lg hover:bg-green-700 transition-colors flex items-center justify-center gap-2 text-sm sm:text-base"
           >
-            <FaDownload /> Load Predefined Menu
+            <FaDownload /> <span className="hidden sm:inline">Load Predefined Menu</span><span className="sm:hidden">Load Menu</span>
           </button>
           <button
             onClick={() => {
               resetForm()
               setShowModal(true)
             }}
-            className="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2"
+            className="bg-blue-600 text-white px-4 sm:px-6 py-2 sm:py-3 rounded-lg hover:bg-blue-700 transition-colors flex items-center justify-center gap-2 text-sm sm:text-base"
           >
             <FaPlus /> Add Menu Item
           </button>
@@ -244,10 +244,10 @@ export default function MenuPage() {
 
       {/* Main Category Filter Buttons */}
       <div className="mb-4">
-        <div className="flex flex-wrap gap-3">
+        <div className="flex flex-wrap gap-2 sm:gap-3">
           <button
             onClick={() => handleMainCategoryChange('all')}
-            className={`px-6 py-2 rounded-lg font-medium transition-colors ${
+            className={`px-4 sm:px-6 py-2 rounded-lg text-sm sm:text-base font-medium transition-colors ${
               selectedFilter === 'all'
                 ? 'bg-blue-600 text-white'
                 : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
@@ -257,7 +257,7 @@ export default function MenuPage() {
           </button>
           <button
             onClick={() => handleMainCategoryChange('breakfast')}
-            className={`px-6 py-2 rounded-lg font-medium transition-colors ${
+            className={`px-4 sm:px-6 py-2 rounded-lg text-sm sm:text-base font-medium transition-colors ${
               selectedFilter === 'breakfast'
                 ? 'bg-blue-600 text-white'
                 : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
@@ -267,7 +267,7 @@ export default function MenuPage() {
           </button>
           <button
             onClick={() => handleMainCategoryChange('lunch')}
-            className={`px-6 py-2 rounded-lg font-medium transition-colors ${
+            className={`px-4 sm:px-6 py-2 rounded-lg text-sm sm:text-base font-medium transition-colors ${
               selectedFilter === 'lunch'
                 ? 'bg-blue-600 text-white'
                 : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
@@ -277,7 +277,7 @@ export default function MenuPage() {
           </button>
           <button
             onClick={() => handleMainCategoryChange('dinner')}
-            className={`px-6 py-2 rounded-lg font-medium transition-colors ${
+            className={`px-4 sm:px-6 py-2 rounded-lg text-sm sm:text-base font-medium transition-colors ${
               selectedFilter === 'dinner'
                 ? 'bg-blue-600 text-white'
                 : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
@@ -287,7 +287,7 @@ export default function MenuPage() {
           </button>
           <button
             onClick={() => handleMainCategoryChange('snacks')}
-            className={`px-6 py-2 rounded-lg font-medium transition-colors ${
+            className={`px-4 sm:px-6 py-2 rounded-lg text-sm sm:text-base font-medium transition-colors ${
               selectedFilter === 'snacks'
                 ? 'bg-blue-600 text-white'
                 : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
@@ -297,7 +297,7 @@ export default function MenuPage() {
           </button>
           <button
             onClick={() => handleMainCategoryChange('sweets')}
-            className={`px-6 py-2 rounded-lg font-medium transition-colors ${
+            className={`px-4 sm:px-6 py-2 rounded-lg text-sm sm:text-base font-medium transition-colors ${
               selectedFilter === 'sweets'
                 ? 'bg-blue-600 text-white'
                 : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
@@ -382,14 +382,14 @@ export default function MenuPage() {
       />
 
       {showModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg shadow-xl w-full max-w-2xl mx-4 max-h-[90vh] overflow-y-auto">
-            <div className="p-6 border-b border-gray-200">
-              <h2 className="text-2xl font-bold text-gray-800">
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+            <div className="p-4 sm:p-6 border-b border-gray-200">
+              <h2 className="text-xl sm:text-2xl font-bold text-gray-800">
                 {editingItem ? 'Edit Menu Item' : 'Add New Menu Item'}
               </h2>
             </div>
-            <form onSubmit={handleSubmit} className="p-6">
+            <form onSubmit={handleSubmit} className="p-4 sm:p-6">
               <div className="space-y-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -400,7 +400,7 @@ export default function MenuPage() {
                     required
                     value={formData.name}
                     onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    className="w-full px-3 sm:px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm sm:text-base"
                     placeholder="e.g., Biryani, Pulao, Dessert"
                   />
                 </div>
@@ -413,7 +413,7 @@ export default function MenuPage() {
                     required
                     value={formData.type}
                     onChange={(e) => setFormData({ ...formData, type: e.target.value })}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    className="w-full px-3 sm:px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm sm:text-base"
                     placeholder="e.g., Main Course, Dessert, Beverages, Starter"
                   />
                 </div>
@@ -425,7 +425,7 @@ export default function MenuPage() {
                     value={formData.description}
                     onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                     rows={4}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    className="w-full px-3 sm:px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm sm:text-base"
                     placeholder="Enter menu item description..."
                   />
                 </div>
@@ -442,17 +442,17 @@ export default function MenuPage() {
                   </label>
                 </div>
               </div>
-              <div className="mt-6 flex justify-end gap-4">
+              <div className="mt-6 flex flex-col-reverse sm:flex-row justify-end gap-3 sm:gap-4">
                 <button
                   type="button"
                   onClick={resetForm}
-                  className="px-6 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors"
+                  className="px-4 sm:px-6 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors text-sm sm:text-base"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                  className="px-4 sm:px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm sm:text-base"
                 >
                   {editingItem ? 'Update' : 'Create'} Menu Item
                 </button>

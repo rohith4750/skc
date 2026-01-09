@@ -98,11 +98,12 @@ export default function Table<T>({
   return (
     <>
       <div className={`bg-white rounded-lg shadow-md overflow-hidden ${className}`}>
-        <table className="w-full">
+        <div className="overflow-x-auto">
+          <table className="w-full min-w-[640px]">
           <thead className="bg-gray-50 border-b border-gray-200">
             <tr>
               {showCheckbox && (
-                <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-3 lg:px-6 py-3 lg:py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   {onSelectAll && (
                     <input
                       type="checkbox"
@@ -116,13 +117,13 @@ export default function Table<T>({
               {columns.map((column) => (
                 <th
                   key={column.key}
-                  className={`px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider ${column.headerClassName || ''}`}
+                  className={`px-3 lg:px-6 py-3 lg:py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider ${column.headerClassName || ''}`}
                 >
                   {column.header}
                 </th>
               ))}
               {renderActions && (
-                <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-3 lg:px-6 py-3 lg:py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Actions
                 </th>
               )}
@@ -131,7 +132,7 @@ export default function Table<T>({
           <tbody className="bg-white divide-y divide-gray-200">
             {paginatedData.length === 0 ? (
               <tr>
-                <td colSpan={colSpan} className="px-6 py-8 text-center text-gray-500">
+                <td colSpan={colSpan} className="px-4 lg:px-6 py-6 lg:py-8 text-center text-gray-500">
                   {emptyMessage}
                 </td>
               </tr>
@@ -147,7 +148,7 @@ export default function Table<T>({
                 return (
                   <tr key={itemId} className="hover:bg-gray-50">
                     {showCheckbox && (
-                      <td className="px-6 py-4 whitespace-nowrap">
+                      <td className="px-3 lg:px-6 py-3 lg:py-4 whitespace-nowrap">
                         {onSelectItem && (
                           <input
                             type="checkbox"
@@ -168,7 +169,7 @@ export default function Table<T>({
                       return (
                         <td
                           key={column.key}
-                          className={`px-6 py-4 ${column.className || ''}`}
+                          className={`px-3 lg:px-6 py-3 lg:py-4 ${column.className || ''}`}
                         >
                           {typeof content === 'string' || typeof content === 'number' ? (
                             <div className="text-sm text-gray-900">{content}</div>
@@ -179,7 +180,7 @@ export default function Table<T>({
                       )
                     })}
                     {renderActions && (
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                      <td className="px-3 lg:px-6 py-3 lg:py-4 whitespace-nowrap text-sm font-medium">
                         {renderActions(row)}
                       </td>
                     )}
@@ -189,25 +190,26 @@ export default function Table<T>({
             )}
           </tbody>
         </table>
+        </div>
       </div>
 
       {/* Pagination Controls */}
       {(showPagination || onItemsPerPageChange) && (
-        <div className="mt-4 flex flex-col sm:flex-row items-center justify-between gap-4 bg-white px-4 py-3 rounded-lg shadow-md">
-          <div className="flex items-center gap-4">
-            <div className="text-sm text-gray-700">
+        <div className="mt-4 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 sm:gap-4 bg-white px-3 sm:px-4 py-3 rounded-lg shadow-md">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 sm:gap-4">
+            <div className="text-xs sm:text-sm text-gray-700 whitespace-nowrap">
               Showing {startIndex + 1} to {Math.min(endIndex, totalItemsCount)} of {totalItemsCount} {itemName}
             </div>
             {onItemsPerPageChange && (
               <div className="flex items-center gap-2">
-                <label htmlFor="itemsPerPage" className="text-sm text-gray-700">
+                <label htmlFor="itemsPerPage" className="text-xs sm:text-sm text-gray-700 whitespace-nowrap">
                   Show:
                 </label>
                 <select
                   id="itemsPerPage"
                   value={effectiveItemsPerPage >= totalItemsCount ? 'all' : itemsPerPage}
                   onChange={handleItemsPerPageChange}
-                  className="px-3 py-1.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white"
+                  className="px-2 sm:px-3 py-1.5 border border-gray-300 rounded-lg text-xs sm:text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white"
                 >
                   {itemsPerPageOptions.map((option) => (
                     <option key={option} value={option}>
@@ -220,11 +222,11 @@ export default function Table<T>({
             )}
           </div>
           {showPagination && (
-            <div className="flex items-center gap-2">
+            <div className="flex items-center justify-center gap-1 sm:gap-2">
             <button
               onClick={() => handlePageChange(currentPage - 1)}
               disabled={currentPage === 1}
-              className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+              className={`px-2 sm:px-3 py-2 rounded-lg text-xs sm:text-sm font-medium transition-colors ${
                 currentPage === 1
                   ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
                   : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
@@ -232,7 +234,7 @@ export default function Table<T>({
             >
               <FaChevronLeft />
             </button>
-            <div className="flex gap-1">
+            <div className="flex gap-0.5 sm:gap-1">
               {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => {
                 if (
                   page === 1 ||
@@ -243,7 +245,7 @@ export default function Table<T>({
                     <button
                       key={page}
                       onClick={() => handlePageChange(page)}
-                      className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                      className={`px-2 sm:px-3 py-2 rounded-lg text-xs sm:text-sm font-medium transition-colors ${
                         currentPage === page
                           ? 'bg-blue-600 text-white'
                           : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
@@ -253,7 +255,7 @@ export default function Table<T>({
                     </button>
                   )
                 } else if (page === currentPage - 2 || page === currentPage + 2) {
-                  return <span key={page} className="px-2 text-gray-400">...</span>
+                  return <span key={page} className="px-1 sm:px-2 text-gray-400 text-xs sm:text-sm">...</span>
                 }
                 return null
               })}
@@ -261,7 +263,7 @@ export default function Table<T>({
             <button
               onClick={() => handlePageChange(currentPage + 1)}
               disabled={currentPage === totalPages}
-              className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+              className={`px-2 sm:px-3 py-2 rounded-lg text-xs sm:text-sm font-medium transition-colors ${
                 currentPage === totalPages
                   ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
                   : 'bg-gray-200 text-gray-700 hover:bg-gray-300'

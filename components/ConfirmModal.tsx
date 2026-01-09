@@ -41,21 +41,21 @@ export default function ConfirmModal({
   const styles = variantStyles[variant]
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-lg shadow-xl w-full max-w-md mx-4">
-        <div className="p-6">
-          <h2 className="text-xl font-bold text-gray-800 mb-4">{title}</h2>
-          <p className="text-gray-600 mb-6">{message}</p>
-          <div className="flex justify-end gap-3">
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-lg shadow-xl w-full max-w-md">
+        <div className="p-4 sm:p-6">
+          <h2 className="text-lg sm:text-xl font-bold text-gray-800 mb-3 sm:mb-4">{title}</h2>
+          <p className="text-sm sm:text-base text-gray-600 mb-4 sm:mb-6">{message}</p>
+          <div className="flex flex-col-reverse sm:flex-row justify-end gap-3">
             <button
               onClick={onCancel}
-              className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors"
+              className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors text-sm sm:text-base"
             >
               {cancelText}
             </button>
             <button
               onClick={onConfirm}
-              className={`px-4 py-2 rounded-lg transition-colors ${styles.button}`}
+              className={`px-4 py-2 rounded-lg transition-colors text-sm sm:text-base ${styles.button}`}
             >
               {confirmText}
             </button>
