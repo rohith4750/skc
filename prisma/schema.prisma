@@ -64,6 +64,7 @@ model Order {
   createdAt      DateTime  @default(now())
   updatedAt      DateTime  @updatedAt
   bills          Bill[]
+  expenses       Expense[]
 
   @@map("orders")
 }
@@ -92,4 +93,22 @@ model Bill {
   updatedAt      DateTime @updatedAt
 
   @@map("bills")
+}
+
+model Expense {
+  id                 String   @id @default(uuid())
+  orderId            String?
+  order              Order?   @relation(fields: [orderId], references: [id], onDelete: SetNull)
+  category           String   // supervisor, chef, labours, boys, transport, gas, pan, store, other
+  amount             Float
+  description        String?
+  recipient          String?  // Name of person/vendor receiving payment
+  paymentDate        DateTime @default(now())
+  eventDate          DateTime? // Event date for labours and boys
+  notes              String?
+  calculationDetails Json?    // Store calculation details: { method: 'plate-wise'|'total', plates?: number, numberOfLabours?: number, numberOfBoys?: number, perUnitAmount?: number }
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  @@map("expenses")
 }

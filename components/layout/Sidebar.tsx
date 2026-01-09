@@ -11,7 +11,8 @@ import {
   FaFileInvoiceDollar,
   FaUserTie,
   FaBars,
-  FaTimes
+  FaTimes,
+  FaMoneyBillWave
 } from 'react-icons/fa'
 import Logo from '@/components/Logo'
 
@@ -22,6 +23,7 @@ const menuItems = [
   { href: '/orders', icon: FaShoppingCart, label: 'Create Order' },
   { href: '/orders/history', icon: FaShoppingCart, label: 'Orders History' },
   { href: '/bills', icon: FaFileInvoiceDollar, label: 'Bills' },
+  { href: '/expenses', icon: FaMoneyBillWave, label: 'Expenses' },
   { href: '/supervisors', icon: FaUserTie, label: 'Supervisors' },
 ]
 

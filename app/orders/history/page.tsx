@@ -2,9 +2,10 @@
 
 import { useEffect, useState, useMemo } from 'react'
 import { Storage } from '@/lib/storage-api'
-import { formatCurrency, formatDateTime } from '@/lib/utils'
+import { formatCurrency, formatDateTime, formatDate } from '@/lib/utils'
 import { Order } from '@/types'
-import { FaTrash, FaFilePdf, FaFilter, FaChevronLeft, FaChevronRight } from 'react-icons/fa'
+import { FaTrash, FaFilePdf, FaFilter, FaChevronLeft, FaChevronRight, FaEdit, FaCheck, FaTimes } from 'react-icons/fa'
+import Link from 'next/link'
 import jsPDF from 'jspdf'
 import toast from 'react-hot-toast'
 import ConfirmModal from '@/components/ConfirmModal'
@@ -19,6 +20,8 @@ export default function OrdersHistoryPage() {
     isOpen: false,
     id: null,
   })
+  const [editingSupervisor, setEditingSupervisor] = useState<string | null>(null)
+  const [tempSupervisorId, setTempSupervisorId] = useState<string>('')
 
   useEffect(() => {
     loadData()
@@ -69,6 +72,33 @@ export default function OrdersHistoryPage() {
       console.error('Failed to delete order:', error)
       toast.error('Failed to delete order. Please try again.')
       setDeleteConfirm({ isOpen: false, id: null })
+    }
+  }
+
+  const handleStartEditSupervisor = (order: any) => {
+    setEditingSupervisor(order.id)
+    setTempSupervisorId(order.supervisorId || '')
+  }
+
+  const handleCancelEditSupervisor = () => {
+    setEditingSupervisor(null)
+    setTempSupervisorId('')
+  }
+
+  const handleSaveSupervisor = async (orderId: string) => {
+    if (!tempSupervisorId) {
+      toast.error('Please select a supervisor')
+      return
+    }
+    try {
+      await Storage.updateOrder(orderId, { supervisorId: tempSupervisorId })
+      await loadData()
+      toast.success('Supervisor updated successfully!')
+      setEditingSupervisor(null)
+      setTempSupervisorId('')
+    } catch (error) {
+      console.error('Failed to update supervisor:', error)
+      toast.error('Failed to update supervisor. Please try again.')
     }
   }
 
@@ -209,6 +239,7 @@ export default function OrdersHistoryPage() {
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Total Amount</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Advance Paid</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Remaining</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Event Dates</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Created</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
@@ -227,6 +258,16 @@ export default function OrdersHistoryPage() {
                   })
                   const mealTypeAmounts = order.mealTypeAmounts as Record<string, { amount: number; date: string } | number> | null
                   
+                  // Extract all event dates from meal types
+                  const eventDates: Array<{ mealType: string; date: string }> = []
+                  if (mealTypeAmounts) {
+                    Object.entries(mealTypeAmounts).forEach(([mealType, data]) => {
+                      if (typeof data === 'object' && data !== null && data.date) {
+                        eventDates.push({ mealType, date: data.date })
+                      }
+                    })
+                  }
+                  
                   return (
                     <tr key={order.id} className="hover:bg-gray-50">
                       <td className="px-6 py-4 whitespace-nowrap">
@@ -234,19 +275,57 @@ export default function OrdersHistoryPage() {
                         <div className="text-sm text-gray-500">{order.customer?.phone || ''}</div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm text-gray-900">{order.supervisor?.name || 'N/A'}</div>
+                        {editingSupervisor === order.id ? (
+                          <div className="flex items-center gap-2">
+                            <select
+                              value={tempSupervisorId}
+                              onChange={(e) => setTempSupervisorId(e.target.value)}
+                              className="px-2 py-1 text-sm border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                            >
+                              <option value="">Select Supervisor</option>
+                              {supervisors.map((supervisor: any) => (
+                                <option key={supervisor.id} value={supervisor.id}>
+                                  {supervisor.name}
+                                </option>
+                              ))}
+                            </select>
+                            <button
+                              onClick={() => handleSaveSupervisor(order.id)}
+                              className="text-green-600 hover:text-green-800 p-1"
+                              title="Save"
+                            >
+                              <FaCheck />
+                            </button>
+                            <button
+                              onClick={handleCancelEditSupervisor}
+                              className="text-red-600 hover:text-red-800 p-1"
+                              title="Cancel"
+                            >
+                              <FaTimes />
+                            </button>
+                          </div>
+                        ) : (
+                          <div className="flex items-center gap-2">
+                            <div className="text-sm text-gray-900">{order.supervisor?.name || 'Unassigned'}</div>
+                            <button
+                              onClick={() => handleStartEditSupervisor(order)}
+                              className="text-blue-600 hover:text-blue-800 p-1"
+                              title="Edit Supervisor"
+                            >
+                              <FaEdit className="text-xs" />
+                            </button>
+                          </div>
+                        )}
                       </td>
                       <td className="px-6 py-4">
                         <div className="text-sm text-gray-900 space-y-1">
                           {Object.entries(groupedItems).map(([mealType, items]) => {
                             const mealTypeData = mealTypeAmounts?.[mealType]
                             const amount = typeof mealTypeData === 'object' && mealTypeData !== null ? mealTypeData.amount : (typeof mealTypeData === 'number' ? mealTypeData : null)
-                            const date = typeof mealTypeData === 'object' && mealTypeData !== null ? mealTypeData.date : null
                             return (
                               <div key={mealType} className="flex items-center justify-between">
                                 <span className="capitalize font-medium">{mealType}:</span>
                                 <span className="ml-2 text-blue-600">{amount !== null ? formatCurrency(amount) : '-'}</span>
-                                {date && <span className="ml-2 text-xs text-gray-500">({new Date(date).toLocaleDateString()})</span>}
                               </div>
                             )
                           })}
@@ -278,6 +357,20 @@ export default function OrdersHistoryPage() {
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="text-sm font-medium text-red-600">{formatCurrency(order.remainingAmount)}</div>
                       </td>
+                      <td className="px-6 py-4">
+                        <div className="text-sm text-gray-900 space-y-1">
+                          {eventDates.length > 0 ? (
+                            eventDates.map(({ mealType, date }) => (
+                              <div key={mealType} className="flex items-center gap-2">
+                                <span className="capitalize text-xs font-medium text-gray-600">{mealType}:</span>
+                                <span className="text-sm">{formatDate(date)}</span>
+                              </div>
+                            ))
+                          ) : (
+                            <span className="text-sm text-gray-400">-</span>
+                          )}
+                        </div>
+                      </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <span className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${
                           order.status === 'completed' ? 'bg-green-100 text-green-800' :
@@ -293,6 +386,13 @@ export default function OrdersHistoryPage() {
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                         <div className="flex gap-2">
+                          <Link
+                            href={`/orders?edit=${order.id}`}
+                            className="text-yellow-600 hover:text-yellow-900 p-2 hover:bg-yellow-50 rounded transition-colors"
+                            title="Edit Order"
+                          >
+                            <FaEdit />
+                          </Link>
                           <button
                             onClick={() => handleGeneratePDF(order)}
                             className="text-red-600 hover:text-red-900 p-2 hover:bg-red-50 rounded"

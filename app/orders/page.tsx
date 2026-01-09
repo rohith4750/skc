@@ -6,19 +6,27 @@ import { generateId, formatCurrency, formatDateTime } from '@/lib/utils'
 import { Customer, MenuItem, OrderItem, Supervisor } from '@/types'
 import { FaSearch, FaPlus } from 'react-icons/fa'
 import Link from 'next/link'
+import { useSearchParams, useRouter } from 'next/navigation'
 import toast from 'react-hot-toast'
 
 export default function OrdersPage() {
+  const searchParams = useSearchParams()
+  const router = useRouter()
+  const editOrderId = searchParams.get('edit')
+  const isEditMode = !!editOrderId
+
   const [customers, setCustomers] = useState<Customer[]>([])
   const [menuItems, setMenuItems] = useState<MenuItem[]>([])
   const [supervisors, setSupervisors] = useState<Supervisor[]>([])
   const [selectedSubFilter, setSelectedSubFilter] = useState<Record<string, string>>({})
   const [menuItemSearch, setMenuItemSearch] = useState<Record<string, string>>({})
   const [showStalls, setShowStalls] = useState<boolean>(false)
+  const [loadingOrder, setLoadingOrder] = useState(false)
+  const [currentOrderSupervisorId, setCurrentOrderSupervisorId] = useState<string>('')
+  const [currentOrderStatus, setCurrentOrderStatus] = useState<string>('pending')
   
   const [formData, setFormData] = useState({
     customerId: '',
-    supervisorId: '',
     mealTypes: [] as Array<{
       id: string
       menuType: string
@@ -40,6 +48,12 @@ export default function OrdersPage() {
     loadData()
   }, [])
 
+  useEffect(() => {
+    if (isEditMode && editOrderId && customers.length > 0 && menuItems.length > 0) {
+      loadOrderData(editOrderId)
+    }
+  }, [isEditMode, editOrderId, customers.length, menuItems.length])
+
   const loadData = async () => {
     try {
       const [allCustomers, allMenuItems, allSupervisors] = await Promise.all([
@@ -54,6 +68,84 @@ export default function OrdersPage() {
     } catch (error) {
       console.error('Failed to load data:', error)
       toast.error('Failed to load data. Please try again.')
+    }
+  }
+
+  const loadOrderData = async (orderId: string) => {
+    setLoadingOrder(true)
+    try {
+      const order = await Storage.getOrder(orderId)
+      
+      if (!order) {
+        toast.error('Order not found')
+        router.push('/orders')
+        return
+      }
+
+      // Group items by meal type (using menuItem.type)
+      const groupedItems: Record<string, any[]> = {}
+      order.items.forEach((item: any) => {
+        const mealType = item.menuItem?.type?.toLowerCase() || 'other'
+        if (!groupedItems[mealType]) {
+          groupedItems[mealType] = []
+        }
+        groupedItems[mealType].push(item)
+      })
+
+      const mealTypeAmounts = order.mealTypeAmounts as Record<string, { amount: number; date: string } | number> | null
+
+      // Build mealTypes array from grouped items
+      const mealTypesArray = Object.entries(groupedItems).map(([menuType, items]) => {
+        const mealTypeData = mealTypeAmounts?.[menuType]
+        const amount = typeof mealTypeData === 'object' && mealTypeData !== null ? mealTypeData.amount : (typeof mealTypeData === 'number' ? mealTypeData : 0)
+        const date = typeof mealTypeData === 'object' && mealTypeData !== null ? mealTypeData.date : ''
+
+        // Determine pricing method (assume manual if amount exists, otherwise plate-based)
+        const pricingMethod: 'manual' | 'plate-based' = 'manual'
+        const manualAmount = amount.toString()
+        
+        return {
+          id: generateId(),
+          menuType: menuType,
+          selectedMenuItems: items.map((item: any) => item.menuItemId),
+          pricingMethod,
+          numberOfPlates: '',
+          platePrice: '',
+          transportCost: '',
+          manualAmount,
+          date: date || ''
+        }
+      })
+
+      // Parse stalls
+      const stallsArray = order.stalls && Array.isArray(order.stalls) 
+        ? order.stalls.map((stall: any) => ({
+            category: stall.category || '',
+            description: stall.description || '',
+            cost: stall.cost?.toString() || ''
+          }))
+        : []
+
+      setFormData({
+        customerId: order.customerId,
+        mealTypes: mealTypesArray,
+        stalls: stallsArray,
+        discount: order.discount?.toString() || '0',
+        totalAmount: order.totalAmount?.toString() || '0',
+        advancePaid: order.advancePaid?.toString() || '0',
+      })
+
+      setCurrentOrderSupervisorId(order.supervisorId || '')
+      setCurrentOrderStatus(order.status || 'pending')
+      setShowStalls(stallsArray.length > 0)
+      
+      toast.success('Order loaded successfully')
+    } catch (error) {
+      console.error('Failed to load order:', error)
+      toast.error('Failed to load order. Please try again.')
+      router.push('/orders')
+    } finally {
+      setLoadingOrder(false)
     }
   }
 
@@ -189,24 +281,43 @@ export default function OrdersPage() {
         }))
       )
 
-      const order = {
+      // Use first supervisor as default for new orders (since schema requires supervisorId)
+      // For edit mode, use the existing supervisorId
+      let supervisorId = ''
+      if (isEditMode) {
+        supervisorId = currentOrderSupervisorId || (supervisors.length > 0 ? supervisors[0].id : '')
+      } else {
+        supervisorId = supervisors.length > 0 ? supervisors[0].id : ''
+        if (!supervisorId) {
+          toast.error('Please add at least one supervisor before creating orders')
+          return
+        }
+      }
+
+      const orderData = {
         customerId: formData.customerId,
         items: orderItems,
         totalAmount,
         advancePaid,
         remainingAmount,
-        status: 'pending',
-        supervisorId: formData.supervisorId,
+        status: isEditMode ? currentOrderStatus : 'pending',
+        supervisorId,
         mealTypeAmounts,
         stalls: showStalls ? formData.stalls : [],
         discount: parseFloat(formData.discount) || 0,
       }
 
-      // API creates both order and bill automatically
-      await Storage.saveOrder(order)
-      await loadData()
-      resetForm()
-      toast.success('Order created successfully!')
+      if (isEditMode && editOrderId) {
+        // Update existing order
+        await Storage.updateOrder(editOrderId, orderData)
+        toast.success('Order updated successfully!')
+        router.push('/orders/history')
+      } else {
+        // Create new order
+        await Storage.saveOrder(orderData)
+        resetForm()
+        toast.success('Order created successfully!')
+      }
     } catch (error) {
       console.error('Failed to create order:', error)
       toast.error('Failed to create order. Please try again.')
@@ -224,7 +335,14 @@ export default function OrdersPage() {
   // Get unique subcategories for a specific menu type
   const getAvailableSubcategories = (menuType: string) => {
     if (!menuType) return []
-    const categoryItems = menuItems.filter(item => item.type.toLowerCase() === menuType.toLowerCase())
+    // When lunch is selected, also include sweets for subcategories
+    const categoryItems = menuItems.filter(item => {
+      const itemType = item.type.toLowerCase()
+      if (menuType.toLowerCase() === 'lunch') {
+        return itemType === 'lunch' || itemType === 'sweets'
+      }
+      return itemType === menuType.toLowerCase()
+    })
     const subcategories = categoryItems
       .map(item => extractSubcategory(item.description))
       .filter(sub => sub !== '')
@@ -266,7 +384,6 @@ export default function OrdersPage() {
   const resetForm = () => {
     setFormData({
       customerId: '',
-      supervisorId: '',
       mealTypes: [],
       stalls: [],
       discount: '',
@@ -305,7 +422,14 @@ export default function OrdersPage() {
   const getFilteredMenuItems = (mealTypeId: string, menuType: string) => {
     if (!menuType) return []
     
-    let filtered = menuItems.filter((m: any) => m.type.toLowerCase() === menuType.toLowerCase())
+    // When lunch is selected, also include sweets
+    let filtered = menuItems.filter((m: any) => {
+      const itemType = m.type.toLowerCase()
+      if (menuType.toLowerCase() === 'lunch') {
+        return itemType === 'lunch' || itemType === 'sweets'
+      }
+      return itemType === menuType.toLowerCase()
+    })
 
     // Filter by subcategory if selected
     const subFilter = selectedSubFilter[mealTypeId] || 'all'
@@ -329,54 +453,48 @@ export default function OrdersPage() {
     return filtered
   }
 
+  if (loadingOrder) {
+    return (
+      <div className="p-8">
+        <div className="text-center py-12">
+          <p className="text-gray-600">Loading order data...</p>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="p-8">
       <div className="mb-6">
-        <h1 className="text-3xl font-bold text-gray-800 mb-2">Create New Order</h1>
-        <p className="text-gray-600">Fill in the form below to create a new catering order</p>
+        <h1 className="text-3xl font-bold text-gray-800 mb-2">
+          {isEditMode ? 'Edit Order' : 'Create New Order'}
+        </h1>
+        <p className="text-gray-600">
+          {isEditMode ? 'Update the order details below' : 'Fill in the form below to create a new catering order'}
+        </p>
       </div>
 
       {/* Order Form */}
       <div className="bg-white rounded-lg shadow-md p-6 mb-8">
         <form onSubmit={handleSubmit}>
           <div className="space-y-6">
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Customer *
-                </label>
-                <select
-                  required
-                  value={formData.customerId}
-                  onChange={(e: any) => setFormData({ ...formData, customerId: e.target.value })}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                >
-                  <option value="">Select Customer</option>
-                  {customers.map((customer: any) => (
-                    <option key={customer.id} value={customer.id}>
-                      {customer.name} - {customer.phone}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Supervisor *
-                </label>
-                <select
-                  required
-                  value={formData.supervisorId}
-                  onChange={(e: any) => setFormData({ ...formData, supervisorId: e.target.value })}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                >
-                  <option value="">Select Supervisor</option>
-                  {supervisors.map((supervisor: any) => (
-                    <option key={supervisor.id} value={supervisor.id}>
-                      {supervisor.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Customer *
+              </label>
+              <select
+                required
+                value={formData.customerId}
+                onChange={(e: any) => setFormData({ ...formData, customerId: e.target.value })}
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              >
+                <option value="">Select Customer</option>
+                {customers.map((customer: any) => (
+                  <option key={customer.id} value={customer.id}>
+                    {customer.name} - {customer.phone}
+                  </option>
+                ))}
+              </select>
             </div>
 
             {/* Meal Types Section */}
@@ -836,7 +954,7 @@ export default function OrdersPage() {
                 disabled={formData.mealTypes.length === 0 || formData.mealTypes.some(mt => mt.selectedMenuItems.length === 0)}
                 className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed"
               >
-                Create Order
+                {isEditMode ? 'Update Order' : 'Create Order'}
               </button>
             </div>
           </div>

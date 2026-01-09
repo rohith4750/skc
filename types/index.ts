@@ -56,3 +56,26 @@ export interface Supervisor {
   cateringServiceName: string
   isActive: boolean
 }
+
+export interface Expense {
+  id: string
+  orderId?: string
+  order?: Order & { customer?: Customer }
+  category: string
+  amount: number
+  description?: string
+  recipient?: string
+  paymentDate: string
+  eventDate?: string
+  notes?: string
+  calculationDetails?: {
+    method?: 'plate-wise' | 'total'
+    plates?: number
+    perPlateAmount?: number
+    numberOfLabours?: number
+    numberOfBoys?: number
+    perUnitAmount?: number
+  }
+  createdAt: string
+  updatedAt: string
+}

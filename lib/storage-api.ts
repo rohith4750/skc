@@ -144,6 +144,19 @@ export class Storage {
     return this.formatDates(data)
   }
 
+  static async getOrder(orderId: string) {
+    const data = await this.fetchAPI(`orders/${orderId}`)
+    return this.formatDates(data)
+  }
+
+  static async updateOrder(orderId: string, updates: { supervisorId?: string } | any) {
+    const data = await this.fetchAPI(`orders/${orderId}`, {
+      method: 'PUT',
+      body: JSON.stringify(updates),
+    })
+    return this.formatDates(data)
+  }
+
   static async deleteOrder(id: string) {
     await this.fetchAPI(`orders/${id}`, {
       method: 'DELETE',
@@ -205,6 +218,55 @@ export class Storage {
 
   static async deleteSupervisor(id: string) {
     await this.fetchAPI(`supervisors/${id}`, {
+      method: 'DELETE',
+    })
+  }
+
+  // Expenses
+  static async getExpenses(orderId?: string) {
+    const url = orderId ? `expenses?orderId=${orderId}` : 'expenses'
+    const data = await this.fetchAPI(url)
+    return this.formatDates(data)
+  }
+
+  static async saveExpense(expense: any) {
+    if (expense.id) {
+      const data = await this.fetchAPI(`expenses/${expense.id}`, {
+        method: 'PUT',
+        body: JSON.stringify({
+          orderId: expense.orderId,
+          category: expense.category,
+          amount: expense.amount,
+          description: expense.description,
+          recipient: expense.recipient,
+          paymentDate: expense.paymentDate,
+          eventDate: expense.eventDate,
+          notes: expense.notes,
+          calculationDetails: expense.calculationDetails,
+        }),
+      })
+      return this.formatDates(data)
+    } else {
+      const data = await this.fetchAPI('expenses', {
+        method: 'POST',
+        body: JSON.stringify({
+          orderId: expense.orderId,
+          category: expense.category,
+          amount: expense.amount,
+          description: expense.description,
+          recipient: expense.recipient,
+          paymentDate: expense.paymentDate,
+          eventDate: expense.eventDate,
+          notes: expense.notes,
+          calculationDetails: expense.calculationDetails,
+        }),
+      })
+      return this.formatDates(data)
+    }
+  }
+
+  static async deleteExpense(id: string) {
+    await this.fetchAPI(`expenses/${id}`, {
       method: 'DELETE',
     })
   }
