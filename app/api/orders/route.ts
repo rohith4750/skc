@@ -28,7 +28,7 @@ export async function POST(request: NextRequest) {
     const order = await prisma.order.create({
       data: {
         customerId: data.customerId,
-        supervisorId: data.supervisorId,
+        supervisorId: data.supervisorId || null,
         totalAmount: data.totalAmount,
         advancePaid: data.advancePaid,
         remainingAmount: data.remainingAmount,

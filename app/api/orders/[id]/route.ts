@@ -39,7 +39,7 @@ export async function PUT(
       const order = await prisma.order.update({
         where: { id: params.id },
         data: {
-          supervisorId: data.supervisorId,
+          supervisorId: data.supervisorId || null,
         },
         include: {
           customer: true,
@@ -66,7 +66,7 @@ export async function PUT(
         where: { id: params.id },
         data: {
           customerId: data.customerId,
-          supervisorId: data.supervisorId,
+          supervisorId: data.supervisorId || null,
           totalAmount: data.totalAmount,
           advancePaid: data.advancePaid,
           remainingAmount: data.remainingAmount,
