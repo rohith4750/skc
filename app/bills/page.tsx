@@ -36,24 +36,26 @@ export default function BillsPage() {
     if (!bill) return
 
     try {
-      const response = await fetch('/api/bills', {
+      const response = await fetch(`/api/bills/${billId}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          id: bill.id,
           paidAmount: bill.totalAmount,
           remainingAmount: 0,
           status: 'paid',
         }),
       })
 
-      if (!response.ok) throw new Error('Failed to update bill')
+      if (!response.ok) {
+        const error = await response.json()
+        throw new Error(error.error || 'Failed to update bill')
+      }
 
       await loadBills()
       toast.success('Bill marked as paid successfully!')
-    } catch (error) {
+    } catch (error: any) {
       console.error('Failed to update bill:', error)
-      toast.error('Failed to update bill. Please try again.')
+      toast.error(error.message || 'Failed to update bill. Please try again.')
     }
   }
 
