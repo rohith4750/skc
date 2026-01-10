@@ -1,10 +1,10 @@
 'use client'
 
-import { useEffect, useState, useMemo } from 'react'
+import { useEffect, useState } from 'react'
 import { Storage } from '@/lib/storage-api'
 import { formatCurrency, formatDateTime, formatDate } from '@/lib/utils'
 import { Order } from '@/types'
-import { FaTrash, FaFilePdf, FaFilter, FaChevronLeft, FaChevronRight, FaEdit, FaCheck, FaTimes } from 'react-icons/fa'
+import { FaTrash, FaFilePdf, FaChevronLeft, FaChevronRight, FaEdit } from 'react-icons/fa'
 import Link from 'next/link'
 import jsPDF from 'jspdf'
 import html2canvas from 'html2canvas'
@@ -13,16 +13,12 @@ import ConfirmModal from '@/components/ConfirmModal'
 
 export default function OrdersHistoryPage() {
   const [orders, setOrders] = useState<Order[]>([])
-  const [filterSupervisor, setFilterSupervisor] = useState<string>('all')
-  const [supervisors, setSupervisors] = useState<any[]>([])
   const [currentPage, setCurrentPage] = useState(1)
   const [itemsPerPage] = useState(10)
   const [deleteConfirm, setDeleteConfirm] = useState<{ isOpen: boolean; id: string | null }>({
     isOpen: false,
     id: null,
   })
-  const [editingSupervisor, setEditingSupervisor] = useState<string | null>(null)
-  const [tempSupervisorId, setTempSupervisorId] = useState<string>('')
 
   useEffect(() => {
     loadData()
@@ -30,33 +26,19 @@ export default function OrdersHistoryPage() {
 
   const loadData = async () => {
     try {
-      const [allOrders, allSupervisors] = await Promise.all([
-        Storage.getOrders(),
-        Storage.getSupervisors(),
-      ])
+      const allOrders = await Storage.getOrders()
       setOrders(allOrders)
-      setSupervisors(allSupervisors)
     } catch (error) {
       console.error('Failed to load data:', error)
       toast.error('Failed to load data. Please try again.')
     }
   }
 
-  const filteredOrders = useMemo(() => {
-    if (filterSupervisor === 'all') return orders
-    return orders.filter((order: any) => order.supervisorId === filterSupervisor)
-  }, [orders, filterSupervisor])
-
   // Pagination logic
-  const totalPages = Math.ceil(filteredOrders.length / itemsPerPage)
+  const totalPages = Math.ceil(orders.length / itemsPerPage)
   const startIndex = (currentPage - 1) * itemsPerPage
   const endIndex = startIndex + itemsPerPage
-  const paginatedOrders = filteredOrders.slice(startIndex, endIndex)
-
-  // Reset to page 1 when filter changes
-  useEffect(() => {
-    setCurrentPage(1)
-  }, [filterSupervisor])
+  const paginatedOrders = orders.slice(startIndex, endIndex)
 
   const handleDelete = (id: string) => {
     setDeleteConfirm({ isOpen: true, id })
@@ -76,32 +58,6 @@ export default function OrdersHistoryPage() {
     }
   }
 
-  const handleStartEditSupervisor = (order: any) => {
-    setEditingSupervisor(order.id)
-    setTempSupervisorId(order.supervisorId || '')
-  }
-
-  const handleCancelEditSupervisor = () => {
-    setEditingSupervisor(null)
-    setTempSupervisorId('')
-  }
-
-  const handleSaveSupervisor = async (orderId: string) => {
-    if (!tempSupervisorId) {
-      toast.error('Please select a supervisor')
-      return
-    }
-    try {
-      await Storage.updateOrder(orderId, { supervisorId: tempSupervisorId })
-      await loadData()
-      toast.success('Supervisor updated successfully!')
-      setEditingSupervisor(null)
-      setTempSupervisorId('')
-    } catch (error) {
-      console.error('Failed to update supervisor:', error)
-      toast.error('Failed to update supervisor. Please try again.')
-    }
-  }
 
   const handleGeneratePDF = async (order: any) => {
     const customer = order.customer
@@ -268,27 +224,10 @@ export default function OrdersHistoryPage() {
     <div className="p-6">
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-3xl font-bold text-gray-800">Orders History</h1>
-        
-        {/* Supervisor Filter */}
-        <div className="flex items-center gap-3">
-          <FaFilter className="text-gray-600" />
-          <select
-            value={filterSupervisor}
-            onChange={(e) => setFilterSupervisor(e.target.value)}
-            className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-          >
-            <option value="all">All Supervisors</option>
-            {supervisors.map((supervisor: any) => (
-              <option key={supervisor.id} value={supervisor.id}>
-                {supervisor.name}
-              </option>
-            ))}
-          </select>
-        </div>
       </div>
 
       {/* Orders Table */}
-      {filteredOrders.length === 0 ? (
+      {orders.length === 0 ? (
         <div className="bg-white rounded-lg shadow-md p-8 text-center text-gray-500">
           No orders found.
         </div>
@@ -299,9 +238,8 @@ export default function OrdersHistoryPage() {
               <thead className="bg-gray-50">
                 <tr>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Customer</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Supervisor</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Event Name</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Meal Types</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Items</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Total Amount</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Advance Paid</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Remaining</th>
@@ -341,47 +279,9 @@ export default function OrdersHistoryPage() {
                         <div className="text-sm text-gray-500">{order.customer?.phone || ''}</div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        {editingSupervisor === order.id ? (
-                          <div className="flex items-center gap-2">
-                            <select
-                              value={tempSupervisorId}
-                              onChange={(e) => setTempSupervisorId(e.target.value)}
-                              className="px-2 py-1 text-sm border border-gray-300 rounded focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-                            >
-                              <option value="">Select Supervisor</option>
-                              {supervisors.map((supervisor: any) => (
-                                <option key={supervisor.id} value={supervisor.id}>
-                                  {supervisor.name}
-                                </option>
-                              ))}
-                            </select>
-                            <button
-                              onClick={() => handleSaveSupervisor(order.id)}
-                              className="text-green-600 hover:text-green-800 p-1"
-                              title="Save"
-                            >
-                              <FaCheck />
-                            </button>
-                            <button
-                              onClick={handleCancelEditSupervisor}
-                              className="text-secondary-500 hover:text-secondary-700 p-1"
-                              title="Cancel"
-                            >
-                              <FaTimes />
-                            </button>
-                          </div>
-                        ) : (
-                          <div className="flex items-center gap-2">
-                            <div className="text-sm text-gray-900">{order.supervisor?.name || 'Unassigned'}</div>
-                            <button
-                              onClick={() => handleStartEditSupervisor(order)}
-                              className="text-primary-600 hover:text-primary-700 p-1"
-                              title="Edit Supervisor"
-                            >
-                              <FaEdit className="text-xs" />
-                            </button>
-                          </div>
-                        )}
+                        <div className="text-sm font-medium text-gray-900">
+                          {(order as any).eventName || <span className="text-gray-400">-</span>}
+                        </div>
                       </td>
                       <td className="px-6 py-4">
                         <div className="text-sm text-gray-900 space-y-1">
@@ -397,23 +297,6 @@ export default function OrdersHistoryPage() {
                           })}
                         </div>
                       </td>
-                      <td className="px-6 py-4">
-                        <div className="text-sm text-gray-900 max-w-xs">
-                          <div className="space-y-2">
-                            {Object.entries(groupedItems).map(([mealType, items]) => (
-                              <div key={mealType}>
-                                <div className="font-medium text-xs text-gray-500 capitalize mb-1">{mealType}:</div>
-                                <div className="text-xs text-gray-700">
-                                  {items.slice(0, 3).map((item: any, idx: number) => (
-                                    <div key={idx}>{item.menuItem?.name || 'Unknown'}</div>
-                                  ))}
-                                  {items.length > 3 && <div className="text-gray-500">+{items.length - 3} more</div>}
-                                </div>
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-                      </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="text-sm font-bold text-gray-900">{formatCurrency(order.totalAmount)}</div>
                       </td>
@@ -424,12 +307,12 @@ export default function OrdersHistoryPage() {
                         <div className="text-sm font-medium text-red-600">{formatCurrency(order.remainingAmount)}</div>
                       </td>
                       <td className="px-6 py-4">
-                        <div className="text-sm text-gray-900 space-y-1">
+                        <div className="text-sm text-gray-900 space-y-1.5">
                           {eventDates.length > 0 ? (
                             eventDates.map(({ mealType, date }) => (
-                              <div key={mealType} className="flex items-center gap-2">
-                                <span className="capitalize text-xs font-medium text-gray-600">{mealType}:</span>
-                                <span className="text-sm">{formatDate(date)}</span>
+                              <div key={mealType} className="flex items-center justify-between gap-4 min-w-[200px]">
+                                <span className="capitalize text-sm font-semibold text-gray-700">{mealType}:</span>
+                                <span className="text-sm text-gray-900 font-medium">{formatDate(date)}</span>
                               </div>
                             ))
                           ) : (
@@ -485,10 +368,10 @@ export default function OrdersHistoryPage() {
       )}
 
       {/* Pagination Controls */}
-      {filteredOrders.length > itemsPerPage && (
+      {orders.length > itemsPerPage && (
         <div className="mt-4 flex items-center justify-between bg-white px-4 py-3 rounded-lg shadow-md">
           <div className="text-sm text-gray-700">
-            Showing {startIndex + 1} to {Math.min(endIndex, filteredOrders.length)} of {filteredOrders.length} orders
+            Showing {startIndex + 1} to {Math.min(endIndex, orders.length)} of {orders.length} orders
           </div>
           <div className="flex items-center gap-2">
             <button

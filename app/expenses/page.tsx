@@ -1,13 +1,33 @@
 'use client'
 
 import { useEffect, useState, useMemo } from 'react'
-import { Storage } from '@/lib/storage-api'
+import { useRouter } from 'next/navigation'
 import { formatCurrency, formatDate, formatDateTime } from '@/lib/utils'
 import { Expense, Order } from '@/types'
-import { FaPlus, FaEdit, FaTrash, FaFilter, FaDollarSign } from 'react-icons/fa'
+import { 
+  FaPlus, 
+  FaEdit, 
+  FaTrash, 
+  FaFilter, 
+  FaDollarSign, 
+  FaSearch,
+  FaCalendarAlt,
+  FaChartBar,
+  FaFileExport,
+  FaTimes,
+  FaCheckCircle,
+  FaExclamationCircle,
+  FaUsers,
+  FaUtensils,
+  FaTruck,
+  FaGasPump,
+  FaStore,
+  FaBox
+} from 'react-icons/fa'
 import toast from 'react-hot-toast'
 import Table from '@/components/Table'
 import ConfirmModal from '@/components/ConfirmModal'
+import Link from 'next/link'
 
 const EXPENSE_CATEGORIES = [
   'supervisor',
@@ -21,34 +41,42 @@ const EXPENSE_CATEGORIES = [
   'other'
 ]
 
+const CATEGORY_ICONS: Record<string, any> = {
+  supervisor: FaUsers,
+  chef: FaUtensils,
+  transport: FaTruck,
+  gas: FaGasPump,
+  store: FaStore,
+  other: FaBox,
+}
+
+const CATEGORY_COLORS: Record<string, string> = {
+  supervisor: 'bg-blue-100 text-blue-800 border-blue-200',
+  chef: 'bg-orange-100 text-orange-800 border-orange-200',
+  labours: 'bg-purple-100 text-purple-800 border-purple-200',
+  boys: 'bg-green-100 text-green-800 border-green-200',
+  transport: 'bg-yellow-100 text-yellow-800 border-yellow-200',
+  gas: 'bg-red-100 text-red-800 border-red-200',
+  pan: 'bg-pink-100 text-pink-800 border-pink-200',
+  store: 'bg-indigo-100 text-indigo-800 border-indigo-200',
+  other: 'bg-gray-100 text-gray-800 border-gray-200',
+}
+
 export default function ExpensesPage() {
+  const router = useRouter()
   const [expenses, setExpenses] = useState<Expense[]>([])
   const [orders, setOrders] = useState<Order[]>([])
+  const [loading, setLoading] = useState(true)
   const [selectedOrder, setSelectedOrder] = useState<string>('all')
   const [selectedCategory, setSelectedCategory] = useState<string>('all')
+  const [searchTerm, setSearchTerm] = useState('')
+  const [dateRange, setDateRange] = useState({ start: '', end: '' })
   const [currentPage, setCurrentPage] = useState(1)
   const [itemsPerPage, setItemsPerPage] = useState<number>(10)
-  const [showModal, setShowModal] = useState(false)
-  const [editingExpense, setEditingExpense] = useState<Expense | null>(null)
+  const [showFilters, setShowFilters] = useState(false)
   const [deleteConfirm, setDeleteConfirm] = useState<{ isOpen: boolean; id: string | null }>({
     isOpen: false,
     id: null,
-  })
-  const [formData, setFormData] = useState({
-    orderId: '',
-    category: 'supervisor',
-    calculationMethod: 'total' as 'plate-wise' | 'total',
-    amount: '',
-    plates: '',
-    numberOfLabours: '',
-    labourAmount: '',
-    numberOfBoys: '',
-    boyAmount: '',
-    description: '',
-    recipient: '',
-    paymentDate: new Date().toISOString().split('T')[0],
-    eventDate: '',
-    notes: '',
   })
 
   useEffect(() => {
@@ -57,31 +85,73 @@ export default function ExpensesPage() {
 
   const loadData = async () => {
     try {
-      const [allExpenses, allOrders] = await Promise.all([
-        Storage.getExpenses(),
-        Storage.getOrders(),
+      setLoading(true)
+      const [expensesRes, ordersRes] = await Promise.all([
+        fetch('/api/expenses'),
+        fetch('/api/orders'),
       ])
+      
+      if (!expensesRes.ok) throw new Error('Failed to fetch expenses')
+      if (!ordersRes.ok) throw new Error('Failed to fetch orders')
+      
+      const [allExpenses, allOrders] = await Promise.all([
+        expensesRes.json(),
+        ordersRes.json(),
+      ])
+      
       setExpenses(allExpenses)
       setOrders(allOrders)
     } catch (error) {
       console.error('Failed to load data:', error)
       toast.error('Failed to load data. Please try again.')
+    } finally {
+      setLoading(false)
     }
   }
 
   const filteredExpenses = useMemo(() => {
     let filtered = expenses
     
+    // Order filter
     if (selectedOrder !== 'all') {
       filtered = filtered.filter(expense => expense.orderId === selectedOrder)
     }
     
+    // Category filter
     if (selectedCategory !== 'all') {
       filtered = filtered.filter(expense => expense.category === selectedCategory)
     }
     
-    return filtered
-  }, [expenses, selectedOrder, selectedCategory])
+    // Search filter
+    if (searchTerm) {
+      const searchLower = searchTerm.toLowerCase()
+      filtered = filtered.filter(expense => 
+        expense.recipient?.toLowerCase().includes(searchLower) ||
+        expense.description?.toLowerCase().includes(searchLower) ||
+        expense.category.toLowerCase().includes(searchLower) ||
+        expense.order?.customer?.name.toLowerCase().includes(searchLower)
+      )
+    }
+    
+    // Date range filter
+    if (dateRange.start) {
+      filtered = filtered.filter(expense => {
+        const paymentDate = new Date(expense.paymentDate)
+        const startDate = new Date(dateRange.start)
+        return paymentDate >= startDate
+      })
+    }
+    if (dateRange.end) {
+      filtered = filtered.filter(expense => {
+        const paymentDate = new Date(expense.paymentDate)
+        const endDate = new Date(dateRange.end)
+        endDate.setHours(23, 59, 59, 999)
+        return paymentDate <= endDate
+      })
+    }
+    
+    return filtered.sort((a, b) => new Date(b.paymentDate).getTime() - new Date(a.paymentDate).getTime())
+  }, [expenses, selectedOrder, selectedCategory, searchTerm, dateRange])
 
   const totalExpenses = useMemo(() => {
     return filteredExpenses.reduce((sum, expense) => sum + expense.amount, 0)
@@ -95,155 +165,17 @@ export default function ExpensesPage() {
     return totals
   }, [filteredExpenses])
 
-  // Expenses grouped by order/event
-  const expensesByOrder = useMemo(() => {
-    const grouped: Record<string, { expenses: Expense[], total: number, order?: Order }> = {}
+  const monthlyExpenses = useMemo(() => {
+    const monthly: Record<string, number> = {}
     filteredExpenses.forEach(expense => {
-      const key = expense.orderId || 'no-order'
-      if (!grouped[key]) {
-        grouped[key] = { expenses: [], total: 0, order: expense.order }
-      }
-      grouped[key].expenses.push(expense)
-      grouped[key].total += expense.amount
+      const month = new Date(expense.paymentDate).toLocaleDateString('en-US', { year: 'numeric', month: 'short' })
+      monthly[month] = (monthly[month] || 0) + expense.amount
     })
-    return grouped
+    return monthly
   }, [filteredExpenses])
 
-  // Calculate total amount based on category and calculation method
-  const calculatedAmount = useMemo(() => {
-    if (formData.category === 'chef') {
-      if (formData.calculationMethod === 'plate-wise') {
-        const plates = parseFloat(formData.plates) || 0
-        const amount = parseFloat(formData.amount) || 0
-        return plates * amount
-      } else {
-        return parseFloat(formData.amount) || 0
-      }
-    } else if (formData.category === 'labours') {
-      const numberOfLabours = parseFloat(formData.numberOfLabours) || 0
-      const labourAmount = parseFloat(formData.labourAmount) || 0
-      return numberOfLabours * labourAmount
-    } else if (formData.category === 'boys') {
-      const numberOfBoys = parseFloat(formData.numberOfBoys) || 0
-      const boyAmount = parseFloat(formData.boyAmount) || 0
-      return numberOfBoys * boyAmount
-    } else {
-      return parseFloat(formData.amount) || 0
-    }
-  }, [formData])
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    
-    if (!formData.category || calculatedAmount <= 0) {
-      toast.error('Please fill in all required fields and ensure amount is greater than 0')
-      return
-    }
-
-    // Validate category-specific fields
-    if (formData.category === 'chef' && formData.calculationMethod === 'plate-wise') {
-      if (!formData.plates || !formData.amount) {
-        toast.error('Please enter number of plates and amount per plate')
-        return
-      }
-    }
-    if (formData.category === 'labours') {
-      if (!formData.numberOfLabours || !formData.labourAmount || !formData.eventDate) {
-        toast.error('Please enter number of labours, amount per labour, and event date')
-        return
-      }
-    }
-    if (formData.category === 'boys') {
-      if (!formData.numberOfBoys || !formData.boyAmount || !formData.eventDate) {
-        toast.error('Please enter number of boys, amount per boy, and event date')
-        return
-      }
-    }
-
-    try {
-      const calculationDetails: any = {}
-      if (formData.category === 'chef') {
-        calculationDetails.method = formData.calculationMethod
-        if (formData.calculationMethod === 'plate-wise') {
-          calculationDetails.plates = parseFloat(formData.plates)
-          calculationDetails.perPlateAmount = parseFloat(formData.amount)
-        }
-      } else if (formData.category === 'labours') {
-        calculationDetails.numberOfLabours = parseFloat(formData.numberOfLabours)
-        calculationDetails.perUnitAmount = parseFloat(formData.labourAmount)
-      } else if (formData.category === 'boys') {
-        calculationDetails.numberOfBoys = parseFloat(formData.numberOfBoys)
-        calculationDetails.perUnitAmount = parseFloat(formData.boyAmount)
-      }
-
-      const expenseData: any = {
-        orderId: formData.orderId || null,
-        category: formData.category,
-        amount: calculatedAmount,
-        description: formData.description || null,
-        recipient: formData.recipient || null,
-        paymentDate: formData.paymentDate,
-        eventDate: (formData.category === 'labours' || formData.category === 'boys') && formData.eventDate ? formData.eventDate : null,
-        notes: formData.notes || null,
-        calculationDetails: Object.keys(calculationDetails).length > 0 ? calculationDetails : null,
-      }
-      
-      if (editingExpense?.id) {
-        expenseData.id = editingExpense.id
-      }
-
-      await Storage.saveExpense(expenseData)
-      await loadData()
-      resetForm()
-      toast.success(editingExpense ? 'Expense updated successfully!' : 'Expense added successfully!')
-    } catch (error) {
-      console.error('Failed to save expense:', error)
-      toast.error('Failed to save expense. Please try again.')
-    }
-  }
-
-  const resetForm = () => {
-    setFormData({
-      orderId: '',
-      category: 'supervisor',
-      calculationMethod: 'total',
-      amount: '',
-      plates: '',
-      numberOfLabours: '',
-      labourAmount: '',
-      numberOfBoys: '',
-      boyAmount: '',
-      description: '',
-      recipient: '',
-      paymentDate: new Date().toISOString().split('T')[0],
-      eventDate: '',
-      notes: '',
-    })
-    setEditingExpense(null)
-    setShowModal(false)
-  }
-
   const handleEdit = (expense: Expense) => {
-    const details = expense.calculationDetails as any || {}
-    
-    setEditingExpense(expense)
-    setFormData({
-      orderId: expense.orderId || '',
-      category: expense.category,
-      calculationMethod: details.method || 'total',
-      amount: details.perPlateAmount ? details.perPlateAmount.toString() : expense.amount.toString(),
-      plates: details.plates ? details.plates.toString() : '',
-      numberOfLabours: details.numberOfLabours ? details.numberOfLabours.toString() : '',
-      labourAmount: details.perUnitAmount && expense.category === 'labours' ? details.perUnitAmount.toString() : '',
-      numberOfBoys: details.numberOfBoys ? details.numberOfBoys.toString() : '',
-      boyAmount: details.perUnitAmount && expense.category === 'boys' ? details.perUnitAmount.toString() : '',
-      description: expense.description || '',
-      recipient: expense.recipient || '',
-      paymentDate: expense.paymentDate ? expense.paymentDate.split('T')[0] : new Date().toISOString().split('T')[0],
-      eventDate: expense.eventDate ? expense.eventDate.split('T')[0] : '',
-      notes: expense.notes || '',
-    })
-    setShowModal(true)
+    router.push(`/expenses/create?id=${expense.id}`)
   }
 
   const handleDelete = (id: string) => {
@@ -253,18 +185,58 @@ export default function ExpensesPage() {
   const confirmDelete = async () => {
     if (!deleteConfirm.id) return
     try {
-      await Storage.deleteExpense(deleteConfirm.id)
+      const response = await fetch(`/api/expenses/${deleteConfirm.id}`, {
+        method: 'DELETE',
+      })
+
+      if (!response.ok) {
+        const error = await response.json()
+        throw new Error(error.error || 'Failed to delete expense')
+      }
+
       await loadData()
       toast.success('Expense deleted successfully!')
       setDeleteConfirm({ isOpen: false, id: null })
-    } catch (error) {
+    } catch (error: any) {
       console.error('Failed to delete expense:', error)
-      toast.error('Failed to delete expense. Please try again.')
+      toast.error(error.message || 'Failed to delete expense. Please try again.')
       setDeleteConfirm({ isOpen: false, id: null })
     }
   }
 
+  const clearFilters = () => {
+    setSelectedOrder('all')
+    setSelectedCategory('all')
+    setSearchTerm('')
+    setDateRange({ start: '', end: '' })
+    setCurrentPage(1)
+  }
+
   const columns = [
+    {
+      key: 'paymentDate',
+      header: 'Payment Date',
+      accessor: (row: Expense) => (
+        <div className="flex items-center gap-2">
+          <FaCalendarAlt className="text-gray-400 text-sm" />
+          <span className="font-medium">{formatDate(row.paymentDate)}</span>
+        </div>
+      ),
+      className: 'whitespace-nowrap',
+    },
+    {
+      key: 'category',
+      header: 'Category',
+      accessor: (row: Expense) => {
+        const Icon = CATEGORY_ICONS[row.category] || FaBox
+        return (
+          <span className={`inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-semibold border ${CATEGORY_COLORS[row.category] || CATEGORY_COLORS.other}`}>
+            <Icon className="text-xs" />
+            {row.category.charAt(0).toUpperCase() + row.category.slice(1)}
+          </span>
+        )
+      },
+    },
     {
       key: 'order',
       header: 'Event/Order',
@@ -277,575 +249,331 @@ export default function ExpensesPage() {
             </div>
           )
         }
-        return <span className="text-gray-400">No event</span>
+        return <span className="text-gray-400 text-sm">No event</span>
       },
-    },
-    {
-      key: 'paymentDate',
-      header: 'Payment Date',
-      accessor: (row: Expense) => formatDate(row.paymentDate),
-      className: 'whitespace-nowrap',
-    },
-    {
-      key: 'eventDate',
-      header: 'Event Date',
-      accessor: (row: Expense) => row.eventDate ? formatDate(row.eventDate) : '-',
-      className: 'whitespace-nowrap',
-    },
-    {
-      key: 'category',
-      header: 'Category',
-      accessor: (row: Expense) => (
-        <span className="capitalize font-medium">{row.category}</span>
-      ),
     },
     {
       key: 'recipient',
       header: 'Recipient',
-      accessor: (row: Expense) => row.recipient || '-',
+      accessor: (row: Expense) => (
+        <div className="max-w-xs">
+          <div className="font-medium text-gray-900">{row.recipient || '-'}</div>
+          {row.description && (
+            <div className="text-xs text-gray-500 truncate">{row.description}</div>
+          )}
+        </div>
+      ),
     },
     {
       key: 'description',
-      header: 'Description',
+      header: 'Details',
       accessor: (row: Expense) => {
         const details = row.calculationDetails as any
         if (details) {
           if (row.category === 'chef' && details.method === 'plate-wise') {
-            return `${details.plates} plates × ${formatCurrency(details.perPlateAmount)}`
+            return (
+              <div className="text-sm">
+                <div className="font-medium text-gray-900">{details.plates} plates</div>
+                <div className="text-xs text-gray-500">@{formatCurrency(details.perPlateAmount)}/plate</div>
+              </div>
+            )
           } else if (row.category === 'labours') {
-            return `${details.numberOfLabours} labours × ${formatCurrency(details.perUnitAmount)}`
+            return (
+              <div className="text-sm">
+                <div className="font-medium text-gray-900">{details.numberOfLabours} labours</div>
+                <div className="text-xs text-gray-500">@{formatCurrency(details.perUnitAmount)}/each</div>
+              </div>
+            )
           } else if (row.category === 'boys') {
-            return `${details.numberOfBoys} boys × ${formatCurrency(details.perUnitAmount)}`
+            return (
+              <div className="text-sm">
+                <div className="font-medium text-gray-900">{details.numberOfBoys} boys</div>
+                <div className="text-xs text-gray-500">@{formatCurrency(details.perUnitAmount)}/each</div>
+              </div>
+            )
           }
         }
-        return row.description || '-'
+        return <span className="text-sm text-gray-600">{row.description || '-'}</span>
       },
-      className: 'max-w-xs truncate',
     },
     {
       key: 'amount',
       header: 'Amount',
       accessor: (row: Expense) => (
-        <span className="font-bold text-green-600">{formatCurrency(row.amount)}</span>
+        <div className="text-right">
+          <span className="font-bold text-lg text-green-600">{formatCurrency(row.amount)}</span>
+        </div>
       ),
       className: 'text-right',
     },
-    {
-      key: 'createdAt',
-      header: 'Created',
-      accessor: (row: Expense) => formatDateTime(row.createdAt),
-      className: 'whitespace-nowrap text-sm text-gray-500',
-    },
   ]
 
+  const activeFiltersCount = [
+    selectedOrder !== 'all',
+    selectedCategory !== 'all',
+    searchTerm !== '',
+    dateRange.start !== '' || dateRange.end !== '',
+  ].filter(Boolean).length
+
+  if (loading) {
+    return (
+      <div className="p-6 flex items-center justify-center min-h-screen">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-500 mx-auto"></div>
+          <p className="mt-4 text-gray-600">Loading expenses...</p>
+        </div>
+      </div>
+    )
+  }
+
   return (
-    <div className="p-4 sm:p-6 lg:p-8">
+    <div className="p-4 sm:p-6 lg:p-8 bg-gray-50 min-h-screen">
+      {/* Header */}
       <div className="mb-6 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h1 className="text-2xl sm:text-3xl font-bold text-gray-800">Expense Management</h1>
-          <p className="text-gray-600 mt-1">Track and manage expenses by event/order</p>
+          <h1 className="text-3xl font-bold text-gray-900">Expense Management</h1>
+          <p className="text-gray-600 mt-1">Track and manage all expenses efficiently</p>
         </div>
-        <button
-          onClick={() => {
-            resetForm()
-            setShowModal(true)
-          }}
-          className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-        >
-          <FaPlus />
-          Add Expense
-        </button>
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => setShowFilters(!showFilters)}
+            className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors shadow-sm"
+          >
+            <FaFilter />
+            Filters
+            {activeFiltersCount > 0 && (
+              <span className="bg-primary-500 text-white text-xs rounded-full px-2 py-0.5">
+                {activeFiltersCount}
+              </span>
+            )}
+          </button>
+          <Link
+            href="/expenses/create"
+            className="flex items-center gap-2 px-4 py-2 bg-primary-500 text-white rounded-lg hover:bg-primary-600 transition-colors shadow-md"
+          >
+            <FaPlus />
+            Add Expense
+          </Link>
+        </div>
       </div>
 
       {/* Summary Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-        <div className="bg-white rounded-lg shadow-md p-4">
+        <div className="bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl shadow-lg p-6 text-white">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-gray-600">Total Expenses</p>
-              <p className="text-2xl font-bold text-gray-800">{formatCurrency(totalExpenses)}</p>
+              <p className="text-blue-100 text-sm font-medium mb-1">Total Expenses</p>
+              <p className="text-3xl font-bold">{formatCurrency(totalExpenses)}</p>
+              <p className="text-blue-100 text-xs mt-2">{filteredExpenses.length} expense(s)</p>
             </div>
-            <FaDollarSign className="text-3xl text-primary-500" />
-          </div>
-        </div>
-        {Object.entries(categoryTotals).slice(0, 3).map(([category, total]) => (
-          <div key={category} className="bg-white rounded-lg shadow-md p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-gray-600 capitalize">{category}</p>
-                <p className="text-xl font-bold text-gray-800">{formatCurrency(total)}</p>
-              </div>
+            <div className="bg-white bg-opacity-20 rounded-full p-4">
+              <FaDollarSign className="text-3xl" />
             </div>
           </div>
-        ))}
-      </div>
-
-      {/* Expenses by Event/Order Summary */}
-      {Object.keys(expensesByOrder).length > 0 && (
-        <div className="mb-6 bg-white rounded-lg shadow-md p-4 sm:p-6">
-          <h2 className="text-xl font-bold text-gray-800 mb-4">Expenses by Event/Order</h2>
-          <div className="space-y-3">
-            {Object.entries(expensesByOrder).map(([orderId, data]) => (
-              <div key={orderId} className="border-b border-gray-200 pb-3 last:border-b-0 last:pb-0">
-                <div className="flex justify-between items-center">
-                  <div>
-                    <p className="font-medium text-gray-900">
-                      {data.order?.customer?.name || 'No Event/Order'}
-                    </p>
-                    <p className="text-sm text-gray-500">
-                      {data.order?.customer?.name 
-                        ? `${data.expenses.length} expense(s) • ${formatDate(data.order.createdAt)}`
-                        : `${data.expenses.length} expense(s)`
-                      }
-                    </p>
-                  </div>
-                  <p className="text-lg font-bold text-green-600">
-                    {formatCurrency(data.total)}
-                  </p>
-                </div>
-              </div>
-            ))}
-          </div>
         </div>
-      )}
-
-      {/* Filters */}
-      <div className="mb-6 flex flex-wrap items-center gap-3">
-        <FaFilter className="text-gray-600" />
         
-        {/* Order/Event Filter */}
-        <select
-          value={selectedOrder}
-          onChange={(e) => {
-            setSelectedOrder(e.target.value)
-            setCurrentPage(1)
-          }}
-          className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-        >
-          <option value="all">All Events/Orders</option>
-          {orders.map((order: any) => (
-            <option key={order.id} value={order.id}>
-              {order.customer?.name || 'Unknown'} - {formatDate(order.createdAt)}
-            </option>
-          ))}
-        </select>
-
-        {/* Category Filter */}
-        <button
-          onClick={() => {
-            setSelectedCategory('all')
-            setCurrentPage(1)
-          }}
-          className={`px-4 py-2 rounded-lg transition-colors ${
-            selectedCategory === 'all'
-              ? 'bg-primary-500 text-white'
-              : 'bg-white text-gray-700 hover:bg-gray-100'
-          }`}
-        >
-          All Categories
-        </button>
-        {EXPENSE_CATEGORIES.map(category => (
-          <button
-            key={category}
-            onClick={() => {
-              setSelectedCategory(category)
-              setCurrentPage(1)
-            }}
-            className={`px-4 py-2 rounded-lg transition-colors capitalize ${
-              selectedCategory === category
-                ? 'bg-blue-600 text-white'
-                : 'bg-white text-gray-700 hover:bg-gray-100'
-            }`}
-          >
-            {category}
-          </button>
-        ))}
-      </div>
-
-      {/* Expenses Table */}
-      <Table
-        columns={columns}
-        data={filteredExpenses}
-        emptyMessage="No expenses found. Click 'Add Expense' to add your first expense."
-        itemsPerPage={itemsPerPage}
-        currentPage={currentPage}
-        totalItems={filteredExpenses.length}
-        onPageChange={setCurrentPage}
-        onItemsPerPageChange={setItemsPerPage}
-        itemName="expense"
-        getItemId={(item: Expense) => item.id}
-        renderActions={(expense: Expense) => (
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() => handleEdit(expense)}
-              className="text-primary-500 hover:text-primary-700 p-2 hover:bg-primary-50 rounded"
-              title="Edit"
-            >
-              <FaEdit />
-            </button>
-            <button
-              onClick={() => handleDelete(expense.id)}
-              className="text-secondary-500 hover:text-secondary-700 p-2 hover:bg-secondary-50 rounded"
-              title="Delete"
-            >
-              <FaTrash />
-            </button>
-          </div>
-        )}
-      />
-
-      {/* Add/Edit Modal */}
-      {showModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg shadow-xl max-w-md sm:max-w-2xl w-full max-h-[90vh] overflow-y-auto p-4 sm:p-6">
-            <h2 className="text-2xl font-bold text-gray-800 mb-4">
-              {editingExpense ? 'Edit Expense' : 'Add New Expense'}
-            </h2>
-            
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div className="sm:col-span-2">
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Event/Order (Optional)
-                  </label>
-                  <select
-                    value={formData.orderId}
-                    onChange={(e) => setFormData({ ...formData, orderId: e.target.value })}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-                  >
-                    <option value="">No specific event/order</option>
-                    {orders.map((order: any) => (
-                      <option key={order.id} value={order.id}>
-                        {order.customer?.name || 'Unknown'} - {formatDate(order.createdAt)}
-                      </option>
-                    ))}
-                  </select>
-                  <p className="text-xs text-gray-500 mt-1">
-                    Link this expense to a specific event/order for better tracking
-                  </p>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Category *
-                  </label>
-                  <select
-                    required
-                    value={formData.category}
-                    onChange={(e) => {
-                      setFormData({ 
-                        ...formData, 
-                        category: e.target.value,
-                        calculationMethod: 'total',
-                        amount: '',
-                        plates: '',
-                        numberOfLabours: '',
-                        labourAmount: '',
-                        numberOfBoys: '',
-                        boyAmount: '',
-                      })
-                    }}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-                  >
-                    {EXPENSE_CATEGORIES.map(cat => (
-                      <option key={cat} value={cat}>
-                        {cat.charAt(0).toUpperCase() + cat.slice(1)}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                {/* Chef - Calculation Method */}
-                {formData.category === 'chef' && (
+        {Object.entries(categoryTotals)
+          .sort(([, a], [, b]) => b - a)
+          .slice(0, 3)
+          .map(([category, total]) => {
+            const Icon = CATEGORY_ICONS[category] || FaBox
+            return (
+              <div key={category} className="bg-white rounded-xl shadow-md p-6 border border-gray-100">
+                <div className="flex items-center justify-between">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Calculation Method *
-                    </label>
-                    <select
-                      required
-                      value={formData.calculationMethod}
-                      onChange={(e) => setFormData({ ...formData, calculationMethod: e.target.value as 'plate-wise' | 'total', amount: '', plates: '' })}
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-                    >
-                      <option value="total">Total Amount</option>
-                      <option value="plate-wise">Plate-wise</option>
-                    </select>
+                    <p className="text-gray-600 text-sm font-medium mb-1 capitalize">{category}</p>
+                    <p className="text-2xl font-bold text-gray-900">{formatCurrency(total)}</p>
+                    <p className="text-gray-500 text-xs mt-2">
+                      {filteredExpenses.filter(e => e.category === category).length} expense(s)
+                    </p>
                   </div>
-                )}
-
-                {/* Chef - Plate-wise fields */}
-                {formData.category === 'chef' && formData.calculationMethod === 'plate-wise' && (
-                  <>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Number of Plates *
-                      </label>
-                      <input
-                        type="number"
-                        step="1"
-                        required
-                        value={formData.plates}
-                        onChange={(e) => setFormData({ ...formData, plates: e.target.value })}
-                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-                        placeholder="0"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Amount per Plate *
-                      </label>
-                      <input
-                        type="number"
-                        step="0.01"
-                        required
-                        value={formData.amount}
-                        onChange={(e) => setFormData({ ...formData, amount: e.target.value })}
-                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-                        placeholder="0.00"
-                      />
-                    </div>
-                    <div className="sm:col-span-2">
-                      <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
-                        <p className="text-sm font-medium text-blue-900">
-                          Total Amount: {formatCurrency(calculatedAmount)}
-                        </p>
-                      </div>
-                    </div>
-                  </>
-                )}
-
-                {/* Chef - Total amount */}
-                {formData.category === 'chef' && formData.calculationMethod === 'total' && (
-                  <div className="sm:col-span-2">
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Total Amount *
-                    </label>
-                    <input
-                      type="number"
-                      step="0.01"
-                      required
-                      value={formData.amount}
-                      onChange={(e) => setFormData({ ...formData, amount: e.target.value })}
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-                      placeholder="0.00"
-                    />
+                  <div className={`${CATEGORY_COLORS[category] || CATEGORY_COLORS.other} rounded-full p-3`}>
+                    <Icon className="text-xl" />
                   </div>
-                )}
-
-                {/* Supervisor - Total amount */}
-                {formData.category === 'supervisor' && (
-                  <div className="sm:col-span-2">
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Event Amount *
-                    </label>
-                    <input
-                      type="number"
-                      step="0.01"
-                      required
-                      value={formData.amount}
-                      onChange={(e) => setFormData({ ...formData, amount: e.target.value })}
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-                      placeholder="0.00"
-                    />
-                  </div>
-                )}
-
-                {/* Labours fields */}
-                {formData.category === 'labours' && (
-                  <>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Event Date *
-                      </label>
-                      <input
-                        type="date"
-                        required
-                        value={formData.eventDate}
-                        onChange={(e) => setFormData({ ...formData, eventDate: e.target.value })}
-                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Number of Labours *
-                      </label>
-                      <input
-                        type="number"
-                        step="1"
-                        required
-                        value={formData.numberOfLabours}
-                        onChange={(e) => setFormData({ ...formData, numberOfLabours: e.target.value })}
-                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-                        placeholder="0"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Amount per Labour *
-                      </label>
-                      <input
-                        type="number"
-                        step="0.01"
-                        required
-                        value={formData.labourAmount}
-                        onChange={(e) => setFormData({ ...formData, labourAmount: e.target.value })}
-                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-                        placeholder="0.00"
-                      />
-                    </div>
-                    <div className="sm:col-span-2">
-                      <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
-                        <p className="text-sm font-medium text-blue-900">
-                          Total Amount: {formatCurrency(calculatedAmount)}
-                        </p>
-                      </div>
-                    </div>
-                  </>
-                )}
-
-                {/* Boys fields */}
-                {formData.category === 'boys' && (
-                  <>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Event Date *
-                      </label>
-                      <input
-                        type="date"
-                        required
-                        value={formData.eventDate}
-                        onChange={(e) => setFormData({ ...formData, eventDate: e.target.value })}
-                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Number of Boys (Heads) *
-                      </label>
-                      <input
-                        type="number"
-                        step="1"
-                        required
-                        value={formData.numberOfBoys}
-                        onChange={(e) => setFormData({ ...formData, numberOfBoys: e.target.value })}
-                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-                        placeholder="0"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Payment per Boy *
-                      </label>
-                      <input
-                        type="number"
-                        step="0.01"
-                        required
-                        value={formData.boyAmount}
-                        onChange={(e) => setFormData({ ...formData, boyAmount: e.target.value })}
-                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-                        placeholder="0.00"
-                      />
-                    </div>
-                    <div className="sm:col-span-2">
-                      <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
-                        <p className="text-sm font-medium text-blue-900">
-                          Total Amount: {formatCurrency(calculatedAmount)}
-                        </p>
-                      </div>
-                    </div>
-                  </>
-                )}
-
-                {/* Other categories - simple amount */}
-                {!['chef', 'supervisor', 'labours', 'boys'].includes(formData.category) && (
-                  <div className="sm:col-span-2">
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Amount *
-                    </label>
-                    <input
-                      type="number"
-                      step="0.01"
-                      required
-                      value={formData.amount}
-                      onChange={(e) => setFormData({ ...formData, amount: e.target.value })}
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-                      placeholder="0.00"
-                    />
-                  </div>
-                )}
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Payment Date *
-                  </label>
-                  <input
-                    type="date"
-                    required
-                    value={formData.paymentDate}
-                    onChange={(e) => setFormData({ ...formData, paymentDate: e.target.value })}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Recipient
-                  </label>
-                  <input
-                    type="text"
-                    value={formData.recipient}
-                    onChange={(e) => setFormData({ ...formData, recipient: e.target.value })}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-                    placeholder="Name of recipient"
-                  />
                 </div>
               </div>
+            )
+          })}
+      </div>
 
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Description
-                </label>
+      {/* Filters Panel */}
+      {showFilters && (
+        <div className="mb-6 bg-white rounded-xl shadow-md p-6 border border-gray-200">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
+              <FaFilter className="text-primary-500" />
+              Filters
+            </h3>
+            <div className="flex items-center gap-2">
+              {activeFiltersCount > 0 && (
+                <button
+                  onClick={clearFilters}
+                  className="text-sm text-primary-600 hover:text-primary-700 font-medium"
+                >
+                  Clear All
+                </button>
+              )}
+              <button
+                onClick={() => setShowFilters(false)}
+                className="text-gray-400 hover:text-gray-600"
+              >
+                <FaTimes />
+              </button>
+            </div>
+          </div>
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            {/* Search */}
+            <div className="lg:col-span-2">
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Search
+              </label>
+              <div className="relative">
+                <FaSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
                 <input
                   type="text"
-                  value={formData.description}
-                  onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                  placeholder="Brief description of the expense"
+                  value={searchTerm}
+                  onChange={(e) => {
+                    setSearchTerm(e.target.value)
+                    setCurrentPage(1)
+                  }}
+                  placeholder="Search by recipient, description, category..."
+                  className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
                 />
               </div>
+            </div>
 
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Notes
-                </label>
-                <textarea
-                  value={formData.notes}
-                  onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                  rows={3}
-                  placeholder="Additional notes (optional)"
-                />
-              </div>
+            {/* Date Range */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Start Date
+              </label>
+              <input
+                type="date"
+                value={dateRange.start}
+                onChange={(e) => {
+                  setDateRange({ ...dateRange, start: e.target.value })
+                  setCurrentPage(1)
+                }}
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+              />
+            </div>
 
-              <div className="flex justify-end gap-4 pt-4 border-t border-gray-200">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                End Date
+              </label>
+              <input
+                type="date"
+                value={dateRange.end}
+                onChange={(e) => {
+                  setDateRange({ ...dateRange, end: e.target.value })
+                  setCurrentPage(1)
+                }}
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+              />
+            </div>
+
+            {/* Order Filter */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Event/Order
+              </label>
+              <select
+                value={selectedOrder}
+                onChange={(e) => {
+                  setSelectedOrder(e.target.value)
+                  setCurrentPage(1)
+                }}
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+              >
+                <option value="all">All Events/Orders</option>
+                {orders.map((order: any) => (
+                  <option key={order.id} value={order.id}>
+                    {order.customer?.name || 'Unknown'} - {formatDate(order.createdAt)}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* Category Filter */}
+            <div className="lg:col-span-3">
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Category
+              </label>
+              <div className="flex flex-wrap gap-2">
                 <button
-                  type="button"
-                  onClick={resetForm}
-                  className="px-6 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors"
+                  onClick={() => {
+                    setSelectedCategory('all')
+                    setCurrentPage(1)
+                  }}
+                  className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                    selectedCategory === 'all'
+                      ? 'bg-primary-500 text-white shadow-md'
+                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                  }`}
                 >
-                  Cancel
+                  All Categories
                 </button>
-                <button
-                  type="submit"
-                  className="px-6 py-2 bg-primary-500 text-white rounded-lg hover:bg-primary-600 transition-colors"
-                >
-                  {editingExpense ? 'Update Expense' : 'Add Expense'}
-                </button>
+                {EXPENSE_CATEGORIES.map(category => {
+                  const Icon = CATEGORY_ICONS[category] || FaBox
+                  return (
+                    <button
+                      key={category}
+                      onClick={() => {
+                        setSelectedCategory(category)
+                        setCurrentPage(1)
+                      }}
+                      className={`inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors capitalize ${
+                        selectedCategory === category
+                          ? `${CATEGORY_COLORS[category] || CATEGORY_COLORS.other} border-2`
+                          : 'bg-white border border-gray-300 text-gray-700 hover:bg-gray-50'
+                      }`}
+                    >
+                      <Icon className="text-xs" />
+                      {category}
+                    </button>
+                  )
+                })}
               </div>
-            </form>
+            </div>
           </div>
         </div>
       )}
+
+      {/* Expenses Table */}
+      <div className="bg-white rounded-xl shadow-md border border-gray-200 overflow-hidden">
+        <Table
+          columns={columns}
+          data={filteredExpenses}
+          emptyMessage="No expenses found. Click 'Add Expense' to add your first expense."
+          itemsPerPage={itemsPerPage}
+          currentPage={currentPage}
+          totalItems={filteredExpenses.length}
+          onPageChange={setCurrentPage}
+          onItemsPerPageChange={setItemsPerPage}
+          itemName="expense"
+          getItemId={(item: Expense) => item.id}
+          renderActions={(expense: Expense) => (
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => handleEdit(expense)}
+                className="p-2 text-primary-600 hover:bg-primary-50 rounded-lg transition-colors"
+                title="Edit"
+              >
+                <FaEdit />
+              </button>
+              <button
+                onClick={() => handleDelete(expense.id)}
+                className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                title="Delete"
+              >
+                <FaTrash />
+              </button>
+            </div>
+          )}
+        />
+      </div>
 
       <ConfirmModal
         isOpen={deleteConfirm.isOpen}

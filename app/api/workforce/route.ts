@@ -3,10 +3,55 @@ import { prisma } from '@/lib/prisma'
 
 export async function GET() {
   try {
-    const workforce = await prisma.workforce.findMany({
+    const workforce = await (prisma as any).workforce.findMany({
       orderBy: { createdAt: 'desc' },
     })
-    return NextResponse.json(workforce)
+
+    // Fetch all expenses
+    const expenses = await (prisma as any).expense.findMany({
+      include: {
+        order: {
+          include: {
+            customer: true
+          }
+        }
+      },
+      orderBy: { paymentDate: 'desc' }
+    })
+
+    // Map expenses to workforce members
+    const workforceWithPayments = workforce.map((member: any) => {
+      // Match expenses ONLY by recipient name to ensure each workforce member
+      // gets expenses only for their specific name, not all expenses of their role
+      const matchingExpenses = expenses.filter((expense: any) => {
+        // Match by recipient name (case-insensitive, exact or partial match)
+        // This ensures expenses are matched to the specific person, not just by role
+        if (!expense.recipient) return false
+        
+        const recipientName = expense.recipient.toLowerCase().trim()
+        const memberName = member.name.toLowerCase().trim()
+        
+        // Exact match or name contains member name or member name contains recipient name
+        return (
+          recipientName === memberName ||
+          recipientName.includes(memberName) ||
+          memberName.includes(recipientName)
+        )
+      })
+
+      // Calculate totals
+      const totalAmount = matchingExpenses.reduce((sum: number, exp: any) => sum + exp.amount, 0)
+      const expenseCount = matchingExpenses.length
+
+      return {
+        ...member,
+        expenses: matchingExpenses,
+        totalAmount,
+        expenseCount,
+      }
+    })
+
+    return NextResponse.json(workforceWithPayments)
   } catch (error: any) {
     console.error('Error fetching workforce:', error)
     return NextResponse.json(
@@ -28,16 +73,16 @@ export async function POST(request: NextRequest) {
     }
 
     // Validate role
-    const validRoles = ['chef', 'supervisor', 'transport']
+    const validRoles = ['chef', 'supervisor', 'transport', 'boys', 'labours']
     if (!validRoles.includes(data.role)) {
       return NextResponse.json(
-        { error: 'Invalid role. Must be one of: chef, supervisor, transport' },
+        { error: 'Invalid role. Must be one of: chef, supervisor, transport, boys, labours' },
         { status: 400 }
       )
     }
 
     // Create workforce member
-    const workforce = await prisma.workforce.create({
+    const workforce = await (prisma as any).workforce.create({
       data: {
         name: data.name,
         role: data.role,

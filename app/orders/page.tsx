@@ -27,6 +27,7 @@ export default function OrdersPage() {
   
   const [formData, setFormData] = useState({
     customerId: '',
+    eventName: '',
     mealTypes: [] as Array<{
       id: string
       menuType: string
@@ -37,6 +38,8 @@ export default function OrdersPage() {
       transportCost: string
       manualAmount: string
       date: string
+      services: string[] // Array of selected services: 'buffet', 'vaddana', 'handover'
+      numberOfMembers: string
     }>,
     stalls: [] as Array<{ category: string; description: string; cost: string }>,
     discount: '',
@@ -92,13 +95,15 @@ export default function OrdersPage() {
         groupedItems[mealType].push(item)
       })
 
-      const mealTypeAmounts = order.mealTypeAmounts as Record<string, { amount: number; date: string } | number> | null
+      const mealTypeAmounts = order.mealTypeAmounts as Record<string, { amount: number; date: string; services?: string[]; numberOfMembers?: number } | number> | null
 
       // Build mealTypes array from grouped items
       const mealTypesArray = Object.entries(groupedItems).map(([menuType, items]) => {
         const mealTypeData = mealTypeAmounts?.[menuType]
         const amount = typeof mealTypeData === 'object' && mealTypeData !== null ? mealTypeData.amount : (typeof mealTypeData === 'number' ? mealTypeData : 0)
         const date = typeof mealTypeData === 'object' && mealTypeData !== null ? mealTypeData.date : ''
+        const services = typeof mealTypeData === 'object' && mealTypeData !== null && mealTypeData.services ? mealTypeData.services : []
+        const numberOfMembers = typeof mealTypeData === 'object' && mealTypeData !== null && mealTypeData.numberOfMembers ? mealTypeData.numberOfMembers.toString() : ''
 
         // Determine pricing method (assume manual if amount exists, otherwise plate-based)
         const pricingMethod: 'manual' | 'plate-based' = 'manual'
@@ -113,7 +118,9 @@ export default function OrdersPage() {
           platePrice: '',
           transportCost: '',
           manualAmount,
-          date: date || ''
+          date: date || '',
+          services,
+          numberOfMembers
         }
       })
 
@@ -128,7 +135,12 @@ export default function OrdersPage() {
 
       setFormData({
         customerId: order.customerId,
-        mealTypes: mealTypesArray,
+        eventName: (order as any).eventName || '',
+        mealTypes: mealTypesArray.map(mealType => ({
+          ...mealType,
+          services: [], // Will be populated from mealTypeAmounts if available
+          numberOfMembers: ''
+        })),
         stalls: stallsArray,
         discount: order.discount?.toString() || '0',
         totalAmount: order.totalAmount?.toString() || '0',
@@ -178,6 +190,8 @@ export default function OrdersPage() {
         transportCost: '',
         manualAmount: '',
         date: '',
+        services: [],
+        numberOfMembers: '',
       }]
     }))
   }
@@ -291,6 +305,7 @@ export default function OrdersPage() {
 
       const orderData: any = {
         customerId: formData.customerId,
+        eventName: formData.eventName || null,
         items: orderItems,
         totalAmount,
         advancePaid,
@@ -383,6 +398,7 @@ export default function OrdersPage() {
   const resetForm = () => {
     setFormData({
       customerId: '',
+      eventName: '',
       mealTypes: [],
       stalls: [],
       discount: '',
@@ -496,6 +512,20 @@ export default function OrdersPage() {
               </select>
             </div>
 
+            {/* Event Name */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Event Name
+              </label>
+              <input
+                type="text"
+                value={formData.eventName}
+                onChange={(e: any) => setFormData({ ...formData, eventName: e.target.value })}
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                placeholder="Enter event name (e.g., Wedding, Birthday, etc.)"
+              />
+            </div>
+
             {/* Meal Types Section */}
             <div className="border-t border-gray-200 pt-4">
               <div className="flex justify-between items-center mb-4">
@@ -568,6 +598,56 @@ export default function OrdersPage() {
                                 onChange={(e: any) => handleUpdateMealType(mealType.id, 'date', e.target.value)}
                                 className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
                               />
+                            </div>
+                          </div>
+
+                          {/* Services and Number of Members */}
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            {/* Services */}
+                            <div>
+                              <label className="block text-sm font-medium text-gray-700 mb-2">
+                                Services
+                              </label>
+                              <div className="space-y-2">
+                                {['buffet', 'vaddana', 'handover'].map((service) => (
+                                  <label key={service} className="flex items-center p-2 border border-gray-200 rounded-lg hover:bg-gray-50 cursor-pointer">
+                                    <input
+                                      type="checkbox"
+                                      checked={mealType.services.includes(service)}
+                                      onChange={(e) => {
+                                        if (e.target.checked) {
+                                          handleUpdateMealType(mealType.id, 'services', [...mealType.services, service])
+                                        } else {
+                                          handleUpdateMealType(mealType.id, 'services', mealType.services.filter((s: string) => s !== service))
+                                        }
+                                      }}
+                                      className="w-4 h-4 text-primary-600 border-gray-300 rounded focus:ring-primary-500 mr-3"
+                                    />
+                                    <span className="text-sm font-medium text-gray-900 capitalize">
+                                      {service.charAt(0).toUpperCase() + service.slice(1)}
+                                    </span>
+                                  </label>
+                                ))}
+                              </div>
+                            </div>
+
+                            {/* Number of Members */}
+                            <div>
+                              <label className="block text-sm font-medium text-gray-700 mb-1">
+                                Number of Members
+                              </label>
+                              <input
+                                type="number"
+                                min="1"
+                                step="1"
+                                value={mealType.numberOfMembers}
+                                onChange={(e: any) => handleUpdateMealType(mealType.id, 'numberOfMembers', e.target.value)}
+                                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                                placeholder="Enter number of members/guests"
+                              />
+                              <p className="text-xs text-gray-500 mt-1">
+                                Number of guests for this meal type
+                              </p>
                             </div>
                           </div>
 

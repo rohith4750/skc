@@ -6,7 +6,7 @@ export async function GET(
   { params }: { params: { id: string } }
 ) {
   try {
-    const workforce = await prisma.workforce.findUnique({
+    const workforce = await (prisma as any).workforce.findUnique({
       where: { id: params.id },
     })
 
@@ -36,10 +36,10 @@ export async function PUT(
 
     // Validate role if provided
     if (data.role) {
-      const validRoles = ['chef', 'supervisor', 'transport']
+      const validRoles = ['chef', 'supervisor', 'transport', 'boys', 'labours']
       if (!validRoles.includes(data.role)) {
         return NextResponse.json(
-          { error: 'Invalid role. Must be one of: chef, supervisor, transport' },
+          { error: 'Invalid role. Must be one of: chef, supervisor, transport, boys, labours' },
           { status: 400 }
         )
       }
@@ -52,7 +52,7 @@ export async function PUT(
     if (data.role !== undefined) updateData.role = data.role
     if (data.isActive !== undefined) updateData.isActive = data.isActive
 
-    const workforce = await prisma.workforce.update({
+    const workforce = await (prisma as any).workforce.update({
       where: { id: params.id },
       data: updateData,
     })
@@ -73,7 +73,7 @@ export async function DELETE(
 ) {
   try {
     // Check if workforce member exists
-    const workforce = await prisma.workforce.findUnique({
+    const workforce = await (prisma as any).workforce.findUnique({
       where: { id: params.id }
     })
 
@@ -84,7 +84,7 @@ export async function DELETE(
       )
     }
 
-    await prisma.workforce.delete({
+    await (prisma as any).workforce.delete({
       where: { id: params.id }
     })
 

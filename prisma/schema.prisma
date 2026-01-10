@@ -63,6 +63,9 @@ model Order {
   mealTypeAmounts Json?    // Store amounts per meal type: { "breakfast": 1000, "lunch": 2000, ... }
   stalls         Json?     // Store stalls data
   discount       Float     @default(0)
+  eventName      String?   // Event name
+  services       Json?     // Store services as array: ["buffet", "vaddana", "handover"]
+  numberOfMembers Int?     // Number of members/guests
   createdAt      DateTime  @default(now())
   updatedAt      DateTime  @updatedAt
   bills          Bill[]
@@ -139,4 +142,59 @@ model Workforce {
   updatedAt DateTime @updatedAt
 
   @@map("workforce")
+}
+
+model Stock {
+  id          String            @id @default(uuid())
+  name        String
+  category    String            // "gas", "store", "vegetables", "disposables"
+  unit        String            // "kg", "liters", "pieces", "boxes", etc.
+  currentStock Float            @default(0)
+  minStock    Float?            // Minimum stock level for alerts
+  maxStock    Float?            // Maximum stock level
+  price       Float?            // Price per unit (optional)
+  supplier    String?           // Supplier/vendor name
+  location    String?           // Storage location
+  description String?
+  isActive    Boolean           @default(true)
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+  transactions StockTransaction[]
+
+  @@map("stock")
+}
+
+model StockTransaction {
+  id          String   @id @default(uuid())
+  stockId     String
+  stock       Stock    @relation(fields: [stockId], references: [id], onDelete: Cascade)
+  type        String   // "in" or "out"
+  quantity    Float
+  price       Float?   // Price per unit at time of transaction
+  totalAmount Float?   // Total amount (quantity * price)
+  reference   String?  // Reference number, invoice number, etc.
+  notes       String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("stock_transactions")
+}
+
+model Inventory {
+  id          String            @id @default(uuid())
+  name        String
+  category    String            // "glasses", "vessels", "cooking_utensils", "serving_items", "storage", "other"
+  quantity    Int               @default(0)
+  unit        String            // "pieces", "sets", "units"
+  condition   String            @default("good") // "good", "fair", "damaged", "repair"
+  location    String?           // Storage location
+  supplier    String?           // Supplier/vendor name
+  purchaseDate DateTime?        // Purchase date
+  purchasePrice Float?          // Purchase price
+  description String?
+  isActive    Boolean           @default(true)
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+
+  @@map("inventory")
 }

@@ -29,7 +29,6 @@ const menuItems = [
   { href: '/orders/history', icon: FaShoppingCart, label: 'Orders History' },
   { href: '/bills', icon: FaFileInvoiceDollar, label: 'Bills' },
   { href: '/expenses', icon: FaMoneyBillWave, label: 'Expenses' },
-  { href: '/supervisors', icon: FaUserTie, label: 'Supervisors' },
   { href: '/workforce', icon: FaUserTie, label: 'Workforce', requiredRole: 'super_admin' },
   { href: '/users', icon: FaUserShield, label: 'User Management', requiredRole: 'super_admin' },
   { href: '/stock', icon: FaBox, label: 'Stock' },
