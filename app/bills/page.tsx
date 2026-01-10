@@ -21,7 +21,12 @@ export default function BillsPage() {
 
   const loadBills = async () => {
     try {
-      const response = await fetch('/api/bills')
+      const response = await fetch('/api/bills', {
+        cache: 'no-store',
+        headers: {
+          'Cache-Control': 'no-cache',
+        },
+      })
       if (!response.ok) throw new Error('Failed to fetch bills')
       const allBills = await response.json()
       setBills(allBills)
@@ -51,6 +56,7 @@ export default function BillsPage() {
         throw new Error(error.error || 'Failed to update bill')
       }
 
+      // Refresh bills list to get updated data
       await loadBills()
       toast.success('Bill marked as paid successfully!')
     } catch (error: any) {
