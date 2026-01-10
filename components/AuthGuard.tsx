@@ -14,10 +14,14 @@ export default function AuthGuard({ children }: { children: React.ReactNode }) {
     const checkAuth = () => {
       const authenticated = isAuthenticated()
       
-      // If on login page
-      if (pathname === '/login') {
+      // Public pages that don't require authentication
+      const publicPages = ['/login', '/reset-password']
+      const isPublicPage = publicPages.includes(pathname)
+      
+      // If on a public page
+      if (isPublicPage) {
         // If already authenticated, redirect to dashboard
-        if (authenticated) {
+        if (authenticated && pathname === '/login') {
           router.push('/')
         } else {
           setIsLoading(false)
@@ -25,13 +29,13 @@ export default function AuthGuard({ children }: { children: React.ReactNode }) {
         return
       }
       
-      // If not on login page and not authenticated, redirect to login
+      // If not on a public page and not authenticated, redirect to login
       if (!authenticated) {
         router.push('/login')
         return
       }
       
-      // Authenticated and not on login page
+      // Authenticated and not on a public page
       setIsLoading(false)
     }
 
@@ -50,8 +54,9 @@ export default function AuthGuard({ children }: { children: React.ReactNode }) {
     )
   }
 
-  // Login page - render without sidebar
-  if (pathname === '/login') {
+  // Public pages - render without sidebar
+  const publicPages = ['/login', '/reset-password']
+  if (publicPages.includes(pathname)) {
     return <>{children}</>
   }
 
