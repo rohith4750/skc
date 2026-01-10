@@ -92,10 +92,10 @@ export async function POST(request: NextRequest) {
     }
 
     // Validate role
-    const validRoles = ['chef', 'supervisor', 'transport', 'boys', 'labours']
+    const validRoles = ['supervisor', 'chef', 'labours', 'boys', 'transport', 'gas', 'pan', 'store', 'other']
     if (!validRoles.includes(data.role)) {
       return NextResponse.json(
-        { error: 'Invalid role. Must be one of: chef, supervisor, transport, boys, labours' },
+        { error: 'Invalid role. Must be one of: supervisor, chef, labours, boys, transport, gas, pan, store, other' },
         { status: 400 }
       )
     }

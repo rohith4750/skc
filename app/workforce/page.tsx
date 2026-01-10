@@ -1,11 +1,12 @@
 'use client'
 
 import { useEffect, useState, useMemo } from 'react'
-import { FaPlus, FaEdit, FaTrash, FaUtensils, FaUserTie, FaTruck, FaDollarSign, FaReceipt, FaChevronDown, FaChevronUp, FaUsers, FaUserFriends, FaFilter, FaSearch, FaTimes, FaCheckCircle, FaExclamationCircle, FaClock } from 'react-icons/fa'
+import { FaEdit, FaTrash, FaUtensils, FaUserTie, FaTruck, FaDollarSign, FaReceipt, FaChevronDown, FaChevronUp, FaUsers, FaUserFriends, FaFilter, FaSearch, FaTimes, FaCheckCircle, FaExclamationCircle, FaClock, FaGasPump, FaBox, FaStore, FaCircle, FaPlus } from 'react-icons/fa'
 import toast from 'react-hot-toast'
 import Table from '@/components/Table'
 import ConfirmModal from '@/components/ConfirmModal'
 import { formatCurrency, formatDate } from '@/lib/utils'
+import Link from 'next/link'
 
 interface Workforce {
   id: string
@@ -30,6 +31,10 @@ const roleIcons: Record<string, any> = {
   transport: FaTruck,
   boys: FaUsers,
   labours: FaUserFriends,
+  gas: FaGasPump,
+  pan: FaBox,
+  store: FaStore,
+  other: FaCircle,
 }
 
 const roleColors: Record<string, string> = {
@@ -38,6 +43,10 @@ const roleColors: Record<string, string> = {
   transport: 'bg-yellow-100 text-yellow-800',
   boys: 'bg-purple-100 text-purple-800',
   labours: 'bg-indigo-100 text-indigo-800',
+  gas: 'bg-red-100 text-red-800',
+  pan: 'bg-pink-100 text-pink-800',
+  store: 'bg-indigo-100 text-indigo-800',
+  other: 'bg-gray-100 text-gray-800',
 }
 
 const CATEGORY_COLORS: Record<string, string> = {
@@ -52,7 +61,7 @@ const CATEGORY_COLORS: Record<string, string> = {
   other: 'bg-gray-100 text-gray-800',
 }
 
-const WORKFORCE_ROLES = ['chef', 'supervisor', 'transport', 'boys', 'labours']
+const WORKFORCE_ROLES = ['supervisor', 'chef', 'labours', 'boys', 'transport', 'gas', 'pan', 'store', 'other']
 
 // Helper function to get week number
 const getWeekNumber = (date: Date) => {
@@ -66,17 +75,10 @@ const getWeekNumber = (date: Date) => {
 export default function WorkforcePage() {
   const [workforce, setWorkforce] = useState<Workforce[]>([])
   const [loading, setLoading] = useState(true)
-  const [showModal, setShowModal] = useState(false)
-  const [editingMember, setEditingMember] = useState<Workforce | null>(null)
   const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set())
   const [deleteConfirm, setDeleteConfirm] = useState<{ isOpen: boolean; id: string | null }>({
     isOpen: false,
     id: null,
-  })
-  const [formData, setFormData] = useState({
-    name: '',
-    role: 'chef',
-    isActive: true,
   })
   const [selectedRole, setSelectedRole] = useState<string>('all')
   const [selectedStatus, setSelectedStatus] = useState<string>('all')
@@ -117,24 +119,9 @@ export default function WorkforcePage() {
     })
   }
 
-  const handleCreate = () => {
-    setEditingMember(null)
-    setFormData({
-      name: '',
-      role: 'chef',
-      isActive: true,
-    })
-    setShowModal(true)
-  }
-
   const handleEdit = (member: Workforce) => {
-    setEditingMember(member)
-    setFormData({
-      name: member.name,
-      role: member.role,
-      isActive: member.isActive,
-    })
-    setShowModal(true)
+    // Navigate to create page with edit mode
+    window.location.href = `/workforce/create?id=${member.id}`
   }
 
   const handleDelete = (id: string) => {
@@ -164,34 +151,6 @@ export default function WorkforcePage() {
     }
   }
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-
-    try {
-      const url = editingMember ? `/api/workforce/${editingMember.id}` : '/api/workforce'
-      const method = editingMember ? 'PUT' : 'POST'
-
-      const response = await fetch(url, {
-        method,
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(formData),
-      })
-
-      if (!response.ok) {
-        const error = await response.json()
-        throw new Error(error.error || 'Failed to save workforce member')
-      }
-
-      await loadWorkforce()
-      setShowModal(false)
-      toast.success(`Workforce member ${editingMember ? 'updated' : 'created'} successfully!`)
-    } catch (error: any) {
-      console.error('Failed to save workforce member:', error)
-      toast.error(error.message || 'Failed to save workforce member. Please try again.')
-    }
-  }
 
   // Generate week options
   const weekOptions = useMemo(() => {
@@ -458,29 +417,29 @@ export default function WorkforcePage() {
   const totalExpenses = filteredWorkforce.reduce((sum, m) => sum + (m.expenseCount || 0), 0)
 
   return (
-    <div className="p-6 lg:p-8">
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
+    <div className="p-3 sm:p-4 md:p-5 lg:p-6 xl:p-8">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 sm:gap-4 mb-4 sm:mb-5 md:mb-6">
         <div>
-          <h1 className="text-3xl font-bold text-gray-800">Workforce Management</h1>
-          <p className="text-gray-600 mt-2">Manage chefs, supervisors, and transport staff with payment tracking</p>
+          <h1 className="text-xl sm:text-2xl md:text-3xl font-bold text-gray-800">Workforce Management</h1>
+          <p className="text-gray-600 mt-1 sm:mt-1.5 md:mt-2 text-xs sm:text-sm md:text-base">Manage chefs, supervisors, and transport staff with payment tracking</p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 w-full sm:w-auto">
           <button
             onClick={() => setShowFilters(!showFilters)}
-            className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors ${
+            className={`flex items-center gap-2 px-3 sm:px-4 py-2 rounded-lg active:scale-95 transition-all touch-manipulation text-sm sm:text-base ${
               showFilters
                 ? 'bg-primary-500 text-white hover:bg-primary-600'
                 : 'bg-white border border-gray-300 text-gray-700 hover:bg-gray-50'
             }`}
           >
-            <FaFilter /> {showFilters ? 'Hide Filters' : 'Filters'}
+            <FaFilter className="w-4 h-4" /> <span className="hidden sm:inline">{showFilters ? 'Hide Filters' : 'Filters'}</span>
           </button>
-          <button
-            onClick={handleCreate}
-            className="flex items-center gap-2 bg-primary-500 text-white px-4 py-2 rounded-lg hover:bg-primary-600 transition-colors"
+          <Link
+            href="/workforce/create"
+            className="flex items-center justify-center gap-2 bg-primary-500 text-white px-3 sm:px-4 py-2 rounded-lg hover:bg-primary-600 active:scale-95 transition-all touch-manipulation text-sm sm:text-base flex-1 sm:flex-initial"
           >
-            <FaPlus /> Add Member
-          </button>
+            <FaPlus className="w-4 h-4" /> Add Member
+          </Link>
         </div>
       </div>
 
@@ -646,35 +605,44 @@ export default function WorkforcePage() {
       )}
 
       {/* Summary Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-        <div className="bg-white rounded-lg shadow p-4 border-l-4 border-primary-500">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-gray-600">Total Workforce</p>
-              <p className="text-2xl font-bold text-gray-800">{filteredWorkforce.length}</p>
-              {workforce.length !== filteredWorkforce.length && (
-                <p className="text-xs text-gray-500 mt-1">of {workforce.length} total</p>
-              )}
-            </div>
-            <FaUserTie className="text-3xl text-primary-500" />
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 sm:gap-4 md:gap-5 lg:gap-6 mb-4 sm:mb-5 md:mb-6">
+        <div className="bg-white rounded-lg shadow-md p-4 sm:p-5 md:p-6 border-l-4 border-primary-500 relative overflow-hidden">
+          {/* Icon at top right corner */}
+          <div className="bg-primary-500 absolute top-0 right-0 p-3 sm:p-4 rounded-bl-2xl">
+            <FaUserTie className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
+          </div>
+          
+          {/* Content */}
+          <div className="relative pr-12 sm:pr-16">
+            <p className="text-sm text-gray-600 mb-3">Total Workforce</p>
+            <p className="text-lg sm:text-xl lg:text-2xl font-bold text-gray-800 break-words leading-tight">{filteredWorkforce.length}</p>
+            {workforce.length !== filteredWorkforce.length && (
+              <p className="text-xs text-gray-500 mt-2">of {workforce.length} total</p>
+            )}
           </div>
         </div>
-        <div className="bg-white rounded-lg shadow p-4 border-l-4 border-green-500">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-gray-600">Total Payments</p>
-              <p className="text-2xl font-bold text-gray-800">{formatCurrency(totalPayments)}</p>
-            </div>
-            <FaDollarSign className="text-3xl text-green-500" />
+        <div className="bg-white rounded-lg shadow-md p-5 sm:p-6 border-l-4 border-green-500 relative overflow-hidden">
+          {/* Icon at top right corner */}
+          <div className="bg-green-500 absolute top-0 right-0 p-3 sm:p-4 rounded-bl-2xl">
+            <FaDollarSign className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
+          </div>
+          
+          {/* Content */}
+          <div className="relative pr-12 sm:pr-16">
+            <p className="text-sm text-gray-600 mb-3">Total Payments</p>
+            <p className="text-lg sm:text-xl lg:text-2xl font-bold text-gray-800 break-words leading-tight">{formatCurrency(totalPayments)}</p>
           </div>
         </div>
-        <div className="bg-white rounded-lg shadow p-4 border-l-4 border-blue-500">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-gray-600">Total Expenses</p>
-              <p className="text-2xl font-bold text-gray-800">{totalExpenses}</p>
-            </div>
-            <FaReceipt className="text-3xl text-blue-500" />
+        <div className="bg-white rounded-lg shadow-md p-5 sm:p-6 border-l-4 border-blue-500 relative overflow-hidden">
+          {/* Icon at top right corner */}
+          <div className="bg-blue-500 absolute top-0 right-0 p-3 sm:p-4 rounded-bl-2xl">
+            <FaReceipt className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
+          </div>
+          
+          {/* Content */}
+          <div className="relative pr-12 sm:pr-16">
+            <p className="text-sm text-gray-600 mb-3">Total Expenses</p>
+            <p className="text-lg sm:text-xl lg:text-2xl font-bold text-gray-800 break-words leading-tight">{totalExpenses}</p>
           </div>
         </div>
       </div>
@@ -841,80 +809,6 @@ export default function WorkforcePage() {
           </table>
         </div>
       </div>
-
-      {/* Create/Edit Modal */}
-      {showModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg shadow-xl w-full max-w-md">
-            <div className="p-6 border-b border-gray-200">
-              <h2 className="text-xl font-bold text-gray-800">
-                {editingMember ? 'Edit Workforce Member' : 'Add Workforce Member'}
-              </h2>
-            </div>
-            <form onSubmit={handleSubmit} className="p-6 space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Name *
-                </label>
-                <input
-                  type="text"
-                  value={formData.name}
-                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-                  required
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Role *
-                </label>
-                <select
-                  value={formData.role}
-                  onChange={(e) => setFormData({ ...formData, role: e.target.value })}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-                  required
-                >
-                  <option value="chef">Chef</option>
-                  <option value="supervisor">Supervisor</option>
-                  <option value="transport">Transport</option>
-                  <option value="boys">Boys</option>
-                  <option value="labours">Labours</option>
-                </select>
-              </div>
-
-              <div className="flex items-center">
-                <input
-                  type="checkbox"
-                  id="isActive"
-                  checked={formData.isActive}
-                  onChange={(e) => setFormData({ ...formData, isActive: e.target.checked })}
-                  className="w-4 h-4 text-primary-600 border-gray-300 rounded focus:ring-primary-500"
-                />
-                <label htmlFor="isActive" className="ml-2 text-sm text-gray-700">
-                  Active
-                </label>
-              </div>
-
-              <div className="flex gap-3 pt-4">
-                <button
-                  type="button"
-                  onClick={() => setShowModal(false)}
-                  className="flex-1 px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="flex-1 px-4 py-2 bg-primary-500 text-white rounded-lg hover:bg-primary-600 transition-colors"
-                >
-                  {editingMember ? 'Update' : 'Create'}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
 
       {/* Delete Confirmation Modal */}
       <ConfirmModal

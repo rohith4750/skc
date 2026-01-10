@@ -15,8 +15,8 @@ import {
   FaExclamationTriangle,
   FaArrowUp,
   FaArrowDown,
-  FaTimes,
   FaCheckCircle,
+  FaTimes,
 } from 'react-icons/fa'
 import toast from 'react-hot-toast'
 import Link from 'next/link'
@@ -79,15 +79,6 @@ export default function StockPage() {
   const [deleteConfirm, setDeleteConfirm] = useState<{ isOpen: boolean; id: string | null }>({
     isOpen: false,
     id: null,
-  })
-  const [showTransactionModal, setShowTransactionModal] = useState(false)
-  const [selectedStock, setSelectedStock] = useState<StockItem | null>(null)
-  const [transactionData, setTransactionData] = useState({
-    type: 'in' as 'in' | 'out',
-    quantity: '',
-    price: '',
-    reference: '',
-    notes: '',
   })
 
   useEffect(() => {
@@ -152,71 +143,8 @@ export default function StockPage() {
     return totals
   }, [filteredStock])
 
-  const handleTransaction = async (e: React.FormEvent) => {
-    e.preventDefault()
-    
-    if (!transactionData.quantity || !selectedStock) {
-      toast.error('Please fill in all required fields')
-      return
-    }
-
-    try {
-      const quantity = parseFloat(transactionData.quantity)
-      if (quantity <= 0) {
-        toast.error('Quantity must be greater than 0')
-        return
-      }
-
-      const transactionPayload: any = {
-        type: transactionData.type,
-        quantity: quantity,
-        price: transactionData.price ? parseFloat(transactionData.price) : null,
-        reference: transactionData.reference || null,
-        notes: transactionData.notes || null,
-      }
-
-      const response = await fetch(`/api/stock/${selectedStock.id}/transactions`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(transactionPayload),
-      })
-
-      if (!response.ok) {
-        const error = await response.json()
-        throw new Error(error.error || 'Failed to create transaction')
-      }
-
-      await loadData()
-      resetTransactionForm()
-      toast.success(`Stock ${transactionData.type === 'in' ? 'added' : 'removed'} successfully!`)
-    } catch (error: any) {
-      console.error('Failed to create transaction:', error)
-      toast.error(error.message || 'Failed to create transaction. Please try again.')
-    }
-  }
-
-  const resetTransactionForm = () => {
-    setTransactionData({
-      type: 'in',
-      quantity: '',
-      price: '',
-      reference: '',
-      notes: '',
-    })
-    setSelectedStock(null)
-    setShowTransactionModal(false)
-  }
-
   const handleTransactionClick = (item: StockItem) => {
-    setSelectedStock(item)
-    setTransactionData({
-      type: 'in',
-      quantity: '',
-      price: item.price?.toString() || '',
-      reference: '',
-      notes: '',
-    })
-    setShowTransactionModal(true)
+    window.location.href = `/stock/transaction?id=${item.id}&type=in`
   }
 
   const handleDelete = (id: string) => {
@@ -280,24 +208,40 @@ export default function StockPage() {
     {
       key: 'currentStock',
       header: 'Current Stock',
-      accessor: (row: StockItem) => (
-        <div>
-          <div className={`font-bold text-lg ${row.minStock && row.currentStock <= row.minStock ? 'text-red-600' : 'text-gray-900'}`}>
-            {row.currentStock} {row.unit}
+      accessor: (row: StockItem) => {
+        const isLowStock = row.minStock && row.currentStock <= row.minStock
+        return (
+          <div className="space-y-1.5">
+            <div className="flex items-baseline gap-1.5">
+              <span className={`font-bold text-2xl ${isLowStock ? 'text-red-600' : 'text-gray-900'}`}>
+                {row.currentStock}
+              </span>
+              <span className="text-sm text-gray-600 font-normal">
+                {row.unit}
+              </span>
+            </div>
+            {row.minStock !== null && row.minStock !== undefined && (
+              <div className="flex items-center gap-2 text-xs text-gray-500">
+                <span className="font-medium text-gray-600">Min:</span>
+                <span>{row.minStock} {row.unit}</span>
+                {row.maxStock !== null && row.maxStock !== undefined && (
+                  <>
+                    <span className="text-gray-300 mx-1">•</span>
+                    <span className="font-medium text-gray-600">Max:</span>
+                    <span>{row.maxStock} {row.unit}</span>
+                  </>
+                )}
+              </div>
+            )}
+            {isLowStock && (
+              <div className="inline-flex items-center gap-1.5 px-2 py-0.5 bg-red-50 border border-red-200 rounded text-xs text-red-700 font-medium mt-1">
+                <FaExclamationTriangle className="text-xs" />
+                Low Stock Alert
+              </div>
+            )}
           </div>
-          {row.minStock && (
-            <div className="text-xs text-gray-500">
-              Min: {row.minStock} {row.unit}
-              {row.maxStock && ` | Max: ${row.maxStock} ${row.unit}`}
-            </div>
-          )}
-          {row.minStock && row.currentStock <= row.minStock && (
-            <div className="text-xs text-red-600 font-medium flex items-center gap-1 mt-1">
-              <FaExclamationTriangle /> Low Stock
-            </div>
-          )}
-        </div>
-      ),
+        )
+      },
     },
     {
       key: 'price',
@@ -568,149 +512,6 @@ export default function StockPage() {
         />
       </div>
 
-      {/* Stock Transaction Modal */}
-      {showTransactionModal && selectedStock && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4 overflow-y-auto">
-          <div className="bg-white rounded-xl shadow-2xl max-w-md w-full my-8">
-            <div className="flex items-center justify-between p-6 border-b border-gray-200">
-              <h2 className="text-2xl font-bold text-gray-900">
-                Stock {transactionData.type === 'in' ? 'In' : 'Out'}
-              </h2>
-              <button
-                onClick={resetTransactionForm}
-                className="text-gray-400 hover:text-gray-600 transition-colors"
-              >
-                <FaTimes className="text-xl" />
-              </button>
-            </div>
-            
-            <form onSubmit={handleTransaction} className="p-6">
-              <div className="space-y-4 mb-4">
-                <div className="bg-gray-50 p-4 rounded-lg">
-                  <div className="text-sm text-gray-600">Item</div>
-                  <div className="font-semibold text-gray-900">{selectedStock.name}</div>
-                  <div className="text-sm text-gray-500 mt-1">
-                    Current Stock: {selectedStock.currentStock} {selectedStock.unit}
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">
-                    Type *
-                  </label>
-                  <div className="flex gap-2">
-                    <button
-                      type="button"
-                      onClick={() => setTransactionData({ ...transactionData, type: 'in' })}
-                      className={`flex-1 px-4 py-2.5 rounded-lg font-medium transition-colors ${
-                        transactionData.type === 'in'
-                          ? 'bg-green-500 text-white'
-                          : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                      }`}
-                    >
-                      <FaArrowUp className="inline mr-2" />
-                      Stock In
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setTransactionData({ ...transactionData, type: 'out' })}
-                      className={`flex-1 px-4 py-2.5 rounded-lg font-medium transition-colors ${
-                        transactionData.type === 'out'
-                          ? 'bg-red-500 text-white'
-                          : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                      }`}
-                    >
-                      <FaArrowDown className="inline mr-2" />
-                      Stock Out
-                    </button>
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">
-                    Quantity *
-                  </label>
-                  <input
-                    type="number"
-                    step="0.01"
-                    required
-                    value={transactionData.quantity}
-                    onChange={(e) => setTransactionData({ ...transactionData, quantity: e.target.value })}
-                    className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-                    placeholder="Enter quantity"
-                  />
-                  <div className="text-xs text-gray-500 mt-1">Unit: {selectedStock.unit}</div>
-                  {transactionData.type === 'out' && selectedStock.currentStock > 0 && (
-                    <div className="text-xs text-yellow-600 mt-1">
-                      Available: {selectedStock.currentStock} {selectedStock.unit}
-                    </div>
-                  )}
-                </div>
-
-                <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">
-                    Price per Unit
-                  </label>
-                  <input
-                    type="number"
-                    step="0.01"
-                    value={transactionData.price}
-                    onChange={(e) => setTransactionData({ ...transactionData, price: e.target.value })}
-                    className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-                    placeholder="0.00"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">
-                    Reference Number
-                  </label>
-                  <input
-                    type="text"
-                    value={transactionData.reference}
-                    onChange={(e) => setTransactionData({ ...transactionData, reference: e.target.value })}
-                    className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-                    placeholder="Invoice #, Receipt #, etc."
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">
-                    Notes
-                  </label>
-                  <textarea
-                    value={transactionData.notes}
-                    onChange={(e) => setTransactionData({ ...transactionData, notes: e.target.value })}
-                    className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-                    rows={3}
-                    placeholder="Additional notes..."
-                  />
-                </div>
-              </div>
-
-              <div className="flex justify-end gap-4 pt-4 border-t border-gray-200">
-                <button
-                  type="button"
-                  onClick={resetTransactionForm}
-                  className="px-6 py-2.5 border border-gray-300 rounded-lg text-gray-700 font-medium hover:bg-gray-50 transition-colors"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className={`px-6 py-2.5 rounded-lg font-medium transition-colors shadow-md ${
-                    transactionData.type === 'in'
-                      ? 'bg-green-500 text-white hover:bg-green-600'
-                      : 'bg-red-500 text-white hover:bg-red-600'
-                  }`}
-                >
-                  {transactionData.type === 'in' ? 'Add Stock' : 'Remove Stock'}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
 
       <ConfirmModal
         isOpen={deleteConfirm.isOpen}

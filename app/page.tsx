@@ -254,27 +254,27 @@ export default function Dashboard() {
   // Simple landing page for admin users
   if (userRole === 'admin' && !isSuperAdminUser) {
     return (
-      <div className="p-4 sm:p-6 lg:p-8 pt-16 lg:pt-8 min-h-screen bg-gray-50">
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-800">Welcome</h1>
-          <p className="text-gray-600 mt-2">Select an option to continue</p>
+      <div className="p-3 sm:p-4 md:p-5 lg:p-6 xl:p-8 pt-14 sm:pt-16 lg:pt-6 xl:pt-8 min-h-screen bg-gray-50">
+        <div className="mb-4 sm:mb-5 md:mb-6 lg:mb-8">
+          <h1 className="text-xl sm:text-2xl md:text-3xl font-bold text-gray-800 text-center sm:text-left">Welcome</h1>
+          <p className="text-gray-600 mt-1 sm:mt-1.5 md:mt-2 text-sm sm:text-base text-center sm:text-left">Select an option to continue</p>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 max-w-5xl">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 md:gap-5 lg:gap-6 max-w-5xl">
           {adminLandingCards.map((card) => {
             const Icon = card.icon
             return (
               <Link
                 key={card.title}
                 href={card.href}
-                className="bg-white rounded-xl shadow-md hover:shadow-xl transition-all duration-200 p-6 group"
+                className="bg-white rounded-xl shadow-md hover:shadow-xl active:scale-[0.98] transition-all duration-200 p-4 sm:p-5 md:p-6 group touch-manipulation"
               >
                 <div className="flex flex-col items-center text-center">
-                  <div className={`${card.color} p-4 rounded-full mb-4 group-hover:scale-110 transition-transform`}>
-                    <Icon className="w-8 h-8 text-white" />
+                  <div className={`${card.color} p-3 sm:p-4 rounded-full mb-3 sm:mb-4 group-hover:scale-110 transition-transform`}>
+                    <Icon className="w-6 h-6 sm:w-7 sm:h-7 md:w-8 md:h-8 text-white" />
                   </div>
-                  <h3 className="text-xl font-bold text-gray-800 mb-2">{card.title}</h3>
-                  <p className="text-sm text-gray-600">{card.description}</p>
+                  <h3 className="text-base sm:text-lg md:text-xl font-bold text-gray-800 mb-1.5 sm:mb-2">{card.title}</h3>
+                  <p className="text-xs sm:text-sm text-gray-600">{card.description}</p>
                 </div>
               </Link>
             )
@@ -296,35 +296,36 @@ export default function Dashboard() {
   }
 
   return (
-    <div className="p-4 sm:p-6 lg:p-8 pt-16 lg:pt-8">
-      <div className="mb-6 sm:mb-8">
-        <h1 className="text-2xl sm:text-3xl font-bold text-gray-800">Dashboard</h1>
-        <p className="text-gray-600 mt-1 sm:mt-2 text-sm sm:text-base">
+    <div className="p-3 sm:p-4 md:p-5 lg:p-6 xl:p-8 pt-14 sm:pt-16 lg:pt-6 xl:pt-8">
+      <div className="mb-4 sm:mb-5 md:mb-6 lg:mb-8">
+        <h1 className="text-xl sm:text-2xl md:text-3xl font-bold text-gray-800 text-center sm:text-left">Dashboard</h1>
+        <p className="text-gray-600 mt-1 sm:mt-1.5 md:mt-2 text-xs sm:text-sm md:text-base text-center sm:text-left">
           {isSuperAdminUser ? 'Complete Business Analytics & Management Overview' : 'Business Overview'}
         </p>
       </div>
 
       {/* Main Statistics Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 mb-6 sm:mb-8">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-4 gap-3 sm:gap-4 md:gap-5 lg:gap-6 mb-4 sm:mb-5 md:mb-6 lg:mb-8">
         {mainStatCards.map((stat) => {
           const Icon = stat.icon
           return (
             <Link
               key={stat.title}
               href={stat.href}
-              className="bg-white rounded-lg shadow-md p-4 sm:p-6 hover:shadow-lg transition-shadow"
+              className="bg-white rounded-lg shadow-md p-4 sm:p-5 md:p-6 hover:shadow-lg active:scale-[0.98] transition-all relative overflow-hidden"
             >
-              <div className="flex items-center justify-between">
-                <div className="flex-1 min-w-0">
-                  <p className="text-gray-600 text-xs sm:text-sm font-medium truncate">{stat.title}</p>
-                  <p className="text-2xl sm:text-3xl font-bold text-gray-800 mt-1 sm:mt-2">{stat.value}</p>
-                  {stat.subValue && (
-                    <p className="text-xs text-gray-500 mt-1">{stat.subValue}</p>
-                  )}
-                </div>
-                <div className={`${stat.color} p-3 sm:p-4 rounded-full flex-shrink-0 ml-3`}>
-                  <Icon className="w-6 h-6 sm:w-8 sm:h-8 text-white" />
-                </div>
+              {/* Icon at top right corner */}
+              <div className={`${stat.color} absolute top-0 right-0 p-3 sm:p-4 rounded-bl-2xl`}>
+                <Icon className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
+              </div>
+              
+              {/* Content */}
+              <div className="relative pr-12 sm:pr-16">
+                <p className="text-gray-600 text-xs sm:text-sm font-medium mb-3">{stat.title}</p>
+                <p className="text-lg sm:text-xl lg:text-2xl font-bold text-gray-800 break-words leading-tight">{stat.value}</p>
+                {stat.subValue && (
+                  <p className="text-xs text-gray-500 mt-2">{stat.subValue}</p>
+                )}
               </div>
             </Link>
           )
@@ -333,23 +334,24 @@ export default function Dashboard() {
 
       {/* Admin Statistics Cards */}
       {isSuperAdminUser && adminStatCards.length > 0 && (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 mb-6 sm:mb-8">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-4 gap-3 sm:gap-4 md:gap-5 lg:gap-6 mb-4 sm:mb-5 md:mb-6 lg:mb-8">
           {adminStatCards.map((stat) => {
             const Icon = stat.icon
             if (stat.disabled) {
               return (
                 <div
                   key={stat.title}
-                  className="bg-white rounded-lg shadow-md p-4 sm:p-6 opacity-60 cursor-not-allowed"
+                  className="bg-white rounded-lg shadow-md p-4 sm:p-5 md:p-6 opacity-60 cursor-not-allowed relative overflow-hidden"
                 >
-                  <div className="flex items-center justify-between">
-                    <div className="flex-1 min-w-0">
-                      <p className="text-gray-600 text-xs sm:text-sm font-medium truncate">{stat.title}</p>
-                      <p className="text-2xl sm:text-3xl font-bold text-gray-800 mt-1 sm:mt-2">{stat.value}</p>
-                    </div>
-                    <div className={`${stat.color} p-3 sm:p-4 rounded-full flex-shrink-0 ml-3`}>
-                      <Icon className="w-6 h-6 sm:w-8 sm:h-8 text-white" />
-                    </div>
+                  {/* Icon at top right corner */}
+                  <div className={`${stat.color} absolute top-0 right-0 p-3 sm:p-4 rounded-bl-2xl`}>
+                    <Icon className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
+                  </div>
+                  
+                  {/* Content */}
+                  <div className="relative pr-12 sm:pr-16">
+                    <p className="text-gray-600 text-xs sm:text-sm font-medium mb-3">{stat.title}</p>
+                    <p className="text-lg sm:text-xl lg:text-2xl font-bold text-gray-800 break-words leading-tight">{stat.value}</p>
                   </div>
                 </div>
               )
@@ -358,16 +360,17 @@ export default function Dashboard() {
               <Link
                 key={stat.title}
                 href={stat.href}
-                className="bg-white rounded-lg shadow-md p-4 sm:p-6 hover:shadow-lg transition-shadow"
+                className="bg-white rounded-lg shadow-md p-4 sm:p-5 md:p-6 hover:shadow-lg active:scale-[0.98] transition-all relative overflow-hidden"
               >
-                <div className="flex items-center justify-between">
-                  <div className="flex-1 min-w-0">
-                    <p className="text-gray-600 text-xs sm:text-sm font-medium truncate">{stat.title}</p>
-                    <p className="text-2xl sm:text-3xl font-bold text-gray-800 mt-1 sm:mt-2">{stat.value}</p>
-                  </div>
-                  <div className={`${stat.color} p-3 sm:p-4 rounded-full flex-shrink-0 ml-3`}>
-                    <Icon className="w-6 h-6 sm:w-8 sm:h-8 text-white" />
-                  </div>
+                {/* Icon at top right corner */}
+                <div className={`${stat.color} absolute top-0 right-0 p-3 sm:p-4 rounded-bl-2xl`}>
+                  <Icon className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
+                </div>
+                
+                {/* Content */}
+                <div className="relative pr-12 sm:pr-16">
+                  <p className="text-gray-600 text-xs sm:text-sm font-medium mb-3">{stat.title}</p>
+                  <p className="text-lg sm:text-xl lg:text-2xl font-bold text-gray-800 break-words leading-tight">{stat.value}</p>
                 </div>
               </Link>
             )
@@ -376,11 +379,11 @@ export default function Dashboard() {
       )}
 
       {/* Analytics Cards */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6 mb-6 sm:mb-8">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 md:gap-5 lg:gap-6 mb-4 sm:mb-5 md:mb-6 lg:mb-8">
         {analyticsCards.map((card) => {
           const Icon = card.icon
           return (
-            <div key={card.title} className="bg-white rounded-lg shadow-md p-4 sm:p-6">
+            <div key={card.title} className="bg-white rounded-lg shadow-md p-4 sm:p-5 md:p-6">
               <div className="flex items-center gap-3 mb-4">
                 <div className="bg-primary-100 p-2 rounded-lg">
                   <Icon className="w-5 h-5 text-primary-600" />
@@ -407,28 +410,28 @@ export default function Dashboard() {
       </div>
 
       {/* Quick Links */}
-      <div className="bg-white rounded-lg shadow-md p-4 sm:p-6">
-        <h2 className="text-lg sm:text-xl font-bold text-gray-800 mb-4">Quick Actions</h2>
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
-          <Link href="/customers" className="p-3 bg-primary-50 rounded-lg hover:bg-primary-100 transition-colors text-center">
-            <FaUsers className="w-6 h-6 text-primary-600 mx-auto mb-2" />
-            <p className="text-xs font-medium text-gray-700">Customers</p>
+      <div className="bg-white rounded-lg shadow-md p-4 sm:p-5 md:p-6">
+        <h2 className="text-base sm:text-lg md:text-xl font-bold text-gray-800 mb-3 sm:mb-4">Quick Actions</h2>
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2 sm:gap-3 md:gap-4">
+          <Link href="/customers" className="p-3 sm:p-4 bg-primary-50 rounded-lg hover:bg-primary-100 active:scale-95 transition-all text-center touch-manipulation">
+            <FaUsers className="w-5 h-5 sm:w-6 sm:h-6 text-primary-600 mx-auto mb-1.5 sm:mb-2" />
+            <p className="text-xs sm:text-sm font-medium text-gray-700">Customers</p>
           </Link>
-          <Link href="/orders" className="p-3 bg-accent-50 rounded-lg hover:bg-accent-100 transition-colors text-center">
-            <FaShoppingCart className="w-6 h-6 text-accent-600 mx-auto mb-2" />
-            <p className="text-xs font-medium text-gray-700">New Order</p>
+          <Link href="/orders" className="p-3 sm:p-4 bg-accent-50 rounded-lg hover:bg-accent-100 active:scale-95 transition-all text-center touch-manipulation">
+            <FaShoppingCart className="w-5 h-5 sm:w-6 sm:h-6 text-accent-600 mx-auto mb-1.5 sm:mb-2" />
+            <p className="text-xs sm:text-sm font-medium text-gray-700">New Order</p>
           </Link>
-          <Link href="/orders/history" className="p-3 bg-blue-50 rounded-lg hover:bg-blue-100 transition-colors text-center">
-            <FaFileInvoiceDollar className="w-6 h-6 text-blue-600 mx-auto mb-2" />
-            <p className="text-xs font-medium text-gray-700">Orders</p>
+          <Link href="/orders/history" className="p-3 sm:p-4 bg-blue-50 rounded-lg hover:bg-blue-100 active:scale-95 transition-all text-center touch-manipulation">
+            <FaFileInvoiceDollar className="w-5 h-5 sm:w-6 sm:h-6 text-blue-600 mx-auto mb-1.5 sm:mb-2" />
+            <p className="text-xs sm:text-sm font-medium text-gray-700">Orders</p>
           </Link>
-          <Link href="/bills" className="p-3 bg-green-50 rounded-lg hover:bg-green-100 transition-colors text-center">
-            <FaFileInvoiceDollar className="w-6 h-6 text-green-600 mx-auto mb-2" />
-            <p className="text-xs font-medium text-gray-700">Bills</p>
+          <Link href="/bills" className="p-3 sm:p-4 bg-green-50 rounded-lg hover:bg-green-100 active:scale-95 transition-all text-center touch-manipulation">
+            <FaFileInvoiceDollar className="w-5 h-5 sm:w-6 sm:h-6 text-green-600 mx-auto mb-1.5 sm:mb-2" />
+            <p className="text-xs sm:text-sm font-medium text-gray-700">Bills</p>
           </Link>
-          <Link href="/expenses" className="p-3 bg-red-50 rounded-lg hover:bg-red-100 transition-colors text-center">
-            <FaMoneyBillWave className="w-6 h-6 text-red-600 mx-auto mb-2" />
-            <p className="text-xs font-medium text-gray-700">Expenses</p>
+          <Link href="/expenses" className="p-3 sm:p-4 bg-red-50 rounded-lg hover:bg-red-100 active:scale-95 transition-all text-center touch-manipulation">
+            <FaMoneyBillWave className="w-5 h-5 sm:w-6 sm:h-6 text-red-600 mx-auto mb-1.5 sm:mb-2" />
+            <p className="text-xs sm:text-sm font-medium text-gray-700">Expenses</p>
           </Link>
         </div>
       </div>

@@ -10,29 +10,41 @@ import {
   FaShoppingCart, 
   FaFileInvoiceDollar,
   FaUserTie,
-  FaBars,
-  FaTimes,
+  FaChevronLeft,
+  FaChevronRight,
   FaMoneyBillWave,
   FaSignOutAlt,
   FaUserShield,
   FaBox,
-  FaWarehouse
+  FaWarehouse,
+  FaHistory,
+  FaUserCircle
 } from 'react-icons/fa'
-import Logo from '@/components/Logo'
 import { clearAuth, isSuperAdmin, getUserRole } from '@/lib/auth'
 
+// Menu items organized by catering management workflow
 const menuItems = [
-  { href: '/', icon: FaHome, label: 'Home' },
-  { href: '/customers', icon: FaUsers, label: 'Customers' },
-  { href: '/menu', icon: FaUtensils, label: 'Menu' },
-  { href: '/orders', icon: FaShoppingCart, label: 'Create Order' },
-  { href: '/orders/history', icon: FaShoppingCart, label: 'Orders History' },
-  { href: '/bills', icon: FaFileInvoiceDollar, label: 'Bills' },
-  { href: '/expenses', icon: FaMoneyBillWave, label: 'Expenses', hideForRole: 'admin' },
-  { href: '/workforce', icon: FaUserTie, label: 'Workforce', requiredRole: 'super_admin' },
-  { href: '/users', icon: FaUserShield, label: 'User Management', requiredRole: 'super_admin' },
-  { href: '/stock', icon: FaBox, label: 'Stock', hideForRole: 'admin' },
-  { href: '/inventory', icon: FaWarehouse, label: 'Inventory', hideForRole: 'admin' },
+  // 1. Core Business Operations - Order Management Flow
+  { href: '/', icon: FaHome, label: 'Dashboard', section: 'core' },
+  { href: '/customers', icon: FaUsers, label: 'Customers', section: 'core' },
+  { href: '/menu', icon: FaUtensils, label: 'Menu', section: 'core' },
+  { href: '/orders', icon: FaShoppingCart, label: 'Create Order', section: 'core' },
+  { href: '/orders/history', icon: FaHistory, label: 'Order History', section: 'core' },
+  { href: '/bills', icon: FaFileInvoiceDollar, label: 'Bills', section: 'core' },
+  
+  // 2. Financial Management
+  { href: '/expenses', icon: FaMoneyBillWave, label: 'Expenses', hideForRole: 'admin', section: 'financial' },
+  { href: '/workforce', icon: FaUserTie, label: 'Workforce', requiredRole: 'super_admin', section: 'financial' },
+  
+  // 3. Inventory & Stock Management
+  { href: '/stock', icon: FaBox, label: 'Stock', hideForRole: 'admin', section: 'inventory' },
+  { href: '/inventory', icon: FaWarehouse, label: 'Inventory', hideForRole: 'admin', section: 'inventory' },
+  
+  // 4. System Administration
+  { href: '/users', icon: FaUserShield, label: 'User Management', requiredRole: 'super_admin', section: 'system' },
+  
+  // 5. Profile
+  { href: '/profile', icon: FaUserCircle, label: 'Profile', section: 'profile' },
 ]
 
 export default function Sidebar() {
@@ -76,10 +88,14 @@ export default function Sidebar() {
       {/* Mobile Menu Button */}
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="lg:hidden fixed top-4 left-4 z-50 bg-gray-900 text-white p-3 rounded-lg shadow-lg hover:bg-gray-800 transition-colors"
+        className="lg:hidden fixed top-4 left-0 z-50 bg-gray-900 text-white p-3 rounded-r-lg shadow-lg hover:bg-gray-800 active:scale-95 transition-all touch-manipulation"
         aria-label="Toggle menu"
       >
-        {isOpen ? <FaTimes className="w-6 h-6" /> : <FaBars className="w-6 h-6" />}
+        {isOpen ? (
+          <FaChevronLeft className="w-5 h-5 transition-transform" />
+        ) : (
+          <FaChevronRight className="w-5 h-5 transition-transform" />
+        )}
       </button>
 
       {/* Overlay for mobile */}
@@ -100,44 +116,87 @@ export default function Sidebar() {
           flex flex-col h-screen
         `}
       >
-        {/* Logo Section - Fixed at top */}
-        <div className="w-full border-b border-gray-800 flex-shrink-0 bg-gray-900 flex items-center justify-center py-4">
-          <div className="w-full px-4">
-            <Logo variant="icon" size="lg" className="w-full" />
+        {/* Brand Section - Fixed at top */}
+        <div className="w-full border-b border-gray-800 flex-shrink-0 bg-gray-900 flex items-center justify-center py-6">
+          <div className="text-center">
+            <div className="text-3xl font-bold text-white tracking-wide">SKC</div>
+            <div className="text-xs text-gray-400 mt-1 font-medium">CATERERS</div>
           </div>
         </div>
         
         {/* Navigation Menu - Scrollable */}
         <nav className="flex-1 overflow-y-auto overflow-x-hidden py-4 min-h-0">
           <div className="space-y-1 px-3">
-            {menuItems.map((item) => {
-              // Filter menu items based on role
-              if ('requiredRole' in item && item.requiredRole === 'super_admin' && !isSuperAdminUser) {
-                return null
+            {(() => {
+              // Filter menu items based on role first
+              const filteredItems = menuItems.filter((item) => {
+                if ('requiredRole' in item && item.requiredRole === 'super_admin' && !isSuperAdminUser) {
+                  return false
+                }
+                if ('hideForRole' in item && item.hideForRole === userRole) {
+                  return false
+                }
+                return true
+              })
+
+              // Group items by section
+              const sections = {
+                core: filteredItems.filter(item => item.section === 'core'),
+                financial: filteredItems.filter(item => item.section === 'financial'),
+                inventory: filteredItems.filter(item => item.section === 'inventory'),
+                system: filteredItems.filter(item => item.section === 'system'),
+                profile: filteredItems.filter(item => item.section === 'profile'),
               }
 
-              // Hide items for specific roles (e.g., hide expenses/stock/inventory for admin)
-              if ('hideForRole' in item && item.hideForRole === userRole) {
-                return null
+              const sectionTitles: Record<string, string> = {
+                core: 'Order Management',
+                financial: 'Financial Management',
+                inventory: 'Stock & Inventory',
+                system: 'System Administration',
+                profile: 'My Account',
               }
 
-              const Icon = item.icon
-              const isActive = pathname === item.href
-              
-              return (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  className={`flex items-center px-4 py-3 rounded-lg text-gray-300 hover:bg-gray-800 hover:text-white transition-all duration-200 ${
-                    isActive ? 'bg-gray-800 text-white shadow-md border-l-4 border-primary-500 font-semibold' : ''
-                  }`}
-                  onClick={() => setIsOpen(false)}
-                >
-                  <Icon className="w-5 h-5 mr-3 flex-shrink-0" />
-                  <span className="font-medium text-sm">{item.label}</span>
-                </Link>
-              )
-            })}
+              const sectionOrder = ['core', 'financial', 'inventory', 'system', 'profile']
+
+              return sectionOrder.map((sectionKey, index) => {
+                const items = sections[sectionKey as keyof typeof sections]
+                if (items.length === 0) return null
+
+                return (
+                  <div key={sectionKey}>
+                    {/* Section Header */}
+                    <div className="px-4 py-2 mb-1">
+                      <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                        {sectionTitles[sectionKey]}
+                      </span>
+                    </div>
+                    {/* Section Items */}
+                    {items.map((item) => {
+                      const Icon = item.icon
+                      const isActive = pathname === item.href
+                      
+                      return (
+                        <Link
+                          key={item.href}
+                          href={item.href}
+                          className={`flex items-center px-4 py-3 rounded-lg text-gray-300 hover:bg-gray-800 hover:text-white transition-all duration-200 ${
+                            isActive ? 'bg-gray-800 text-white shadow-md border-l-4 border-primary-500 font-semibold' : ''
+                          }`}
+                          onClick={() => setIsOpen(false)}
+                        >
+                          <Icon className="w-5 h-5 mr-3 flex-shrink-0" />
+                          <span className="font-medium text-sm">{item.label}</span>
+                        </Link>
+                      )
+                    })}
+                    {/* Section Separator */}
+                    {index < sectionOrder.length - 1 && (
+                      <div className="mx-4 my-3 border-t border-gray-800"></div>
+                    )}
+                  </div>
+                )
+              })
+            })()}
           </div>
         </nav>
         
