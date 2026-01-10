@@ -69,6 +69,20 @@ export default function BillsPage() {
     const order = bill.order
     const customer = order?.customer
 
+    // Convert logo to base64 data URL
+    let logoDataUrl = ''
+    try {
+      const logoResponse = await fetch('/logo.png')
+      const logoBlob = await logoResponse.blob()
+      const reader = new FileReader()
+      logoDataUrl = await new Promise((resolve) => {
+        reader.onloadend = () => resolve(reader.result as string)
+        reader.readAsDataURL(logoBlob)
+      })
+    } catch (error) {
+      console.error('Failed to load logo:', error)
+    }
+
     // Create a temporary HTML element to render properly
     const tempDiv = document.createElement('div')
     tempDiv.style.position = 'absolute'
@@ -93,11 +107,13 @@ export default function BillsPage() {
       <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
       <style>
         * { font-family: 'Poppins', sans-serif !important; }
-        .header { text-align: center; margin-bottom: 30px; padding-bottom: 20px; border-bottom: 3px solid #1a1a1a; }
-        .header-top { display: flex; justify-content: space-between; font-size: 10px; margin-bottom: 12px; color: #555; }
-        .header-main { font-size: 36px; font-weight: 800; margin: 18px 0 10px 0; letter-spacing: 3px; color: #1a1a1a; }
-        .header-subtitle { font-size: 16px; color: #666; margin-bottom: 14px; font-style: italic; font-weight: 500; }
-        .header-details { font-size: 10px; line-height: 1.8; color: #444; margin-top: 12px; }
+        .header { text-align: center; margin-bottom: 30px; padding-bottom: 20px; border-bottom: 3px solid #1a1a1a; background: #1e3a8a; padding: 20px; border-radius: 8px; }
+        .header-logo-container { width: 100%; margin-bottom: 15px; display: block; }
+        .header-logo { width: 100%; height: auto; display: block; }
+        .header-top { display: flex; justify-content: space-between; font-size: 10px; margin-bottom: 12px; color: #fff; }
+        .header-main { font-size: 36px; font-weight: 800; margin: 18px 0 10px 0; letter-spacing: 3px; color: #fff; }
+        .header-subtitle { font-size: 16px; color: #fff; margin-bottom: 14px; font-style: italic; font-weight: 500; }
+        .header-details { font-size: 10px; line-height: 1.8; color: #fff; margin-top: 12px; }
         .header-details div { margin-bottom: 4px; }
         .bill-info { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 25px; padding: 15px; background: #f9fafb; border-radius: 8px; }
         .bill-number { font-size: 18px; font-weight: 700; color: #1a1a1a; }
@@ -124,6 +140,11 @@ export default function BillsPage() {
       </style>
       
       <div class="header">
+        ${logoDataUrl ? `
+        <div class="header-logo-container">
+          <img src="${logoDataUrl}" alt="SKC Caterers Logo" class="header-logo" />
+        </div>
+        ` : ''}
         <div class="header-top">
           <div>Telidevara Rajendraprasad</div>
           <div>ART FOOD ZONE (A Food Caterers)</div>

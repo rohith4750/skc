@@ -24,6 +24,9 @@ export default function OrdersPage() {
   const [loadingOrder, setLoadingOrder] = useState(false)
   const [currentOrderSupervisorId, setCurrentOrderSupervisorId] = useState<string>('')
   const [currentOrderStatus, setCurrentOrderStatus] = useState<string>('pending')
+  const [customerSearchTerm, setCustomerSearchTerm] = useState<string>('')
+  const [showCustomerDropdown, setShowCustomerDropdown] = useState<boolean>(false)
+  const customerSearchRef = useRef<HTMLDivElement>(null)
   
   const [formData, setFormData] = useState({
     customerId: '',
@@ -56,6 +59,36 @@ export default function OrdersPage() {
       loadOrderData(editOrderId)
     }
   }, [isEditMode, editOrderId, customers.length, menuItems.length])
+
+  // Close customer dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (customerSearchRef.current && !customerSearchRef.current.contains(event.target as Node)) {
+        setShowCustomerDropdown(false)
+      }
+    }
+
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside)
+    }
+  }, [])
+
+  // Filter customers based on search term
+  const filteredCustomers = useMemo(() => {
+    if (!customerSearchTerm.trim()) return customers
+    const searchLower = customerSearchTerm.toLowerCase()
+    return customers.filter(customer =>
+      customer.name.toLowerCase().includes(searchLower) ||
+      customer.phone.includes(customerSearchTerm) ||
+      customer.email.toLowerCase().includes(searchLower)
+    )
+  }, [customers, customerSearchTerm])
+
+  // Get selected customer details
+  const selectedCustomer = useMemo(() => {
+    return customers.find(c => c.id === formData.customerId)
+  }, [customers, formData.customerId])
 
   const loadData = async () => {
     try {
@@ -349,10 +382,10 @@ export default function OrdersPage() {
   // Get unique subcategories for a specific menu type
   const getAvailableSubcategories = (menuType: string) => {
     if (!menuType) return []
-    // When lunch is selected, also include sweets for subcategories
+    // When lunch or dinner is selected, also include sweets for subcategories
     const categoryItems = menuItems.filter(item => {
       const itemType = item.type.toLowerCase()
-      if (menuType.toLowerCase() === 'lunch') {
+      if (menuType.toLowerCase() === 'lunch' || menuType.toLowerCase() === 'dinner') {
         return itemType === 'lunch' || itemType === 'sweets'
       }
       return itemType === menuType.toLowerCase()
@@ -437,10 +470,10 @@ export default function OrdersPage() {
   const getFilteredMenuItems = (mealTypeId: string, menuType: string) => {
     if (!menuType) return []
     
-    // When lunch is selected, also include sweets
+    // When lunch or dinner is selected, also include sweets and show lunch items
     let filtered = menuItems.filter((m: any) => {
       const itemType = m.type.toLowerCase()
-      if (menuType.toLowerCase() === 'lunch') {
+      if (menuType.toLowerCase() === 'lunch' || menuType.toLowerCase() === 'dinner') {
         return itemType === 'lunch' || itemType === 'sweets'
       }
       return itemType === menuType.toLowerCase()
@@ -497,19 +530,74 @@ export default function OrdersPage() {
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 Customer *
               </label>
-              <select
-                required
-                value={formData.customerId}
-                onChange={(e: any) => setFormData({ ...formData, customerId: e.target.value })}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-              >
-                <option value="">Select Customer</option>
-                {customers.map((customer: any) => (
-                  <option key={customer.id} value={customer.id}>
-                    {customer.name} - {customer.phone}
-                  </option>
-                ))}
-              </select>
+              <div ref={customerSearchRef} className="relative">
+                <div className="relative">
+                  <FaSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
+                  <input
+                    type="text"
+                    required
+                    value={selectedCustomer ? `${selectedCustomer.name} - ${selectedCustomer.phone}` : customerSearchTerm}
+                    onChange={(e) => {
+                      setCustomerSearchTerm(e.target.value)
+                      setShowCustomerDropdown(true)
+                      if (selectedCustomer) {
+                        setFormData({ ...formData, customerId: '' })
+                      }
+                    }}
+                    onFocus={() => setShowCustomerDropdown(true)}
+                    placeholder="Search customer by name, phone, or email..."
+                    className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                  />
+                  {formData.customerId && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setFormData({ ...formData, customerId: '' })
+                        setCustomerSearchTerm('')
+                        setShowCustomerDropdown(false)
+                      }}
+                      className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 text-xl"
+                    >
+                      ×
+                    </button>
+                  )}
+                </div>
+                {showCustomerDropdown && filteredCustomers.length > 0 && (
+                  <div className="absolute z-50 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-60 overflow-auto">
+                    {filteredCustomers.map((customer: Customer) => (
+                      <div
+                        key={customer.id}
+                        onClick={() => {
+                          setFormData({ ...formData, customerId: customer.id })
+                          setCustomerSearchTerm('')
+                          setShowCustomerDropdown(false)
+                        }}
+                        className={`px-4 py-2 hover:bg-primary-50 cursor-pointer ${
+                          formData.customerId === customer.id ? 'bg-primary-100' : ''
+                        }`}
+                      >
+                        <div className="font-medium text-gray-900">{customer.name}</div>
+                        <div className="text-sm text-gray-500">{customer.phone}</div>
+                        {customer.email && (
+                          <div className="text-xs text-gray-400">{customer.email}</div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+                {showCustomerDropdown && customerSearchTerm && filteredCustomers.length === 0 && (
+                  <div className="absolute z-50 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg p-4 text-center text-gray-500">
+                    No customers found
+                  </div>
+                )}
+              </div>
+              {formData.customerId && selectedCustomer && (
+                <input
+                  type="hidden"
+                  value={formData.customerId}
+                  required
+                />
+              )}
             </div>
 
             {/* Event Name */}
@@ -585,6 +673,7 @@ export default function OrdersPage() {
                                 <option value="dinner">Dinner</option>
                                 <option value="snacks">Snacks</option>
                                 <option value="sweets">Sweets</option>
+                                <option value="saree">Saree</option>
                               </select>
                             </div>
                             <div>

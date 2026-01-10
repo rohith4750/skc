@@ -25,19 +25,25 @@ export async function POST(request: NextRequest) {
   try {
     const data = await request.json()
     
+    // Convert amounts to numbers to ensure proper type
+    const totalAmount = parseFloat(data.totalAmount) || 0
+    const advancePaid = parseFloat(data.advancePaid) || 0
+    const remainingAmount = parseFloat(data.remainingAmount) || (totalAmount - advancePaid)
+    const discount = parseFloat(data.discount) || 0
+    
     // Build order data, only include supervisorId if it has a valid value
     const orderData: any = {
       customerId: data.customerId,
-      totalAmount: data.totalAmount,
-      advancePaid: data.advancePaid,
-      remainingAmount: data.remainingAmount,
+      totalAmount: totalAmount,
+      advancePaid: advancePaid,
+      remainingAmount: remainingAmount,
       status: data.status || 'pending',
       eventName: data.eventName || null,
       services: data.services && Array.isArray(data.services) && data.services.length > 0 ? data.services : null,
       numberOfMembers: data.numberOfMembers || null,
       mealTypeAmounts: data.mealTypeAmounts && Object.keys(data.mealTypeAmounts).length > 0 ? data.mealTypeAmounts : null,
       stalls: data.stalls && Array.isArray(data.stalls) && data.stalls.length > 0 ? data.stalls : null,
-      discount: data.discount || 0,
+      discount: discount,
       items: {
         create: data.items.map((item: any) => ({
           menuItemId: item.menuItemId,
@@ -71,11 +77,11 @@ export async function POST(request: NextRequest) {
       const bill = await tx.bill.create({
         data: {
           orderId: order.id,
-          totalAmount: data.totalAmount,
-          advancePaid: data.advancePaid,
-          remainingAmount: data.remainingAmount,
-          paidAmount: data.advancePaid,
-          status: data.remainingAmount > 0 ? (data.advancePaid > 0 ? 'partial' : 'pending') : 'paid',
+          totalAmount: totalAmount,
+          advancePaid: advancePaid,
+          remainingAmount: remainingAmount,
+          paidAmount: advancePaid,
+          status: remainingAmount > 0 ? (advancePaid > 0 ? 'partial' : 'pending') : 'paid',
         }
       })
 

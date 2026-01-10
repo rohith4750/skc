@@ -369,28 +369,46 @@ export default function WorkforcePage() {
     {
       key: 'totalAmount',
       header: 'Total / Paid',
-      render: (member: Workforce) => (
-        <div className="flex flex-col gap-1">
-          <div className="flex items-center gap-2">
-            <FaDollarSign className="text-gray-600" />
-            <span className="font-semibold text-gray-700">
-              {formatCurrency(member.totalAmount || 0)}
-            </span>
+      render: (member: Workforce) => {
+        const totalAmount = member.totalAmount || 0
+        const totalPaidAmount = member.totalPaidAmount || 0
+        const remainingBalance = totalAmount - totalPaidAmount
+        
+        return (
+          <div className="flex flex-col gap-1">
+            <div className="flex items-center gap-2">
+              <FaDollarSign className="text-gray-600" />
+              <span className="font-semibold text-gray-700">
+                {formatCurrency(totalAmount)}
+              </span>
+            </div>
+            <div className="flex items-center gap-2">
+              <FaCheckCircle className="text-green-600" />
+              <span className="text-sm font-medium text-green-700">
+                {formatCurrency(totalPaidAmount)} paid
+              </span>
+            </div>
+            {remainingBalance > 0 && (
+              <div className="flex items-center gap-2">
+                <FaExclamationCircle className="text-orange-600" />
+                <span className="text-sm font-medium text-orange-700">
+                  {formatCurrency(remainingBalance)} remaining
+                </span>
+              </div>
+            )}
           </div>
-          <div className="flex items-center gap-2">
-            <FaCheckCircle className="text-green-600" />
-            <span className="text-sm font-medium text-green-700">
-              {formatCurrency(member.totalPaidAmount || 0)} paid
-            </span>
-          </div>
-        </div>
-      ),
+        )
+      },
     },
     {
       key: 'paymentStatus',
       header: 'Payment Status',
       render: (member: Workforce) => {
         const status = member.overallPaymentStatus || 'pending'
+        const totalAmount = member.totalAmount || 0
+        const totalPaidAmount = member.totalPaidAmount || 0
+        const remainingAmount = totalAmount - totalPaidAmount
+        
         const statusConfig = {
           paid: { color: 'bg-green-100 text-green-800', icon: FaCheckCircle, label: 'Paid' },
           partial: { color: 'bg-yellow-100 text-yellow-800', icon: FaExclamationCircle, label: 'Partial' },
@@ -405,11 +423,10 @@ export default function WorkforcePage() {
               <Icon className="text-xs" />
               {config.label}
             </span>
-            {member.pendingExpenses! > 0 && (
-              <span className="text-xs text-red-600">{member.pendingExpenses} pending</span>
-            )}
-            {member.partialExpenses! > 0 && (
-              <span className="text-xs text-yellow-600">{member.partialExpenses} partial</span>
+            {(status === 'pending' || status === 'partial') && remainingAmount > 0 && (
+              <span className="text-xs text-orange-600 font-medium">
+                Remaining: {formatCurrency(remainingAmount)}
+              </span>
             )}
           </div>
         )
@@ -786,9 +803,14 @@ export default function WorkforcePage() {
                                     </div>
                                     <div className="text-right">
                                       <p className="font-semibold text-gray-800">{formatCurrency(expense.amount)}</p>
-                                      {expense.paidAmount !== undefined && expense.paidAmount !== expense.amount && (
+                                      {expense.paidAmount !== undefined && expense.paidAmount > 0 && (
                                         <p className="text-sm text-green-600 font-medium">
                                           Paid: {formatCurrency(expense.paidAmount || 0)}
+                                        </p>
+                                      )}
+                                      {expense.paidAmount !== undefined && expense.paidAmount < expense.amount && (
+                                        <p className="text-sm text-orange-600 font-medium">
+                                          Remaining: {formatCurrency(expense.amount - (expense.paidAmount || 0))}
                                         </p>
                                       )}
                                       {expense.paymentStatus && (

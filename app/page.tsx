@@ -18,9 +18,14 @@ import {
   FaArrowUp,
   FaArrowDown
 } from 'react-icons/fa'
-import { isSuperAdmin } from '@/lib/auth'
+import { isSuperAdmin, getUserRole } from '@/lib/auth'
 
 export default function Dashboard() {
+  const [userRole, setUserRole] = useState<string | null>(null)
+
+  useEffect(() => {
+    setUserRole(getUserRole())
+  }, [])
   const [stats, setStats] = useState({
     customers: 0,
     menuItems: 0,
@@ -206,6 +211,78 @@ export default function Dashboard() {
       ],
     },
   ]
+
+  // Simple landing page cards for admin users
+  const adminLandingCards = [
+    {
+      title: 'Customers',
+      description: 'Add new customer',
+      icon: FaUsers,
+      color: 'bg-blue-500 hover:bg-blue-600',
+      href: '/customers/create',
+    },
+    {
+      title: 'Create Order',
+      description: 'Create new orders',
+      icon: FaShoppingCart,
+      color: 'bg-green-500 hover:bg-green-600',
+      href: '/orders',
+    },
+    {
+      title: 'Orders History',
+      description: 'View all orders',
+      icon: FaShoppingCart,
+      color: 'bg-purple-500 hover:bg-purple-600',
+      href: '/orders/history',
+    },
+    {
+      title: 'Bills',
+      description: 'Manage bills and invoices',
+      icon: FaFileInvoiceDollar,
+      color: 'bg-orange-500 hover:bg-orange-600',
+      href: '/bills',
+    },
+    {
+      title: 'Menu',
+      description: 'Manage menu items',
+      icon: FaUtensils,
+      color: 'bg-red-500 hover:bg-red-600',
+      href: '/menu',
+    },
+  ]
+
+  // Simple landing page for admin users
+  if (userRole === 'admin' && !isSuperAdminUser) {
+    return (
+      <div className="p-4 sm:p-6 lg:p-8 pt-16 lg:pt-8 min-h-screen bg-gray-50">
+        <div className="mb-8">
+          <h1 className="text-3xl font-bold text-gray-800">Welcome</h1>
+          <p className="text-gray-600 mt-2">Select an option to continue</p>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 max-w-5xl">
+          {adminLandingCards.map((card) => {
+            const Icon = card.icon
+            return (
+              <Link
+                key={card.title}
+                href={card.href}
+                className="bg-white rounded-xl shadow-md hover:shadow-xl transition-all duration-200 p-6 group"
+              >
+                <div className="flex flex-col items-center text-center">
+                  <div className={`${card.color} p-4 rounded-full mb-4 group-hover:scale-110 transition-transform`}>
+                    <Icon className="w-8 h-8 text-white" />
+                  </div>
+                  <h3 className="text-xl font-bold text-gray-800 mb-2">{card.title}</h3>
+                  <p className="text-sm text-gray-600">{card.description}</p>
+                </div>
+              </Link>
+            )
+          })}
+        </div>
+      </div>
+    )
+  }
 
   if (loading) {
     return (

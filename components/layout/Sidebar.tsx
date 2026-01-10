@@ -19,30 +19,32 @@ import {
   FaWarehouse
 } from 'react-icons/fa'
 import Logo from '@/components/Logo'
-import { clearAuth, isSuperAdmin } from '@/lib/auth'
+import { clearAuth, isSuperAdmin, getUserRole } from '@/lib/auth'
 
 const menuItems = [
-  { href: '/', icon: FaHome, label: 'Dashboard' },
+  { href: '/', icon: FaHome, label: 'Home' },
   { href: '/customers', icon: FaUsers, label: 'Customers' },
   { href: '/menu', icon: FaUtensils, label: 'Menu' },
   { href: '/orders', icon: FaShoppingCart, label: 'Create Order' },
   { href: '/orders/history', icon: FaShoppingCart, label: 'Orders History' },
   { href: '/bills', icon: FaFileInvoiceDollar, label: 'Bills' },
-  { href: '/expenses', icon: FaMoneyBillWave, label: 'Expenses' },
+  { href: '/expenses', icon: FaMoneyBillWave, label: 'Expenses', hideForRole: 'admin' },
   { href: '/workforce', icon: FaUserTie, label: 'Workforce', requiredRole: 'super_admin' },
   { href: '/users', icon: FaUserShield, label: 'User Management', requiredRole: 'super_admin' },
-  { href: '/stock', icon: FaBox, label: 'Stock' },
-  { href: '/inventory', icon: FaWarehouse, label: 'Inventory' },
+  { href: '/stock', icon: FaBox, label: 'Stock', hideForRole: 'admin' },
+  { href: '/inventory', icon: FaWarehouse, label: 'Inventory', hideForRole: 'admin' },
 ]
 
 export default function Sidebar() {
   const pathname = usePathname()
   const [isOpen, setIsOpen] = useState(false)
   const [isSuperAdminUser, setIsSuperAdminUser] = useState(false)
+  const [userRole, setUserRole] = useState<string | null>(null)
 
   useEffect(() => {
     // Check role on mount and when pathname changes (in case user navigates after login)
     setIsSuperAdminUser(isSuperAdmin())
+    setUserRole(getUserRole())
   }, [pathname])
 
   // Close sidebar when route changes on mobile
@@ -99,8 +101,10 @@ export default function Sidebar() {
         `}
       >
         {/* Logo Section - Fixed at top */}
-        <div className="p-4 lg:p-6 border-b border-gray-800 flex-shrink-0 bg-gray-900 flex items-center justify-center">
-          <Logo variant="icon" size="lg" />
+        <div className="w-full border-b border-gray-800 flex-shrink-0 bg-gray-900 flex items-center justify-center py-4">
+          <div className="w-full px-4">
+            <Logo variant="icon" size="lg" className="w-full" />
+          </div>
         </div>
         
         {/* Navigation Menu - Scrollable */}
@@ -109,6 +113,11 @@ export default function Sidebar() {
             {menuItems.map((item) => {
               // Filter menu items based on role
               if ('requiredRole' in item && item.requiredRole === 'super_admin' && !isSuperAdminUser) {
+                return null
+              }
+
+              // Hide items for specific roles (e.g., hide expenses/stock/inventory for admin)
+              if ('hideForRole' in item && item.hideForRole === userRole) {
                 return null
               }
 

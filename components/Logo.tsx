@@ -78,6 +78,18 @@ export default function Logo({
       return <IconSVG className={imgClassName} />
     }
     
+    // If className includes w-full, use regular img tag to fill width
+    if (imgClassName && imgClassName.includes('w-full')) {
+      return (
+        <img
+          src="/logo.png"
+          alt="SKC Caterers Logo"
+          className={imgClassName}
+          onError={() => setImageError(true)}
+        />
+      )
+    }
+    
     return (
       <div className={`${imgClassName} relative`}>
         <Image
@@ -95,8 +107,8 @@ export default function Logo({
 
   if (variant === 'icon') {
     return (
-      <div className={`flex items-center ${className}`}>
-        <LogoImage className={sizeClasses[size]} />
+      <div className={`flex items-center justify-center w-full ${className}`}>
+        <LogoImage className={className.includes('w-full') ? 'w-full h-auto' : sizeClasses[size]} />
       </div>
     )
   }
