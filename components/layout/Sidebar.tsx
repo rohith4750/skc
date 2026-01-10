@@ -99,8 +99,8 @@ export default function Sidebar() {
         `}
       >
         {/* Logo Section - Fixed at top */}
-        <div className="p-4 lg:p-6 border-b border-gray-800 flex-shrink-0 bg-gray-900">
-          <Logo variant="compact" size="sm" textColor="white" />
+        <div className="p-4 lg:p-6 border-b border-gray-800 flex-shrink-0 bg-gray-900 flex items-center justify-center">
+          <Logo variant="icon" size="lg" />
         </div>
         
         {/* Navigation Menu - Scrollable */}

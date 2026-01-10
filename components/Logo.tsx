@@ -1,5 +1,8 @@
 'use client'
 
+import Image from 'next/image'
+import { useState } from 'react'
+
 interface LogoProps {
   className?: string
   showTagline?: boolean
@@ -15,10 +18,12 @@ export default function Logo({
   size = 'md',
   textColor = 'dark'
 }: LogoProps) {
+  const [imageError, setImageError] = useState(false)
+  
   const sizeClasses = {
-    sm: 'h-8',
-    md: 'h-12',
-    lg: 'h-16'
+    sm: 'h-8 w-8',
+    md: 'h-12 w-12',
+    lg: 'h-16 w-16'
   }
 
   const textSizes = {
@@ -34,7 +39,7 @@ export default function Logo({
 
   const colors = textColors[textColor]
 
-  // Icon SVG Component
+  // Icon SVG Component (fallback)
   const IconSVG = ({ className: svgClassName }: { className?: string }) => (
     <svg 
       className={svgClassName}
@@ -67,10 +72,31 @@ export default function Logo({
     </svg>
   )
 
+  // Logo Image Component
+  const LogoImage = ({ className: imgClassName }: { className?: string }) => {
+    if (imageError) {
+      return <IconSVG className={imgClassName} />
+    }
+    
+    return (
+      <div className={`${imgClassName} relative`}>
+        <Image
+          src="/logo.png"
+          alt="SKC Caterers Logo"
+          fill
+          className="object-contain"
+          onError={() => setImageError(true)}
+          priority
+          sizes="(max-width: 768px) 32px, 64px"
+        />
+      </div>
+    )
+  }
+
   if (variant === 'icon') {
     return (
       <div className={`flex items-center ${className}`}>
-        <IconSVG className={sizeClasses[size]} />
+        <LogoImage className={sizeClasses[size]} />
       </div>
     )
   }
@@ -78,8 +104,8 @@ export default function Logo({
   if (variant === 'compact') {
     return (
       <div className={`flex items-center gap-3 ${className}`}>
-        {/* Icon */}
-        <IconSVG className={sizeClasses[size]} />
+        {/* Logo Image */}
+        <LogoImage className={sizeClasses[size]} />
         {/* Text */}
         <div className="flex flex-col">
           <span className={`font-bold ${colors.main} ${textSizes[size].main}`}>
@@ -99,8 +125,8 @@ export default function Logo({
   return (
     <div className={`flex flex-col items-center ${className}`}>
       <div className="flex items-center gap-4">
-        {/* Icon */}
-        <IconSVG className={sizeClasses[size]} />
+        {/* Logo Image */}
+        <LogoImage className={sizeClasses[size]} />
         
         {/* Text */}
         <div className="flex flex-col">

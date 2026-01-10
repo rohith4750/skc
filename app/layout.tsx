@@ -14,6 +14,11 @@ const poppins = Poppins({
 export const metadata: Metadata = {
   title: 'SKC Caterers - Management System',
   description: 'SKC Caterers - Established 1989. Manage catering services, customers, orders, and bills',
+  icons: {
+    icon: '/logo.png',
+    shortcut: '/logo.png',
+    apple: '/logo.png',
+  },
 }
 
 export default function RootLayout({

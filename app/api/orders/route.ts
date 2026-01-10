@@ -51,37 +51,50 @@ export async function POST(request: NextRequest) {
       orderData.supervisorId = data.supervisorId
     }
     
-    const order = await prisma.order.create({
-      data: orderData,
-      include: {
-        customer: true,
-        supervisor: true,
-        items: {
-          include: {
-            menuItem: true
+    // Use transaction to ensure both order and bill are created together
+    const result = await prisma.$transaction(async (tx) => {
+      // Create order
+      const order = await tx.order.create({
+        data: orderData,
+        include: {
+          customer: true,
+          supervisor: true,
+          items: {
+            include: {
+              menuItem: true
+            }
           }
         }
-      }
+      })
+
+      // Create bill - this will fail if order creation succeeded but bill creation fails
+      const bill = await tx.bill.create({
+        data: {
+          orderId: order.id,
+          totalAmount: data.totalAmount,
+          advancePaid: data.advancePaid,
+          remainingAmount: data.remainingAmount,
+          paidAmount: data.advancePaid,
+          status: data.remainingAmount > 0 ? (data.advancePaid > 0 ? 'partial' : 'pending') : 'paid',
+        }
+      })
+
+      return { order, bill }
     })
 
-    // Create bill
-    const bill = await prisma.bill.create({
-      data: {
-        orderId: order.id,
-        totalAmount: data.totalAmount,
-        advancePaid: data.advancePaid,
-        remainingAmount: data.remainingAmount,
-        paidAmount: data.advancePaid,
-        status: data.remainingAmount > 0 ? (data.advancePaid > 0 ? 'partial' : 'pending') : 'paid',
-      }
-    })
-
-    return NextResponse.json({ order, bill })
+    return NextResponse.json(result)
   } catch (error: any) {
     console.error('Error creating order:', error)
+    console.error('Error details:', {
+      message: error.message,
+      code: error.code,
+      meta: error.meta,
+      stack: error.stack
+    })
     return NextResponse.json({ 
       error: 'Failed to create order', 
-      details: error.message || 'Unknown error' 
+      details: error.message || 'Unknown error',
+      code: error.code
     }, { status: 500 })
   }
 }
