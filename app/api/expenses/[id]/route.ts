@@ -32,19 +32,43 @@ export async function PUT(
 ) {
   try {
     const data = await request.json()
-    const expense = await prisma.expense.update({
+    
+    // Handle paidAmount - parse if provided (even if empty string)
+    let paidAmount: number | undefined = undefined
+    if (data.paidAmount !== undefined) {
+      paidAmount = data.paidAmount === '' ? 0 : (parseFloat(data.paidAmount) || 0)
+    }
+    
+    // Calculate payment status if paidAmount is provided
+    let paymentStatus = data.paymentStatus
+    if (paidAmount !== undefined && !paymentStatus) {
+      if (paidAmount === 0) {
+        paymentStatus = 'pending'
+      } else if (paidAmount >= data.amount) {
+        paymentStatus = 'paid'
+      } else {
+        paymentStatus = 'partial'
+      }
+    }
+    
+    // Build update data object, only including fields that are provided
+    const updateData: any = {}
+    
+    if (data.orderId !== undefined) updateData.orderId = data.orderId || null
+    if (data.category !== undefined) updateData.category = data.category
+    if (data.amount !== undefined) updateData.amount = data.amount
+    if (paidAmount !== undefined) updateData.paidAmount = paidAmount
+    if (paymentStatus) updateData.paymentStatus = paymentStatus
+    if (data.description !== undefined) updateData.description = data.description || null
+    if (data.recipient !== undefined) updateData.recipient = data.recipient || null
+    if (data.paymentDate !== undefined) updateData.paymentDate = data.paymentDate ? new Date(data.paymentDate) : new Date()
+    if (data.eventDate !== undefined) updateData.eventDate = data.eventDate ? new Date(data.eventDate) : null
+    if (data.notes !== undefined) updateData.notes = data.notes || null
+    if (data.calculationDetails !== undefined) updateData.calculationDetails = data.calculationDetails || null
+    
+    const expense = await (prisma as any).expense.update({
       where: { id: params.id },
-      data: {
-        orderId: data.orderId || null,
-        category: data.category,
-        amount: data.amount,
-        description: data.description || null,
-        recipient: data.recipient || null,
-        paymentDate: data.paymentDate ? new Date(data.paymentDate) : new Date(),
-        eventDate: data.eventDate ? new Date(data.eventDate) : null,
-        notes: data.notes || null,
-        calculationDetails: data.calculationDetails || null,
-      },
+      data: updateData,
       include: {
         order: {
           include: {
@@ -58,7 +82,8 @@ export async function PUT(
     console.error('Error updating expense:', error)
     return NextResponse.json({ 
       error: 'Failed to update expense', 
-      details: error.message || 'Unknown error' 
+      details: error.message || 'Unknown error',
+      code: error.code
     }, { status: 500 })
   }
 }

@@ -29,11 +29,28 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const data = await request.json()
+    
+    // Calculate payment status if not provided
+    const paidAmount = data.paidAmount !== undefined ? data.paidAmount : (data.amount || 0)
+    let paymentStatus = data.paymentStatus
+    
+    if (!paymentStatus) {
+      if (paidAmount === 0) {
+        paymentStatus = 'pending'
+      } else if (paidAmount >= data.amount) {
+        paymentStatus = 'paid'
+      } else {
+        paymentStatus = 'partial'
+      }
+    }
+    
     const expense = await prisma.expense.create({
       data: {
         orderId: data.orderId || null,
         category: data.category,
         amount: data.amount,
+        paidAmount: paidAmount,
+        paymentStatus: paymentStatus,
         description: data.description || null,
         recipient: data.recipient || null,
         paymentDate: data.paymentDate ? new Date(data.paymentDate) : new Date(),

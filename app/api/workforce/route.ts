@@ -39,15 +39,34 @@ export async function GET() {
         )
       })
 
-      // Calculate totals
-      const totalAmount = matchingExpenses.reduce((sum: number, exp: any) => sum + exp.amount, 0)
+      // Calculate totals and payment status
+      const totalAmount = matchingExpenses.reduce((sum: number, exp: any) => sum + (exp.amount || 0), 0)
+      const totalPaidAmount = matchingExpenses.reduce((sum: number, exp: any) => sum + (exp.paidAmount || 0), 0)
       const expenseCount = matchingExpenses.length
+      
+      // Calculate payment status summary
+      const pendingExpenses = matchingExpenses.filter((exp: any) => exp.paymentStatus === 'pending').length
+      const partialExpenses = matchingExpenses.filter((exp: any) => exp.paymentStatus === 'partial').length
+      const paidExpenses = matchingExpenses.filter((exp: any) => exp.paymentStatus === 'paid').length
+      
+      // Overall payment status for this member
+      let overallPaymentStatus = 'paid'
+      if (totalPaidAmount === 0) {
+        overallPaymentStatus = 'pending'
+      } else if (totalPaidAmount < totalAmount) {
+        overallPaymentStatus = 'partial'
+      }
 
       return {
         ...member,
         expenses: matchingExpenses,
         totalAmount,
+        totalPaidAmount,
         expenseCount,
+        pendingExpenses,
+        partialExpenses,
+        paidExpenses,
+        overallPaymentStatus,
       }
     })
 

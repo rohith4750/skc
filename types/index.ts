@@ -65,6 +65,8 @@ export interface Expense {
   order?: Order & { customer?: Customer }
   category: string
   amount: number
+  paidAmount?: number
+  paymentStatus?: 'pending' | 'partial' | 'paid'
   description?: string
   recipient?: string
   paymentDate: string

@@ -106,6 +106,8 @@ model Expense {
   order              Order?   @relation(fields: [orderId], references: [id], onDelete: SetNull)
   category           String   // supervisor, chef, labours, boys, transport, gas, pan, store, other
   amount             Float
+  paidAmount         Float    @default(0) // Actual amount paid (can be less than amount for partial payment)
+  paymentStatus      String   @default("pending") // pending, partial, paid
   description        String?
   recipient          String?  // Name of person/vendor receiving payment
   paymentDate        DateTime @default(now())

@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState, useMemo } from 'react'
-import { FaPlus, FaEdit, FaTrash, FaUtensils, FaUserTie, FaTruck, FaDollarSign, FaReceipt, FaChevronDown, FaChevronUp, FaUsers, FaUserFriends, FaFilter, FaSearch, FaTimes } from 'react-icons/fa'
+import { FaPlus, FaEdit, FaTrash, FaUtensils, FaUserTie, FaTruck, FaDollarSign, FaReceipt, FaChevronDown, FaChevronUp, FaUsers, FaUserFriends, FaFilter, FaSearch, FaTimes, FaCheckCircle, FaExclamationCircle, FaClock } from 'react-icons/fa'
 import toast from 'react-hot-toast'
 import Table from '@/components/Table'
 import ConfirmModal from '@/components/ConfirmModal'
@@ -16,7 +16,12 @@ interface Workforce {
   updatedAt: string
   expenses?: any[]
   totalAmount?: number
+  totalPaidAmount?: number
   expenseCount?: number
+  pendingExpenses?: number
+  partialExpenses?: number
+  paidExpenses?: number
+  overallPaymentStatus?: 'pending' | 'partial' | 'paid'
 }
 
 const roleIcons: Record<string, any> = {
@@ -257,14 +262,31 @@ export default function WorkforcePage() {
         })
         
         // Recalculate totals based on filtered expenses
-        const totalAmount = memberExpenses.reduce((sum: number, exp: any) => sum + exp.amount, 0)
+        const totalAmount = memberExpenses.reduce((sum: number, exp: any) => sum + (exp.amount || 0), 0)
+        const totalPaidAmount = memberExpenses.reduce((sum: number, exp: any) => sum + (exp.paidAmount || 0), 0)
         const expenseCount = memberExpenses.length
+        
+        const pendingExpenses = memberExpenses.filter((exp: any) => exp.paymentStatus === 'pending').length
+        const partialExpenses = memberExpenses.filter((exp: any) => exp.paymentStatus === 'partial').length
+        const paidExpenses = memberExpenses.filter((exp: any) => exp.paymentStatus === 'paid').length
+        
+        let overallPaymentStatus: 'pending' | 'partial' | 'paid' = 'paid'
+        if (totalPaidAmount === 0) {
+          overallPaymentStatus = 'pending'
+        } else if (totalPaidAmount < totalAmount) {
+          overallPaymentStatus = 'partial'
+        }
         
         return {
           ...member,
           expenses: memberExpenses,
           totalAmount,
+          totalPaidAmount,
           expenseCount,
+          pendingExpenses,
+          partialExpenses,
+          paidExpenses,
+          overallPaymentStatus,
         }
       }
       
@@ -346,15 +368,52 @@ export default function WorkforcePage() {
     },
     {
       key: 'totalAmount',
-      header: 'Total Payments',
+      header: 'Total / Paid',
       render: (member: Workforce) => (
-        <div className="flex items-center gap-2">
-          <FaDollarSign className="text-green-600" />
-          <span className="font-semibold text-green-700">
-            {formatCurrency(member.totalAmount || 0)}
-          </span>
+        <div className="flex flex-col gap-1">
+          <div className="flex items-center gap-2">
+            <FaDollarSign className="text-gray-600" />
+            <span className="font-semibold text-gray-700">
+              {formatCurrency(member.totalAmount || 0)}
+            </span>
+          </div>
+          <div className="flex items-center gap-2">
+            <FaCheckCircle className="text-green-600" />
+            <span className="text-sm font-medium text-green-700">
+              {formatCurrency(member.totalPaidAmount || 0)} paid
+            </span>
+          </div>
         </div>
       ),
+    },
+    {
+      key: 'paymentStatus',
+      header: 'Payment Status',
+      render: (member: Workforce) => {
+        const status = member.overallPaymentStatus || 'pending'
+        const statusConfig = {
+          paid: { color: 'bg-green-100 text-green-800', icon: FaCheckCircle, label: 'Paid' },
+          partial: { color: 'bg-yellow-100 text-yellow-800', icon: FaExclamationCircle, label: 'Partial' },
+          pending: { color: 'bg-red-100 text-red-800', icon: FaClock, label: 'Pending' },
+        }
+        const config = statusConfig[status] || statusConfig.pending
+        const Icon = config.icon
+        
+        return (
+          <div className="flex flex-col gap-1">
+            <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium ${config.color}`}>
+              <Icon className="text-xs" />
+              {config.label}
+            </span>
+            {member.pendingExpenses! > 0 && (
+              <span className="text-xs text-red-600">{member.pendingExpenses} pending</span>
+            )}
+            {member.partialExpenses! > 0 && (
+              <span className="text-xs text-yellow-600">{member.partialExpenses} partial</span>
+            )}
+          </div>
+        )
+      },
     },
     {
       key: 'isActive',
@@ -727,6 +786,23 @@ export default function WorkforcePage() {
                                     </div>
                                     <div className="text-right">
                                       <p className="font-semibold text-gray-800">{formatCurrency(expense.amount)}</p>
+                                      {expense.paidAmount !== undefined && expense.paidAmount !== expense.amount && (
+                                        <p className="text-sm text-green-600 font-medium">
+                                          Paid: {formatCurrency(expense.paidAmount || 0)}
+                                        </p>
+                                      )}
+                                      {expense.paymentStatus && (
+                                        <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium mt-1 ${
+                                          expense.paymentStatus === 'paid' ? 'bg-green-100 text-green-800' :
+                                          expense.paymentStatus === 'partial' ? 'bg-yellow-100 text-yellow-800' :
+                                          'bg-red-100 text-red-800'
+                                        }`}>
+                                          {expense.paymentStatus === 'paid' && <FaCheckCircle className="text-xs" />}
+                                          {expense.paymentStatus === 'partial' && <FaExclamationCircle className="text-xs" />}
+                                          {expense.paymentStatus === 'pending' && <FaClock className="text-xs" />}
+                                          {expense.paymentStatus.charAt(0).toUpperCase() + expense.paymentStatus.slice(1)}
+                                        </span>
+                                      )}
                                     </div>
                                   </div>
                                 </div>

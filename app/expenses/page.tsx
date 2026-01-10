@@ -17,6 +17,7 @@ import {
   FaTimes,
   FaCheckCircle,
   FaExclamationCircle,
+  FaClock,
   FaUsers,
   FaUtensils,
   FaTruck,
@@ -204,6 +205,39 @@ export default function ExpensesPage() {
     }
   }
 
+  const handleMarkAsPaid = async (expense: Expense) => {
+    try {
+      const response = await fetch(`/api/expenses/${expense.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          orderId: expense.orderId,
+          category: expense.category,
+          amount: expense.amount,
+          paidAmount: expense.amount,
+          paymentStatus: 'paid',
+          description: expense.description,
+          recipient: expense.recipient,
+          paymentDate: expense.paymentDate,
+          eventDate: expense.eventDate,
+          notes: expense.notes,
+          calculationDetails: expense.calculationDetails,
+        }),
+      })
+
+      if (!response.ok) {
+        const error = await response.json()
+        throw new Error(error.error || 'Failed to mark expense as paid')
+      }
+
+      await loadData()
+      toast.success('Expense marked as paid successfully!')
+    } catch (error: any) {
+      console.error('Failed to mark expense as paid:', error)
+      toast.error(error.message || 'Failed to mark expense as paid. Please try again.')
+    }
+  }
+
   const clearFilters = () => {
     setSelectedOrder('all')
     setSelectedCategory('all')
@@ -298,12 +332,33 @@ export default function ExpensesPage() {
     },
     {
       key: 'amount',
-      header: 'Amount',
-      accessor: (row: Expense) => (
-        <div className="text-right">
-          <span className="font-bold text-lg text-green-600">{formatCurrency(row.amount)}</span>
-        </div>
-      ),
+      header: 'Amount / Payment Status',
+      accessor: (row: Expense) => {
+        const paidAmount = row.paidAmount || 0
+        const paymentStatus = row.paymentStatus || 'pending'
+        const statusConfig = {
+          paid: { color: 'bg-green-100 text-green-800', icon: FaCheckCircle, label: 'Paid' },
+          partial: { color: 'bg-yellow-100 text-yellow-800', icon: FaExclamationCircle, label: 'Partial' },
+          pending: { color: 'bg-red-100 text-red-800', icon: FaClock, label: 'Pending' },
+        }
+        const config = statusConfig[paymentStatus] || statusConfig.pending
+        const Icon = config.icon
+        
+        return (
+          <div className="text-right">
+            <div className="font-bold text-lg text-green-600">{formatCurrency(row.amount)}</div>
+            {paidAmount > 0 && (
+              <div className="text-sm text-green-700 font-medium mt-1">
+                Paid: {formatCurrency(paidAmount)}
+              </div>
+            )}
+            <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium mt-1 ${config.color}`}>
+              <Icon className="text-xs" />
+              {config.label}
+            </span>
+          </div>
+        )
+      },
       className: 'text-right',
     },
   ]
@@ -554,24 +609,38 @@ export default function ExpensesPage() {
           onItemsPerPageChange={setItemsPerPage}
           itemName="expense"
           getItemId={(item: Expense) => item.id}
-          renderActions={(expense: Expense) => (
-            <div className="flex items-center gap-2">
-              <button
-                onClick={() => handleEdit(expense)}
-                className="p-2 text-primary-600 hover:bg-primary-50 rounded-lg transition-colors"
-                title="Edit"
-              >
-                <FaEdit />
-              </button>
-              <button
-                onClick={() => handleDelete(expense.id)}
-                className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                title="Delete"
-              >
-                <FaTrash />
-              </button>
-            </div>
-          )}
+          renderActions={(expense: Expense) => {
+            const paymentStatus = expense.paymentStatus || 'pending'
+            const isPaid = paymentStatus === 'paid'
+            
+            return (
+              <div className="flex items-center gap-2">
+                {!isPaid && (
+                  <button
+                    onClick={() => handleMarkAsPaid(expense)}
+                    className="p-2 text-green-600 hover:bg-green-50 rounded-lg transition-colors"
+                    title="Mark as Paid"
+                  >
+                    <FaCheckCircle />
+                  </button>
+                )}
+                <button
+                  onClick={() => handleEdit(expense)}
+                  className="p-2 text-primary-600 hover:bg-primary-50 rounded-lg transition-colors"
+                  title="Edit"
+                >
+                  <FaEdit />
+                </button>
+                <button
+                  onClick={() => handleDelete(expense.id)}
+                  className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                  title="Delete"
+                >
+                  <FaTrash />
+                </button>
+              </div>
+            )
+          }}
         />
       </div>
 

@@ -1,7 +1,6 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { Storage } from '@/lib/storage-api'
 import { formatCurrency, formatDateTime, formatDate } from '@/lib/utils'
 import { Order } from '@/types'
 import { FaTrash, FaFilePdf, FaChevronLeft, FaChevronRight, FaEdit } from 'react-icons/fa'
@@ -26,7 +25,9 @@ export default function OrdersHistoryPage() {
 
   const loadData = async () => {
     try {
-      const allOrders = await Storage.getOrders()
+      const response = await fetch('/api/orders')
+      if (!response.ok) throw new Error('Failed to fetch orders')
+      const allOrders = await response.json()
       setOrders(allOrders)
     } catch (error) {
       console.error('Failed to load data:', error)
@@ -47,7 +48,10 @@ export default function OrdersHistoryPage() {
   const confirmDelete = async () => {
     if (!deleteConfirm.id) return
     try {
-      await Storage.deleteOrder(deleteConfirm.id)
+      const response = await fetch(`/api/orders/${deleteConfirm.id}`, {
+        method: 'DELETE',
+      })
+      if (!response.ok) throw new Error('Failed to delete order')
       await loadData()
       toast.success('Order deleted successfully!')
       setDeleteConfirm({ isOpen: false, id: null })
@@ -55,6 +59,29 @@ export default function OrdersHistoryPage() {
       console.error('Failed to delete order:', error)
       toast.error('Failed to delete order. Please try again.')
       setDeleteConfirm({ isOpen: false, id: null })
+    }
+  }
+
+  const handleStatusChange = async (orderId: string, newStatus: string) => {
+    try {
+      const response = await fetch(`/api/orders/${orderId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          status: newStatus,
+        }),
+      })
+
+      if (!response.ok) {
+        const error = await response.json()
+        throw new Error(error.error || 'Failed to update status')
+      }
+
+      await loadData()
+      toast.success('Order status updated successfully!')
+    } catch (error: any) {
+      console.error('Failed to update status:', error)
+      toast.error(error.message || 'Failed to update order status. Please try again.')
     }
   }
 
@@ -321,14 +348,21 @@ export default function OrdersHistoryPage() {
                         </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <span className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                          order.status === 'completed' ? 'bg-green-100 text-green-800' :
-                          order.status === 'in-progress' ? 'bg-yellow-100 text-yellow-800' :
-                          order.status === 'cancelled' ? 'bg-red-100 text-red-800' :
-                          'bg-gray-100 text-gray-800'
-                        }`}>
-                          {order.status.charAt(0).toUpperCase() + order.status.slice(1).replace('-', ' ')}
-                        </span>
+                        <select
+                          value={order.status}
+                          onChange={(e) => handleStatusChange(order.id, e.target.value)}
+                          className={`px-3 py-1.5 text-xs font-semibold rounded-full border-0 cursor-pointer focus:ring-2 focus:ring-primary-500 focus:outline-none ${
+                            order.status === 'completed' ? 'bg-green-100 text-green-800 hover:bg-green-200' :
+                            order.status === 'in-progress' ? 'bg-yellow-100 text-yellow-800 hover:bg-yellow-200' :
+                            order.status === 'cancelled' ? 'bg-red-100 text-red-800 hover:bg-red-200' :
+                            'bg-gray-100 text-gray-800 hover:bg-gray-200'
+                          }`}
+                        >
+                          <option value="pending">Pending</option>
+                          <option value="in-progress">In Progress</option>
+                          <option value="completed">Completed</option>
+                          <option value="cancelled">Cancelled</option>
+                        </select>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                         {formatDateTime(order.createdAt)}

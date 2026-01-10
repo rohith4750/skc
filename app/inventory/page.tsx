@@ -19,6 +19,7 @@ import {
   FaTools,
 } from 'react-icons/fa'
 import toast from 'react-hot-toast'
+import Link from 'next/link'
 import Table from '@/components/Table'
 import ConfirmModal from '@/components/ConfirmModal'
 
@@ -78,21 +79,6 @@ export default function InventoryPage() {
   const [deleteConfirm, setDeleteConfirm] = useState<{ isOpen: boolean; id: string | null }>({
     isOpen: false,
     id: null,
-  })
-  const [showModal, setShowModal] = useState(false)
-  const [editingItem, setEditingItem] = useState<InventoryItem | null>(null)
-  const [formData, setFormData] = useState({
-    name: '',
-    category: 'glasses',
-    quantity: '',
-    unit: 'pieces',
-    condition: 'good',
-    location: '',
-    supplier: '',
-    purchaseDate: '',
-    purchasePrice: '',
-    description: '',
-    isActive: true,
   })
 
   useEffect(() => {
@@ -169,87 +155,6 @@ export default function InventoryPage() {
     return totals
   }, [filteredInventory])
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    
-    if (!formData.name || !formData.unit) {
-      toast.error('Please fill in all required fields')
-      return
-    }
-
-    try {
-      const inventoryData: any = {
-        name: formData.name,
-        category: formData.category,
-        quantity: parseInt(formData.quantity) || 0,
-        unit: formData.unit,
-        condition: formData.condition,
-        location: formData.location || null,
-        supplier: formData.supplier || null,
-        purchaseDate: formData.purchaseDate || null,
-        purchasePrice: formData.purchasePrice ? parseFloat(formData.purchasePrice) : null,
-        description: formData.description || null,
-        isActive: formData.isActive,
-      }
-
-      const url = editingItem?.id ? `/api/inventory/${editingItem.id}` : '/api/inventory'
-      const method = editingItem?.id ? 'PUT' : 'POST'
-
-      const response = await fetch(url, {
-        method,
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(inventoryData),
-      })
-
-      if (!response.ok) {
-        const error = await response.json()
-        throw new Error(error.error || 'Failed to save inventory item')
-      }
-
-      await loadData()
-      resetForm()
-      toast.success(editingItem ? 'Inventory item updated successfully!' : 'Inventory item added successfully!')
-    } catch (error: any) {
-      console.error('Failed to save inventory item:', error)
-      toast.error(error.message || 'Failed to save inventory item. Please try again.')
-    }
-  }
-
-  const resetForm = () => {
-    setFormData({
-      name: '',
-      category: 'glasses',
-      quantity: '',
-      unit: 'pieces',
-      condition: 'good',
-      location: '',
-      supplier: '',
-      purchaseDate: '',
-      purchasePrice: '',
-      description: '',
-      isActive: true,
-    })
-    setEditingItem(null)
-    setShowModal(false)
-  }
-
-  const handleEdit = (item: InventoryItem) => {
-    setEditingItem(item)
-    setFormData({
-      name: item.name,
-      category: item.category,
-      quantity: item.quantity.toString(),
-      unit: item.unit,
-      condition: item.condition,
-      location: item.location || '',
-      supplier: item.supplier || '',
-      purchaseDate: item.purchaseDate ? item.purchaseDate.split('T')[0] : '',
-      purchasePrice: item.purchasePrice?.toString() || '',
-      description: item.description || '',
-      isActive: item.isActive,
-    })
-    setShowModal(true)
-  }
 
   const handleDelete = (id: string) => {
     setDeleteConfirm({ isOpen: true, id })
@@ -419,16 +324,13 @@ export default function InventoryPage() {
               </span>
             )}
           </button>
-          <button
-            onClick={() => {
-              resetForm()
-              setShowModal(true)
-            }}
+          <Link
+            href="/inventory/create"
             className="flex items-center gap-2 px-4 py-2 bg-primary-500 text-white rounded-lg hover:bg-primary-600 transition-colors shadow-md"
           >
             <FaPlus />
             Add Inventory Item
-          </button>
+          </Link>
         </div>
       </div>
 
@@ -602,13 +504,13 @@ export default function InventoryPage() {
           getItemId={(item: InventoryItem) => item.id}
           renderActions={(item: InventoryItem) => (
             <div className="flex items-center gap-2">
-              <button
-                onClick={() => handleEdit(item)}
+              <Link
+                href={`/inventory/create?id=${item.id}`}
                 className="p-2 text-primary-600 hover:bg-primary-50 rounded-lg transition-colors"
                 title="Edit"
               >
                 <FaEdit />
-              </button>
+              </Link>
               <button
                 onClick={() => handleDelete(item.id)}
                 className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
@@ -621,208 +523,6 @@ export default function InventoryPage() {
         />
       </div>
 
-      {/* Add/Edit Inventory Modal */}
-      {showModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4 overflow-y-auto">
-          <div className="bg-white rounded-xl shadow-2xl max-w-2xl w-full my-8">
-            <div className="flex items-center justify-between p-6 border-b border-gray-200">
-              <h2 className="text-2xl font-bold text-gray-900">
-                {editingItem ? 'Edit Inventory Item' : 'Add New Inventory Item'}
-              </h2>
-              <button
-                onClick={resetForm}
-                className="text-gray-400 hover:text-gray-600 transition-colors"
-              >
-                <FaTimes className="text-xl" />
-              </button>
-            </div>
-            
-            <form onSubmit={handleSubmit} className="p-6">
-              <div className="space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-semibold text-gray-700 mb-2">
-                      Item Name *
-                    </label>
-                    <input
-                      type="text"
-                      required
-                      value={formData.name}
-                      onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                      className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-                      placeholder="e.g., Water Glasses, Steel Vessels, etc."
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-semibold text-gray-700 mb-2">
-                      Category *
-                    </label>
-                    <select
-                      required
-                      value={formData.category}
-                      onChange={(e) => setFormData({ ...formData, category: e.target.value })}
-                      className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-                    >
-                      {INVENTORY_CATEGORIES.map(cat => (
-                        <option key={cat} value={cat}>
-                          {cat.replace('_', ' ').split(' ').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ')}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <div>
-                    <label className="block text-sm font-semibold text-gray-700 mb-2">
-                      Quantity *
-                    </label>
-                    <input
-                      type="number"
-                      step="1"
-                      required
-                      value={formData.quantity}
-                      onChange={(e) => setFormData({ ...formData, quantity: e.target.value })}
-                      className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-                      placeholder="0"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-semibold text-gray-700 mb-2">
-                      Unit *
-                    </label>
-                    <input
-                      type="text"
-                      required
-                      value={formData.unit}
-                      onChange={(e) => setFormData({ ...formData, unit: e.target.value })}
-                      className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-                      placeholder="pieces, sets, units..."
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-semibold text-gray-700 mb-2">
-                      Condition *
-                    </label>
-                    <select
-                      required
-                      value={formData.condition}
-                      onChange={(e) => setFormData({ ...formData, condition: e.target.value })}
-                      className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-                    >
-                      <option value="good">Good</option>
-                      <option value="fair">Fair</option>
-                      <option value="damaged">Damaged</option>
-                      <option value="repair">Repair</option>
-                    </select>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-semibold text-gray-700 mb-2">
-                      Storage Location
-                    </label>
-                    <input
-                      type="text"
-                      value={formData.location}
-                      onChange={(e) => setFormData({ ...formData, location: e.target.value })}
-                      className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-                      placeholder="Storage location"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-semibold text-gray-700 mb-2">
-                      Supplier/Vendor
-                    </label>
-                    <input
-                      type="text"
-                      value={formData.supplier}
-                      onChange={(e) => setFormData({ ...formData, supplier: e.target.value })}
-                      className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-                      placeholder="Supplier name"
-                    />
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-semibold text-gray-700 mb-2">
-                      Purchase Date
-                    </label>
-                    <input
-                      type="date"
-                      value={formData.purchaseDate}
-                      onChange={(e) => setFormData({ ...formData, purchaseDate: e.target.value })}
-                      className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-semibold text-gray-700 mb-2">
-                      Purchase Price (per unit)
-                    </label>
-                    <input
-                      type="number"
-                      step="0.01"
-                      value={formData.purchasePrice}
-                      onChange={(e) => setFormData({ ...formData, purchasePrice: e.target.value })}
-                      className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-                      placeholder="0.00"
-                    />
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">
-                    Description
-                  </label>
-                  <textarea
-                    value={formData.description}
-                    onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                    className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-                    rows={3}
-                    placeholder="Additional notes, specifications..."
-                  />
-                </div>
-
-                <div className="flex items-center gap-2">
-                  <input
-                    type="checkbox"
-                    id="isActive"
-                    checked={formData.isActive}
-                    onChange={(e) => setFormData({ ...formData, isActive: e.target.checked })}
-                    className="w-4 h-4 text-primary-600 border-gray-300 rounded focus:ring-primary-500"
-                  />
-                  <label htmlFor="isActive" className="text-sm font-medium text-gray-700">
-                    Active
-                  </label>
-                </div>
-              </div>
-
-              <div className="flex justify-end gap-4 pt-6 mt-6 border-t border-gray-200">
-                <button
-                  type="button"
-                  onClick={resetForm}
-                  className="px-6 py-2.5 border border-gray-300 rounded-lg text-gray-700 font-medium hover:bg-gray-50 transition-colors"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="px-6 py-2.5 bg-primary-500 text-white rounded-lg font-medium hover:bg-primary-600 transition-colors shadow-md"
-                >
-                  {editingItem ? 'Update Item' : 'Add Item'}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
 
       <ConfirmModal
         isOpen={deleteConfirm.isOpen}

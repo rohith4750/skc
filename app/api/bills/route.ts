@@ -7,7 +7,8 @@ export async function GET() {
       include: {
         order: {
           include: {
-            customer: true
+            customer: true,
+            supervisor: true
           }
         }
       },

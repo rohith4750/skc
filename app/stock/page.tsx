@@ -19,6 +19,7 @@ import {
   FaCheckCircle,
 } from 'react-icons/fa'
 import toast from 'react-hot-toast'
+import Link from 'next/link'
 import Table from '@/components/Table'
 import ConfirmModal from '@/components/ConfirmModal'
 
@@ -79,23 +80,8 @@ export default function StockPage() {
     isOpen: false,
     id: null,
   })
-  const [showModal, setShowModal] = useState(false)
   const [showTransactionModal, setShowTransactionModal] = useState(false)
-  const [editingStock, setEditingStock] = useState<StockItem | null>(null)
   const [selectedStock, setSelectedStock] = useState<StockItem | null>(null)
-  const [formData, setFormData] = useState({
-    name: '',
-    category: 'gas',
-    unit: '',
-    currentStock: '',
-    minStock: '',
-    maxStock: '',
-    price: '',
-    supplier: '',
-    location: '',
-    description: '',
-    isActive: true,
-  })
   const [transactionData, setTransactionData] = useState({
     type: 'in' as 'in' | 'out',
     quantity: '',
@@ -166,52 +152,6 @@ export default function StockPage() {
     return totals
   }, [filteredStock])
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    
-    if (!formData.name || !formData.unit) {
-      toast.error('Please fill in all required fields')
-      return
-    }
-
-    try {
-      const stockData: any = {
-        name: formData.name,
-        category: formData.category,
-        unit: formData.unit,
-        currentStock: parseFloat(formData.currentStock) || 0,
-        minStock: formData.minStock ? parseFloat(formData.minStock) : null,
-        maxStock: formData.maxStock ? parseFloat(formData.maxStock) : null,
-        price: formData.price ? parseFloat(formData.price) : null,
-        supplier: formData.supplier || null,
-        location: formData.location || null,
-        description: formData.description || null,
-        isActive: formData.isActive,
-      }
-
-      const url = editingStock?.id ? `/api/stock/${editingStock.id}` : '/api/stock'
-      const method = editingStock?.id ? 'PUT' : 'POST'
-
-      const response = await fetch(url, {
-        method,
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(stockData),
-      })
-
-      if (!response.ok) {
-        const error = await response.json()
-        throw new Error(error.error || 'Failed to save stock item')
-      }
-
-      await loadData()
-      resetForm()
-      toast.success(editingStock ? 'Stock item updated successfully!' : 'Stock item added successfully!')
-    } catch (error: any) {
-      console.error('Failed to save stock item:', error)
-      toast.error(error.message || 'Failed to save stock item. Please try again.')
-    }
-  }
-
   const handleTransaction = async (e: React.FormEvent) => {
     e.preventDefault()
     
@@ -255,24 +195,6 @@ export default function StockPage() {
     }
   }
 
-  const resetForm = () => {
-    setFormData({
-      name: '',
-      category: 'gas',
-      unit: '',
-      currentStock: '',
-      minStock: '',
-      maxStock: '',
-      price: '',
-      supplier: '',
-      location: '',
-      description: '',
-      isActive: true,
-    })
-    setEditingStock(null)
-    setShowModal(false)
-  }
-
   const resetTransactionForm = () => {
     setTransactionData({
       type: 'in',
@@ -283,24 +205,6 @@ export default function StockPage() {
     })
     setSelectedStock(null)
     setShowTransactionModal(false)
-  }
-
-  const handleEdit = (item: StockItem) => {
-    setEditingStock(item)
-    setFormData({
-      name: item.name,
-      category: item.category,
-      unit: item.unit,
-      currentStock: item.currentStock.toString(),
-      minStock: item.minStock?.toString() || '',
-      maxStock: item.maxStock?.toString() || '',
-      price: item.price?.toString() || '',
-      supplier: item.supplier || '',
-      location: item.location || '',
-      description: item.description || '',
-      isActive: item.isActive,
-    })
-    setShowModal(true)
   }
 
   const handleTransactionClick = (item: StockItem) => {
@@ -482,16 +386,13 @@ export default function StockPage() {
               </span>
             )}
           </button>
-          <button
-            onClick={() => {
-              resetForm()
-              setShowModal(true)
-            }}
+          <Link
+            href="/stock/create"
             className="flex items-center gap-2 px-4 py-2 bg-primary-500 text-white rounded-lg hover:bg-primary-600 transition-colors shadow-md"
           >
             <FaPlus />
             Add Stock Item
-          </button>
+          </Link>
         </div>
       </div>
 
@@ -648,13 +549,13 @@ export default function StockPage() {
               >
                 {item.currentStock > 0 ? <FaArrowUp /> : <FaArrowDown />}
               </button>
-              <button
-                onClick={() => handleEdit(item)}
+              <Link
+                href={`/stock/create?id=${item.id}`}
                 className="p-2 text-primary-600 hover:bg-primary-50 rounded-lg transition-colors"
                 title="Edit"
               >
                 <FaEdit />
-              </button>
+              </Link>
               <button
                 onClick={() => handleDelete(item.id)}
                 className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
@@ -666,211 +567,6 @@ export default function StockPage() {
           )}
         />
       </div>
-
-      {/* Add/Edit Stock Modal */}
-      {showModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4 overflow-y-auto">
-          <div className="bg-white rounded-xl shadow-2xl max-w-2xl w-full my-8">
-            <div className="flex items-center justify-between p-6 border-b border-gray-200">
-              <h2 className="text-2xl font-bold text-gray-900">
-                {editingStock ? 'Edit Stock Item' : 'Add New Stock Item'}
-              </h2>
-              <button
-                onClick={resetForm}
-                className="text-gray-400 hover:text-gray-600 transition-colors"
-              >
-                <FaTimes className="text-xl" />
-              </button>
-            </div>
-            
-            <form onSubmit={handleSubmit} className="p-6">
-              <div className="space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-semibold text-gray-700 mb-2">
-                      Item Name *
-                    </label>
-                    <input
-                      type="text"
-                      required
-                      value={formData.name}
-                      onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                      className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-                      placeholder="Enter item name"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-semibold text-gray-700 mb-2">
-                      Category *
-                    </label>
-                    <select
-                      required
-                      value={formData.category}
-                      onChange={(e) => setFormData({ ...formData, category: e.target.value })}
-                      className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-                    >
-                      {STOCK_CATEGORIES.map(cat => (
-                        <option key={cat} value={cat}>
-                          {cat.charAt(0).toUpperCase() + cat.slice(1)}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <div>
-                    <label className="block text-sm font-semibold text-gray-700 mb-2">
-                      Unit *
-                    </label>
-                    <input
-                      type="text"
-                      required
-                      value={formData.unit}
-                      onChange={(e) => setFormData({ ...formData, unit: e.target.value })}
-                      className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-                      placeholder="kg, liters, pieces..."
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-semibold text-gray-700 mb-2">
-                      Initial Stock
-                    </label>
-                    <input
-                      type="number"
-                      step="0.01"
-                      value={formData.currentStock}
-                      onChange={(e) => setFormData({ ...formData, currentStock: e.target.value })}
-                      className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-                      placeholder="0"
-                      disabled={!!editingStock}
-                    />
-                    {editingStock && (
-                      <p className="text-xs text-gray-500 mt-1">Use Stock In/Out to modify quantity</p>
-                    )}
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-semibold text-gray-700 mb-2">
-                      Price per Unit
-                    </label>
-                    <input
-                      type="number"
-                      step="0.01"
-                      value={formData.price}
-                      onChange={(e) => setFormData({ ...formData, price: e.target.value })}
-                      className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-                      placeholder="0.00"
-                    />
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-semibold text-gray-700 mb-2">
-                      Minimum Stock
-                    </label>
-                    <input
-                      type="number"
-                      step="0.01"
-                      value={formData.minStock}
-                      onChange={(e) => setFormData({ ...formData, minStock: e.target.value })}
-                      className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-                      placeholder="Alert level"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-semibold text-gray-700 mb-2">
-                      Maximum Stock
-                    </label>
-                    <input
-                      type="number"
-                      step="0.01"
-                      value={formData.maxStock}
-                      onChange={(e) => setFormData({ ...formData, maxStock: e.target.value })}
-                      className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-                      placeholder="Max capacity"
-                    />
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-semibold text-gray-700 mb-2">
-                      Supplier/Vendor
-                    </label>
-                    <input
-                      type="text"
-                      value={formData.supplier}
-                      onChange={(e) => setFormData({ ...formData, supplier: e.target.value })}
-                      className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-                      placeholder="Supplier name"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-semibold text-gray-700 mb-2">
-                      Storage Location
-                    </label>
-                    <input
-                      type="text"
-                      value={formData.location}
-                      onChange={(e) => setFormData({ ...formData, location: e.target.value })}
-                      className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-                      placeholder="Storage location"
-                    />
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">
-                    Description
-                  </label>
-                  <textarea
-                    value={formData.description}
-                    onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                    className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-                    rows={3}
-                    placeholder="Additional notes..."
-                  />
-                </div>
-
-                <div className="flex items-center gap-2">
-                  <input
-                    type="checkbox"
-                    id="isActive"
-                    checked={formData.isActive}
-                    onChange={(e) => setFormData({ ...formData, isActive: e.target.checked })}
-                    className="w-4 h-4 text-primary-600 border-gray-300 rounded focus:ring-primary-500"
-                  />
-                  <label htmlFor="isActive" className="text-sm font-medium text-gray-700">
-                    Active
-                  </label>
-                </div>
-              </div>
-
-              <div className="flex justify-end gap-4 pt-6 mt-6 border-t border-gray-200">
-                <button
-                  type="button"
-                  onClick={resetForm}
-                  className="px-6 py-2.5 border border-gray-300 rounded-lg text-gray-700 font-medium hover:bg-gray-50 transition-colors"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="px-6 py-2.5 bg-primary-500 text-white rounded-lg font-medium hover:bg-primary-600 transition-colors shadow-md"
-                >
-                  {editingStock ? 'Update Item' : 'Add Item'}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
 
       {/* Stock Transaction Modal */}
       {showTransactionModal && selectedStock && (

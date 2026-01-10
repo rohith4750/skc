@@ -34,6 +34,26 @@ export async function PUT(
   try {
     const data = await request.json()
     
+    // If only status is being updated (from orders history page)
+    if (data.status !== undefined && Object.keys(data).length === 1) {
+      const order = await prisma.order.update({
+        where: { id: params.id },
+        data: {
+          status: data.status,
+        },
+        include: {
+          customer: true,
+          supervisor: true,
+          items: {
+            include: {
+              menuItem: true
+            }
+          }
+        }
+      })
+      return NextResponse.json(order)
+    }
+    
     // If only supervisorId is being updated (from orders history page)
     if (data.supervisorId !== undefined && Object.keys(data).length === 1) {
       const order = await prisma.order.update({

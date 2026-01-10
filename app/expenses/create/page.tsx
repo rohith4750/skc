@@ -51,6 +51,8 @@ export default function CreateExpensePage() {
     paymentDate: new Date().toISOString().split('T')[0],
     eventDate: '',
     notes: '',
+    paidAmount: '',
+    paymentStatus: 'pending' as 'pending' | 'partial' | 'paid',
   })
 
   useEffect(() => {
@@ -95,6 +97,8 @@ export default function CreateExpensePage() {
           paymentDate: expenseData.paymentDate ? expenseData.paymentDate.split('T')[0] : new Date().toISOString().split('T')[0],
           eventDate: expenseData.eventDate ? expenseData.eventDate.split('T')[0] : '',
           notes: expenseData.notes || '',
+          paidAmount: expenseData.paidAmount?.toString() || '0',
+          paymentStatus: expenseData.paymentStatus || 'pending',
         })
       }
     } catch (error) {
@@ -177,10 +181,14 @@ export default function CreateExpensePage() {
         calculationDetails.perUnitAmount = parseFloat(formData.boyAmount)
       }
 
+      const paidAmount = formData.paidAmount ? parseFloat(formData.paidAmount) : 0
+      
       const expenseData: any = {
         orderId: formData.orderId || null,
         category: formData.category,
         amount: calculatedAmount,
+        paidAmount: paidAmount,
+        paymentStatus: formData.paymentStatus,
         description: formData.description || null,
         recipient: formData.recipient || null,
         paymentDate: formData.paymentDate,
@@ -565,6 +573,66 @@ export default function CreateExpensePage() {
                     placeholder="Name of recipient"
                   />
                 )}
+              </div>
+            </div>
+
+            {/* Payment Information */}
+            <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
+              <h3 className="text-sm font-semibold text-gray-700 mb-4">Payment Information</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">
+                    Paid Amount
+                  </label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    value={formData.paidAmount}
+                    onChange={(e) => {
+                      const paid = e.target.value
+                      const paidNum = parseFloat(paid) || 0
+                      const amountNum = calculatedAmount
+                      let status: 'pending' | 'partial' | 'paid' = 'pending'
+                      if (paidNum === 0) {
+                        status = 'pending'
+                      } else if (paidNum >= amountNum) {
+                        status = 'paid'
+                      } else {
+                        status = 'partial'
+                      }
+                      setFormData({ ...formData, paidAmount: paid, paymentStatus: status })
+                    }}
+                    className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                    placeholder="0.00"
+                  />
+                  <p className="text-xs text-gray-500 mt-1">
+                    Total Amount: {formatCurrency(calculatedAmount)}
+                  </p>
+                  {formData.paidAmount && parseFloat(formData.paidAmount) > 0 && (
+                    <p className="text-xs text-gray-500 mt-1">
+                      Remaining: {formatCurrency(Math.max(0, calculatedAmount - (parseFloat(formData.paidAmount) || 0)))}
+                    </p>
+                  )}
+                </div>
+
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">
+                    Payment Status
+                  </label>
+                  <select
+                    value={formData.paymentStatus}
+                    onChange={(e) => setFormData({ ...formData, paymentStatus: e.target.value as 'pending' | 'partial' | 'paid' })}
+                    className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                  >
+                    <option value="pending">Pending</option>
+                    <option value="partial">Partial</option>
+                    <option value="paid">Paid</option>
+                  </select>
+                  <p className="text-xs text-gray-500 mt-1">
+                    Status will auto-update based on paid amount
+                  </p>
+                </div>
               </div>
             </div>
 
