@@ -36,6 +36,7 @@ export async function PUT(
     
     // If only status is being updated (from orders history page)
     if (data.status !== undefined && Object.keys(data).length === 1) {
+      // Status change doesn't affect bill, so no need to update bill
       const order = await prisma.order.update({
         where: { id: params.id },
         data: {

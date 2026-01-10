@@ -14,7 +14,13 @@ export async function GET() {
       },
       orderBy: { createdAt: 'desc' }
     })
-    return NextResponse.json(bills)
+    return NextResponse.json(bills, {
+      headers: {
+        'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
+        'Pragma': 'no-cache',
+        'Expires': '0',
+      }
+    })
   } catch (error) {
     return NextResponse.json({ error: 'Failed to fetch bills' }, { status: 500 })
   }

@@ -17,19 +17,47 @@ export default function BillsPage() {
 
   useEffect(() => {
     loadBills()
+    
+    // Refresh bills when page becomes visible (user switches back to tab)
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        loadBills()
+      }
+    }
+    
+    // Refresh bills when window gains focus
+    const handleFocus = () => {
+      loadBills()
+    }
+    
+    document.addEventListener('visibilitychange', handleVisibilityChange)
+    window.addEventListener('focus', handleFocus)
+    
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange)
+      window.removeEventListener('focus', handleFocus)
+    }
   }, [])
 
-  const loadBills = async () => {
+  const loadBills = async (showToast = false) => {
     try {
-      const response = await fetch('/api/bills', {
+      // Add timestamp to prevent caching
+      const timestamp = new Date().getTime()
+      const response = await fetch(`/api/bills?t=${timestamp}`, {
         cache: 'no-store',
+        method: 'GET',
         headers: {
-          'Cache-Control': 'no-cache',
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          'Pragma': 'no-cache',
+          'Expires': '0',
         },
       })
       if (!response.ok) throw new Error('Failed to fetch bills')
       const allBills = await response.json()
       setBills(allBills)
+      if (showToast) {
+        toast.success('Bills refreshed')
+      }
     } catch (error) {
       console.error('Failed to load bills:', error)
       toast.error('Failed to load bills. Please try again.')
@@ -56,8 +84,22 @@ export default function BillsPage() {
         throw new Error(error.error || 'Failed to update bill')
       }
 
-      // Refresh bills list to get updated data
-      await loadBills()
+      const updatedBill = await response.json()
+      
+      // Update the specific bill in the list immediately
+      setBills(prevBills => 
+        prevBills.map((b: any) => 
+          b.id === billId 
+            ? { ...b, ...updatedBill }
+            : b
+        )
+      )
+      
+      // Also refresh from server after a short delay to ensure consistency
+      setTimeout(() => {
+        loadBills(false)
+      }, 500)
+      
       toast.success('Bill marked as paid successfully!')
     } catch (error: any) {
       console.error('Failed to update bill:', error)
