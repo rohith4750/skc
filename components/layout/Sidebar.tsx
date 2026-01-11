@@ -37,16 +37,18 @@ const menuItems = [
   { href: '/expenses', icon: FaMoneyBillWave, label: 'Expenses', requiredRole: 'super_admin', section: 'financial' },
   { href: '/workforce', icon: FaUserTie, label: 'Workforce', requiredRole: 'super_admin', section: 'financial' },
   { href: '/analytics', icon: FaChartLine, label: 'Analytics', requiredRole: 'super_admin', section: 'financial' },
-  { href: '/tax', icon: FaFileInvoice, label: 'Income Tax Return', requiredRole: 'super_admin', section: 'financial' },
   
-  // 3. Inventory & Stock Management
+  // 3. Tax Management
+  { href: '/tax', icon: FaFileInvoice, label: 'Income Tax Return', requiredRole: 'super_admin', section: 'tax' },
+  
+  // 4. Inventory & Stock Management
   { href: '/stock', icon: FaBox, label: 'Stock', hideForRole: 'admin', section: 'inventory' },
   { href: '/inventory', icon: FaWarehouse, label: 'Inventory', hideForRole: 'admin', section: 'inventory' },
   
-  // 4. System Administration
+  // 5. System Administration
   { href: '/users', icon: FaUserShield, label: 'User Management', requiredRole: 'super_admin', section: 'system' },
   
-  // 5. Profile
+  // 6. Profile
   { href: '/profile', icon: FaUserCircle, label: 'Profile', section: 'profile' },
 ]
 
@@ -140,6 +142,7 @@ export default function Sidebar() {
               const sections = {
                 core: filteredItems.filter(item => item.section === 'core'),
                 financial: filteredItems.filter(item => item.section === 'financial'),
+                tax: filteredItems.filter(item => item.section === 'tax'),
                 inventory: filteredItems.filter(item => item.section === 'inventory'),
                 system: filteredItems.filter(item => item.section === 'system'),
                 profile: filteredItems.filter(item => item.section === 'profile'),
@@ -148,12 +151,13 @@ export default function Sidebar() {
               const sectionTitles: Record<string, string> = {
                 core: 'Order Management',
                 financial: 'Financial Management',
+                tax: 'Tax Management',
                 inventory: 'Stock & Inventory',
                 system: 'System Administration',
                 profile: 'My Account',
               }
 
-              const sectionOrder = ['core', 'financial', 'inventory', 'system', 'profile']
+              const sectionOrder = ['core', 'financial', 'tax', 'inventory', 'system', 'profile']
 
               return sectionOrder.map((sectionKey, index) => {
                 const items = sections[sectionKey as keyof typeof sections]
