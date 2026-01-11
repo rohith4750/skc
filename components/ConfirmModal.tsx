@@ -1,9 +1,11 @@
 'use client'
 
+import { ReactNode } from 'react'
+
 interface ConfirmModalProps {
   isOpen: boolean
   title: string
-  message: string
+  message: string | ReactNode
   confirmText?: string
   cancelText?: string
   onConfirm: () => void
@@ -45,7 +47,9 @@ export default function ConfirmModal({
       <div className="bg-white rounded-lg shadow-xl w-full max-w-md">
         <div className="p-4 sm:p-6">
           <h2 className="text-lg sm:text-xl font-bold text-gray-800 mb-3 sm:mb-4">{title}</h2>
-          <p className="text-sm sm:text-base text-gray-600 mb-4 sm:mb-6">{message}</p>
+          <div className="text-sm sm:text-base text-gray-600 mb-4 sm:mb-6">
+            {typeof message === 'string' ? <p>{message}</p> : message}
+          </div>
           <div className="flex flex-col-reverse sm:flex-row justify-end gap-3">
             <button
               onClick={onCancel}

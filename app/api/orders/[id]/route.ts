@@ -15,7 +15,9 @@ export async function GET(
           include: {
             menuItem: true
           }
-        }
+        },
+        bills: true,
+        expenses: true
       }
     })
     if (!order) {
@@ -158,10 +160,9 @@ export async function DELETE(
         where: { orderId: params.id }
       })
       
-      // Delete related expenses (they have orderId as optional, so handle safely)
-      await tx.expense.updateMany({
-        where: { orderId: params.id },
-        data: { orderId: null }
+      // Delete related expenses (delete them completely, not just set orderId to null)
+      await tx.expense.deleteMany({
+        where: { orderId: params.id }
       })
       
       // Finally delete the order

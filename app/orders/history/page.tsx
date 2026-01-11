@@ -14,9 +14,10 @@ export default function OrdersHistoryPage() {
   const [orders, setOrders] = useState<Order[]>([])
   const [currentPage, setCurrentPage] = useState(1)
   const [itemsPerPage] = useState(10)
-  const [deleteConfirm, setDeleteConfirm] = useState<{ isOpen: boolean; id: string | null }>({
+  const [deleteConfirm, setDeleteConfirm] = useState<{ isOpen: boolean; id: string | null; orderDetails: any | null }>({
     isOpen: false,
     id: null,
+    orderDetails: null,
   })
 
   useEffect(() => {
@@ -41,8 +42,20 @@ export default function OrdersHistoryPage() {
   const endIndex = startIndex + itemsPerPage
   const paginatedOrders = orders.slice(startIndex, endIndex)
 
-  const handleDelete = (id: string) => {
-    setDeleteConfirm({ isOpen: true, id })
+  const handleDelete = async (id: string) => {
+    try {
+      // Fetch order details to show what will be deleted
+      const response = await fetch(`/api/orders/${id}`)
+      if (response.ok) {
+        const orderDetails = await response.json()
+        setDeleteConfirm({ isOpen: true, id, orderDetails })
+      } else {
+        setDeleteConfirm({ isOpen: true, id, orderDetails: null })
+      }
+    } catch (error) {
+      console.error('Failed to fetch order details:', error)
+      setDeleteConfirm({ isOpen: true, id, orderDetails: null })
+    }
   }
 
   const confirmDelete = async () => {
@@ -59,11 +72,11 @@ export default function OrdersHistoryPage() {
       
       await loadData()
       toast.success('Order deleted successfully!')
-      setDeleteConfirm({ isOpen: false, id: null })
+      setDeleteConfirm({ isOpen: false, id: null, orderDetails: null })
     } catch (error: any) {
       console.error('Failed to delete order:', error)
       toast.error(error.message || 'Failed to delete order. Please try again.')
-      setDeleteConfirm({ isOpen: false, id: null })
+      setDeleteConfirm({ isOpen: false, id: null, orderDetails: null })
     }
   }
 
@@ -468,11 +481,28 @@ export default function OrdersHistoryPage() {
       <ConfirmModal
         isOpen={deleteConfirm.isOpen}
         title="Delete Order"
-        message="Are you sure you want to delete this order? This action cannot be undone."
+        message={
+          deleteConfirm.orderDetails ? (
+            <div className="space-y-2">
+              <p className="font-semibold">Are you sure you want to delete this order?</p>
+              <div className="text-sm text-gray-600 space-y-1 bg-yellow-50 p-3 rounded-lg border border-yellow-200">
+                <p className="font-medium text-gray-800">This will also delete:</p>
+                <ul className="list-disc list-inside space-y-1 ml-2">
+                  <li>All associated bills ({deleteConfirm.orderDetails.bills?.length || 0})</li>
+                  <li>All associated expenses ({deleteConfirm.orderDetails.expenses?.length || 0})</li>
+                  <li>All order items</li>
+                </ul>
+              </div>
+              <p className="text-red-600 font-medium">This action cannot be undone!</p>
+            </div>
+          ) : (
+            "Are you sure you want to delete this order? This will also delete all associated bills, expenses, and order items. This action cannot be undone."
+          )
+        }
         confirmText="Delete"
         cancelText="Cancel"
         onConfirm={confirmDelete}
-        onCancel={() => setDeleteConfirm({ isOpen: false, id: null })}
+        onCancel={() => setDeleteConfirm({ isOpen: false, id: null, orderDetails: null })}
         variant="danger"
       />
     </div>
