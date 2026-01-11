@@ -25,7 +25,20 @@ export async function PUT(
       }
     })
 
-    return NextResponse.json(bill)
+    // Fetch the updated bill with relations (matching GET endpoint structure)
+    const updatedBill = await prisma.bill.findUnique({
+      where: { id: params.id },
+      include: {
+        order: {
+          include: {
+            customer: true,
+            supervisor: true
+          }
+        }
+      }
+    })
+
+    return NextResponse.json(updatedBill)
   } catch (error: any) {
     console.error('Error updating bill:', error)
     if (error.code === 'P2025') {

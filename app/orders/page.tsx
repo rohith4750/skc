@@ -234,6 +234,25 @@ export default function OrdersPage() {
 
   const handleCollapseMealType = (mealTypeId: string) => {
     setCollapsedMealTypes(prev => ({ ...prev, [mealTypeId]: true }))
+    // Automatically add a new meal type after collapsing
+    const newId = generateId()
+    setFormData(prev => ({
+      ...prev,
+      mealTypes: [...prev.mealTypes, {
+        id: newId,
+        menuType: '',
+        selectedMenuItems: [],
+        pricingMethod: 'manual',
+        numberOfPlates: '',
+        platePrice: '',
+        manualAmount: '',
+        date: '',
+        services: [],
+        numberOfMembers: '',
+      }]
+    }))
+    // New meal type starts expanded
+    setCollapsedMealTypes(prev => ({ ...prev, [newId]: false }))
   }
 
   const handleExpandMealType = (mealTypeId: string) => {

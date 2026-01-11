@@ -86,19 +86,14 @@ export default function BillsPage() {
 
       const updatedBill = await response.json()
       
-      // Update the specific bill in the list immediately
+      // Update the specific bill in the list immediately with complete data
       setBills(prevBills => 
         prevBills.map((b: any) => 
           b.id === billId 
-            ? { ...b, ...updatedBill }
+            ? updatedBill  // Replace with complete updated bill (includes all relations)
             : b
         )
       )
-      
-      // Also refresh from server after a short delay to ensure consistency
-      setTimeout(() => {
-        loadBills(false)
-      }, 500)
       
       toast.success('Bill marked as paid successfully!')
     } catch (error: any) {
