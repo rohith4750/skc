@@ -4,6 +4,8 @@ import { useEffect, useState } from 'react'
 import { useRouter, usePathname } from 'next/navigation'
 import { isAuthenticated } from '@/lib/auth'
 import Sidebar from '@/components/layout/Sidebar'
+import Header from '@/components/layout/Header'
+import Footer from '@/components/layout/Footer'
 
 export default function AuthGuard({ children }: { children: React.ReactNode }) {
   const router = useRouter()
@@ -60,13 +62,17 @@ export default function AuthGuard({ children }: { children: React.ReactNode }) {
     return <>{children}</>
   }
 
-  // Protected pages - render with sidebar
+  // Protected pages - render with sidebar, header, and footer
   return (
-    <div className="flex h-screen bg-gray-100">
+    <div className="flex h-screen bg-gray-100 overflow-hidden">
       <Sidebar />
-      <main className="flex-1 overflow-y-auto lg:ml-0">
-        {children}
-      </main>
+      <div className="flex-1 flex flex-col lg:ml-0 overflow-hidden">
+        <Header />
+        <main className="flex-1 overflow-y-auto overflow-x-hidden pt-16 pb-12">
+          {children}
+        </main>
+        <Footer />
+      </div>
     </div>
   )
 }

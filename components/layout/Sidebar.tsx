@@ -13,14 +13,15 @@ import {
   FaChevronLeft,
   FaChevronRight,
   FaMoneyBillWave,
-  FaSignOutAlt,
   FaUserShield,
   FaBox,
   FaWarehouse,
   FaHistory,
-  FaUserCircle
+  FaUserCircle,
+  FaChartLine,
+  FaFileInvoice
 } from 'react-icons/fa'
-import { clearAuth, isSuperAdmin, getUserRole } from '@/lib/auth'
+import { isSuperAdmin, getUserRole } from '@/lib/auth'
 
 // Menu items organized by catering management workflow
 const menuItems = [
@@ -33,8 +34,10 @@ const menuItems = [
   { href: '/bills', icon: FaFileInvoiceDollar, label: 'Bills', section: 'core' },
   
   // 2. Financial Management
-  { href: '/expenses', icon: FaMoneyBillWave, label: 'Expenses', hideForRole: 'admin', section: 'financial' },
+  { href: '/expenses', icon: FaMoneyBillWave, label: 'Expenses', requiredRole: 'super_admin', section: 'financial' },
   { href: '/workforce', icon: FaUserTie, label: 'Workforce', requiredRole: 'super_admin', section: 'financial' },
+  { href: '/analytics', icon: FaChartLine, label: 'Analytics', requiredRole: 'super_admin', section: 'financial' },
+  { href: '/tax', icon: FaFileInvoice, label: 'Income Tax Return', requiredRole: 'super_admin', section: 'financial' },
   
   // 3. Inventory & Stock Management
   { href: '/stock', icon: FaBox, label: 'Stock', hideForRole: 'admin', section: 'inventory' },
@@ -75,13 +78,6 @@ export default function Sidebar() {
       document.body.style.overflow = 'unset'
     }
   }, [isOpen])
-
-  const handleLogout = () => {
-    // Clear authentication data
-    clearAuth()
-    // Redirect to login page
-    window.location.href = '/login'
-  }
 
   return (
     <>
@@ -200,17 +196,6 @@ export default function Sidebar() {
             })()}
           </div>
         </nav>
-        
-        {/* Logout Button - Fixed at Bottom */}
-        <div className="border-t border-gray-800 flex-shrink-0 p-4 bg-gray-900">
-          <button
-            onClick={handleLogout}
-            className="flex items-center justify-center w-full px-4 py-3 rounded-lg text-red-400 hover:bg-red-900 hover:bg-opacity-30 hover:text-red-300 transition-all duration-200 font-medium text-sm group"
-          >
-            <FaSignOutAlt className="w-5 h-5 mr-3 flex-shrink-0 group-hover:scale-110 transition-transform" />
-            <span>Logout</span>
-          </button>
-        </div>
       </div>
     </>
   )

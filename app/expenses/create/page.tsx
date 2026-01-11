@@ -36,9 +36,12 @@ export default function CreateExpensePage() {
   const [workforce, setWorkforce] = useState<WorkforceMember[]>([])
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
+  const [existingExpenses, setExistingExpenses] = useState<any[]>([])
+  const [customCategoryInputType, setCustomCategoryInputType] = useState<'select' | 'input'>('select')
   const [formData, setFormData] = useState({
     orderId: '',
     category: 'supervisor',
+    customCategoryName: '',
     calculationMethod: 'total' as 'plate-wise' | 'total',
     amount: '',
     plates: '',
@@ -62,29 +65,34 @@ export default function CreateExpensePage() {
   const loadData = async () => {
     try {
       setLoading(true)
-      const [ordersRes, workforceRes, expenseRes] = await Promise.all([
+      const [ordersRes, workforceRes, expensesRes, expenseRes] = await Promise.all([
         fetch('/api/orders'),
         fetch('/api/workforce'),
+        fetch('/api/expenses'),
         expenseId ? fetch(`/api/expenses/${expenseId}`) : Promise.resolve(null),
       ])
       
       if (!ordersRes.ok) throw new Error('Failed to fetch orders')
       
-      const [allOrders, allWorkforce, expenseData] = await Promise.all([
+      const [allOrders, allWorkforce, allExpenses, expenseData] = await Promise.all([
         ordersRes.json(),
         workforceRes.ok ? workforceRes.json() : Promise.resolve([]),
+        expensesRes.ok ? expensesRes.json() : Promise.resolve([]),
         expenseRes ? expenseRes.json() : Promise.resolve(null),
       ])
       
       setOrders(allOrders)
       setWorkforce((allWorkforce || []).filter((member: WorkforceMember) => member.isActive))
+      setExistingExpenses(allExpenses || [])
 
       // If editing, populate form
       if (expenseData && expenseId) {
         const details = expenseData.calculationDetails as any || {}
+        const isCustomCategory = !EXPENSE_CATEGORIES.includes(expenseData.category)
         setFormData({
           orderId: expenseData.orderId || '',
-          category: expenseData.category,
+          category: isCustomCategory ? 'other' : expenseData.category,
+          customCategoryName: isCustomCategory ? expenseData.category : '',
           calculationMethod: details.method || 'total',
           amount: details.perPlateAmount ? details.perPlateAmount.toString() : expenseData.amount.toString(),
           plates: details.plates ? details.plates.toString() : '',
@@ -100,6 +108,9 @@ export default function CreateExpensePage() {
           paidAmount: expenseData.paidAmount?.toString() || '0',
           paymentStatus: expenseData.paymentStatus || 'pending',
         })
+        if (isCustomCategory) {
+          setCustomCategoryInputType('input')
+        }
       }
     } catch (error) {
       console.error('Failed to load data:', error)
@@ -108,6 +119,23 @@ export default function CreateExpensePage() {
       setLoading(false)
     }
   }
+
+  // Get unique custom categories (categories not in EXPENSE_CATEGORIES)
+  const customCategories = useMemo(() => {
+    const categories = new Set<string>()
+    // Include workforce members with role "other" as custom category options
+    workforce
+      .filter((member) => member.role === 'other')
+      .forEach((member) => {
+        categories.add(member.name)
+      })
+    existingExpenses.forEach((expense: any) => {
+      if (expense.category && !EXPENSE_CATEGORIES.includes(expense.category)) {
+        categories.add(expense.category)
+      }
+    })
+    return Array.from(categories).sort()
+  }, [existingExpenses, workforce])
 
   // Calculate total amount based on category and calculation method
   const calculatedAmount = useMemo(() => {
@@ -183,9 +211,23 @@ export default function CreateExpensePage() {
 
       const paidAmount = formData.paidAmount ? parseFloat(formData.paidAmount) : 0
       
+      // Validate custom category name if "other" is selected
+      if (formData.category === 'other') {
+        if (!formData.customCategoryName || !formData.customCategoryName.trim()) {
+          toast.error('Please enter or select a custom category name')
+          setSaving(false)
+          return
+        }
+      }
+      
+      // Use custom category name if "other" is selected and custom name is provided
+      const finalCategory = formData.category === 'other' && formData.customCategoryName.trim() 
+        ? formData.customCategoryName.trim() 
+        : formData.category
+      
       const expenseData: any = {
         orderId: formData.orderId || null,
-        category: formData.category,
+        category: finalCategory,
         amount: calculatedAmount,
         paidAmount: paidAmount,
         paymentStatus: formData.paymentStatus,
@@ -292,6 +334,7 @@ export default function CreateExpensePage() {
                     setFormData({ 
                       ...formData, 
                       category: e.target.value,
+                      customCategoryName: e.target.value !== 'other' ? '' : formData.customCategoryName,
                       calculationMethod: 'total',
                       amount: '',
                       plates: '',
@@ -327,6 +370,71 @@ export default function CreateExpensePage() {
                     <option value="total">Total Amount</option>
                     <option value="plate-wise">Plate-wise</option>
                   </select>
+                </div>
+              )}
+
+              {/* Other Category - Custom Category Name */}
+              {formData.category === 'other' && (
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">
+                    Custom Category Name *
+                  </label>
+                  <div className="space-y-2">
+                    <div className="flex gap-2 mb-2">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setCustomCategoryInputType('select')
+                          setFormData({ ...formData, customCategoryName: '' })
+                        }}
+                        className={`px-3 py-1.5 text-sm rounded-lg border transition-colors ${
+                          customCategoryInputType === 'select'
+                            ? 'bg-primary-500 text-white border-primary-500'
+                            : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
+                        }`}
+                      >
+                        Select Existing
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setCustomCategoryInputType('input')
+                          setFormData({ ...formData, customCategoryName: '' })
+                        }}
+                        className={`px-3 py-1.5 text-sm rounded-lg border transition-colors ${
+                          customCategoryInputType === 'input'
+                            ? 'bg-primary-500 text-white border-primary-500'
+                            : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
+                        }`}
+                      >
+                        Add New
+                      </button>
+                    </div>
+                    {customCategoryInputType === 'select' ? (
+                      <select
+                        required
+                        value={formData.customCategoryName}
+                        onChange={(e) => setFormData({ ...formData, customCategoryName: e.target.value })}
+                        className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                      >
+                        <option value="">Select a category...</option>
+                        {customCategories.map((cat) => (
+                          <option key={cat} value={cat}>
+                            {cat.charAt(0).toUpperCase() + cat.slice(1)}
+                          </option>
+                        ))}
+                      </select>
+                    ) : (
+                      <input
+                        type="text"
+                        required
+                        value={formData.customCategoryName}
+                        onChange={(e) => setFormData({ ...formData, customCategoryName: e.target.value })}
+                        placeholder="Enter custom category name (e.g., workforce, maintenance)"
+                        className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                      />
+                    )}
+                  </div>
                 </div>
               )}
             </div>
