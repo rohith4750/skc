@@ -13,13 +13,23 @@ interface SendEmailOptions {
 export async function sendEmail(options: SendEmailOptions): Promise<boolean> {
   const { to, subject, html, text } = options
 
-    // Try Resend first (recommended - simple API, free tier)
-    if (process.env.RESEND_API_KEY) {
-      try {
-        const { Resend } = await import('resend')
-        const resend = new Resend(process.env.RESEND_API_KEY)
-      
-      await resend.emails.send({
+  // Debug: Log which email service is configured
+  const hasResend = !!process.env.RESEND_API_KEY
+  const hasSMTP = !!(process.env.SMTP_HOST && process.env.SMTP_USER && process.env.SMTP_PASS)
+  
+  if (!hasResend && !hasSMTP) {
+    console.warn('No email service configured. Email not sent.')
+    console.warn('Configure either RESEND_API_KEY or SMTP_HOST/SMTP_USER/SMTP_PASS environment variables.')
+    return false
+  }
+
+  // Try Resend first (recommended - simple API, free tier)
+  if (process.env.RESEND_API_KEY) {
+    try {
+      const { Resend } = await import('resend')
+      const resend = new Resend(process.env.RESEND_API_KEY)
+    
+      const result = await resend.emails.send({
         from: process.env.RESEND_FROM_EMAIL || 'onboarding@resend.dev',
         to,
         subject,
@@ -27,10 +37,16 @@ export async function sendEmail(options: SendEmailOptions): Promise<boolean> {
         text: text || html.replace(/<[^>]*>/g, ''), // Strip HTML tags for text version
       })
       
-      console.log(`Email sent successfully to ${to} using Resend`)
-      return true
+      if (result.error) {
+        console.error('Resend email error:', result.error)
+        // Fall through to try other methods
+      } else {
+        console.log(`Email sent successfully to ${to} using Resend`)
+        return true
+      }
     } catch (error: any) {
       console.error('Resend email error:', error?.message || error)
+      console.error('Resend error details:', error)
       // Fall through to try other methods
     }
   }

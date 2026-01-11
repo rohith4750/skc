@@ -21,7 +21,6 @@ export async function POST(request: NextRequest) {
         phone: data.phone,
         email: data.email,
         address: data.address,
-        message: data.message,
       }
     })
     return NextResponse.json(customer)

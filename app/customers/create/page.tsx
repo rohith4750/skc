@@ -12,7 +12,6 @@ interface Customer {
   phone: string
   email: string
   address: string
-  message?: string | null
   createdAt: string
   updatedAt: string
 }
@@ -29,7 +28,6 @@ export default function CreateCustomerPage() {
     phone: '',
     email: '',
     address: '',
-    message: '',
   })
 
   useEffect(() => {
@@ -53,7 +51,6 @@ export default function CreateCustomerPage() {
         phone: data.phone,
         email: data.email,
         address: data.address,
-        message: data.message || '',
       })
     } catch (error) {
       console.error('Failed to load customer:', error)
@@ -195,22 +192,6 @@ export default function CreateCustomerPage() {
                 placeholder="Enter customer address"
               />
             </div>
-          </div>
-
-          <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-2">
-              Greeting Message
-            </label>
-            <textarea
-              value={formData.message}
-              onChange={(e) => setFormData({ ...formData, message: e.target.value })}
-              rows={4}
-              placeholder="Custom greeting message for this customer (optional)..."
-              className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-            />
-            <p className="text-xs text-gray-500 mt-1">
-              This message will be used when sending greetings to the customer
-            </p>
           </div>
 
           <div className="flex flex-col-reverse sm:flex-row justify-end gap-4 pt-4 border-t border-gray-200">

@@ -1,6 +1,32 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 
+export async function GET(
+  request: NextRequest,
+  { params }: { params: { id: string } }
+) {
+  try {
+    const customer = await prisma.customer.findUnique({
+      where: { id: params.id }
+    })
+
+    if (!customer) {
+      return NextResponse.json({ 
+        error: 'Customer not found',
+        details: `No customer found with id: ${params.id}`
+      }, { status: 404 })
+    }
+
+    return NextResponse.json(customer)
+  } catch (error: any) {
+    console.error('Error fetching customer:', error)
+    return NextResponse.json({ 
+      error: 'Failed to fetch customer', 
+      details: error?.message || String(error)
+    }, { status: 500 })
+  }
+}
+
 export async function PUT(
   request: NextRequest,
   { params }: { params: { id: string } }
@@ -23,7 +49,6 @@ export async function PUT(
         phone: data.phone,
         email: data.email,
         address: data.address,
-        message: data.message || null,
       }
     })
     return NextResponse.json(customer)

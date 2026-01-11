@@ -20,7 +20,7 @@ export function getCustomerTableConfig(): TableConfig<Customer> {
     getItemId: (customer) => customer.id,
     itemName: 'customers',
     emptyMessage: 'No customers found. Add your first customer to get started.',
-    showCheckbox: true,
+    showCheckbox: false,
     columns: [
       {
         key: 'name',
