@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import { formatCurrency, formatDateTime, formatDate } from '@/lib/utils'
 import { Bill, Order, Customer } from '@/types'
-import { FaPrint, FaCheck } from 'react-icons/fa'
+import { FaPrint, FaCheck, FaEdit } from 'react-icons/fa'
 import toast from 'react-hot-toast'
 import Table from '@/components/Table'
 import { getBillTableConfig } from '@/components/table-configs'
@@ -14,6 +14,12 @@ export default function BillsPage() {
   const [bills, setBills] = useState<Array<Bill & { order?: Order & { customer?: Customer } }>>([])
   const [currentPage, setCurrentPage] = useState(1)
   const [itemsPerPage, setItemsPerPage] = useState(10)
+  const [editingBill, setEditingBill] = useState<Bill & { order?: Order & { customer?: Customer } } | null>(null)
+  const [editFormData, setEditFormData] = useState({
+    paidAmount: '',
+    remainingAmount: '',
+    status: 'pending' as 'pending' | 'partial' | 'paid'
+  })
 
   useEffect(() => {
     loadBills()
@@ -96,6 +102,76 @@ export default function BillsPage() {
       )
       
       toast.success('Bill marked as paid successfully!')
+    } catch (error: any) {
+      console.error('Failed to update bill:', error)
+      toast.error(error.message || 'Failed to update bill. Please try again.')
+    }
+  }
+
+  const handleEditBill = (bill: Bill & { order?: Order & { customer?: Customer } }) => {
+    setEditingBill(bill)
+    setEditFormData({
+      paidAmount: bill.paidAmount.toString(),
+      remainingAmount: bill.remainingAmount.toString(),
+      status: bill.status as 'pending' | 'partial' | 'paid'
+    })
+  }
+
+  const handleCloseEditModal = () => {
+    setEditingBill(null)
+    setEditFormData({
+      paidAmount: '',
+      remainingAmount: '',
+      status: 'pending'
+    })
+  }
+
+  const handleUpdateBill = async () => {
+    if (!editingBill) return
+
+    try {
+      const paidAmount = parseFloat(editFormData.paidAmount) || 0
+      const totalAmount = editingBill.totalAmount
+      const remainingAmount = Math.max(0, totalAmount - paidAmount)
+      
+      // Determine status based on paid amount
+      let status: 'pending' | 'partial' | 'paid' = 'pending'
+      if (paidAmount === 0) {
+        status = 'pending'
+      } else if (paidAmount >= totalAmount) {
+        status = 'paid'
+      } else {
+        status = 'partial'
+      }
+
+      const response = await fetch(`/api/bills/${editingBill.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          paidAmount: paidAmount,
+          remainingAmount: remainingAmount,
+          status: status,
+        }),
+      })
+
+      if (!response.ok) {
+        const error = await response.json()
+        throw new Error(error.error || 'Failed to update bill')
+      }
+
+      const updatedBill = await response.json()
+      
+      // Update the specific bill in the list immediately with complete data
+      setBills(prevBills => 
+        prevBills.map((b: any) => 
+          b.id === editingBill.id 
+            ? updatedBill  // Replace with complete updated bill (includes all relations)
+            : b
+        )
+      )
+      
+      handleCloseEditModal()
+      toast.success('Bill updated successfully!')
     } catch (error: any) {
       console.error('Failed to update bill:', error)
       toast.error(error.message || 'Failed to update bill. Please try again.')
@@ -366,6 +442,13 @@ export default function BillsPage() {
         getItemId={tableConfig.getItemId}
         renderActions={(bill) => (
           <div className="flex items-center gap-2">
+            <button
+              onClick={() => handleEditBill(bill)}
+              className="text-blue-600 hover:text-blue-700 p-2 hover:bg-blue-50 rounded"
+              title="Edit Bill"
+            >
+              <FaEdit />
+            </button>
             {bill.status !== 'paid' && (
               <button
                 onClick={() => handleMarkPaid(bill.id)}
@@ -385,6 +468,114 @@ export default function BillsPage() {
           </div>
         )}
       />
+
+      {/* Edit Bill Modal */}
+      {editingBill && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg shadow-xl w-full max-w-md">
+            <div className="p-6 border-b border-gray-200">
+              <h2 className="text-xl font-bold text-gray-800">Edit Bill Payment</h2>
+              <p className="text-sm text-gray-600 mt-1">
+                Bill #{editingBill.id.slice(0, 8).toUpperCase()}
+              </p>
+            </div>
+            <div className="p-6 space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Total Amount
+                </label>
+                <input
+                  type="text"
+                  value={formatCurrency(editingBill.totalAmount)}
+                  disabled
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-50 text-gray-600"
+                />
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Paid Amount *
+                </label>
+                <input
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  max={editingBill.totalAmount}
+                  required
+                  value={editFormData.paidAmount}
+                  onChange={(e) => {
+                    const paid = parseFloat(e.target.value) || 0
+                    const total = editingBill.totalAmount
+                    const remaining = Math.max(0, total - paid)
+                    let status: 'pending' | 'partial' | 'paid' = 'pending'
+                    if (paid === 0) {
+                      status = 'pending'
+                    } else if (paid >= total) {
+                      status = 'paid'
+                    } else {
+                      status = 'partial'
+                    }
+                    setEditFormData({
+                      paidAmount: e.target.value,
+                      remainingAmount: remaining.toFixed(2),
+                      status
+                    })
+                  }}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                  placeholder="0.00"
+                />
+                <p className="text-xs text-gray-500 mt-1">
+                  Maximum: {formatCurrency(editingBill.totalAmount)}
+                </p>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Remaining Amount
+                </label>
+                <input
+                  type="text"
+                  value={formatCurrency(parseFloat(editFormData.remainingAmount) || 0)}
+                  disabled
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-50 text-gray-600"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Status
+                </label>
+                <div className="px-4 py-2 border border-gray-300 rounded-lg bg-gray-50">
+                  <span className={`px-3 py-1 rounded-full text-xs font-medium ${
+                    editFormData.status === 'paid' ? 'bg-green-100 text-green-800' :
+                    editFormData.status === 'partial' ? 'bg-yellow-100 text-yellow-800' :
+                    'bg-red-100 text-red-800'
+                  }`}>
+                    {editFormData.status.charAt(0).toUpperCase() + editFormData.status.slice(1)}
+                  </span>
+                  <p className="text-xs text-gray-500 mt-1">
+                    Status is automatically calculated based on paid amount
+                  </p>
+                </div>
+              </div>
+            </div>
+            <div className="p-6 border-t border-gray-200 flex justify-end gap-3">
+              <button
+                onClick={handleCloseEditModal}
+                className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleUpdateBill}
+                className="px-4 py-2 bg-primary-500 text-white rounded-lg hover:bg-primary-600 transition-colors"
+              >
+                Update Bill
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
