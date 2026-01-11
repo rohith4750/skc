@@ -169,11 +169,7 @@ export default function OrdersPage() {
       setFormData({
         customerId: order.customerId,
         eventName: (order as any).eventName || '',
-        mealTypes: mealTypesArray.map(mealType => ({
-          ...mealType,
-          services: [], // Will be populated from mealTypeAmounts if available
-          numberOfMembers: ''
-        })),
+        mealTypes: mealTypesArray,
         stalls: stallsArray,
         discount: order.discount?.toString() || '0',
         transportCost: '',

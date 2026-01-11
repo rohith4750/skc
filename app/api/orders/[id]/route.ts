@@ -146,11 +146,46 @@ export async function DELETE(
   { params }: { params: { id: string } }
 ) {
   try {
-    await prisma.order.delete({
-      where: { id: params.id }
+    // Delete order and related records in a transaction
+    await prisma.$transaction(async (tx) => {
+      // Delete related order items (should cascade, but being explicit)
+      await tx.orderItem.deleteMany({
+        where: { orderId: params.id }
+      })
+      
+      // Delete related bills
+      await tx.bill.deleteMany({
+        where: { orderId: params.id }
+      })
+      
+      // Delete related expenses (they have orderId as optional, so handle safely)
+      await tx.expense.updateMany({
+        where: { orderId: params.id },
+        data: { orderId: null }
+      })
+      
+      // Finally delete the order
+      await tx.order.delete({
+        where: { id: params.id }
+      })
     })
+    
     return NextResponse.json({ success: true })
-  } catch (error) {
-    return NextResponse.json({ error: 'Failed to delete order' }, { status: 500 })
+  } catch (error: any) {
+    console.error('Error deleting order:', error)
+    
+    // Handle Prisma-specific errors
+    if (error.code === 'P2025') {
+      return NextResponse.json({ 
+        error: 'Order not found',
+        details: `No order found with id: ${params.id}`
+      }, { status: 404 })
+    }
+    
+    return NextResponse.json({ 
+      error: 'Failed to delete order',
+      details: error?.message || String(error),
+      code: error?.code
+    }, { status: 500 })
   }
 }

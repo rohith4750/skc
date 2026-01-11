@@ -51,13 +51,18 @@ export default function OrdersHistoryPage() {
       const response = await fetch(`/api/orders/${deleteConfirm.id}`, {
         method: 'DELETE',
       })
-      if (!response.ok) throw new Error('Failed to delete order')
+      
+      if (!response.ok) {
+        const error = await response.json()
+        throw new Error(error.error || error.details || 'Failed to delete order')
+      }
+      
       await loadData()
       toast.success('Order deleted successfully!')
       setDeleteConfirm({ isOpen: false, id: null })
-    } catch (error) {
+    } catch (error: any) {
       console.error('Failed to delete order:', error)
-      toast.error('Failed to delete order. Please try again.')
+      toast.error(error.message || 'Failed to delete order. Please try again.')
       setDeleteConfirm({ isOpen: false, id: null })
     }
   }
