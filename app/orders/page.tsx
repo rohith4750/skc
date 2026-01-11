@@ -27,6 +27,7 @@ export default function OrdersPage() {
   const [customerSearchTerm, setCustomerSearchTerm] = useState<string>('')
   const [showCustomerDropdown, setShowCustomerDropdown] = useState<boolean>(false)
   const customerSearchRef = useRef<HTMLDivElement>(null)
+  const [collapsedMealTypes, setCollapsedMealTypes] = useState<Record<string, boolean>>({})
   
   const [formData, setFormData] = useState({
     customerId: '',
@@ -38,7 +39,6 @@ export default function OrdersPage() {
       pricingMethod: 'manual' | 'plate-based'
       numberOfPlates: string
       platePrice: string
-      transportCost: string
       manualAmount: string
       date: string
       services: string[] // Array of selected services: 'buffet', 'vaddana', 'handover'
@@ -46,6 +46,7 @@ export default function OrdersPage() {
     }>,
     stalls: [] as Array<{ category: string; description: string; cost: string }>,
     discount: '',
+    transportCost: '',
     totalAmount: '',
     advancePaid: '',
   })
@@ -149,7 +150,6 @@ export default function OrdersPage() {
           pricingMethod,
           numberOfPlates: '',
           platePrice: '',
-          transportCost: '',
           manualAmount,
           date: date || '',
           services,
@@ -176,6 +176,7 @@ export default function OrdersPage() {
         })),
         stalls: stallsArray,
         discount: order.discount?.toString() || '0',
+        transportCost: '',
         totalAmount: order.totalAmount?.toString() || '0',
         advancePaid: order.advancePaid?.toString() || '0',
       })
@@ -211,22 +212,32 @@ export default function OrdersPage() {
   }
 
   const handleAddMealType = () => {
+    const newId = generateId()
     setFormData(prev => ({
       ...prev,
       mealTypes: [...prev.mealTypes, {
-        id: generateId(),
+        id: newId,
         menuType: '',
         selectedMenuItems: [],
         pricingMethod: 'manual',
         numberOfPlates: '',
         platePrice: '',
-        transportCost: '',
         manualAmount: '',
         date: '',
         services: [],
         numberOfMembers: '',
       }]
     }))
+    // New meal type starts expanded
+    setCollapsedMealTypes(prev => ({ ...prev, [newId]: false }))
+  }
+
+  const handleCollapseMealType = (mealTypeId: string) => {
+    setCollapsedMealTypes(prev => ({ ...prev, [mealTypeId]: true }))
+  }
+
+  const handleExpandMealType = (mealTypeId: string) => {
+    setCollapsedMealTypes(prev => ({ ...prev, [mealTypeId]: false }))
   }
 
   const handleRemoveMealType = (mealTypeId: string) => {
@@ -234,7 +245,7 @@ export default function OrdersPage() {
       ...prev,
       mealTypes: prev.mealTypes.filter(mealType => mealType.id !== mealTypeId)
     }))
-    // Clean up related filters
+    // Clean up related filters and collapsed state
     setSelectedSubFilter(prev => {
       const newFilters = { ...prev }
       delete newFilters[mealTypeId]
@@ -244,6 +255,11 @@ export default function OrdersPage() {
       const newSearches = { ...prev }
       delete newSearches[mealTypeId]
       return newSearches
+    })
+    setCollapsedMealTypes(prev => {
+      const newCollapsed = { ...prev }
+      delete newCollapsed[mealTypeId]
+      return newCollapsed
     })
   }
 
@@ -309,8 +325,7 @@ export default function OrdersPage() {
         if (mealType.pricingMethod === 'plate-based') {
           const plates = parseFloat(mealType.numberOfPlates) || 0
           const price = parseFloat(mealType.platePrice) || 0
-          const transport = parseFloat(mealType.transportCost) || 0
-          amount = (plates * price) + transport
+          amount = plates * price
         } else {
           amount = parseFloat(mealType.manualAmount) || 0
         }
@@ -403,30 +418,30 @@ export default function OrdersPage() {
     return formData.stalls.reduce((sum, stall) => sum + (parseFloat(stall.cost) || 0), 0)
   }, [formData.stalls, showStalls])
 
-  // Calculate total amount: Sum of all meal types + Stalls - Discount
+  // Calculate total amount: Sum of all meal types + Transport + Stalls - Discount
   useEffect(() => {
     const stallsTotal = showStalls ? totalStallsCost : 0
     const discount = parseFloat(formData.discount) || 0
+    const transportCost = parseFloat(formData.transportCost) || 0
     
-    // Calculate total from all meal types
+    // Calculate total from all meal types (without transport)
     let mealTypesTotal = 0
     formData.mealTypes.forEach(mealType => {
       if (mealType.pricingMethod === 'plate-based') {
         const plates = parseFloat(mealType.numberOfPlates) || 0
         const price = parseFloat(mealType.platePrice) || 0
-        const transport = parseFloat(mealType.transportCost) || 0
-        mealTypesTotal += (plates * price) + transport
+        mealTypesTotal += plates * price
       } else {
         mealTypesTotal += parseFloat(mealType.manualAmount) || 0
       }
     })
     
-    const finalTotal = Math.max(0, mealTypesTotal + stallsTotal - discount)
+    const finalTotal = Math.max(0, mealTypesTotal + transportCost + stallsTotal - discount)
     setFormData(prev => ({
       ...prev,
       totalAmount: finalTotal.toFixed(2)
     }))
-  }, [formData.mealTypes, formData.discount, totalStallsCost, showStalls])
+  }, [formData.mealTypes, formData.discount, formData.transportCost, totalStallsCost, showStalls])
 
   const resetForm = () => {
     setFormData({
@@ -435,11 +450,13 @@ export default function OrdersPage() {
       mealTypes: [],
       stalls: [],
       discount: '',
+      transportCost: '',
       totalAmount: '',
       advancePaid: '',
     })
     setSelectedSubFilter({})
     setMenuItemSearch({})
+    setCollapsedMealTypes({})
     setShowStalls(false)
   }
 
@@ -638,23 +655,45 @@ export default function OrdersPage() {
                     const filteredMenuItems = getFilteredMenuItems(mealType.id, mealType.menuType)
                     const subFilter = selectedSubFilter[mealType.id] || 'all'
                     const search = menuItemSearch[mealType.id] || ''
+                    const isCollapsed = collapsedMealTypes[mealType.id] || false
 
                     return (
-                      <div key={mealType.id} className="border border-gray-300 rounded-lg p-6 bg-gray-50">
-                        <div className="flex justify-between items-center mb-4">
+                      <div key={mealType.id} className="border border-gray-300 rounded-lg bg-gray-50">
+                        <div className="flex justify-between items-center p-4 border-b border-gray-300">
                           <h4 className="text-md font-semibold text-gray-800">
-                            Meal Type #{mealTypeIndex + 1}
+                            Meal Type #{mealTypeIndex + 1} {mealType.menuType && `- ${mealType.menuType.charAt(0).toUpperCase() + mealType.menuType.slice(1)}`}
                           </h4>
-                          <button
-                            type="button"
-                            onClick={() => handleRemoveMealType(mealType.id)}
-                            className="text-red-600 hover:text-red-800 text-sm font-medium"
-                          >
-                            Remove
-                          </button>
+                          <div className="flex items-center gap-2">
+                            {!isCollapsed && (
+                              <button
+                                type="button"
+                                onClick={() => handleCollapseMealType(mealType.id)}
+                                className="px-4 py-1.5 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors text-sm font-medium"
+                              >
+                                OK
+                              </button>
+                            )}
+                            {isCollapsed && (
+                              <button
+                                type="button"
+                                onClick={() => handleExpandMealType(mealType.id)}
+                                className="px-4 py-1.5 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors text-sm font-medium"
+                              >
+                                Edit
+                              </button>
+                            )}
+                            <button
+                              type="button"
+                              onClick={() => handleRemoveMealType(mealType.id)}
+                              className="text-red-600 hover:text-red-800 text-sm font-medium"
+                            >
+                              Remove
+                            </button>
+                          </div>
                         </div>
 
-                        <div className="space-y-4">
+                        {!isCollapsed && (
+                        <div className="p-6 space-y-4">
                           {/* Menu Type Selector and Date */}
                           <div className="grid grid-cols-2 gap-4">
                             <div>
@@ -866,7 +905,7 @@ export default function OrdersPage() {
                             </div>
 
                             {mealType.pricingMethod === 'plate-based' ? (
-                              <div className="grid grid-cols-3 gap-4">
+                              <div className="grid grid-cols-2 gap-4">
                                 <div>
                                   <label className="block text-sm font-medium text-gray-700 mb-1">
                                     Number of Plates *
@@ -897,20 +936,6 @@ export default function OrdersPage() {
                                     placeholder="0.00"
                                   />
                                 </div>
-                                <div>
-                                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                                    Transport Cost
-                                  </label>
-                                  <input
-                                    type="number"
-                                    step="0.01"
-                                    min="0"
-                                    value={mealType.transportCost}
-                                    onChange={(e: any) => handleUpdateMealType(mealType.id, 'transportCost', e.target.value)}
-                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-                                    placeholder="0.00"
-                                  />
-                                </div>
                               </div>
                             ) : (
                               <div>
@@ -931,6 +956,7 @@ export default function OrdersPage() {
                             )}
                           </div>
                         </div>
+                        )}
                       </div>
                     )
                   })}
@@ -1065,6 +1091,20 @@ export default function OrdersPage() {
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Transport Cost
+                  </label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    value={formData.transportCost}
+                    onChange={(e: any) => setFormData({ ...formData, transportCost: e.target.value })}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                    placeholder="0.00"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
                     Discount
                   </label>
                   <input
@@ -1077,6 +1117,9 @@ export default function OrdersPage() {
                     placeholder="0.00"
                   />
                 </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4 mt-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
                     Advance Paid
@@ -1091,21 +1134,20 @@ export default function OrdersPage() {
                     placeholder="0.00"
                   />
                 </div>
-              </div>
-
-              <div className="mt-4">
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Total Amount * (Auto-calculated: Sum of all meal types + Stalls - Discount)
-                </label>
-                <input
-                  type="number"
-                  step="0.01"
-                  required
-                  value={formData.totalAmount}
-                  readOnly
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 bg-gray-50"
-                  placeholder="0.00"
-                />
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Total Amount * (Auto-calculated: Meal Types + Transport + Stalls - Discount)
+                  </label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    required
+                    value={formData.totalAmount}
+                    readOnly
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 bg-gray-50"
+                    placeholder="0.00"
+                  />
+                </div>
               </div>
             </div>
 
