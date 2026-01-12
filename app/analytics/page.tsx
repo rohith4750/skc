@@ -61,11 +61,13 @@ export default function AnalyticsPage() {
   const loadData = async () => {
     try {
       setLoading(true)
+      // Add cache-busting parameter to ensure fresh data
+      const cacheBuster = `?t=${Date.now()}`
       const [ordersRes, billsRes, expensesRes, customersRes] = await Promise.all([
-        fetch('/api/orders'),
-        fetch('/api/bills'),
-        fetch('/api/expenses'),
-        fetch('/api/customers')
+        fetch(`/api/orders${cacheBuster}`, { cache: 'no-store' }),
+        fetch(`/api/bills${cacheBuster}`, { cache: 'no-store' }),
+        fetch(`/api/expenses${cacheBuster}`, { cache: 'no-store' }),
+        fetch(`/api/customers${cacheBuster}`, { cache: 'no-store' })
       ])
 
       const [orders, bills, expenses, customers] = await Promise.all([
