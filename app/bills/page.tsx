@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import { usePathname } from 'next/navigation'
 import { formatCurrency, formatDateTime, formatDate } from '@/lib/utils'
 import { Bill, Order, Customer } from '@/types'
@@ -22,7 +22,7 @@ export default function BillsPage() {
     remainingAmount: '',
     status: 'pending' as 'pending' | 'partial' | 'paid'
   })
-  const loadBills = async (showToast = false) => {
+  const loadBills = useCallback(async (showToast = false) => {
     try {
       // Add timestamp to prevent caching
       const timestamp = new Date().getTime()
@@ -45,7 +45,7 @@ export default function BillsPage() {
       console.error('Failed to load bills:', error)
       toast.error('Failed to load bills. Please try again.')
     }
-  }
+  }, [])
 
   useEffect(() => {
     // Always refresh when navigating to this page (pathname change)
@@ -63,14 +63,20 @@ export default function BillsPage() {
       loadBills()
     }
     
+    // Set up interval to refresh bills every 5 seconds (for real-time updates)
+    const intervalId = setInterval(() => {
+      loadBills()
+    }, 5000)
+    
     document.addEventListener('visibilitychange', handleVisibilityChange)
     window.addEventListener('focus', handleFocus)
     
     return () => {
+      clearInterval(intervalId)
       document.removeEventListener('visibilitychange', handleVisibilityChange)
       window.removeEventListener('focus', handleFocus)
     }
-  }, [pathname])
+  }, [pathname, loadBills])
 
   const handleMarkPaid = async (billId: string) => {
     const bill = bills.find((b: any) => b.id === billId)
