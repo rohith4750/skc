@@ -85,10 +85,17 @@ export async function POST(request: NextRequest) {
         }
       })
 
+      // Verify bill was created
+      if (!bill || !bill.id) {
+        throw new Error('Bill creation failed: Bill was not created successfully')
+      }
+
+      console.log('Order and bill created successfully:', { orderId: order.id, billId: bill.id })
+
       return { order, bill }
     })
 
-    return NextResponse.json(result)
+    return NextResponse.json(result, { status: 201 })
   } catch (error: any) {
     console.error('Error creating order:', error)
     console.error('Error details:', {
