@@ -155,14 +155,15 @@ export async function DELETE(
         where: { orderId: params.id }
       })
       
-      // Delete related bills
+      // Delete associated bills first (since orderId is unique/required)
       await tx.bill.deleteMany({
         where: { orderId: params.id }
       })
       
-      // Delete related expenses (delete them completely, not just set orderId to null)
-      await tx.expense.deleteMany({
-        where: { orderId: params.id }
+      // Set expenses orderId to null (keep expenses but remove the link to the order)
+      await tx.expense.updateMany({
+        where: { orderId: params.id },
+        data: { orderId: null }
       })
       
       // Finally delete the order
