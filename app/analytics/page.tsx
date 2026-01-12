@@ -77,7 +77,13 @@ export default function AnalyticsPage() {
         customersRes.ok ? customersRes.json() : []
       ])
 
-      setData({ orders, bills, expenses, customers })
+      // Ensure bills have the correct status field (use database status directly)
+      const normalizedBills = bills.map((bill: any) => ({
+        ...bill,
+        status: bill.status || 'pending' // Ensure status exists, default to pending if missing
+      }))
+
+      setData({ orders, bills: normalizedBills, expenses, customers })
     } catch (error) {
       console.error('Failed to load analytics data:', error)
       toast.error('Failed to load analytics data')
