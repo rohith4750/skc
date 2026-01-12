@@ -52,7 +52,7 @@ export default function AnalyticsPage() {
   const [dateFilter, setDateFilter] = useState<'all' | 'month' | 'year'>('all')
   const [selectedMonth, setSelectedMonth] = useState(new Date().toISOString().slice(0, 7))
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear().toString())
-  const [activeTab, setActiveTab] = useState<'overview' | 'financial' | 'operations' | 'customers'>('overview')
+  const [activeTab, setActiveTab] = useState<'overview' | 'financial' | 'operations' | 'customers' | 'predictive'>('overview')
 
   useEffect(() => {
     loadData()
@@ -316,6 +316,109 @@ export default function AnalyticsPage() {
     }))
   }, [data])
 
+  // Predictive Analysis
+  const predictiveAnalysis = useMemo(() => {
+    if (monthlyTrends.length < 3) {
+      return null // Need at least 3 months of data for predictions
+    }
+
+    // Calculate average growth rates
+    const revenues = monthlyTrends.map(m => m.revenue)
+    const expenses = monthlyTrends.map(m => m.expenses)
+    const orders = monthlyTrends.map(m => m.orders)
+    const profits = monthlyTrends.map(m => m.profit)
+
+    // Calculate month-over-month growth rates
+    const revenueGrowthRates: number[] = []
+    const expenseGrowthRates: number[] = []
+    const orderGrowthRates: number[] = []
+    const profitGrowthRates: number[] = []
+
+    for (let i = 1; i < revenues.length; i++) {
+      if (revenues[i - 1] > 0) {
+        revenueGrowthRates.push(((revenues[i] - revenues[i - 1]) / revenues[i - 1]) * 100)
+      }
+      if (expenses[i - 1] > 0) {
+        expenseGrowthRates.push(((expenses[i] - expenses[i - 1]) / expenses[i - 1]) * 100)
+      }
+      if (orders[i - 1] > 0) {
+        orderGrowthRates.push(((orders[i] - orders[i - 1]) / orders[i - 1]) * 100)
+      }
+      if (profits[i - 1] !== 0) {
+        profitGrowthRates.push(profits[i - 1] > 0 ? ((profits[i] - profits[i - 1]) / Math.abs(profits[i - 1])) * 100 : 0)
+      }
+    }
+
+    // Average growth rates
+    const avgRevenueGrowth = revenueGrowthRates.length > 0 
+      ? revenueGrowthRates.reduce((a, b) => a + b, 0) / revenueGrowthRates.length 
+      : 0
+    const avgExpenseGrowth = expenseGrowthRates.length > 0
+      ? expenseGrowthRates.reduce((a, b) => a + b, 0) / expenseGrowthRates.length
+      : 0
+    const avgOrderGrowth = orderGrowthRates.length > 0
+      ? orderGrowthRates.reduce((a, b) => a + b, 0) / orderGrowthRates.length
+      : 0
+    const avgProfitGrowth = profitGrowthRates.length > 0
+      ? profitGrowthRates.reduce((a, b) => a + b, 0) / profitGrowthRates.length
+      : 0
+
+    // Get latest values
+    const lastRevenue = revenues[revenues.length - 1]
+    const lastExpense = expenses[expenses.length - 1]
+    const lastOrders = orders[orders.length - 1]
+    const lastProfit = profits[profits.length - 1]
+
+    // Forecast next 3 months using linear projection
+    const forecasts = []
+    for (let i = 1; i <= 3; i++) {
+      const forecastRevenue = lastRevenue * Math.pow(1 + avgRevenueGrowth / 100, i)
+      const forecastExpense = lastExpense * Math.pow(1 + avgExpenseGrowth / 100, i)
+      const forecastOrders = Math.round(lastOrders * Math.pow(1 + avgOrderGrowth / 100, i))
+      const forecastProfit = forecastRevenue - forecastExpense
+
+      forecasts.push({
+        month: i,
+        revenue: forecastRevenue,
+        expenses: forecastExpense,
+        orders: forecastOrders,
+        profit: forecastProfit
+      })
+    }
+
+    // Annual projections
+    const projectedAnnualRevenue = lastRevenue * 12 * (1 + avgRevenueGrowth / 100)
+    const projectedAnnualExpenses = lastExpense * 12 * (1 + avgExpenseGrowth / 100)
+    const projectedAnnualOrders = Math.round(lastOrders * 12 * (1 + avgOrderGrowth / 100))
+    const projectedAnnualProfit = projectedAnnualRevenue - projectedAnnualExpenses
+
+    // Cash flow prediction (next 3 months)
+    const currentMonthRevenue = revenues[revenues.length - 1]
+    const avgMonthlyExpenses = expenses.reduce((a, b) => a + b, 0) / expenses.length
+    const projectedCashFlow = (currentMonthRevenue - avgMonthlyExpenses) * 3
+
+    return {
+      avgRevenueGrowth: avgRevenueGrowth,
+      avgExpenseGrowth: avgExpenseGrowth,
+      avgOrderGrowth: avgOrderGrowth,
+      avgProfitGrowth: avgProfitGrowth,
+      forecasts,
+      projections: {
+        annualRevenue: projectedAnnualRevenue,
+        annualExpenses: projectedAnnualExpenses,
+        annualOrders: projectedAnnualOrders,
+        annualProfit: projectedAnnualProfit,
+        cashFlow3Months: projectedCashFlow
+      },
+      trends: {
+        revenueTrend: avgRevenueGrowth > 0 ? 'up' : avgRevenueGrowth < 0 ? 'down' : 'stable',
+        expenseTrend: avgExpenseGrowth > 0 ? 'up' : avgExpenseGrowth < 0 ? 'down' : 'stable',
+        orderTrend: avgOrderGrowth > 0 ? 'up' : avgOrderGrowth < 0 ? 'down' : 'stable',
+        profitTrend: avgProfitGrowth > 0 ? 'up' : avgProfitGrowth < 0 ? 'down' : 'stable'
+      }
+    }
+  }, [monthlyTrends])
+
   // Top Customers
   const topCustomers = useMemo(() => {
     const customerSpending: Record<string, { customer: any; totalSpent: number; orderCount: number }> = {}
@@ -530,7 +633,8 @@ export default function AnalyticsPage() {
             { id: 'overview', label: 'Overview', icon: FaChartLine },
             { id: 'financial', label: 'Financial', icon: FaDollarSign },
             { id: 'operations', label: 'Operations', icon: FaShoppingCart },
-            { id: 'customers', label: 'Customers', icon: FaUsers }
+            { id: 'customers', label: 'Customers', icon: FaUsers },
+            { id: 'predictive', label: 'Predictive Analysis', icon: FaStar }
           ].map((tab) => (
             <button
               key={tab.id}
@@ -886,6 +990,179 @@ export default function AnalyticsPage() {
             <p className="text-gray-500 text-center py-8">No customer data available</p>
           )}
         </div>
+      )}
+
+      {/* Predictive Analysis Tab */}
+      {activeTab === 'predictive' && (
+        <>
+          {predictiveAnalysis ? (
+            <>
+              {/* Growth Rate Indicators */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+                <div className="bg-white rounded-lg shadow-md p-4 sm:p-6 border-l-4 border-green-500">
+                  <div className="flex items-center justify-between mb-2">
+                    <h3 className="text-sm font-medium text-gray-600">Revenue Growth Rate</h3>
+                    {predictiveAnalysis.trends.revenueTrend === 'up' ? (
+                      <FaArrowUp className="text-green-500" />
+                    ) : predictiveAnalysis.trends.revenueTrend === 'down' ? (
+                      <FaArrowDown className="text-red-500" />
+                    ) : (
+                      <FaEquals className="text-gray-500" />
+                    )}
+                  </div>
+                  <p className={`text-2xl font-bold ${predictiveAnalysis.avgRevenueGrowth >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                    {predictiveAnalysis.avgRevenueGrowth >= 0 ? '+' : ''}{predictiveAnalysis.avgRevenueGrowth.toFixed(1)}%
+                  </p>
+                  <p className="text-xs text-gray-500 mt-1">Monthly average</p>
+                </div>
+
+                <div className="bg-white rounded-lg shadow-md p-4 sm:p-6 border-l-4 border-red-500">
+                  <div className="flex items-center justify-between mb-2">
+                    <h3 className="text-sm font-medium text-gray-600">Expense Growth Rate</h3>
+                    {predictiveAnalysis.trends.expenseTrend === 'up' ? (
+                      <FaArrowUp className="text-red-500" />
+                    ) : predictiveAnalysis.trends.expenseTrend === 'down' ? (
+                      <FaArrowDown className="text-green-500" />
+                    ) : (
+                      <FaEquals className="text-gray-500" />
+                    )}
+                  </div>
+                  <p className={`text-2xl font-bold ${predictiveAnalysis.avgExpenseGrowth >= 0 ? 'text-red-600' : 'text-green-600'}`}>
+                    {predictiveAnalysis.avgExpenseGrowth >= 0 ? '+' : ''}{predictiveAnalysis.avgExpenseGrowth.toFixed(1)}%
+                  </p>
+                  <p className="text-xs text-gray-500 mt-1">Monthly average</p>
+                </div>
+
+                <div className="bg-white rounded-lg shadow-md p-4 sm:p-6 border-l-4 border-primary-500">
+                  <div className="flex items-center justify-between mb-2">
+                    <h3 className="text-sm font-medium text-gray-600">Order Growth Rate</h3>
+                    {predictiveAnalysis.trends.orderTrend === 'up' ? (
+                      <FaArrowUp className="text-primary-500" />
+                    ) : predictiveAnalysis.trends.orderTrend === 'down' ? (
+                      <FaArrowDown className="text-red-500" />
+                    ) : (
+                      <FaEquals className="text-gray-500" />
+                    )}
+                  </div>
+                  <p className={`text-2xl font-bold ${predictiveAnalysis.avgOrderGrowth >= 0 ? 'text-primary-600' : 'text-red-600'}`}>
+                    {predictiveAnalysis.avgOrderGrowth >= 0 ? '+' : ''}{predictiveAnalysis.avgOrderGrowth.toFixed(1)}%
+                  </p>
+                  <p className="text-xs text-gray-500 mt-1">Monthly average</p>
+                </div>
+
+                <div className="bg-white rounded-lg shadow-md p-4 sm:p-6 border-l-4 border-blue-500">
+                  <div className="flex items-center justify-between mb-2">
+                    <h3 className="text-sm font-medium text-gray-600">Profit Growth Rate</h3>
+                    {predictiveAnalysis.trends.profitTrend === 'up' ? (
+                      <FaArrowUp className="text-blue-500" />
+                    ) : predictiveAnalysis.trends.profitTrend === 'down' ? (
+                      <FaArrowDown className="text-red-500" />
+                    ) : (
+                      <FaEquals className="text-gray-500" />
+                    )}
+                  </div>
+                  <p className={`text-2xl font-bold ${predictiveAnalysis.avgProfitGrowth >= 0 ? 'text-blue-600' : 'text-red-600'}`}>
+                    {predictiveAnalysis.avgProfitGrowth >= 0 ? '+' : ''}{predictiveAnalysis.avgProfitGrowth.toFixed(1)}%
+                  </p>
+                  <p className="text-xs text-gray-500 mt-1">Monthly average</p>
+                </div>
+              </div>
+
+              {/* Annual Projections */}
+              <div className="bg-white rounded-lg shadow-md p-4 sm:p-6 mb-6">
+                <h2 className="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2">
+                  <FaCalendarWeek className="text-primary-500" />
+                  Annual Projections (Next 12 Months)
+                </h2>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                  <div className="bg-green-50 rounded-lg p-4 border border-green-200">
+                    <h3 className="text-sm font-medium text-gray-600 mb-2">Projected Revenue</h3>
+                    <p className="text-2xl font-bold text-green-600">{formatCurrency(predictiveAnalysis.projections.annualRevenue)}</p>
+                  </div>
+                  <div className="bg-red-50 rounded-lg p-4 border border-red-200">
+                    <h3 className="text-sm font-medium text-gray-600 mb-2">Projected Expenses</h3>
+                    <p className="text-2xl font-bold text-red-600">{formatCurrency(predictiveAnalysis.projections.annualExpenses)}</p>
+                  </div>
+                  <div className="bg-blue-50 rounded-lg p-4 border border-blue-200">
+                    <h3 className="text-sm font-medium text-gray-600 mb-2">Projected Profit</h3>
+                    <p className={`text-2xl font-bold ${predictiveAnalysis.projections.annualProfit >= 0 ? 'text-blue-600' : 'text-red-600'}`}>
+                      {formatCurrency(predictiveAnalysis.projections.annualProfit)}
+                    </p>
+                  </div>
+                  <div className="bg-primary-50 rounded-lg p-4 border border-primary-200">
+                    <h3 className="text-sm font-medium text-gray-600 mb-2">Projected Orders</h3>
+                    <p className="text-2xl font-bold text-primary-600">{predictiveAnalysis.projections.annualOrders}</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Next 3 Months Forecast */}
+              <div className="bg-white rounded-lg shadow-md p-4 sm:p-6 mb-6">
+                <h2 className="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2">
+                  <FaChartLine className="text-primary-500" />
+                  Next 3 Months Forecast
+                </h2>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="border-b border-gray-200">
+                        <th className="text-left py-3 px-4 font-medium text-gray-700">Month</th>
+                        <th className="text-right py-3 px-4 font-medium text-gray-700">Revenue</th>
+                        <th className="text-right py-3 px-4 font-medium text-gray-700">Expenses</th>
+                        <th className="text-right py-3 px-4 font-medium text-gray-700">Profit</th>
+                        <th className="text-right py-3 px-4 font-medium text-gray-700">Orders</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {predictiveAnalysis.forecasts.map((forecast, index) => {
+                        const nextDate = new Date()
+                        nextDate.setMonth(nextDate.getMonth() + index + 1)
+                        const monthName = nextDate.toLocaleDateString('en-US', { month: 'short', year: 'numeric' })
+                        return (
+                          <tr key={index} className="border-b border-gray-100 hover:bg-gray-50">
+                            <td className="py-3 px-4 font-medium text-gray-800">{monthName}</td>
+                            <td className="py-3 px-4 text-right font-medium text-green-600">{formatCurrency(forecast.revenue)}</td>
+                            <td className="py-3 px-4 text-right font-medium text-red-600">{formatCurrency(forecast.expenses)}</td>
+                            <td className={`py-3 px-4 text-right font-medium ${forecast.profit >= 0 ? 'text-blue-600' : 'text-red-600'}`}>
+                              {formatCurrency(forecast.profit)}
+                            </td>
+                            <td className="py-3 px-4 text-right text-gray-700">{forecast.orders}</td>
+                          </tr>
+                        )
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              {/* Cash Flow Projection */}
+              <div className="bg-white rounded-lg shadow-md p-4 sm:p-6">
+                <h2 className="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2">
+                  <FaWallet className="text-primary-500" />
+                  Cash Flow Projection (Next 3 Months)
+                </h2>
+                <div className="bg-gradient-to-r from-blue-50 to-green-50 rounded-lg p-6 border border-blue-200">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h3 className="text-sm font-medium text-gray-600 mb-2">Expected Cash Flow</h3>
+                      <p className={`text-3xl font-bold ${predictiveAnalysis.projections.cashFlow3Months >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                        {formatCurrency(predictiveAnalysis.projections.cashFlow3Months)}
+                      </p>
+                      <p className="text-xs text-gray-500 mt-2">Based on current revenue and expense trends</p>
+                    </div>
+                    <FaWallet className={`text-5xl ${predictiveAnalysis.projections.cashFlow3Months >= 0 ? 'text-green-400' : 'text-red-400'}`} />
+                  </div>
+                </div>
+              </div>
+            </>
+          ) : (
+            <div className="bg-white rounded-lg shadow-md p-8 text-center">
+              <FaChartLine className="text-gray-400 text-5xl mx-auto mb-4" />
+              <h3 className="text-lg font-medium text-gray-700 mb-2">Insufficient Data for Predictions</h3>
+              <p className="text-gray-500">We need at least 3 months of historical data to generate predictions. Please check back once you have more data.</p>
+            </div>
+          )}
+        </>
       )}
     </div>
   )
