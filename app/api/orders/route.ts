@@ -74,6 +74,19 @@ export async function POST(request: NextRequest) {
         }
       })
 
+      // Check if bill already exists for this order (shouldn't happen, but safety check)
+      const existingBill = await tx.bill.findUnique({
+        where: { orderId: order.id }
+      })
+      
+      if (existingBill) {
+        console.warn('Bill already exists for order:', order.id)
+        // If bill exists, use it instead of creating a new one
+        const bill = existingBill
+        console.log('Using existing bill:', { orderId: order.id, billId: bill.id })
+        return { order, bill }
+      }
+
       // Create bill - this will fail if order creation succeeded but bill creation fails
       const bill = await tx.bill.create({
         data: {

@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { usePathname } from 'next/navigation'
 import { formatCurrency, formatDateTime, formatDate } from '@/lib/utils'
 import { Bill, Order, Customer } from '@/types'
 import { FaPrint, FaCheck, FaEdit } from 'react-icons/fa'
@@ -11,6 +12,7 @@ import jsPDF from 'jspdf'
 import html2canvas from 'html2canvas'
 
 export default function BillsPage() {
+  const pathname = usePathname()
   const [bills, setBills] = useState<Array<Bill & { order?: Order & { customer?: Customer } }>>([])
   const [currentPage, setCurrentPage] = useState(1)
   const [itemsPerPage, setItemsPerPage] = useState(10)
@@ -20,31 +22,6 @@ export default function BillsPage() {
     remainingAmount: '',
     status: 'pending' as 'pending' | 'partial' | 'paid'
   })
-
-  useEffect(() => {
-    loadBills()
-    
-    // Refresh bills when page becomes visible (user switches back to tab)
-    const handleVisibilityChange = () => {
-      if (document.visibilityState === 'visible') {
-        loadBills()
-      }
-    }
-    
-    // Refresh bills when window gains focus
-    const handleFocus = () => {
-      loadBills()
-    }
-    
-    document.addEventListener('visibilitychange', handleVisibilityChange)
-    window.addEventListener('focus', handleFocus)
-    
-    return () => {
-      document.removeEventListener('visibilitychange', handleVisibilityChange)
-      window.removeEventListener('focus', handleFocus)
-    }
-  }, [])
-
   const loadBills = async (showToast = false) => {
     try {
       // Add timestamp to prevent caching
@@ -69,6 +46,31 @@ export default function BillsPage() {
       toast.error('Failed to load bills. Please try again.')
     }
   }
+
+  useEffect(() => {
+    // Always refresh when navigating to this page (pathname change)
+    loadBills()
+    
+    // Refresh bills when page becomes visible (user switches back to tab)
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        loadBills()
+      }
+    }
+    
+    // Refresh bills when window gains focus
+    const handleFocus = () => {
+      loadBills()
+    }
+    
+    document.addEventListener('visibilitychange', handleVisibilityChange)
+    window.addEventListener('focus', handleFocus)
+    
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange)
+      window.removeEventListener('focus', handleFocus)
+    }
+  }, [pathname])
 
   const handleMarkPaid = async (billId: string) => {
     const bill = bills.find((b: any) => b.id === billId)
