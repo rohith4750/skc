@@ -44,6 +44,11 @@ export default function BillsPage() {
     }
   }
 
+  useEffect(() => {
+    // Load bills on mount and whenever pathname changes to /bills
+    loadBills()
+  }, [pathname])
+
   const handleMarkPaid = async (billId: string) => {
     const bill = bills.find((b: any) => b.id === billId)
     if (!bill) return
