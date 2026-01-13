@@ -108,16 +108,21 @@ export default function BillsPage() {
     try {
       const paidAmount = parseFloat(editFormData.paidAmount) || 0
       const totalAmount = editingBill.totalAmount
-      const remainingAmount = Math.max(0, totalAmount - paidAmount)
       
-      // Determine status based on paid amount
+      // Determine status based on paid amount (with small tolerance for floating point errors)
       let status: 'pending' | 'partial' | 'paid' = 'pending'
-      if (paidAmount === 0) {
+      const tolerance = 0.01 // Small tolerance for floating point comparison
+      let remainingAmount = 0
+      
+      if (paidAmount <= tolerance) {
         status = 'pending'
-      } else if (paidAmount >= totalAmount) {
+        remainingAmount = totalAmount
+      } else if (paidAmount >= (totalAmount - tolerance)) {
         status = 'paid'
+        remainingAmount = 0
       } else {
         status = 'partial'
+        remainingAmount = Math.max(0, totalAmount - paidAmount)
       }
 
       const response = await fetch(`/api/bills/${editingBill.id}`, {
