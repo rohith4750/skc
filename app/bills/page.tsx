@@ -1,7 +1,6 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { usePathname } from 'next/navigation'
 import { formatCurrency, formatDateTime, formatDate } from '@/lib/utils'
 import { Bill, Order, Customer } from '@/types'
 import { FaPrint, FaCheck, FaEdit } from 'react-icons/fa'
@@ -12,7 +11,6 @@ import jsPDF from 'jspdf'
 import html2canvas from 'html2canvas'
 
 export default function BillsPage() {
-  const pathname = usePathname()
   const [bills, setBills] = useState<Array<Bill & { order?: Order & { customer?: Customer } }>>([])
   const [currentPage, setCurrentPage] = useState(1)
   const [itemsPerPage, setItemsPerPage] = useState(10)
@@ -45,9 +43,8 @@ export default function BillsPage() {
   }
 
   useEffect(() => {
-    // Load bills on mount and whenever pathname changes to /bills
     loadBills()
-  }, [pathname])
+  }, [])
 
   const handleMarkPaid = async (billId: string) => {
     const bill = bills.find((b: any) => b.id === billId)
