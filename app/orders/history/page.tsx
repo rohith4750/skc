@@ -1,9 +1,9 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useMemo } from 'react'
 import { formatCurrency, formatDateTime, formatDate } from '@/lib/utils'
 import { Order } from '@/types'
-import { FaTrash, FaFilePdf, FaChevronLeft, FaChevronRight, FaEdit } from 'react-icons/fa'
+import { FaTrash, FaFilePdf, FaChevronLeft, FaChevronRight, FaEdit, FaFilter } from 'react-icons/fa'
 import Link from 'next/link'
 import jsPDF from 'jspdf'
 import html2canvas from 'html2canvas'
@@ -18,6 +18,10 @@ export default function OrdersHistoryPage() {
     isOpen: false,
     id: null,
   })
+  const [showFilters, setShowFilters] = useState(false)
+  const [statusFilter, setStatusFilter] = useState<string>('all')
+  const [customerSearch, setCustomerSearch] = useState<string>('')
+  const [dateRange, setDateRange] = useState({ start: '', end: '' })
 
   useEffect(() => {
     loadData()
@@ -35,11 +39,51 @@ export default function OrdersHistoryPage() {
     }
   }
 
+  // Filter orders
+  const filteredOrders = useMemo(() => {
+    let filtered = orders
+    
+    // Status filter
+    if (statusFilter !== 'all') {
+      filtered = filtered.filter(order => order.status === statusFilter)
+    }
+    
+    // Customer search filter
+    if (customerSearch) {
+      const searchLower = customerSearch.toLowerCase()
+      filtered = filtered.filter(order => 
+        order.customer?.name?.toLowerCase().includes(searchLower) ||
+        order.customer?.phone?.includes(customerSearch) ||
+        order.customer?.email?.toLowerCase().includes(searchLower) ||
+        (order as any).eventName?.toLowerCase().includes(searchLower)
+      )
+    }
+    
+    // Date range filter
+    if (dateRange.start) {
+      filtered = filtered.filter(order => {
+        const orderDate = new Date(order.createdAt)
+        const startDate = new Date(dateRange.start)
+        return orderDate >= startDate
+      })
+    }
+    if (dateRange.end) {
+      filtered = filtered.filter(order => {
+        const orderDate = new Date(order.createdAt)
+        const endDate = new Date(dateRange.end)
+        endDate.setHours(23, 59, 59, 999)
+        return orderDate <= endDate
+      })
+    }
+    
+    return filtered.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+  }, [orders, statusFilter, customerSearch, dateRange])
+
   // Pagination logic
-  const totalPages = Math.ceil(orders.length / itemsPerPage)
+  const totalPages = Math.ceil(filteredOrders.length / itemsPerPage)
   const startIndex = (currentPage - 1) * itemsPerPage
   const endIndex = startIndex + itemsPerPage
-  const paginatedOrders = orders.slice(startIndex, endIndex)
+  const paginatedOrders = filteredOrders.slice(startIndex, endIndex)
 
   const handleDelete = (id: string) => {
     setDeleteConfirm({ isOpen: true, id })
@@ -256,10 +300,84 @@ export default function OrdersHistoryPage() {
     <div className="p-6">
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-3xl font-bold text-gray-800">Orders History</h1>
+        <button
+          onClick={() => setShowFilters(!showFilters)}
+          className="flex items-center gap-2 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors"
+        >
+          <FaFilter />
+          {showFilters ? 'Hide Filters' : 'Show Filters'}
+        </button>
       </div>
 
+      {/* Filters */}
+      {showFilters && (
+        <div className="bg-white rounded-lg shadow-md p-6 mb-6">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {/* Status Filter */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Status</label>
+              <select
+                value={statusFilter}
+                onChange={(e) => setStatusFilter(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+              >
+                <option value="all">All Status</option>
+                <option value="pending">Pending</option>
+                <option value="in-progress">In Progress</option>
+                <option value="completed">Completed</option>
+                <option value="cancelled">Cancelled</option>
+              </select>
+            </div>
+
+            {/* Customer Search */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Customer/Event Search</label>
+              <input
+                type="text"
+                value={customerSearch}
+                onChange={(e) => setCustomerSearch(e.target.value)}
+                placeholder="Search by customer name, phone, email, or event name"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+              />
+            </div>
+
+            {/* Date Range */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Date Range</label>
+              <div className="flex gap-2">
+                <input
+                  type="date"
+                  value={dateRange.start}
+                  onChange={(e) => setDateRange({ ...dateRange, start: e.target.value })}
+                  className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                />
+                <input
+                  type="date"
+                  value={dateRange.end}
+                  onChange={(e) => setDateRange({ ...dateRange, end: e.target.value })}
+                  className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                />
+              </div>
+            </div>
+          </div>
+          <div className="mt-4 flex justify-end">
+            <button
+              onClick={() => {
+                setStatusFilter('all')
+                setCustomerSearch('')
+                setDateRange({ start: '', end: '' })
+                setCurrentPage(1)
+              }}
+              className="px-4 py-2 text-sm text-gray-600 hover:text-gray-800 underline"
+            >
+              Clear Filters
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Orders Table */}
-      {orders.length === 0 ? (
+      {filteredOrders.length === 0 ? (
         <div className="bg-white rounded-lg shadow-md p-8 text-center text-gray-500">
           No orders found.
         </div>

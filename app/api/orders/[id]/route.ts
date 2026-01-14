@@ -38,7 +38,7 @@ export async function PUT(
     
     // If only status is being updated (from orders history page)
     if (data.status !== undefined && Object.keys(data).length === 1) {
-      // Status change doesn't affect bill, so no need to update bill
+      // Update order status
       const order = await prisma.order.update({
         where: { id: params.id },
         data: {
@@ -54,6 +54,49 @@ export async function PUT(
           }
         }
       })
+      
+      // Generate bill when status changes to "in-progress" or "completed"
+      if (data.status === 'in-progress' || data.status === 'completed') {
+        // Check if bill already exists
+        const existingBill = await prisma.bill.findUnique({
+          where: { orderId: params.id }
+        })
+        
+        if (!existingBill) {
+          // Create bill only if it doesn't exist
+          await prisma.bill.create({
+            data: {
+              orderId: params.id,
+              totalAmount: order.totalAmount,
+              advancePaid: order.advancePaid,
+              remainingAmount: order.remainingAmount,
+              paidAmount: order.advancePaid,
+              status: order.remainingAmount > 0 ? (order.advancePaid > 0 ? 'partial' : 'pending') : 'paid',
+            }
+          })
+          console.log('Bill generated for order:', params.id)
+        } else if (data.status === 'completed') {
+          // If status is completed and bill exists, mark it as paid
+          await prisma.bill.update({
+            where: { id: existingBill.id },
+            data: {
+              paidAmount: existingBill.totalAmount,
+              remainingAmount: 0,
+              status: 'paid'
+            }
+          })
+          
+          // Update order amounts to match
+          await prisma.order.update({
+            where: { id: params.id },
+            data: {
+              advancePaid: existingBill.totalAmount,
+              remainingAmount: 0
+            }
+          })
+        }
+      }
+      
       return NextResponse.json(order)
     }
     

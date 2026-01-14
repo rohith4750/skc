@@ -58,58 +58,23 @@ export async function POST(request: NextRequest) {
       orderData.supervisorId = data.supervisorId
     }
     
-    // Use transaction to ensure both order and bill are created together
-    const result = await prisma.$transaction(async (tx) => {
-      // Create order
-      const order = await tx.order.create({
-        data: orderData,
-        include: {
-          customer: true,
-          supervisor: true,
-          items: {
-            include: {
-              menuItem: true
-            }
+    // Create order only - bills will be generated when status changes to in-progress or completed
+    const order = await prisma.order.create({
+      data: orderData,
+      include: {
+        customer: true,
+        supervisor: true,
+        items: {
+          include: {
+            menuItem: true
           }
         }
-      })
-
-      // Check if bill already exists for this order (shouldn't happen, but safety check)
-      const existingBill = await tx.bill.findUnique({
-        where: { orderId: order.id }
-      })
-      
-      if (existingBill) {
-        console.warn('Bill already exists for order:', order.id)
-        // If bill exists, use it instead of creating a new one
-        const bill = existingBill
-        console.log('Using existing bill:', { orderId: order.id, billId: bill.id })
-        return { order, bill }
       }
-
-      // Create bill - this will fail if order creation succeeded but bill creation fails
-      const bill = await tx.bill.create({
-        data: {
-          orderId: order.id,
-          totalAmount: totalAmount,
-          advancePaid: advancePaid,
-          remainingAmount: remainingAmount,
-          paidAmount: advancePaid,
-          status: remainingAmount > 0 ? (advancePaid > 0 ? 'partial' : 'pending') : 'paid',
-        }
-      })
-
-      // Verify bill was created
-      if (!bill || !bill.id) {
-        throw new Error('Bill creation failed: Bill was not created successfully')
-      }
-
-      console.log('Order and bill created successfully:', { orderId: order.id, billId: bill.id })
-
-      return { order, bill }
     })
 
-    return NextResponse.json(result, { status: 201 })
+    console.log('Order created successfully:', { orderId: order.id })
+
+    return NextResponse.json({ order }, { status: 201 })
   } catch (error: any) {
     console.error('Error creating order:', error)
     console.error('Error details:', {

@@ -1,9 +1,9 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useMemo } from 'react'
 import { formatCurrency, formatDateTime, formatDate } from '@/lib/utils'
 import { Bill, Order, Customer } from '@/types'
-import { FaPrint, FaCheck, FaEdit } from 'react-icons/fa'
+import { FaPrint, FaCheck, FaEdit, FaFilter } from 'react-icons/fa'
 import toast from 'react-hot-toast'
 import Table from '@/components/Table'
 import { getBillTableConfig } from '@/components/table-configs'
@@ -20,6 +20,10 @@ export default function BillsPage() {
     remainingAmount: '',
     status: 'pending' as 'pending' | 'partial' | 'paid'
   })
+  const [showFilters, setShowFilters] = useState(false)
+  const [statusFilter, setStatusFilter] = useState<string>('all')
+  const [customerSearch, setCustomerSearch] = useState<string>('')
+  const [dateRange, setDateRange] = useState({ start: '', end: '' })
   const loadBills = async (showToast = false) => {
     try {
       const timestamp = new Date().getTime()
@@ -401,22 +405,148 @@ export default function BillsPage() {
     }
   }
 
+  // Filter bills
+  const filteredBills = useMemo(() => {
+    let filtered = bills
+    
+    // Status filter
+    if (statusFilter !== 'all') {
+      filtered = filtered.filter(bill => bill.status === statusFilter)
+    }
+    
+    // Customer search filter
+    if (customerSearch) {
+      const searchLower = customerSearch.toLowerCase()
+      filtered = filtered.filter(bill => 
+        bill.order?.customer?.name?.toLowerCase().includes(searchLower) ||
+        bill.order?.customer?.phone?.includes(customerSearch) ||
+        bill.order?.customer?.email?.toLowerCase().includes(searchLower)
+      )
+    }
+    
+    // Date range filter
+    if (dateRange.start) {
+      filtered = filtered.filter(bill => {
+        const billDate = new Date(bill.createdAt)
+        const startDate = new Date(dateRange.start)
+        return billDate >= startDate
+      })
+    }
+    if (dateRange.end) {
+      filtered = filtered.filter(bill => {
+        const billDate = new Date(bill.createdAt)
+        const endDate = new Date(dateRange.end)
+        endDate.setHours(23, 59, 59, 999)
+        return billDate <= endDate
+      })
+    }
+    
+    return filtered.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+  }, [bills, statusFilter, customerSearch, dateRange])
+
   const tableConfig = getBillTableConfig()
 
   return (
     <div className="p-8">
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-800">Bills</h1>
-        <p className="text-gray-600 mt-2">View and manage customer bills</p>
+      <div className="mb-8 flex justify-between items-center">
+        <div>
+          <h1 className="text-3xl font-bold text-gray-800">Bills</h1>
+          <p className="text-gray-600 mt-2">View and manage customer bills</p>
+        </div>
+        <button
+          onClick={() => setShowFilters(!showFilters)}
+          className="flex items-center gap-2 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors"
+        >
+          <FaFilter />
+          {showFilters ? 'Hide Filters' : 'Show Filters'}
+        </button>
       </div>
+
+      {/* Filters */}
+      {showFilters && (
+        <div className="bg-white rounded-lg shadow-md p-6 mb-6">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {/* Status Filter */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Status</label>
+              <select
+                value={statusFilter}
+                onChange={(e) => {
+                  setStatusFilter(e.target.value)
+                  setCurrentPage(1)
+                }}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+              >
+                <option value="all">All Status</option>
+                <option value="pending">Pending</option>
+                <option value="partial">Partial</option>
+                <option value="paid">Paid</option>
+              </select>
+            </div>
+
+            {/* Customer Search */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Customer Search</label>
+              <input
+                type="text"
+                value={customerSearch}
+                onChange={(e) => {
+                  setCustomerSearch(e.target.value)
+                  setCurrentPage(1)
+                }}
+                placeholder="Search by customer name, phone, or email"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+              />
+            </div>
+
+            {/* Date Range */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Date Range</label>
+              <div className="flex gap-2">
+                <input
+                  type="date"
+                  value={dateRange.start}
+                  onChange={(e) => {
+                    setDateRange({ ...dateRange, start: e.target.value })
+                    setCurrentPage(1)
+                  }}
+                  className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                />
+                <input
+                  type="date"
+                  value={dateRange.end}
+                  onChange={(e) => {
+                    setDateRange({ ...dateRange, end: e.target.value })
+                    setCurrentPage(1)
+                  }}
+                  className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                />
+              </div>
+            </div>
+          </div>
+          <div className="mt-4 flex justify-end">
+            <button
+              onClick={() => {
+                setStatusFilter('all')
+                setCustomerSearch('')
+                setDateRange({ start: '', end: '' })
+                setCurrentPage(1)
+              }}
+              className="px-4 py-2 text-sm text-gray-600 hover:text-gray-800 underline"
+            >
+              Clear Filters
+            </button>
+          </div>
+        </div>
+      )}
 
       <Table
         columns={tableConfig.columns}
-        data={bills}
+        data={filteredBills}
         emptyMessage={tableConfig.emptyMessage}
         itemsPerPage={itemsPerPage}
         currentPage={currentPage}
-        totalItems={bills.length}
+        totalItems={filteredBills.length}
         onPageChange={setCurrentPage}
         onItemsPerPageChange={setItemsPerPage}
         itemName={tableConfig.itemName}
