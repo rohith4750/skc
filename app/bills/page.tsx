@@ -3,8 +3,9 @@
 import { useEffect, useState, useMemo } from 'react'
 import { formatCurrency, formatDateTime, formatDate } from '@/lib/utils'
 import { Bill, Order, Customer } from '@/types'
-import { FaPrint, FaCheck, FaEdit, FaFilter } from 'react-icons/fa'
+import { FaPrint, FaCheck, FaEdit, FaFilter, FaChartLine, FaWallet, FaPercent, FaCalendarAlt } from 'react-icons/fa'
 import toast from 'react-hot-toast'
+import { fetchWithLoader } from '@/lib/fetch-with-loader'
 import Table from '@/components/Table'
 import { getBillTableConfig } from '@/components/table-configs'
 import jsPDF from 'jspdf'
@@ -28,7 +29,7 @@ export default function BillsPage() {
   const loadBills = async (showToast = false) => {
     try {
       const timestamp = new Date().getTime()
-      const response = await fetch(`/api/bills?t=${timestamp}`, {
+      const response = await fetchWithLoader(`/api/bills?t=${timestamp}`, {
         cache: 'no-store',
         headers: {
           'Cache-Control': 'no-cache, no-store, must-revalidate',
@@ -109,7 +110,7 @@ export default function BillsPage() {
     if (!bill) return
 
     try {
-      const response = await fetch(`/api/bills/${billId}`, {
+      const response = await fetchWithLoader(`/api/bills/${billId}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -183,7 +184,7 @@ export default function BillsPage() {
         remainingAmount = Math.max(0, totalAmount - paidAmount)
       }
 
-      const response = await fetch(`/api/bills/${editingBill.id}`, {
+      const response = await fetchWithLoader(`/api/bills/${editingBill.id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -413,6 +414,30 @@ export default function BillsPage() {
     return filtered.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
   }, [bills, statusFilter, customerSearch, dateRange])
 
+  const billSummary = useMemo(() => {
+    const totalBilled = filteredBills.reduce((sum, bill) => sum + (bill.totalAmount || 0), 0)
+    const totalCollected = filteredBills.reduce((sum, bill) => sum + (bill.paidAmount || 0), 0)
+    const totalPending = filteredBills.reduce((sum, bill) => sum + (bill.remainingAmount || 0), 0)
+    const collectionRate = totalBilled > 0 ? (totalCollected / totalBilled) * 100 : 0
+    const upcomingEvents = filteredBills.filter((bill) => {
+      const mealTypeAmounts = bill.order?.mealTypeAmounts as
+        | Record<string, { date?: string } | number>
+        | null
+        | undefined
+      if (!mealTypeAmounts) return false
+      const firstDate = Object.values(mealTypeAmounts).find(
+        (value) => typeof value === 'object' && value !== null && value.date
+      ) as { date?: string } | undefined
+      if (!firstDate?.date) return false
+      const eventDate = new Date(firstDate.date)
+      const today = new Date()
+      const diff = eventDate.getTime() - today.setHours(0, 0, 0, 0)
+      return diff >= 0 && diff <= 7 * 24 * 60 * 60 * 1000
+    }).length
+
+    return { totalBilled, totalCollected, totalPending, collectionRate, upcomingEvents }
+  }, [filteredBills])
+
   const tableConfig = getBillTableConfig()
 
   return (
@@ -420,7 +445,7 @@ export default function BillsPage() {
       <div className="mb-8 flex justify-between items-center">
         <div>
           <h1 className="text-3xl font-bold text-gray-800">Bills</h1>
-          <p className="text-gray-600 mt-2">View and manage customer bills</p>
+          <p className="text-gray-600 mt-2">Smart billing overview with event insights</p>
         </div>
         <button
           onClick={() => setShowFilters(!showFilters)}
@@ -508,6 +533,46 @@ export default function BillsPage() {
           </div>
         </div>
       )}
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+        <div className="bg-gradient-to-br from-blue-500 to-blue-600 rounded-lg p-5 text-white shadow-md">
+          <div className="flex items-center justify-between mb-2">
+            <h3 className="text-sm font-medium">Total Billed</h3>
+            <FaChartLine />
+          </div>
+          <p className="text-2xl font-bold">{formatCurrency(billSummary.totalBilled)}</p>
+          <p className="text-xs text-blue-100 mt-1">Across filtered bills</p>
+        </div>
+
+        <div className="bg-gradient-to-br from-green-500 to-green-600 rounded-lg p-5 text-white shadow-md">
+          <div className="flex items-center justify-between mb-2">
+            <h3 className="text-sm font-medium">Collected</h3>
+            <FaWallet />
+          </div>
+          <p className="text-2xl font-bold">{formatCurrency(billSummary.totalCollected)}</p>
+          <p className="text-xs text-green-100 mt-1">Paid amount</p>
+        </div>
+
+        <div className="bg-gradient-to-br from-orange-500 to-orange-600 rounded-lg p-5 text-white shadow-md">
+          <div className="flex items-center justify-between mb-2">
+            <h3 className="text-sm font-medium">Pending</h3>
+            <FaWallet />
+          </div>
+          <p className="text-2xl font-bold">{formatCurrency(billSummary.totalPending)}</p>
+          <p className="text-xs text-orange-100 mt-1">Outstanding balance</p>
+        </div>
+
+        <div className="bg-gradient-to-br from-purple-500 to-purple-600 rounded-lg p-5 text-white shadow-md">
+          <div className="flex items-center justify-between mb-2">
+            <h3 className="text-sm font-medium">Collection Rate</h3>
+            <FaPercent />
+          </div>
+          <p className="text-2xl font-bold">{billSummary.collectionRate.toFixed(1)}%</p>
+          <p className="text-xs text-purple-100 mt-1">
+            Upcoming events: {billSummary.upcomingEvents}
+          </p>
+        </div>
+      </div>
 
       <Table
         columns={tableConfig.columns}

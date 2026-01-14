@@ -3,7 +3,7 @@
 import { useEffect, useState, useMemo } from 'react'
 import { formatCurrency, formatDateTime, formatDate } from '@/lib/utils'
 import { Order } from '@/types'
-import { FaTrash, FaFilePdf, FaChevronLeft, FaChevronRight, FaEdit, FaFilter } from 'react-icons/fa'
+import { FaTrash, FaFilePdf, FaChevronLeft, FaChevronRight, FaEdit, FaFilter, FaChartLine, FaClock, FaCheckCircle, FaTimesCircle } from 'react-icons/fa'
 import Link from 'next/link'
 import jsPDF from 'jspdf'
 import html2canvas from 'html2canvas'
@@ -78,6 +78,15 @@ export default function OrdersHistoryPage() {
     
     return filtered.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
   }, [orders, statusFilter, customerSearch, dateRange])
+
+  const statusSummary = useMemo(() => {
+    const totalOrders = filteredOrders.length
+    const pending = filteredOrders.filter((order) => order.status === 'pending').length
+    const inProgress = filteredOrders.filter((order) => order.status === 'in-progress').length
+    const completed = filteredOrders.filter((order) => order.status === 'completed').length
+    const cancelled = filteredOrders.filter((order) => order.status === 'cancelled').length
+    return { totalOrders, pending, inProgress, completed, cancelled }
+  }, [filteredOrders])
 
   // Pagination logic
   const totalPages = Math.ceil(filteredOrders.length / itemsPerPage)
@@ -336,6 +345,44 @@ export default function OrdersHistoryPage() {
           <FaFilter />
           {showFilters ? 'Hide Filters' : 'Show Filters'}
         </button>
+      </div>
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 mb-6">
+        <div className="bg-white rounded-lg shadow-md p-4 border border-gray-100">
+          <div className="flex items-center justify-between mb-1">
+            <p className="text-xs font-medium text-gray-500 uppercase">Total</p>
+            <FaChartLine className="text-primary-500" />
+          </div>
+          <p className="text-2xl font-bold text-gray-800">{statusSummary.totalOrders}</p>
+        </div>
+        <div className="bg-white rounded-lg shadow-md p-4 border border-gray-100">
+          <div className="flex items-center justify-between mb-1">
+            <p className="text-xs font-medium text-gray-500 uppercase">Pending</p>
+            <FaClock className="text-yellow-500" />
+          </div>
+          <p className="text-2xl font-bold text-yellow-600">{statusSummary.pending}</p>
+        </div>
+        <div className="bg-white rounded-lg shadow-md p-4 border border-gray-100">
+          <div className="flex items-center justify-between mb-1">
+            <p className="text-xs font-medium text-gray-500 uppercase">In Progress</p>
+            <FaClock className="text-blue-500" />
+          </div>
+          <p className="text-2xl font-bold text-blue-600">{statusSummary.inProgress}</p>
+        </div>
+        <div className="bg-white rounded-lg shadow-md p-4 border border-gray-100">
+          <div className="flex items-center justify-between mb-1">
+            <p className="text-xs font-medium text-gray-500 uppercase">Completed</p>
+            <FaCheckCircle className="text-green-500" />
+          </div>
+          <p className="text-2xl font-bold text-green-600">{statusSummary.completed}</p>
+        </div>
+        <div className="bg-white rounded-lg shadow-md p-4 border border-gray-100">
+          <div className="flex items-center justify-between mb-1">
+            <p className="text-xs font-medium text-gray-500 uppercase">Cancelled</p>
+            <FaTimesCircle className="text-red-500" />
+          </div>
+          <p className="text-2xl font-bold text-red-600">{statusSummary.cancelled}</p>
+        </div>
       </div>
 
       {/* Filters */}

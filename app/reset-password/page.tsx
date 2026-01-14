@@ -269,7 +269,7 @@ export default function ResetPasswordPage() {
                 disabled={isLoading}
                 className="w-full bg-primary-500 text-white py-3 rounded-lg font-semibold hover:bg-primary-600 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                {isLoading ? 'Processing...' : 'SUBMIT'}
+                SUBMIT
               </button>
 
               {/* Back Button */}

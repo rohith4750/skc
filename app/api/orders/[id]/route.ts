@@ -14,7 +14,7 @@ export async function GET(
         items: {
           include: { menuItem: true }
         },
-        bills: true,
+        bill: true,
         expenses: true
       }
     })
@@ -93,6 +93,36 @@ export async function PUT(
   } catch (error: any) {
     return NextResponse.json(
       { error: 'Failed to update order', details: error.message },
+      { status: 500 }
+    )
+  }
+}
+
+export async function DELETE(
+  request: NextRequest,
+  { params }: { params: { id: string } }
+) {
+  try {
+    const orderId = params.id
+
+    const existing = await prisma.order.findUnique({
+      where: { id: orderId },
+      select: { id: true },
+    })
+
+    if (!existing) {
+      return NextResponse.json({ error: 'Order not found' }, { status: 404 })
+    }
+
+    await prisma.$transaction(async (tx) => {
+      await tx.bill.deleteMany({ where: { orderId } })
+      await tx.order.delete({ where: { id: orderId } })
+    })
+
+    return NextResponse.json({ success: true })
+  } catch (error: any) {
+    return NextResponse.json(
+      { error: 'Failed to delete order', details: error.message },
       { status: 500 }
     )
   }

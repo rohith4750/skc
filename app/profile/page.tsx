@@ -222,17 +222,6 @@ export default function ProfilePage() {
     }
   }
 
-  if (loading) {
-    return (
-      <div className="p-3 sm:p-4 md:p-5 lg:p-6 xl:p-8 pt-14 sm:pt-16 lg:pt-6 xl:pt-8 min-h-screen flex items-center justify-center bg-gray-50">
-        <div className="text-center">
-          <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
-          <p className="mt-4 text-gray-600">Loading profile...</p>
-        </div>
-      </div>
-    )
-  }
-
   if (!profile) {
     return (
       <div className="p-3 sm:p-4 md:p-5 lg:p-6 xl:p-8 pt-14 sm:pt-16 lg:pt-6 xl:pt-8 min-h-screen flex items-center justify-center bg-gray-50">

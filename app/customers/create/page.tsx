@@ -103,17 +103,6 @@ export default function CreateCustomerPage() {
     }
   }
 
-  if (loading) {
-    return (
-      <div className="p-4 sm:p-6 lg:p-8 pt-16 lg:pt-8 min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
-          <p className="mt-4 text-gray-600">Loading customer...</p>
-        </div>
-      </div>
-    )
-  }
-
   return (
     <div className="p-4 sm:p-6 lg:p-8 pt-16 lg:pt-8 min-h-screen bg-gray-50">
       {/* Header */}

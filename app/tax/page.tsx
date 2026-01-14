@@ -252,17 +252,6 @@ export default function TaxPage() {
     }
   }
 
-  if (loading) {
-    return (
-      <div className="p-8">
-        <div className="text-center py-12">
-          <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-primary-500"></div>
-          <p className="mt-4 text-gray-600">Loading tax data...</p>
-        </div>
-      </div>
-    )
-  }
-
   return (
     <div className="p-4 sm:p-6 lg:p-8 max-w-full overflow-x-hidden">
       {/* Header */}

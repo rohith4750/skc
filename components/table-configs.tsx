@@ -150,6 +150,24 @@ export function getMenuItemTableConfig(): TableConfig<MenuItem> {
 type BillWithOrder = Bill & { order?: Order & { customer?: Customer } }
 
 export function getBillTableConfig(): TableConfig<BillWithOrder> {
+  const getEventDate = (bill: BillWithOrder) => {
+    const mealTypeAmounts = bill.order?.mealTypeAmounts as
+      | Record<string, { date?: string } | number>
+      | null
+      | undefined
+    if (!mealTypeAmounts) return null
+    const firstDate = Object.values(mealTypeAmounts).find(
+      (value) => typeof value === 'object' && value !== null && value.date
+    ) as { date?: string } | undefined
+    return firstDate?.date ? formatDate(firstDate.date) : null
+  }
+
+  const getServicesSummary = (bill: BillWithOrder) => {
+    const services = bill.order?.services as string[] | undefined
+    if (!services || services.length === 0) return 'No services'
+    return services.map((service) => service.charAt(0).toUpperCase() + service.slice(1)).join(', ')
+  }
+
   return {
     getItemId: (bill) => bill.id,
     itemName: 'bills',
@@ -159,6 +177,20 @@ export function getBillTableConfig(): TableConfig<BillWithOrder> {
         key: 'id',
         header: 'Bill ID',
         render: (bill) => <div className="text-sm font-medium text-gray-900">#{bill.id.slice(0, 8).toUpperCase()}</div>,
+      },
+      {
+        key: 'event',
+        header: 'Event',
+        render: (bill) => (
+          <div>
+            <div className="text-sm font-medium text-gray-900">
+              {bill.order?.eventName || 'Event not set'}
+            </div>
+            <div className="text-xs text-gray-500">
+              {getEventDate(bill) ? `Date: ${getEventDate(bill)}` : 'Date: Not specified'}
+            </div>
+          </div>
+        ),
       },
       {
         key: 'customer',
@@ -176,6 +208,16 @@ export function getBillTableConfig(): TableConfig<BillWithOrder> {
         key: 'createdAt',
         header: 'Date',
         render: (bill) => <div className="text-sm text-gray-900">{formatDateTime(bill.createdAt)}</div>,
+      },
+      {
+        key: 'details',
+        header: 'Details',
+        render: (bill) => (
+          <div className="text-xs text-gray-600 space-y-1">
+            <div>Members: {bill.order?.numberOfMembers || 'N/A'}</div>
+            <div>Services: {getServicesSummary(bill)}</div>
+          </div>
+        ),
       },
       {
         key: 'totalAmount',
@@ -196,6 +238,29 @@ export function getBillTableConfig(): TableConfig<BillWithOrder> {
         key: 'remainingAmount',
         header: 'Remaining',
         render: (bill) => <div className="text-sm font-medium text-red-600">{formatCurrency(bill.remainingAmount)}</div>,
+      },
+      {
+        key: 'progress',
+        header: 'Progress',
+        render: (bill) => {
+          const total = bill.totalAmount || 0
+          const paid = bill.paidAmount || 0
+          const percentage = total > 0 ? Math.min(100, (paid / total) * 100) : 0
+          return (
+            <div className="min-w-[120px]">
+              <div className="flex items-center justify-between text-xs text-gray-500 mb-1">
+                <span>{percentage.toFixed(0)}%</span>
+                <span>{formatCurrency(paid)}</span>
+              </div>
+              <div className="h-2 w-full rounded-full bg-gray-100">
+                <div
+                  className="h-2 rounded-full bg-primary-500 transition-all"
+                  style={{ width: `${percentage}%` }}
+                />
+              </div>
+            </div>
+          )
+        },
       },
       {
         key: 'status',

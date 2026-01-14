@@ -31,6 +31,7 @@ import {
   FaCalendarWeek
 } from 'react-icons/fa'
 import toast from 'react-hot-toast'
+import { fetchWithLoader } from '@/lib/fetch-with-loader'
 import jsPDF from 'jspdf'
 import html2canvas from 'html2canvas'
 
@@ -41,6 +42,49 @@ interface AnalyticsData {
   customers: any[]
 }
 
+interface PredictiveForecast {
+  month: string
+  revenue: number
+  expenses: number
+  orders: number
+  profit: number
+}
+
+interface PredictiveAnalysis {
+  avgRevenueGrowth: number
+  avgExpenseGrowth: number
+  avgOrderGrowth: number
+  avgProfitGrowth: number
+  forecasts: PredictiveForecast[]
+  projections: {
+    annualRevenue: number
+    annualExpenses: number
+    annualOrders: number
+    annualProfit: number
+    cashFlow: number
+  }
+  trends: {
+    revenueTrend: 'up' | 'down' | 'stable'
+    expenseTrend: 'up' | 'down' | 'stable'
+    orderTrend: 'up' | 'down' | 'stable'
+    profitTrend: 'up' | 'down' | 'stable'
+  }
+}
+
+interface PredictiveResponse {
+  months: number
+  forecastMonths: number
+  generatedAt: string
+  monthlyTrends: Array<{
+    month: string
+    revenue: number
+    expenses: number
+    orders: number
+    profit: number
+  }>
+  predictiveAnalysis: PredictiveAnalysis | null
+}
+
 export default function AnalyticsPage() {
   const [data, setData] = useState<AnalyticsData>({
     orders: [],
@@ -48,6 +92,7 @@ export default function AnalyticsPage() {
     expenses: [],
     customers: []
   })
+  const [predictiveData, setPredictiveData] = useState<PredictiveResponse | null>(null)
   const [loading, setLoading] = useState(true)
   const [dateFilter, setDateFilter] = useState<'all' | 'month' | 'year'>('all')
   const [selectedMonth, setSelectedMonth] = useState(new Date().toISOString().slice(0, 7))
@@ -63,18 +108,20 @@ export default function AnalyticsPage() {
       setLoading(true)
       // Add cache-busting parameter to ensure fresh data
       const cacheBuster = `?t=${Date.now()}`
-      const [ordersRes, billsRes, expensesRes, customersRes] = await Promise.all([
-        fetch(`/api/orders${cacheBuster}`, { cache: 'no-store' }),
-        fetch(`/api/bills${cacheBuster}`, { cache: 'no-store' }),
-        fetch(`/api/expenses${cacheBuster}`, { cache: 'no-store' }),
-        fetch(`/api/customers${cacheBuster}`, { cache: 'no-store' })
+      const [ordersRes, billsRes, expensesRes, customersRes, predictiveRes] = await Promise.all([
+        fetchWithLoader(`/api/orders${cacheBuster}`, { cache: 'no-store' }),
+        fetchWithLoader(`/api/bills${cacheBuster}`, { cache: 'no-store' }),
+        fetchWithLoader(`/api/expenses${cacheBuster}`, { cache: 'no-store' }),
+        fetchWithLoader(`/api/customers${cacheBuster}`, { cache: 'no-store' }),
+        fetchWithLoader(`/api/analytics/predictive?months=12&forecastMonths=3`, { cache: 'no-store' })
       ])
 
-      const [orders, bills, expenses, customers] = await Promise.all([
+      const [orders, bills, expenses, customers, predictivePayload] = await Promise.all([
         ordersRes.ok ? ordersRes.json() : [],
         billsRes.ok ? billsRes.json() : [],
         expensesRes.ok ? expensesRes.json() : [],
-        customersRes.ok ? customersRes.json() : []
+        customersRes.ok ? customersRes.json() : [],
+        predictiveRes.ok ? predictiveRes.json() : null
       ])
 
       // Ensure bills have the correct status field (use database status directly)
@@ -84,6 +131,7 @@ export default function AnalyticsPage() {
       }))
 
       setData({ orders, bills: normalizedBills, expenses, customers })
+      setPredictiveData(predictivePayload || null)
     } catch (error) {
       console.error('Failed to load analytics data:', error)
       toast.error('Failed to load analytics data')
@@ -317,107 +365,7 @@ export default function AnalyticsPage() {
   }, [data])
 
   // Predictive Analysis
-  const predictiveAnalysis = useMemo(() => {
-    if (monthlyTrends.length < 3) {
-      return null // Need at least 3 months of data for predictions
-    }
-
-    // Calculate average growth rates
-    const revenues = monthlyTrends.map(m => m.revenue)
-    const expenses = monthlyTrends.map(m => m.expenses)
-    const orders = monthlyTrends.map(m => m.orders)
-    const profits = monthlyTrends.map(m => m.profit)
-
-    // Calculate month-over-month growth rates
-    const revenueGrowthRates: number[] = []
-    const expenseGrowthRates: number[] = []
-    const orderGrowthRates: number[] = []
-    const profitGrowthRates: number[] = []
-
-    for (let i = 1; i < revenues.length; i++) {
-      if (revenues[i - 1] > 0) {
-        revenueGrowthRates.push(((revenues[i] - revenues[i - 1]) / revenues[i - 1]) * 100)
-      }
-      if (expenses[i - 1] > 0) {
-        expenseGrowthRates.push(((expenses[i] - expenses[i - 1]) / expenses[i - 1]) * 100)
-      }
-      if (orders[i - 1] > 0) {
-        orderGrowthRates.push(((orders[i] - orders[i - 1]) / orders[i - 1]) * 100)
-      }
-      if (profits[i - 1] !== 0) {
-        profitGrowthRates.push(profits[i - 1] > 0 ? ((profits[i] - profits[i - 1]) / Math.abs(profits[i - 1])) * 100 : 0)
-      }
-    }
-
-    // Average growth rates
-    const avgRevenueGrowth = revenueGrowthRates.length > 0 
-      ? revenueGrowthRates.reduce((a, b) => a + b, 0) / revenueGrowthRates.length 
-      : 0
-    const avgExpenseGrowth = expenseGrowthRates.length > 0
-      ? expenseGrowthRates.reduce((a, b) => a + b, 0) / expenseGrowthRates.length
-      : 0
-    const avgOrderGrowth = orderGrowthRates.length > 0
-      ? orderGrowthRates.reduce((a, b) => a + b, 0) / orderGrowthRates.length
-      : 0
-    const avgProfitGrowth = profitGrowthRates.length > 0
-      ? profitGrowthRates.reduce((a, b) => a + b, 0) / profitGrowthRates.length
-      : 0
-
-    // Get latest values
-    const lastRevenue = revenues[revenues.length - 1]
-    const lastExpense = expenses[expenses.length - 1]
-    const lastOrders = orders[orders.length - 1]
-    const lastProfit = profits[profits.length - 1]
-
-    // Forecast next 3 months using linear projection
-    const forecasts = []
-    for (let i = 1; i <= 3; i++) {
-      const forecastRevenue = lastRevenue * Math.pow(1 + avgRevenueGrowth / 100, i)
-      const forecastExpense = lastExpense * Math.pow(1 + avgExpenseGrowth / 100, i)
-      const forecastOrders = Math.round(lastOrders * Math.pow(1 + avgOrderGrowth / 100, i))
-      const forecastProfit = forecastRevenue - forecastExpense
-
-      forecasts.push({
-        month: i,
-        revenue: forecastRevenue,
-        expenses: forecastExpense,
-        orders: forecastOrders,
-        profit: forecastProfit
-      })
-    }
-
-    // Annual projections
-    const projectedAnnualRevenue = lastRevenue * 12 * (1 + avgRevenueGrowth / 100)
-    const projectedAnnualExpenses = lastExpense * 12 * (1 + avgExpenseGrowth / 100)
-    const projectedAnnualOrders = Math.round(lastOrders * 12 * (1 + avgOrderGrowth / 100))
-    const projectedAnnualProfit = projectedAnnualRevenue - projectedAnnualExpenses
-
-    // Cash flow prediction (next 3 months)
-    const currentMonthRevenue = revenues[revenues.length - 1]
-    const avgMonthlyExpenses = expenses.reduce((a, b) => a + b, 0) / expenses.length
-    const projectedCashFlow = (currentMonthRevenue - avgMonthlyExpenses) * 3
-
-    return {
-      avgRevenueGrowth: avgRevenueGrowth,
-      avgExpenseGrowth: avgExpenseGrowth,
-      avgOrderGrowth: avgOrderGrowth,
-      avgProfitGrowth: avgProfitGrowth,
-      forecasts,
-      projections: {
-        annualRevenue: projectedAnnualRevenue,
-        annualExpenses: projectedAnnualExpenses,
-        annualOrders: projectedAnnualOrders,
-        annualProfit: projectedAnnualProfit,
-        cashFlow3Months: projectedCashFlow
-      },
-      trends: {
-        revenueTrend: avgRevenueGrowth > 0 ? 'up' : avgRevenueGrowth < 0 ? 'down' : 'stable',
-        expenseTrend: avgExpenseGrowth > 0 ? 'up' : avgExpenseGrowth < 0 ? 'down' : 'stable',
-        orderTrend: avgOrderGrowth > 0 ? 'up' : avgOrderGrowth < 0 ? 'down' : 'stable',
-        profitTrend: avgProfitGrowth > 0 ? 'up' : avgProfitGrowth < 0 ? 'down' : 'stable'
-      }
-    }
-  }, [monthlyTrends])
+  const predictiveAnalysis = useMemo(() => predictiveData?.predictiveAnalysis ?? null, [predictiveData])
 
   // Top Customers
   const topCustomers = useMemo(() => {
@@ -539,16 +487,6 @@ export default function AnalyticsPage() {
             </div>
           )
         })}
-      </div>
-    )
-  }
-
-  if (loading) {
-    return (
-      <div className="p-8">
-        <div className="text-center py-12">
-          <p className="text-gray-600">Loading analytics...</p>
-        </div>
       </div>
     )
   }
@@ -1115,9 +1053,7 @@ export default function AnalyticsPage() {
                     </thead>
                     <tbody>
                       {predictiveAnalysis.forecasts.map((forecast, index) => {
-                        const nextDate = new Date()
-                        nextDate.setMonth(nextDate.getMonth() + index + 1)
-                        const monthName = nextDate.toLocaleDateString('en-US', { month: 'short', year: 'numeric' })
+                        const monthName = new Date(forecast.month + '-01').toLocaleDateString('en-US', { month: 'short', year: 'numeric' })
                         return (
                           <tr key={index} className="border-b border-gray-100 hover:bg-gray-50">
                             <td className="py-3 px-4 font-medium text-gray-800">{monthName}</td>
@@ -1145,12 +1081,12 @@ export default function AnalyticsPage() {
                   <div className="flex items-center justify-between">
                     <div>
                       <h3 className="text-sm font-medium text-gray-600 mb-2">Expected Cash Flow</h3>
-                      <p className={`text-3xl font-bold ${predictiveAnalysis.projections.cashFlow3Months >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                        {formatCurrency(predictiveAnalysis.projections.cashFlow3Months)}
+                      <p className={`text-3xl font-bold ${predictiveAnalysis.projections.cashFlow >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                        {formatCurrency(predictiveAnalysis.projections.cashFlow)}
                       </p>
                       <p className="text-xs text-gray-500 mt-2">Based on current revenue and expense trends</p>
                     </div>
-                    <FaWallet className={`text-5xl ${predictiveAnalysis.projections.cashFlow3Months >= 0 ? 'text-green-400' : 'text-red-400'}`} />
+                    <FaWallet className={`text-5xl ${predictiveAnalysis.projections.cashFlow >= 0 ? 'text-green-400' : 'text-red-400'}`} />
                   </div>
                 </div>
               </div>

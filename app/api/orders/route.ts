@@ -12,7 +12,7 @@ export async function GET() {
             menuItem: true
           }
         },
-        bills: true
+        bill: true
       },
       orderBy: { createdAt: 'desc' }
     })
@@ -32,7 +32,6 @@ export async function POST(request: NextRequest) {
     const remainingAmount = parseFloat(data.remainingAmount) || (totalAmount - advancePaid)
     const discount = parseFloat(data.discount) || 0
     
-    // Build order data, only include supervisorId if it has a valid value
     const orderData: any = {
       customerId: data.customerId,
       totalAmount: totalAmount,
@@ -51,11 +50,6 @@ export async function POST(request: NextRequest) {
           quantity: item.quantity || 1,
         }))
       }
-    }
-    
-    // Only include supervisorId if it has a valid value (not empty string or null)
-    if (data.supervisorId && data.supervisorId.trim && data.supervisorId.trim() !== '') {
-      orderData.supervisorId = data.supervisorId
     }
     
     // Create order only - bills will be generated when status changes to in-progress or completed

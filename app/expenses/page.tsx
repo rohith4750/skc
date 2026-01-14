@@ -462,17 +462,6 @@ export default function ExpensesPage() {
     dateRange.start !== '' || dateRange.end !== '',
   ].filter(Boolean).length
 
-  if (loading) {
-    return (
-      <div className="p-6 flex items-center justify-center min-h-screen">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-500 mx-auto"></div>
-          <p className="mt-4 text-gray-600">Loading expenses...</p>
-        </div>
-      </div>
-    )
-  }
-
   return (
     <div className="p-3 sm:p-4 md:p-5 lg:p-6 xl:p-8 bg-gray-50 min-h-screen">
       {/* Header */}

@@ -3,7 +3,7 @@
 import { useEffect, useState, useMemo, useRef } from 'react'
 import { Storage } from '@/lib/storage-api'
 import { generateId, formatCurrency, formatDateTime } from '@/lib/utils'
-import { Customer, MenuItem, OrderItem, Supervisor } from '@/types'
+import { Customer, MenuItem, OrderItem } from '@/types'
 import { FaSearch, FaPlus } from 'react-icons/fa'
 import Link from 'next/link'
 import { useSearchParams, useRouter } from 'next/navigation'
@@ -17,12 +17,10 @@ export default function OrdersPage() {
 
   const [customers, setCustomers] = useState<Customer[]>([])
   const [menuItems, setMenuItems] = useState<MenuItem[]>([])
-  const [supervisors, setSupervisors] = useState<Supervisor[]>([])
   const [selectedSubFilter, setSelectedSubFilter] = useState<Record<string, string>>({})
   const [menuItemSearch, setMenuItemSearch] = useState<Record<string, string>>({})
   const [showStalls, setShowStalls] = useState<boolean>(false)
   const [loadingOrder, setLoadingOrder] = useState(false)
-  const [currentOrderSupervisorId, setCurrentOrderSupervisorId] = useState<string>('')
   const [currentOrderStatus, setCurrentOrderStatus] = useState<string>('pending')
   const [customerSearchTerm, setCustomerSearchTerm] = useState<string>('')
   const [showCustomerDropdown, setShowCustomerDropdown] = useState<boolean>(false)
@@ -93,15 +91,13 @@ export default function OrdersPage() {
 
   const loadData = async () => {
     try {
-      const [allCustomers, allMenuItems, allSupervisors] = await Promise.all([
+      const [allCustomers, allMenuItems] = await Promise.all([
         Storage.getCustomers(),
         Storage.getMenuItems(),
-        Storage.getSupervisors(),
       ])
 
       setCustomers(allCustomers)
       setMenuItems(allMenuItems.filter((item: any) => item.isActive))
-      setSupervisors(allSupervisors)
     } catch (error) {
       console.error('Failed to load data:', error)
       toast.error('Failed to load data. Please try again.')
@@ -177,7 +173,6 @@ export default function OrdersPage() {
         advancePaid: order.advancePaid?.toString() || '0',
       })
 
-      setCurrentOrderSupervisorId(order.supervisorId || '')
       setCurrentOrderStatus(order.status || 'pending')
       setShowStalls(stallsArray.length > 0)
       
@@ -358,14 +353,6 @@ export default function OrdersPage() {
         }))
       )
 
-      // Supervisor is optional - use existing one in edit mode, or first available, or null
-      let supervisorId: string | null = null
-      if (isEditMode) {
-        supervisorId = currentOrderSupervisorId || (supervisors.length > 0 ? supervisors[0].id : null)
-      } else {
-        supervisorId = supervisors.length > 0 ? supervisors[0].id : null
-      }
-
       const orderData: any = {
         customerId: formData.customerId,
         eventName: formData.eventName || null,
@@ -377,11 +364,6 @@ export default function OrdersPage() {
         mealTypeAmounts,
         stalls: showStalls ? formData.stalls : [],
         discount: parseFloat(formData.discount) || 0,
-      }
-      
-      // Only include supervisorId if it has a value (not null/empty)
-      if (supervisorId) {
-        orderData.supervisorId = supervisorId
       }
 
       if (isEditMode && editOrderId) {
@@ -531,16 +513,6 @@ export default function OrdersPage() {
     }
 
     return filtered
-  }
-
-  if (loadingOrder) {
-    return (
-      <div className="p-8">
-        <div className="text-center py-12">
-          <p className="text-gray-600">Loading order data...</p>
-        </div>
-      </div>
-    )
   }
 
   return (

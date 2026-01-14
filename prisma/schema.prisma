@@ -50,29 +50,31 @@ model Supervisor {
 }
 
 model Order {
-  id             String    @id @default(uuid())
-  customerId     String
-  customer       Customer  @relation(fields: [customerId], references: [id])
-  supervisorId   String?
-  supervisor     Supervisor? @relation(fields: [supervisorId], references: [id])
-  items          OrderItem[]
-  totalAmount    Float
-  advancePaid    Float     @default(0)
+  id              String    @id @default(uuid())
+  customerId      String
+  customer        Customer  @relation(fields: [customerId], references: [id])
+  supervisorId    String?
+  supervisor      Supervisor? @relation(fields: [supervisorId], references: [id])
+  items           OrderItem[]
+  totalAmount     Float
+  advancePaid     Float     @default(0)
   remainingAmount Float
-  status         String    @default("pending") // pending, in-progress, completed, cancelled
-  mealTypeAmounts Json?    // Store amounts per meal type: { "breakfast": 1000, "lunch": 2000, ... }
-  stalls         Json?     // Store stalls data
-  discount       Float     @default(0)
-  eventName      String?   // Event name
-  services       Json?     // Store services as array: ["buffet", "vaddana", "handover"]
-  numberOfMembers Int?     // Number of members/guests
-  createdAt      DateTime  @default(now())
-  updatedAt      DateTime  @updatedAt
-  bills          Bill[]
-  expenses       Expense[]
+  status          String    @default("pending")
+  mealTypeAmounts Json?
+  stalls          Json?
+  discount        Float     @default(0)
+  eventName       String?
+  services        Json?
+  numberOfMembers Int?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  bill            Bill?     // ✅ FIXED
+  expenses        Expense[]
 
   @@map("orders")
 }
+
 
 model OrderItem {
   id         String   @id @default(uuid())
@@ -86,19 +88,20 @@ model OrderItem {
 }
 
 model Bill {
-  id             String   @id @default(uuid())
-  orderId        String   @unique
-  order          Order    @relation(fields: [orderId], references: [id])
-  totalAmount    Float
-  advancePaid    Float    @default(0)
+  id              String   @id @default(uuid())
+  orderId         String   @unique
+  order           Order    @relation(fields: [orderId], references: [id])
+  totalAmount     Float
+  advancePaid     Float    @default(0)
   remainingAmount Float
-  paidAmount     Float    @default(0)
-  status         String   @default("pending") // pending, partial, paid
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
+  paidAmount      Float    @default(0)
+  status          String   @default("pending")
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
 
   @@map("bills")
 }
+
 
 model Expense {
   id                 String   @id @default(uuid())

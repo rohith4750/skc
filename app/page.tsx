@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { Storage } from '@/lib/storage-api'
+import { fetchWithLoader } from '@/lib/fetch-with-loader'
 import { formatCurrency, formatDateTime } from '@/lib/utils'
 import Link from 'next/link'
 import { 
@@ -16,7 +17,11 @@ import {
   FaWarehouse,
   FaChartLine,
   FaArrowUp,
-  FaArrowDown
+  FaArrowDown,
+  FaExclamationTriangle,
+  FaWallet,
+  FaPercent,
+  FaCalculator
 } from 'react-icons/fa'
 import { isSuperAdmin, getUserRole } from '@/lib/auth'
 
@@ -34,12 +39,22 @@ export default function Dashboard() {
     expenses: 0,
     users: 0,
     workforce: 0,
+    stockItems: 0,
+    lowStockItems: 0,
+    inventoryItems: 0,
     totalRevenue: 0,
     totalExpenses: 0,
+    totalBilled: 0,
+    totalReceivable: 0,
+    avgOrderValue: 0,
+    profitMargin: 0,
+    collectionRate: 0,
     pendingOrders: 0,
     completedOrders: 0,
     paidBills: 0,
     pendingBills: 0,
+    pendingExpenses: 0,
+    outstandingExpenses: 0,
   })
   const [loading, setLoading] = useState(true)
   const [isSuperAdminUser, setIsSuperAdminUser] = useState(false)
@@ -62,6 +77,11 @@ export default function Dashboard() {
         // Calculate revenue from paid bills
         const totalRevenue = bills.reduce((sum: number, bill: any) => sum + (bill.paidAmount || 0), 0)
         const totalExpenses = expenses.reduce((sum: number, expense: any) => sum + (expense.amount || 0), 0)
+        const totalBilled = bills.reduce((sum: number, bill: any) => sum + (bill.totalAmount || 0), 0)
+        const totalReceivable = bills.reduce((sum: number, bill: any) => sum + (bill.remainingAmount || 0), 0)
+        const avgOrderValue = orders.length > 0 ? totalRevenue / orders.length : 0
+        const profitMargin = totalRevenue > 0 ? ((totalRevenue - totalExpenses) / totalRevenue) * 100 : 0
+        const collectionRate = totalBilled > 0 ? (totalRevenue / totalBilled) * 100 : 0
         
         // Order status counts
         const pendingOrders = orders.filter((o: any) => o.status === 'pending' || o.status === 'in-progress').length
@@ -70,15 +90,32 @@ export default function Dashboard() {
         // Bill status counts
         const paidBills = bills.filter((b: any) => b.status === 'paid').length
         const pendingBills = bills.filter((b: any) => b.status === 'pending' || b.status === 'partial').length
+        const pendingExpensesList = expenses.filter((expense: any) => {
+          if (expense.paymentStatus) {
+            return expense.paymentStatus !== 'paid'
+          }
+          return (expense.paidAmount || 0) < (expense.amount || 0)
+        })
+        const pendingExpenses = pendingExpensesList.length
+        const outstandingExpenses = pendingExpensesList.reduce((sum: number, expense: any) => {
+          const amount = expense.amount || 0
+          const paidAmount = expense.paidAmount || 0
+          return sum + Math.max(0, amount - paidAmount)
+        }, 0)
 
         // Get user and workforce counts (only for super admin)
         let usersCount = 0
         let workforceCount = 0
+        let stockItems = 0
+        let lowStockItems = 0
+        let inventoryItems = 0
         if (isSuperAdminUser) {
           try {
-            const [usersRes, workforceRes] = await Promise.all([
-              fetch('/api/users'),
-              fetch('/api/workforce'),
+            const [usersRes, workforceRes, stockRes, inventoryRes] = await Promise.all([
+              fetchWithLoader('/api/users'),
+              fetchWithLoader('/api/workforce'),
+              fetchWithLoader('/api/stock'),
+              fetchWithLoader('/api/inventory'),
             ])
             if (usersRes.ok) {
               const usersData = await usersRes.json()
@@ -87,6 +124,18 @@ export default function Dashboard() {
             if (workforceRes.ok) {
               const workforceData = await workforceRes.json()
               workforceCount = workforceData.length
+            }
+            if (stockRes.ok) {
+              const stockData = await stockRes.json()
+              stockItems = stockData.length
+              lowStockItems = stockData.filter((item: any) => {
+                if (item.minStock === null || item.minStock === undefined) return false
+                return (item.currentStock || 0) <= item.minStock
+              }).length
+            }
+            if (inventoryRes.ok) {
+              const inventoryData = await inventoryRes.json()
+              inventoryItems = inventoryData.length
             }
           } catch (error) {
             console.error('Error fetching admin stats:', error)
@@ -101,12 +150,22 @@ export default function Dashboard() {
           expenses: expenses.length,
           users: usersCount,
           workforce: workforceCount,
+          stockItems,
+          lowStockItems,
+          inventoryItems,
           totalRevenue,
           totalExpenses,
+          totalBilled,
+          totalReceivable,
+          avgOrderValue,
+          profitMargin,
+          collectionRate,
           pendingOrders,
           completedOrders,
           paidBills,
           pendingBills,
+          pendingExpenses,
+          outstandingExpenses,
         })
       } catch (error) {
         console.error('Failed to load stats:', error)
@@ -174,11 +233,18 @@ export default function Dashboard() {
     },
     {
       title: 'Stock Management',
-      value: 'Coming Soon',
+      value: stats.stockItems,
       icon: FaBox,
       color: 'bg-yellow-500',
-      href: '#',
-      disabled: true,
+      href: '/stock',
+      subValue: `${stats.lowStockItems} low stock`,
+    },
+    {
+      title: 'Inventory Items',
+      value: stats.inventoryItems,
+      icon: FaWarehouse,
+      color: 'bg-gray-600',
+      href: '/inventory',
     },
   ] : []
 
@@ -211,6 +277,60 @@ export default function Dashboard() {
       ],
     },
   ]
+
+  const superAdminHighlights = isSuperAdminUser ? [
+    {
+      title: 'Outstanding Receivables',
+      value: formatCurrency(stats.totalReceivable),
+      icon: FaWallet,
+      color: 'text-orange-600',
+      note: `${stats.pendingBills} pending bills`,
+    },
+    {
+      title: 'Collection Rate',
+      value: `${stats.collectionRate.toFixed(1)}%`,
+      icon: FaPercent,
+      color: stats.collectionRate >= 80 ? 'text-green-600' : 'text-yellow-600',
+      note: 'Paid vs billed',
+    },
+    {
+      title: 'Profit Margin',
+      value: `${stats.profitMargin.toFixed(1)}%`,
+      icon: FaChartLine,
+      color: stats.profitMargin >= 0 ? 'text-green-600' : 'text-red-600',
+      note: 'Net profit ratio',
+    },
+    {
+      title: 'Average Order Value',
+      value: formatCurrency(stats.avgOrderValue),
+      icon: FaCalculator,
+      color: 'text-blue-600',
+      note: 'Revenue per order',
+    },
+  ] : []
+
+  const superAdminAlerts = isSuperAdminUser ? [
+    {
+      label: 'Pending Orders',
+      value: stats.pendingOrders,
+      color: 'text-yellow-600',
+    },
+    {
+      label: 'Pending Bills',
+      value: stats.pendingBills,
+      color: 'text-red-600',
+    },
+    {
+      label: 'Unpaid Expenses',
+      value: stats.pendingExpenses,
+      color: 'text-orange-600',
+    },
+    {
+      label: 'Outstanding Expenses',
+      value: formatCurrency(stats.outstandingExpenses),
+      color: 'text-orange-700',
+    },
+  ] : []
 
   // Simple landing page cards for admin users
   const adminLandingCards = [
@@ -284,17 +404,6 @@ export default function Dashboard() {
     )
   }
 
-  if (loading) {
-    return (
-      <div className="p-4 sm:p-6 lg:p-8 pt-16 lg:pt-8 min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
-          <p className="mt-4 text-gray-600">Loading dashboard...</p>
-        </div>
-      </div>
-    )
-  }
-
   return (
     <div className="p-3 sm:p-4 md:p-5 lg:p-6 xl:p-8 pt-14 sm:pt-16 lg:pt-6 xl:pt-8">
       <div className="mb-4 sm:mb-5 md:mb-6 lg:mb-8">
@@ -337,25 +446,6 @@ export default function Dashboard() {
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-4 gap-3 sm:gap-4 md:gap-5 lg:gap-6 mb-4 sm:mb-5 md:mb-6 lg:mb-8">
           {adminStatCards.map((stat) => {
             const Icon = stat.icon
-            if (stat.disabled) {
-              return (
-                <div
-                  key={stat.title}
-                  className="bg-white rounded-lg shadow-md p-4 sm:p-5 md:p-6 opacity-60 cursor-not-allowed relative overflow-hidden"
-                >
-                  {/* Icon at top right corner */}
-                  <div className={`${stat.color} absolute top-0 right-0 p-3 sm:p-4 rounded-bl-2xl`}>
-                    <Icon className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
-                  </div>
-                  
-                  {/* Content */}
-                  <div className="relative pr-12 sm:pr-16">
-                    <p className="text-gray-600 text-xs sm:text-sm font-medium mb-3">{stat.title}</p>
-                    <p className="text-lg sm:text-xl lg:text-2xl font-bold text-gray-800 break-words leading-tight">{stat.value}</p>
-                  </div>
-                </div>
-              )
-            }
             return (
               <Link
                 key={stat.title}
@@ -371,6 +461,9 @@ export default function Dashboard() {
                 <div className="relative pr-12 sm:pr-16">
                   <p className="text-gray-600 text-xs sm:text-sm font-medium mb-3">{stat.title}</p>
                   <p className="text-lg sm:text-xl lg:text-2xl font-bold text-gray-800 break-words leading-tight">{stat.value}</p>
+                  {'subValue' in stat && stat.subValue && (
+                    <p className="text-xs text-gray-500 mt-2">{stat.subValue}</p>
+                  )}
                 </div>
               </Link>
             )
@@ -409,6 +502,41 @@ export default function Dashboard() {
         })}
       </div>
 
+      {isSuperAdminUser && superAdminHighlights.length > 0 && (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 md:gap-5 lg:gap-6 mb-4 sm:mb-5 md:mb-6 lg:mb-8">
+          {superAdminHighlights.map((card) => {
+            const Icon = card.icon
+            return (
+              <div key={card.title} className="bg-white rounded-lg shadow-md p-4 sm:p-5 md:p-6">
+                <div className="flex items-center justify-between mb-3">
+                  <h3 className="text-sm font-medium text-gray-600">{card.title}</h3>
+                  <Icon className={`w-5 h-5 ${card.color}`} />
+                </div>
+                <p className={`text-lg sm:text-xl font-bold ${card.color}`}>{card.value}</p>
+                <p className="text-xs text-gray-500 mt-2">{card.note}</p>
+              </div>
+            )
+          })}
+        </div>
+      )}
+
+      {isSuperAdminUser && superAdminAlerts.length > 0 && (
+        <div className="bg-white rounded-lg shadow-md p-4 sm:p-5 md:p-6 mb-4 sm:mb-5 md:mb-6 lg:mb-8">
+          <div className="flex items-center gap-2 mb-4">
+            <FaExclamationTriangle className="text-orange-500" />
+            <h2 className="text-base sm:text-lg font-bold text-gray-800">Operational Alerts</h2>
+          </div>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            {superAdminAlerts.map((alert) => (
+              <div key={alert.label} className="bg-gray-50 rounded-lg p-3 text-center">
+                <p className="text-xs text-gray-500 mb-1">{alert.label}</p>
+                <p className={`text-sm font-semibold ${alert.color}`}>{alert.value}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Quick Links */}
       <div className="bg-white rounded-lg shadow-md p-4 sm:p-5 md:p-6">
         <h2 className="text-base sm:text-lg md:text-xl font-bold text-gray-800 mb-3 sm:mb-4">Quick Actions</h2>
@@ -433,6 +561,30 @@ export default function Dashboard() {
             <FaMoneyBillWave className="w-5 h-5 sm:w-6 sm:h-6 text-red-600 mx-auto mb-1.5 sm:mb-2" />
             <p className="text-xs sm:text-sm font-medium text-gray-700">Expenses</p>
           </Link>
+          {isSuperAdminUser && (
+            <>
+              <Link href="/users" className="p-3 sm:p-4 bg-purple-50 rounded-lg hover:bg-purple-100 active:scale-95 transition-all text-center touch-manipulation">
+                <FaUserShield className="w-5 h-5 sm:w-6 sm:h-6 text-purple-600 mx-auto mb-1.5 sm:mb-2" />
+                <p className="text-xs sm:text-sm font-medium text-gray-700">Users</p>
+              </Link>
+              <Link href="/workforce" className="p-3 sm:p-4 bg-blue-50 rounded-lg hover:bg-blue-100 active:scale-95 transition-all text-center touch-manipulation">
+                <FaUserTie className="w-5 h-5 sm:w-6 sm:h-6 text-blue-600 mx-auto mb-1.5 sm:mb-2" />
+                <p className="text-xs sm:text-sm font-medium text-gray-700">Workforce</p>
+              </Link>
+              <Link href="/stock" className="p-3 sm:p-4 bg-yellow-50 rounded-lg hover:bg-yellow-100 active:scale-95 transition-all text-center touch-manipulation">
+                <FaBox className="w-5 h-5 sm:w-6 sm:h-6 text-yellow-600 mx-auto mb-1.5 sm:mb-2" />
+                <p className="text-xs sm:text-sm font-medium text-gray-700">Stock</p>
+              </Link>
+              <Link href="/inventory" className="p-3 sm:p-4 bg-gray-50 rounded-lg hover:bg-gray-100 active:scale-95 transition-all text-center touch-manipulation">
+                <FaWarehouse className="w-5 h-5 sm:w-6 sm:h-6 text-gray-600 mx-auto mb-1.5 sm:mb-2" />
+                <p className="text-xs sm:text-sm font-medium text-gray-700">Inventory</p>
+              </Link>
+              <Link href="/analytics" className="p-3 sm:p-4 bg-primary-50 rounded-lg hover:bg-primary-100 active:scale-95 transition-all text-center touch-manipulation">
+                <FaChartLine className="w-5 h-5 sm:w-6 sm:h-6 text-primary-600 mx-auto mb-1.5 sm:mb-2" />
+                <p className="text-xs sm:text-sm font-medium text-gray-700">Analytics</p>
+              </Link>
+            </>
+          )}
         </div>
       </div>
     </div>

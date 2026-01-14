@@ -1,9 +1,11 @@
 // API-based storage using Next.js API routes
 // Replace localStorage with API calls
 
+import { fetchWithLoader } from '@/lib/fetch-with-loader'
+
 export class Storage {
   private static async fetchAPI(endpoint: string, options?: RequestInit) {
-    const response = await fetch(`/api/${endpoint}`, {
+    const response = await fetchWithLoader(`/api/${endpoint}`, {
       headers: {
         'Content-Type': 'application/json',
       },
@@ -130,7 +132,6 @@ export class Storage {
       method: 'POST',
       body: JSON.stringify({
         customerId: order.customerId,
-        supervisorId: order.supervisorId,
         items: order.items,
         totalAmount: order.totalAmount,
         advancePaid: order.advancePaid,

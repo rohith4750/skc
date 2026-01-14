@@ -32,7 +32,11 @@ export interface Order {
   advancePaid: number
   remainingAmount: number
   status: 'pending' | 'in-progress' | 'completed' | 'cancelled'
-  supervisorId: string
+  eventName?: string | null
+  services?: string[] | null
+  mealTypeAmounts?: Record<string, { amount?: number; date?: string; services?: string[]; numberOfMembers?: number } | number> | null
+  numberOfMembers?: number | null
+  supervisorId?: string
   createdAt: string
   updatedAt: string
 }

@@ -488,17 +488,6 @@ export default function WorkforcePage() {
     },
   ]
 
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
-          <p className="mt-4 text-gray-600">Loading workforce...</p>
-        </div>
-      </div>
-    )
-  }
-
   const totalPayments = filteredWorkforce.reduce((sum, m) => sum + (m.totalAmount || 0), 0)
   const totalExpenses = filteredWorkforce.reduce((sum, m) => sum + (m.expenseCount || 0), 0)
 
