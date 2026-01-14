@@ -23,12 +23,16 @@ import {
   FaTruck,
   FaGasPump,
   FaStore,
-  FaBox
+  FaBox,
+  FaPrint
 } from 'react-icons/fa'
 import toast from 'react-hot-toast'
 import Table from '@/components/Table'
 import ConfirmModal from '@/components/ConfirmModal'
 import Link from 'next/link'
+import jsPDF from 'jspdf'
+import html2canvas from 'html2canvas'
+import { generatePDFTemplate, PDFTemplateData } from '@/lib/pdf-template'
 
 const EXPENSE_CATEGORIES = [
   'supervisor',
@@ -244,6 +248,94 @@ export default function ExpensesPage() {
     setSearchTerm('')
     setDateRange({ start: '', end: '' })
     setCurrentPage(1)
+  }
+
+  const handleGeneratePDF = async (expense: Expense) => {
+    const customer = expense.order?.customer
+    
+    // Prepare PDF template data
+    const pdfData: PDFTemplateData = {
+      type: 'expense',
+      billNumber: `EXP-${expense.id.slice(0, 8).toUpperCase()}`,
+      date: expense.paymentDate || expense.createdAt,
+      customer: customer ? {
+        name: customer.name,
+        phone: customer.phone,
+        email: customer.email,
+        address: customer.address,
+      } : undefined,
+      expenseDetails: {
+        category: expense.category,
+        recipient: expense.recipient || '',
+        description: expense.description || '',
+        amount: expense.amount,
+        paidAmount: expense.paidAmount,
+        paymentStatus: expense.paymentStatus as 'pending' | 'partial' | 'paid' || 'pending',
+        paymentDate: expense.paymentDate,
+        eventDate: expense.eventDate || undefined,
+        notes: expense.notes || undefined,
+        calculationDetails: expense.calculationDetails || undefined,
+      },
+    }
+    
+    // Generate HTML using template
+    const htmlContent = generatePDFTemplate(pdfData)
+    
+    // Create a temporary HTML element to render properly
+    const tempDiv = document.createElement('div')
+    tempDiv.style.position = 'absolute'
+    tempDiv.style.left = '-9999px'
+    tempDiv.style.width = '210mm' // A4 width
+    tempDiv.style.padding = '0'
+    tempDiv.style.background = 'white'
+    tempDiv.style.color = '#000'
+    
+    tempDiv.innerHTML = htmlContent
+    document.body.appendChild(tempDiv)
+    
+    try {
+      // Convert HTML to canvas
+      const canvas = await html2canvas(tempDiv, {
+        scale: 2,
+        useCORS: true,
+        logging: false,
+        backgroundColor: '#ffffff',
+        width: tempDiv.scrollWidth,
+        height: tempDiv.scrollHeight,
+      })
+      
+      // Remove temporary element
+      document.body.removeChild(tempDiv)
+      
+      // Create PDF from canvas
+      const imgData = canvas.toDataURL('image/png')
+      const pdf = new jsPDF('p', 'mm', 'a4')
+      const imgWidth = 210 // A4 width in mm
+      const pageHeight = 297 // A4 height in mm
+      const imgHeight = (canvas.height * imgWidth) / canvas.width
+      let heightLeft = imgHeight
+      
+      let position = 0
+      
+      pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight)
+      heightLeft -= pageHeight
+      
+      while (heightLeft >= 0) {
+        position = heightLeft - imgHeight
+        pdf.addPage()
+        pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight)
+        heightLeft -= pageHeight
+      }
+      
+      pdf.save(`expense-${expense.id.slice(0, 8)}.pdf`)
+      toast.success('Expense receipt generated successfully!')
+    } catch (error) {
+      if (document.body.contains(tempDiv)) {
+        document.body.removeChild(tempDiv)
+      }
+      console.error('Error generating PDF:', error)
+      toast.error('Failed to generate PDF. Please try again.')
+    }
   }
 
   const columns = [
@@ -633,6 +725,13 @@ export default function ExpensesPage() {
             
             return (
               <div className="flex items-center gap-2">
+                <button
+                  onClick={() => handleGeneratePDF(expense)}
+                  className="p-2 text-primary-600 hover:bg-primary-50 rounded-lg transition-colors"
+                  title="Generate Receipt"
+                >
+                  <FaPrint />
+                </button>
                 {!isPaid && (
                   <button
                     onClick={() => handleMarkAsPaid(expense)}

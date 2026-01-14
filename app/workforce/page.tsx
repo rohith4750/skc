@@ -1,12 +1,15 @@
 'use client'
 
 import { useEffect, useState, useMemo } from 'react'
-import { FaEdit, FaTrash, FaUtensils, FaUserTie, FaTruck, FaDollarSign, FaReceipt, FaChevronDown, FaChevronUp, FaUsers, FaUserFriends, FaFilter, FaSearch, FaTimes, FaCheckCircle, FaExclamationCircle, FaClock, FaGasPump, FaBox, FaStore, FaCircle, FaPlus } from 'react-icons/fa'
+import { FaEdit, FaTrash, FaUtensils, FaUserTie, FaTruck, FaDollarSign, FaReceipt, FaChevronDown, FaChevronUp, FaUsers, FaUserFriends, FaFilter, FaSearch, FaTimes, FaCheckCircle, FaExclamationCircle, FaClock, FaGasPump, FaBox, FaStore, FaCircle, FaPlus, FaPrint } from 'react-icons/fa'
 import toast from 'react-hot-toast'
 import Table from '@/components/Table'
 import ConfirmModal from '@/components/ConfirmModal'
 import { formatCurrency, formatDate } from '@/lib/utils'
 import Link from 'next/link'
+import jsPDF from 'jspdf'
+import html2canvas from 'html2canvas'
+import { generatePDFTemplate, PDFTemplateData } from '@/lib/pdf-template'
 
 interface Workforce {
   id: string
@@ -126,6 +129,89 @@ export default function WorkforcePage() {
 
   const handleDelete = (id: string) => {
     setDeleteConfirm({ isOpen: true, id })
+  }
+
+  const handleGeneratePDF = async (member: Workforce) => {
+    // Prepare expense items for PDF
+    const expenseItems = (member.expenses || []).map((exp: any) => ({
+      date: exp.paymentDate || exp.createdAt,
+      amount: exp.amount || 0,
+      description: exp.description || '',
+      status: exp.paymentStatus || 'pending',
+    }))
+    
+    // Prepare PDF template data
+    const pdfData: PDFTemplateData = {
+      type: 'workforce',
+      billNumber: `WF-${member.id.slice(0, 8).toUpperCase()}`,
+      date: new Date().toISOString(),
+      workforceDetails: {
+        name: member.name,
+        role: member.role,
+        totalAmount: member.totalAmount || 0,
+        totalPaid: member.totalPaidAmount || 0,
+        expenses: expenseItems,
+      },
+    }
+    
+    // Generate HTML using template
+    const htmlContent = generatePDFTemplate(pdfData)
+    
+    // Create a temporary HTML element to render properly
+    const tempDiv = document.createElement('div')
+    tempDiv.style.position = 'absolute'
+    tempDiv.style.left = '-9999px'
+    tempDiv.style.width = '210mm' // A4 width
+    tempDiv.style.padding = '0'
+    tempDiv.style.background = 'white'
+    tempDiv.style.color = '#000'
+    
+    tempDiv.innerHTML = htmlContent
+    document.body.appendChild(tempDiv)
+    
+    try {
+      // Convert HTML to canvas
+      const canvas = await html2canvas(tempDiv, {
+        scale: 2,
+        useCORS: true,
+        logging: false,
+        backgroundColor: '#ffffff',
+        width: tempDiv.scrollWidth,
+        height: tempDiv.scrollHeight,
+      })
+      
+      // Remove temporary element
+      document.body.removeChild(tempDiv)
+      
+      // Create PDF from canvas
+      const imgData = canvas.toDataURL('image/png')
+      const pdf = new jsPDF('p', 'mm', 'a4')
+      const imgWidth = 210 // A4 width in mm
+      const pageHeight = 297 // A4 height in mm
+      const imgHeight = (canvas.height * imgWidth) / canvas.width
+      let heightLeft = imgHeight
+      
+      let position = 0
+      
+      pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight)
+      heightLeft -= pageHeight
+      
+      while (heightLeft >= 0) {
+        position = heightLeft - imgHeight
+        pdf.addPage()
+        pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight)
+        heightLeft -= pageHeight
+      }
+      
+      pdf.save(`workforce-${member.id.slice(0, 8)}.pdf`)
+      toast.success('Workforce receipt generated successfully!')
+    } catch (error) {
+      if (document.body.contains(tempDiv)) {
+        document.body.removeChild(tempDiv)
+      }
+      console.error('Error generating PDF:', error)
+      toast.error('Failed to generate PDF. Please try again.')
+    }
   }
 
   const confirmDelete = async () => {
@@ -725,6 +811,13 @@ export default function WorkforcePage() {
                         ))}
                         <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                           <div className="flex items-center gap-2">
+                            <button
+                              onClick={() => handleGeneratePDF(member)}
+                              className="text-primary-600 hover:text-primary-700 p-2 hover:bg-primary-50 rounded"
+                              title="Generate Receipt"
+                            >
+                              <FaPrint />
+                            </button>
                             <button
                               onClick={() => handleEdit(member)}
                               className="text-primary-600 hover:text-primary-700 p-2 hover:bg-primary-50 rounded"
