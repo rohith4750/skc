@@ -128,15 +128,32 @@ export default function OrdersHistoryPage() {
       }
 
       const updatedOrder = await response.json()
-      console.log(`[Order History] Order status updated. Bill should be created if status is in-progress or completed.`)
+      console.log(`[Order History] Order status updated.`, updatedOrder)
       
       await loadData()
       
-      // If status changed to in-progress or completed, inform user that bill was created
+      // If status changed to in-progress or completed, check if bill was created
       if (newStatus === 'in-progress' || newStatus === 'completed') {
-        toast.success(`Order status updated to ${newStatus}. Bill has been generated!`, {
-          duration: 4000,
-        })
+        if (updatedOrder._billCreated) {
+          console.log(`[Order History] ✅ Bill created: ${updatedOrder._billId}`)
+          toast.success(`Order status updated to ${newStatus}. Bill has been generated!`, {
+            duration: 4000,
+          })
+        } else if (updatedOrder._billError) {
+          console.error(`[Order History] ❌ Bill creation failed:`, updatedOrder._billError)
+          toast.error(`Order status updated, but bill creation failed: ${updatedOrder._billError.message}`, {
+            duration: 5000,
+          })
+        } else if (updatedOrder._billStatus === 'exists') {
+          console.log(`[Order History] Bill already exists for this order`)
+          toast.success(`Order status updated to ${newStatus}. Bill already exists.`, {
+            duration: 4000,
+          })
+        } else {
+          toast.success(`Order status updated to ${newStatus}. Bill has been generated!`, {
+            duration: 4000,
+          })
+        }
       } else {
         toast.success('Order status updated successfully!')
       }

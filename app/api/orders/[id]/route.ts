@@ -60,6 +60,10 @@ export async function PUT(
       console.log(`[Order API] Order status updated successfully. Total amount: ${order.totalAmount}`)
       
       // Generate bill when status changes to "in-progress" or "completed"
+      let billStatus = 'none'
+      let billId: string | null = null
+      let billError: any = null
+      
       if (data.status === 'in-progress' || data.status === 'completed') {
         console.log(`[Order API] Checking for existing bill for order ${params.id}`)
         
@@ -83,17 +87,25 @@ export async function PUT(
               }
             })
             console.log(`[Order API] ✅ Bill created successfully: ${newBill.id} for order ${params.id}`)
-          } catch (billError: any) {
-            console.error(`[Order API] ❌ Error creating bill for order ${params.id}:`, billError)
+            billStatus = 'created'
+            billId = newBill.id
+          } catch (error: any) {
+            console.error(`[Order API] ❌ Error creating bill for order ${params.id}:`, error)
             console.error(`[Order API] Error details:`, {
-              message: billError.message,
-              code: billError.code,
-              meta: billError.meta
+              message: error.message,
+              code: error.code,
+              meta: error.meta
             })
-            // Don't throw - order status was updated successfully, bill creation failed
+            billStatus = 'error'
+            billError = {
+              message: error.message,
+              code: error.code
+            }
           }
         } else {
           console.log(`[Order API] Bill already exists: ${existingBill.id} for order ${params.id}`)
+          billStatus = 'exists'
+          billId = existingBill.id
           
           if (data.status === 'completed') {
             console.log(`[Order API] Order marked as completed. Updating bill to paid status.`)
@@ -120,7 +132,12 @@ export async function PUT(
         }
       }
       
-      return NextResponse.json(order)
+      // Return order with bill creation status
+      const response: any = { ...order, _billStatus: billStatus }
+      if (billId) response._billId = billId
+      if (billError) response._billError = billError
+      
+      return NextResponse.json(response)
     }
     
     // If only supervisorId is being updated (from orders history page)

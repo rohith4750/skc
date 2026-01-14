@@ -81,6 +81,29 @@ export default function BillsPage() {
     loadBills()
   }, [])
 
+  // Refresh bills when page becomes visible (user navigates back to bills page)
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        console.log('[Bills Page] Page became visible, refreshing bills...')
+        loadBills(false) // Don't show toast on auto-refresh
+      }
+    }
+
+    const handleFocus = () => {
+      console.log('[Bills Page] Window focused, refreshing bills...')
+      loadBills(false) // Don't show toast on auto-refresh
+    }
+
+    document.addEventListener('visibilitychange', handleVisibilityChange)
+    window.addEventListener('focus', handleFocus)
+
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange)
+      window.removeEventListener('focus', handleFocus)
+    }
+  }, [])
+
   const handleMarkPaid = async (billId: string) => {
     const bill = bills.find((b: any) => b.id === billId)
     if (!bill) return
