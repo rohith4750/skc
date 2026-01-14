@@ -38,6 +38,8 @@ export async function PUT(
     
     // If only status is being updated (from orders history page)
     if (data.status !== undefined && Object.keys(data).length === 1) {
+      console.log(`[Order API] Status update requested for order ${params.id}: ${data.status}`)
+      
       // Update order status
       const order = await prisma.order.update({
         where: { id: params.id },
@@ -55,45 +57,66 @@ export async function PUT(
         }
       })
       
+      console.log(`[Order API] Order status updated successfully. Total amount: ${order.totalAmount}`)
+      
       // Generate bill when status changes to "in-progress" or "completed"
       if (data.status === 'in-progress' || data.status === 'completed') {
+        console.log(`[Order API] Checking for existing bill for order ${params.id}`)
+        
         // Check if bill already exists
         const existingBill = await prisma.bill.findUnique({
           where: { orderId: params.id }
         })
         
         if (!existingBill) {
-          // Create bill only if it doesn't exist
-          await prisma.bill.create({
-            data: {
-              orderId: params.id,
-              totalAmount: order.totalAmount,
-              advancePaid: order.advancePaid,
-              remainingAmount: order.remainingAmount,
-              paidAmount: order.advancePaid,
-              status: order.remainingAmount > 0 ? (order.advancePaid > 0 ? 'partial' : 'pending') : 'paid',
-            }
-          })
-          console.log('Bill generated for order:', params.id)
-        } else if (data.status === 'completed') {
-          // If status is completed and bill exists, mark it as paid
-          await prisma.bill.update({
-            where: { id: existingBill.id },
-            data: {
-              paidAmount: existingBill.totalAmount,
-              remainingAmount: 0,
-              status: 'paid'
-            }
-          })
+          console.log(`[Order API] No existing bill found. Creating new bill for order ${params.id}`)
+          try {
+            // Create bill only if it doesn't exist
+            const newBill = await prisma.bill.create({
+              data: {
+                orderId: params.id,
+                totalAmount: order.totalAmount,
+                advancePaid: order.advancePaid,
+                remainingAmount: order.remainingAmount,
+                paidAmount: order.advancePaid,
+                status: order.remainingAmount > 0 ? (order.advancePaid > 0 ? 'partial' : 'pending') : 'paid',
+              }
+            })
+            console.log(`[Order API] ✅ Bill created successfully: ${newBill.id} for order ${params.id}`)
+          } catch (billError: any) {
+            console.error(`[Order API] ❌ Error creating bill for order ${params.id}:`, billError)
+            console.error(`[Order API] Error details:`, {
+              message: billError.message,
+              code: billError.code,
+              meta: billError.meta
+            })
+            // Don't throw - order status was updated successfully, bill creation failed
+          }
+        } else {
+          console.log(`[Order API] Bill already exists: ${existingBill.id} for order ${params.id}`)
           
-          // Update order amounts to match
-          await prisma.order.update({
-            where: { id: params.id },
-            data: {
-              advancePaid: existingBill.totalAmount,
-              remainingAmount: 0
-            }
-          })
+          if (data.status === 'completed') {
+            console.log(`[Order API] Order marked as completed. Updating bill to paid status.`)
+            // If status is completed and bill exists, mark it as paid
+            await prisma.bill.update({
+              where: { id: existingBill.id },
+              data: {
+                paidAmount: existingBill.totalAmount,
+                remainingAmount: 0,
+                status: 'paid'
+              }
+            })
+            
+            // Update order amounts to match
+            await prisma.order.update({
+              where: { id: params.id },
+              data: {
+                advancePaid: existingBill.totalAmount,
+                remainingAmount: 0
+              }
+            })
+            console.log(`[Order API] ✅ Bill updated to paid status`)
+          }
         }
       }
       

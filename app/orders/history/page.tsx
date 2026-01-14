@@ -113,6 +113,7 @@ export default function OrdersHistoryPage() {
 
   const handleStatusChange = async (orderId: string, newStatus: string) => {
     try {
+      console.log(`[Order History] Updating order ${orderId} status to ${newStatus}`)
       const response = await fetch(`/api/orders/${orderId}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
@@ -126,8 +127,19 @@ export default function OrdersHistoryPage() {
         throw new Error(error.error || 'Failed to update status')
       }
 
+      const updatedOrder = await response.json()
+      console.log(`[Order History] Order status updated. Bill should be created if status is in-progress or completed.`)
+      
       await loadData()
-      toast.success('Order status updated successfully!')
+      
+      // If status changed to in-progress or completed, inform user that bill was created
+      if (newStatus === 'in-progress' || newStatus === 'completed') {
+        toast.success(`Order status updated to ${newStatus}. Bill has been generated!`, {
+          duration: 4000,
+        })
+      } else {
+        toast.success('Order status updated successfully!')
+      }
     } catch (error: any) {
       console.error('Failed to update status:', error)
       toast.error(error.message || 'Failed to update order status. Please try again.')
