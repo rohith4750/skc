@@ -31,6 +31,7 @@ export async function POST(request: NextRequest) {
     const advancePaid = parseFloat(data.advancePaid) || 0
     const remainingAmount = parseFloat(data.remainingAmount) || (totalAmount - advancePaid)
     const discount = parseFloat(data.discount) || 0
+    const transportCost = parseFloat(data.transportCost) || 0
     
     const orderData: any = {
       customerId: data.customerId,
@@ -43,6 +44,7 @@ export async function POST(request: NextRequest) {
       numberOfMembers: data.numberOfMembers || null,
       mealTypeAmounts: data.mealTypeAmounts && Object.keys(data.mealTypeAmounts).length > 0 ? data.mealTypeAmounts : null,
       stalls: data.stalls && Array.isArray(data.stalls) && data.stalls.length > 0 ? data.stalls : null,
+      transportCost: transportCost,
       discount: discount,
       items: {
         create: data.items.map((item: any) => ({

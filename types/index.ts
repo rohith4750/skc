@@ -33,12 +33,39 @@ export interface Order {
   remainingAmount: number
   status: 'pending' | 'in-progress' | 'completed' | 'cancelled'
   eventName?: string | null
+  discount?: number
   services?: string[] | null
-  mealTypeAmounts?: Record<string, { amount?: number; date?: string; services?: string[]; numberOfMembers?: number } | number> | null
+  mealTypeAmounts?: Record<string, {
+    amount?: number
+    date?: string
+    services?: string[]
+    numberOfMembers?: number
+    pricingMethod?: 'manual' | 'plate-based'
+    numberOfPlates?: number
+    platePrice?: number
+    manualAmount?: number
+    originalMembers?: number
+  } | number> | null
+  stalls?: Array<{ category: string; description: string; cost: number | string }> | null
   numberOfMembers?: number | null
+  transportCost?: number
   supervisorId?: string
+  supervisor?: Supervisor
   createdAt: string
   updatedAt: string
+}
+
+export interface PaymentHistoryEntry {
+  amount: number
+  totalPaid: number
+  remainingAmount: number
+  status: 'pending' | 'partial' | 'paid'
+  date: string
+  source?: 'order-edit' | 'bill-update' | 'status-update' | 'booking' | 'revision' | 'payment'
+  method?: 'cash' | 'upi' | 'card' | 'bank_transfer' | 'other'
+  membersChanged?: number
+  totalPriceChange?: number
+  notes?: string
 }
 
 export interface Bill {
@@ -50,6 +77,7 @@ export interface Bill {
   remainingAmount: number
   paidAmount: number
   status: 'pending' | 'partial' | 'paid'
+  paymentHistory?: PaymentHistoryEntry[] | null
   createdAt: string
   updatedAt: string
 }

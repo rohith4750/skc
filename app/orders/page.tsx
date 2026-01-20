@@ -26,6 +26,8 @@ export default function OrdersPage() {
   const [showCustomerDropdown, setShowCustomerDropdown] = useState<boolean>(false)
   const customerSearchRef = useRef<HTMLDivElement>(null)
   const [collapsedMealTypes, setCollapsedMealTypes] = useState<Record<string, boolean>>({})
+  const [originalAdvancePaid, setOriginalAdvancePaid] = useState<number>(0)
+  const [originalMealTypeAmounts, setOriginalMealTypeAmounts] = useState<Record<string, any>>({})
   
   const [formData, setFormData] = useState({
     customerId: '',
@@ -47,6 +49,8 @@ export default function OrdersPage() {
     transportCost: '',
     totalAmount: '',
     advancePaid: '',
+    paymentMethod: 'cash' as 'cash' | 'upi' | 'card' | 'bank_transfer' | 'other',
+    paymentNotes: '',
   })
 
   useEffect(() => {
@@ -125,7 +129,16 @@ export default function OrdersPage() {
         groupedItems[mealType].push(item)
       })
 
-      const mealTypeAmounts = order.mealTypeAmounts as Record<string, { amount: number; date: string; services?: string[]; numberOfMembers?: number } | number> | null
+      const mealTypeAmounts = order.mealTypeAmounts as Record<string, {
+        amount: number
+        date: string
+        services?: string[]
+        numberOfMembers?: number
+        pricingMethod?: 'manual' | 'plate-based'
+        numberOfPlates?: number
+        platePrice?: number
+        manualAmount?: number
+      } | number> | null
 
       // Build mealTypes array from grouped items
       const mealTypesArray = Object.entries(groupedItems).map(([menuType, items]) => {
@@ -135,17 +148,31 @@ export default function OrdersPage() {
         const services = typeof mealTypeData === 'object' && mealTypeData !== null && mealTypeData.services ? mealTypeData.services : []
         const numberOfMembers = typeof mealTypeData === 'object' && mealTypeData !== null && mealTypeData.numberOfMembers ? mealTypeData.numberOfMembers.toString() : ''
 
-        // Determine pricing method (assume manual if amount exists, otherwise plate-based)
-        const pricingMethod: 'manual' | 'plate-based' = 'manual'
-        const manualAmount = amount.toString()
+        const pricingMethod: 'manual' | 'plate-based' =
+          typeof mealTypeData === 'object' && mealTypeData !== null && mealTypeData.pricingMethod
+            ? mealTypeData.pricingMethod
+            : 'manual'
+
+        const numberOfPlates =
+          typeof mealTypeData === 'object' && mealTypeData !== null && mealTypeData.numberOfPlates !== undefined
+            ? mealTypeData.numberOfPlates.toString()
+            : ''
+        const platePrice =
+          typeof mealTypeData === 'object' && mealTypeData !== null && mealTypeData.platePrice !== undefined
+            ? mealTypeData.platePrice.toString()
+            : ''
+        const manualAmount =
+          typeof mealTypeData === 'object' && mealTypeData !== null && mealTypeData.manualAmount !== undefined
+            ? mealTypeData.manualAmount.toString()
+            : amount.toString()
         
         return {
           id: generateId(),
           menuType: menuType,
           selectedMenuItems: items.map((item: any) => item.menuItemId),
           pricingMethod,
-          numberOfPlates: '',
-          platePrice: '',
+          numberOfPlates,
+          platePrice,
           manualAmount,
           date: date || '',
           services,
@@ -168,13 +195,17 @@ export default function OrdersPage() {
         mealTypes: mealTypesArray,
         stalls: stallsArray,
         discount: order.discount?.toString() || '0',
-        transportCost: '',
+        transportCost: (order as any).transportCost?.toString() || '0',
         totalAmount: order.totalAmount?.toString() || '0',
-        advancePaid: order.advancePaid?.toString() || '0',
+        advancePaid: '',
+        paymentMethod: 'cash',
+        paymentNotes: '',
       })
 
       setCurrentOrderStatus(order.status || 'pending')
       setShowStalls(stallsArray.length > 0)
+      setOriginalAdvancePaid(order.advancePaid || 0)
+      setOriginalMealTypeAmounts(mealTypeAmounts || {})
       
       toast.success('Order loaded successfully')
     } catch (error) {
@@ -325,11 +356,21 @@ export default function OrdersPage() {
 
     try {
       const totalAmount = parseFloat(formData.totalAmount) || 0
-      const advancePaid = parseFloat(formData.advancePaid) || 0
-      const remainingAmount = totalAmount - advancePaid
+      const inputAdvancePaid = parseFloat(formData.advancePaid) || 0
+      const effectiveAdvancePaid = isEditMode ? originalAdvancePaid + inputAdvancePaid : inputAdvancePaid
+      const remainingAmount = Math.max(0, totalAmount - effectiveAdvancePaid)
 
       // Calculate amount and store date for each meal type
-      const mealTypeAmounts: Record<string, { amount: number; date: string }> = {}
+      const mealTypeAmounts: Record<string, {
+        amount: number
+        date: string
+        services?: string[]
+        numberOfMembers?: number
+        pricingMethod?: 'manual' | 'plate-based'
+        numberOfPlates?: number
+        platePrice?: number
+        manualAmount?: number
+      }> = {}
       formData.mealTypes.forEach(mealType => {
         let amount = 0
         if (mealType.pricingMethod === 'plate-based') {
@@ -341,7 +382,13 @@ export default function OrdersPage() {
         }
         mealTypeAmounts[mealType.menuType] = {
           amount,
-          date: mealType.date || ''
+          date: mealType.date || '',
+          services: mealType.services,
+          numberOfMembers: mealType.numberOfMembers ? parseInt(mealType.numberOfMembers, 10) : undefined,
+          pricingMethod: mealType.pricingMethod,
+          numberOfPlates: mealType.numberOfPlates ? parseFloat(mealType.numberOfPlates) : undefined,
+          platePrice: mealType.platePrice ? parseFloat(mealType.platePrice) : undefined,
+          manualAmount: mealType.manualAmount ? parseFloat(mealType.manualAmount) : undefined,
         }
       })
 
@@ -358,15 +405,19 @@ export default function OrdersPage() {
         eventName: formData.eventName || null,
         items: orderItems,
         totalAmount,
-        advancePaid,
+        advancePaid: effectiveAdvancePaid,
         remainingAmount,
         status: isEditMode ? currentOrderStatus : 'pending',
         mealTypeAmounts,
         stalls: showStalls ? formData.stalls : [],
+        transportCost: parseFloat(formData.transportCost) || 0,
         discount: parseFloat(formData.discount) || 0,
+        paymentMethod: formData.paymentMethod,
+        paymentNotes: formData.paymentNotes,
       }
 
       if (isEditMode && editOrderId) {
+        orderData.additionalPayment = inputAdvancePaid
         // Update existing order
         await Storage.updateOrder(editOrderId, orderData)
         toast.success('Order updated successfully!')
@@ -415,6 +466,10 @@ export default function OrdersPage() {
     return formData.stalls.reduce((sum, stall) => sum + (parseFloat(stall.cost) || 0), 0)
   }, [formData.stalls, showStalls])
 
+  const additionalAdvancePaid = parseFloat(formData.advancePaid) || 0
+  const effectiveAdvancePaid = isEditMode ? originalAdvancePaid + additionalAdvancePaid : additionalAdvancePaid
+  const effectiveRemainingAmount = Math.max(0, (parseFloat(formData.totalAmount) || 0) - effectiveAdvancePaid)
+
   // Calculate total amount: Sum of all meal types + Transport + Stalls - Discount
   useEffect(() => {
     const stallsTotal = showStalls ? totalStallsCost : 0
@@ -450,7 +505,10 @@ export default function OrdersPage() {
       transportCost: '',
       totalAmount: '',
       advancePaid: '',
+      paymentMethod: 'cash',
+      paymentNotes: '',
     })
+    setOriginalAdvancePaid(0)
     setSelectedSubFilter({})
     setMenuItemSearch({})
     setCollapsedMealTypes({})
@@ -1109,7 +1167,7 @@ export default function OrdersPage() {
               <div className="grid grid-cols-2 gap-4 mt-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Advance Paid
+                    {isEditMode ? 'Additional Advance Paid' : 'Advance Paid'}
                   </label>
                   <input
                     type="number"
@@ -1120,7 +1178,78 @@ export default function OrdersPage() {
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
                     placeholder="0.00"
                   />
+                  {isEditMode && (
+                    <p className="mt-1 text-xs text-gray-500">
+                      Current advance: {formatCurrency(originalAdvancePaid)} · New total: {formatCurrency(effectiveAdvancePaid)} · Remaining: {formatCurrency(effectiveRemainingAmount)}
+                    </p>
+                  )}
                 </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Payment Method
+                  </label>
+                  <select
+                    value={formData.paymentMethod}
+                    onChange={(e: any) => setFormData({ ...formData, paymentMethod: e.target.value })}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                  >
+                    <option value="cash">Cash</option>
+                    <option value="upi">UPI</option>
+                    <option value="card">Card</option>
+                    <option value="bank_transfer">Bank Transfer</option>
+                    <option value="other">Other</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="mt-4">
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Payment Notes
+                </label>
+                <input
+                  type="text"
+                  value={formData.paymentNotes}
+                  onChange={(e: any) => setFormData({ ...formData, paymentNotes: e.target.value })}
+                  placeholder="e.g., Transaction ID, Reference, etc."
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                />
+              </div>
+
+              {isEditMode && (
+                <div className="mt-6 p-4 bg-orange-50 border border-orange-200 rounded-lg">
+                  <h4 className="text-sm font-bold text-orange-800 mb-3 flex items-center gap-2">
+                    <span className="w-2 h-2 bg-orange-500 rounded-full"></span>
+                    Member Change Summary
+                  </h4>
+                  <div className="space-y-2">
+                    {formData.mealTypes.map(mt => {
+                      const original = originalMealTypeAmounts[mt.menuType]
+                      const oldMembers = original?.numberOfMembers || 0
+                      const newMembers = parseInt(mt.numberOfMembers) || 0
+                      const diff = newMembers - oldMembers
+                      
+                      if (diff === 0) return null
+                      
+                      return (
+                        <div key={mt.id} className="flex justify-between items-center text-sm">
+                          <span className="text-gray-700 capitalize font-medium">{mt.menuType}:</span>
+                          <div className="flex items-center gap-3">
+                            <span className="text-gray-500">{oldMembers} → {newMembers}</span>
+                            <span className={`font-bold px-2 py-0.5 rounded text-xs ${diff > 0 ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+                              {diff > 0 ? '+' : ''}{diff} Members
+                            </span>
+                          </div>
+                        </div>
+                      )
+                    })}
+                    {!formData.mealTypes.some(mt => (parseInt(mt.numberOfMembers) || 0) !== (originalMealTypeAmounts[mt.menuType]?.numberOfMembers || 0)) && (
+                      <p className="text-xs text-gray-500 italic">No member changes detected yet.</p>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              <div className="mt-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
                     Total Amount * (Auto-calculated: Meal Types + Transport + Stalls - Discount)

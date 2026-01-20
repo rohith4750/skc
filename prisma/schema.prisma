@@ -62,6 +62,7 @@ model Order {
   status          String    @default("pending")
   mealTypeAmounts Json?
   stalls          Json?
+  transportCost   Float     @default(0)
   discount        Float     @default(0)
   eventName       String?
   services        Json?
@@ -96,6 +97,7 @@ model Bill {
   remainingAmount Float
   paidAmount      Float    @default(0)
   status          String   @default("pending")
+  paymentHistory  Json?
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 

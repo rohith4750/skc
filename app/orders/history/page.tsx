@@ -569,6 +569,13 @@ export default function OrdersHistoryPage() {
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                         <div className="flex gap-2">
                           <Link
+                            href={`/orders/summary/${order.id}`}
+                            className="text-blue-600 hover:text-blue-900 p-2 hover:bg-blue-50 rounded transition-colors"
+                            title="Order Summary"
+                          >
+                            <FaChartLine />
+                          </Link>
+                          <Link
                             href={`/orders?edit=${order.id}`}
                             className="text-yellow-600 hover:text-yellow-900 p-2 hover:bg-yellow-50 rounded transition-colors"
                             title="Edit Order"

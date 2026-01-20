@@ -16,12 +16,6 @@ export default function BillsPage() {
   const [bills, setBills] = useState<Array<Bill & { order?: Order & { customer?: Customer } }>>([])
   const [currentPage, setCurrentPage] = useState(1)
   const [itemsPerPage, setItemsPerPage] = useState(10)
-  const [editingBill, setEditingBill] = useState<Bill & { order?: Order & { customer?: Customer } } | null>(null)
-  const [editFormData, setEditFormData] = useState({
-    paidAmount: '',
-    remainingAmount: '',
-    status: 'pending' as 'pending' | 'partial' | 'paid'
-  })
   const [showFilters, setShowFilters] = useState(false)
   const [statusFilter, setStatusFilter] = useState<string>('all')
   const [customerSearch, setCustomerSearch] = useState<string>('')
@@ -137,81 +131,6 @@ export default function BillsPage() {
       )
       
       toast.success('Bill marked as paid successfully!')
-    } catch (error: any) {
-      console.error('Failed to update bill:', error)
-      toast.error(error.message || 'Failed to update bill. Please try again.')
-    }
-  }
-
-  const handleEditBill = (bill: Bill & { order?: Order & { customer?: Customer } }) => {
-    setEditingBill(bill)
-    setEditFormData({
-      paidAmount: bill.paidAmount.toString(),
-      remainingAmount: bill.remainingAmount.toString(),
-      status: bill.status as 'pending' | 'partial' | 'paid'
-    })
-  }
-
-  const handleCloseEditModal = () => {
-    setEditingBill(null)
-    setEditFormData({
-      paidAmount: '',
-      remainingAmount: '',
-      status: 'pending'
-    })
-  }
-
-  const handleUpdateBill = async () => {
-    if (!editingBill) return
-
-    try {
-      const paidAmount = parseFloat(editFormData.paidAmount) || 0
-      const totalAmount = editingBill.totalAmount
-      
-      // Determine status based on paid amount (with small tolerance for floating point errors)
-      let status: 'pending' | 'partial' | 'paid' = 'pending'
-      const tolerance = 0.01 // Small tolerance for floating point comparison
-      let remainingAmount = 0
-      
-      if (paidAmount <= tolerance) {
-        status = 'pending'
-        remainingAmount = totalAmount
-      } else if (paidAmount >= (totalAmount - tolerance)) {
-        status = 'paid'
-        remainingAmount = 0
-      } else {
-        status = 'partial'
-        remainingAmount = Math.max(0, totalAmount - paidAmount)
-      }
-
-      const response = await fetchWithLoader(`/api/bills/${editingBill.id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          paidAmount: paidAmount,
-          remainingAmount: remainingAmount,
-          status: status,
-        }),
-      })
-
-      if (!response.ok) {
-        const error = await response.json()
-        throw new Error(error.error || 'Failed to update bill')
-      }
-
-      const updatedBill = await response.json()
-      
-      // Update the specific bill in the list immediately with complete data
-      setBills(prevBills => 
-        prevBills.map((b: any) => 
-          b.id === editingBill.id 
-            ? updatedBill  // Replace with complete updated bill (includes all relations)
-            : b
-        )
-      )
-      
-      handleCloseEditModal()
-      toast.success('Bill updated successfully!')
     } catch (error: any) {
       console.error('Failed to update bill:', error)
       toast.error(error.message || 'Failed to update bill. Please try again.')
@@ -447,13 +366,29 @@ export default function BillsPage() {
           <h1 className="text-3xl font-bold text-gray-800">Bills</h1>
           <p className="text-gray-600 mt-2">Smart billing overview with event insights</p>
         </div>
-        <button
-          onClick={() => setShowFilters(!showFilters)}
-          className="flex items-center gap-2 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors"
-        >
-          <FaFilter />
-          {showFilters ? 'Hide Filters' : 'Show Filters'}
-        </button>
+        <div className="flex items-center gap-3">
+          <div className="flex bg-white border border-gray-200 rounded-lg p-1 shadow-sm">
+            <button
+              onClick={() => { setStatusFilter('all'); setCurrentPage(1); }}
+              className={`px-4 py-1.5 text-sm font-bold rounded-md transition-all ${statusFilter === 'all' ? 'bg-primary-500 text-white shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
+            >
+              All
+            </button>
+            <button
+              onClick={() => { setStatusFilter('paid'); setCurrentPage(1); }}
+              className={`px-4 py-1.5 text-sm font-bold rounded-md transition-all ${statusFilter === 'paid' ? 'bg-green-500 text-white shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
+            >
+              Paid Only
+            </button>
+          </div>
+          <button
+            onClick={() => setShowFilters(!showFilters)}
+            className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors shadow-sm font-semibold"
+          >
+            <FaFilter />
+            {showFilters ? 'Hide Filters' : 'Filters'}
+          </button>
+        </div>
       </div>
 
       {/* Filters */}
@@ -587,17 +522,10 @@ export default function BillsPage() {
         getItemId={tableConfig.getItemId}
         renderActions={(bill) => (
           <div className="flex items-center gap-2">
-            <button
-              onClick={() => handleEditBill(bill)}
-              className="text-blue-600 hover:text-blue-700 p-2 hover:bg-blue-50 rounded"
-              title="Edit Bill"
-            >
-              <FaEdit />
-            </button>
             {bill.status !== 'paid' && (
               <button
                 onClick={() => handleMarkPaid(bill.id)}
-                className="text-primary-600 hover:text-primary-700 p-2 hover:bg-primary-50 rounded"
+                className="text-green-600 hover:text-green-700 p-2 hover:bg-green-50 rounded transition-all active:scale-90"
                 title="Mark as Paid"
               >
                 <FaCheck />
@@ -605,122 +533,14 @@ export default function BillsPage() {
             )}
             <button
               onClick={() => handleGeneratePDF(bill)}
-              className="text-primary-600 hover:text-primary-700 p-2 hover:bg-primary-50 rounded"
-              title="Generate PDF"
+              className="text-primary-600 hover:text-primary-700 p-2 hover:bg-primary-50 rounded transition-all active:scale-90"
+              title="Download PDF Bill"
             >
               <FaPrint />
             </button>
           </div>
         )}
       />
-
-      {/* Edit Bill Modal */}
-      {editingBill && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg shadow-xl w-full max-w-md">
-            <div className="p-6 border-b border-gray-200">
-              <h2 className="text-xl font-bold text-gray-800">Edit Bill Payment</h2>
-              <p className="text-sm text-gray-600 mt-1">
-                Bill #{editingBill.id.slice(0, 8).toUpperCase()}
-              </p>
-            </div>
-            <div className="p-6 space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Total Amount
-                </label>
-                <input
-                  type="text"
-                  value={formatCurrency(editingBill.totalAmount)}
-                  disabled
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-50 text-gray-600"
-                />
-              </div>
-              
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Paid Amount *
-                </label>
-                <input
-                  type="number"
-                  step="0.01"
-                  min="0"
-                  max={editingBill.totalAmount}
-                  required
-                  value={editFormData.paidAmount}
-                  onChange={(e) => {
-                    const paid = parseFloat(e.target.value) || 0
-                    const total = editingBill.totalAmount
-                    const remaining = Math.max(0, total - paid)
-                    let status: 'pending' | 'partial' | 'paid' = 'pending'
-                    if (paid === 0) {
-                      status = 'pending'
-                    } else if (paid >= total) {
-                      status = 'paid'
-                    } else {
-                      status = 'partial'
-                    }
-                    setEditFormData({
-                      paidAmount: e.target.value,
-                      remainingAmount: remaining.toFixed(2),
-                      status
-                    })
-                  }}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-                  placeholder="0.00"
-                />
-                <p className="text-xs text-gray-500 mt-1">
-                  Maximum: {formatCurrency(editingBill.totalAmount)}
-                </p>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Remaining Amount
-                </label>
-                <input
-                  type="text"
-                  value={formatCurrency(parseFloat(editFormData.remainingAmount) || 0)}
-                  disabled
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-50 text-gray-600"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Status
-                </label>
-                <div className="px-4 py-2 border border-gray-300 rounded-lg bg-gray-50">
-                  <span className={`px-3 py-1 rounded-full text-xs font-medium ${
-                    editFormData.status === 'paid' ? 'bg-green-100 text-green-800' :
-                    editFormData.status === 'partial' ? 'bg-yellow-100 text-yellow-800' :
-                    'bg-red-100 text-red-800'
-                  }`}>
-                    {editFormData.status.charAt(0).toUpperCase() + editFormData.status.slice(1)}
-                  </span>
-                  <p className="text-xs text-gray-500 mt-1">
-                    Status is automatically calculated based on paid amount
-                  </p>
-                </div>
-              </div>
-            </div>
-            <div className="p-6 border-t border-gray-200 flex justify-end gap-3">
-              <button
-                onClick={handleCloseEditModal}
-                className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleUpdateBill}
-                className="px-4 py-2 bg-primary-500 text-white rounded-lg hover:bg-primary-600 transition-colors"
-              >
-                Update Bill
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   )
 }
