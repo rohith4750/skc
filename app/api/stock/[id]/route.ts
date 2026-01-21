@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { isNonEmptyString, isNonNegativeNumber } from '@/lib/validation'
+import { publishNotification } from '@/lib/notifications'
 
 export async function GET(
   request: NextRequest,
@@ -23,6 +24,14 @@ export async function GET(
         { status: 404 }
       )
     }
+
+    publishNotification({
+      type: 'stock',
+      title: 'Stock item updated',
+      message: `${stock.name} · ${stock.currentStock ?? 0} ${stock.unit || ''}`.trim(),
+      entityId: stock.id,
+      severity: 'info',
+    })
 
     return NextResponse.json(stock)
   } catch (error: any) {

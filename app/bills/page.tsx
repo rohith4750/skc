@@ -3,7 +3,7 @@
 import { useEffect, useState, useMemo } from 'react'
 import { formatCurrency, formatDateTime, formatDate } from '@/lib/utils'
 import { Bill, Order, Customer } from '@/types'
-import { FaPrint, FaCheck, FaEdit, FaFilter, FaChartLine, FaWallet, FaPercent, FaCalendarAlt } from 'react-icons/fa'
+import { FaPrint, FaCheck, FaEdit, FaFilter, FaChartLine, FaWallet, FaPercent, FaCalendarAlt, FaEnvelope } from 'react-icons/fa'
 import toast from 'react-hot-toast'
 import { fetchWithLoader } from '@/lib/fetch-with-loader'
 import Table from '@/components/Table'
@@ -134,6 +134,32 @@ export default function BillsPage() {
     } catch (error: any) {
       console.error('Failed to update bill:', error)
       toast.error(error.message || 'Failed to update bill. Please try again.')
+    }
+  }
+
+  const handleSendBillEmail = async (bill: any) => {
+    const customerEmail = bill.order?.customer?.email
+    if (!customerEmail) {
+      toast.error('Customer email not available')
+      return
+    }
+
+    try {
+      const response = await fetchWithLoader(`/api/bills/${bill.id}/send`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: customerEmail }),
+      })
+
+      if (!response.ok) {
+        const error = await response.json()
+        throw new Error(error.error || 'Failed to send bill email')
+      }
+
+      toast.success(`Bill sent to ${customerEmail}`)
+    } catch (error: any) {
+      console.error('Failed to send bill email:', error)
+      toast.error(error.message || 'Failed to send bill email')
     }
   }
 
@@ -531,6 +557,14 @@ export default function BillsPage() {
                 <FaCheck />
               </button>
             )}
+            <button
+              onClick={() => handleSendBillEmail(bill)}
+              className="text-slate-600 hover:text-slate-700 p-2 hover:bg-slate-50 rounded transition-all active:scale-90"
+              title={bill.order?.customer?.email ? 'Send bill via email' : 'Customer email not available'}
+              disabled={!bill.order?.customer?.email}
+            >
+              <FaEnvelope />
+            </button>
             <button
               onClick={() => handleGeneratePDF(bill)}
               className="text-primary-600 hover:text-primary-700 p-2 hover:bg-primary-50 rounded transition-all active:scale-90"

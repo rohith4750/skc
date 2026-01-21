@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { isNonEmptyString, isNonNegativeNumber } from '@/lib/validation'
+import { publishNotification } from '@/lib/notifications'
 
 export async function GET(
   request: NextRequest,
@@ -105,6 +106,14 @@ export async function PUT(
           },
         })
       }
+
+      publishNotification({
+        type: 'orders',
+        title: 'Order status updated',
+        message: `Order ${params.id.slice(0, 8).toUpperCase()} · ${data.status}`,
+        entityId: params.id,
+        severity: data.status === 'completed' ? 'success' : 'info',
+      })
 
       return NextResponse.json({ order, bill })
     }
@@ -214,23 +223,60 @@ export async function PUT(
         const paymentHistory = Array.isArray((bill as any).paymentHistory)
           ? (bill as any).paymentHistory
           : []
-        const shouldAppendHistory = additionalPayment > 0 || mealTypeChanges.length > 0
-        const updatedPaymentHistory = shouldAppendHistory
-          ? [
-              ...paymentHistory,
-              {
-                amount: additionalPayment,
-                totalPaid: advancePaid,
-                remainingAmount,
-                status: remainingAmount <= 0 ? 'paid' : advancePaid > 0 ? 'partial' : 'pending',
-                date: new Date().toISOString(),
-                source: 'revision',
-                method: additionalPayment > 0 ? paymentMethod : undefined,
-                notes: paymentNotes || mealTypeNotes,
-                membersChanged: totalMembersChanged !== 0 ? totalMembersChanged : undefined,
-                totalPriceChange: totalMemberPriceDifference !== 0 ? totalMemberPriceDifference : undefined,
-              },
-            ]
+        const historyEntries: any[] = []
+        const totalAdvanceDelta = Math.max(0, advancePaid - (existingOrder.advancePaid || 0))
+        const baseAdvanceDelta = Math.max(0, totalAdvanceDelta - additionalPayment)
+        const statusLabel = remainingAmount <= 0 ? 'paid' : advancePaid > 0 ? 'partial' : 'pending'
+
+        if (baseAdvanceDelta > 0) {
+          historyEntries.push({
+            amount: baseAdvanceDelta,
+            totalPaid: advancePaid,
+            remainingAmount,
+            status: statusLabel,
+            date: new Date().toISOString(),
+            source: (existingOrder.advancePaid || 0) === 0 ? 'booking' : 'revision',
+            method: paymentMethod,
+            notes: paymentNotes || mealTypeNotes || 'Advance updated',
+          })
+        }
+
+        if (additionalPayment > 0) {
+          historyEntries.push({
+            amount: additionalPayment,
+            totalPaid: advancePaid,
+            remainingAmount,
+            status: statusLabel,
+            date: new Date().toISOString(),
+            source: (existingOrder.advancePaid || 0) === 0 && baseAdvanceDelta === 0 ? 'booking' : 'payment',
+            method: paymentMethod,
+            notes: paymentNotes || mealTypeNotes || 'Payment recorded',
+          })
+        }
+
+        if (mealTypeChanges.length > 0) {
+          if (historyEntries.length > 0) {
+            const lastEntry = historyEntries[historyEntries.length - 1]
+            lastEntry.membersChanged = totalMembersChanged !== 0 ? totalMembersChanged : undefined
+            lastEntry.totalPriceChange = totalMemberPriceDifference !== 0 ? totalMemberPriceDifference : undefined
+          } else {
+            historyEntries.push({
+              amount: 0,
+              totalPaid: advancePaid,
+              remainingAmount,
+              status: statusLabel,
+              date: new Date().toISOString(),
+              source: 'revision',
+              method: undefined,
+              notes: mealTypeNotes,
+              membersChanged: totalMembersChanged !== 0 ? totalMembersChanged : undefined,
+              totalPriceChange: totalMemberPriceDifference !== 0 ? totalMemberPriceDifference : undefined,
+            })
+          }
+        }
+
+        const updatedPaymentHistory = historyEntries.length > 0
+          ? [...paymentHistory, ...historyEntries]
           : paymentHistory
 
         const billUpdateData: any = {
@@ -262,6 +308,26 @@ export async function PUT(
         bill: true,
       }
     })
+
+    const customerName = updatedOrder?.customer?.name || 'Customer'
+    publishNotification({
+      type: 'orders',
+      title: 'Order updated',
+      message: `${customerName} · Total ${totalAmount.toFixed(2)}`,
+      entityId: updatedOrder?.id,
+      severity: 'info',
+    })
+
+    const totalAdvanceDelta = Math.max(0, advancePaid - (existingOrder.advancePaid || 0))
+    if (totalAdvanceDelta > 0) {
+      publishNotification({
+        type: 'payments',
+        title: 'Payment received',
+        message: `${customerName} · ${totalAdvanceDelta.toFixed(2)}`,
+        entityId: updatedOrder?.id,
+        severity: 'success',
+      })
+    }
 
     return NextResponse.json({ order: updatedOrder, bill: result.bill })
   } catch (error: any) {

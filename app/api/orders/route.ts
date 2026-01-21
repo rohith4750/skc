@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { isNonNegativeNumber, isNonEmptyString } from '@/lib/validation'
+import { publishNotification } from '@/lib/notifications'
 
 export async function GET() {
   try {
@@ -81,6 +82,25 @@ export async function POST(request: NextRequest) {
     })
 
     console.log('Order created successfully:', { orderId: order.id })
+
+    const customerName = order.customer?.name || 'Customer'
+    publishNotification({
+      type: 'orders',
+      title: 'Order created',
+      message: `${customerName} · Total ${totalAmount.toFixed(2)}`,
+      entityId: order.id,
+      severity: 'success',
+    })
+
+    if (advancePaid > 0) {
+      publishNotification({
+        type: 'payments',
+        title: 'Advance received',
+        message: `${customerName} · Advance ${advancePaid.toFixed(2)}`,
+        entityId: order.id,
+        severity: 'info',
+      })
+    }
 
     return NextResponse.json({ order }, { status: 201 })
   } catch (error: any) {

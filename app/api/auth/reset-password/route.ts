@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import bcrypt from 'bcryptjs'
 import { isEmail, isNonEmptyString } from '@/lib/validation'
+import { publishNotification } from '@/lib/notifications'
 
 export async function POST(request: NextRequest) {
   try {
@@ -60,6 +61,14 @@ export async function POST(request: NextRequest) {
         resetToken: null,
         resetTokenExpiry: null
       }
+    })
+
+    publishNotification({
+      type: 'auth',
+      title: 'Password reset',
+      message: `${user.email} reset password`,
+      entityId: user.id,
+      severity: 'warning',
     })
 
     return NextResponse.json({

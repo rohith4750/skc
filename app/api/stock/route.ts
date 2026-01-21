@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { isNonEmptyString, isNonNegativeNumber } from '@/lib/validation'
+import { publishNotification } from '@/lib/notifications'
 
 export async function GET() {
   try {
@@ -77,6 +78,14 @@ export async function POST(request: NextRequest) {
         },
       })
     }
+
+    publishNotification({
+      type: 'stock',
+      title: 'Stock item created',
+      message: `${stock.name} · ${stock.currentStock ?? 0} ${stock.unit || ''}`.trim(),
+      entityId: stock.id,
+      severity: 'success',
+    })
 
     return NextResponse.json(stock, { status: 201 })
   } catch (error: any) {

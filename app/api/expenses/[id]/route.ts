@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { isNonEmptyString, isNonNegativeNumber } from '@/lib/validation'
+import { publishNotification } from '@/lib/notifications'
 
 export async function GET(
   request: NextRequest,
@@ -85,6 +86,14 @@ export async function PUT(
         }
       }
     })
+    publishNotification({
+      type: 'expenses',
+      title: 'Expense updated',
+      message: `${expense.category} · ${Number(expense.amount || 0).toFixed(2)}`,
+      entityId: expense.id,
+      severity: 'info',
+    })
+
     return NextResponse.json(expense)
   } catch (error: any) {
     console.error('Error updating expense:', error)

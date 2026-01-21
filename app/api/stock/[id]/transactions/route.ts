@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { isNonEmptyString, isPositiveNumber, isNonNegativeNumber, validateEnum } from '@/lib/validation'
+import { publishNotification } from '@/lib/notifications'
 
 export async function GET(
   request: NextRequest,
@@ -97,6 +98,14 @@ export async function POST(
     await (prisma as any).stock.update({
       where: { id: params.id },
       data: { currentStock: newStock },
+    })
+
+    publishNotification({
+      type: 'stock',
+      title: 'Stock transaction',
+      message: `${stock.name} · ${data.type.toUpperCase()} ${quantity} ${stock.unit || ''}`.trim(),
+      entityId: transaction.id,
+      severity: data.type === 'out' ? 'warning' : 'info',
     })
 
     return NextResponse.json(transaction, { status: 201 })

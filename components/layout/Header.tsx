@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { usePathname, useRouter } from 'next/navigation'
 import { FaUserCircle, FaSignOutAlt } from 'react-icons/fa'
 import { clearAuth, getUserRole } from '@/lib/auth'
+import NotificationCenter from '@/components/notifications/NotificationCenter'
 
 export default function Header() {
   const pathname = usePathname()
@@ -66,6 +67,7 @@ export default function Header() {
 
         {/* Right Section */}
         <div className="flex items-center gap-4">
+          <NotificationCenter compact />
           {/* User Info */}
           <div className="flex items-center gap-3">
             <div className="hidden sm:flex flex-col items-end">

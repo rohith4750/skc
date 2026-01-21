@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import bcrypt from 'bcryptjs'
 import { isNonEmptyString } from '@/lib/validation'
+import { publishNotification } from '@/lib/notifications'
 
 export async function POST(request: NextRequest) {
   try {
@@ -43,6 +44,14 @@ export async function POST(request: NextRequest) {
     }
 
     // Return success (in production, you might want to generate a JWT token here)
+    publishNotification({
+      type: 'auth',
+      title: 'User login',
+      message: `${user.username} logged in`,
+      entityId: user.id,
+      severity: 'info',
+    })
+
     return NextResponse.json({
       success: true,
       user: {

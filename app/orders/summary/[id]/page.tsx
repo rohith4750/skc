@@ -100,10 +100,10 @@ export default function OrderSummaryPage() {
             Back to Dashboard
           </Link>
           <Link
-            href={`/orders?edit=${order.id}`}
+            href={`/orders/financial/${order.id}`}
             className="flex items-center px-6 py-2.5 bg-primary-600 text-white rounded-xl font-bold hover:bg-primary-700 transition-all shadow-lg shadow-primary-200 active:scale-95"
           >
-            <FaEdit className="mr-2" /> Modify Booking
+            <FaMoneyBillWave className="mr-2" /> Financial Summary
           </Link>
         </div>
 

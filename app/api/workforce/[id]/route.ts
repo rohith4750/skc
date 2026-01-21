@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { isNonEmptyString, validateEnum } from '@/lib/validation'
+import { publishNotification } from '@/lib/notifications'
 
 export async function GET(
   request: NextRequest,
@@ -17,6 +18,14 @@ export async function GET(
         { status: 404 }
       )
     }
+
+    publishNotification({
+      type: 'workforce',
+      title: 'Workforce updated',
+      message: `${workforce.name} · ${workforce.role}`,
+      entityId: workforce.id,
+      severity: 'info',
+    })
 
     return NextResponse.json(workforce)
   } catch (error: any) {

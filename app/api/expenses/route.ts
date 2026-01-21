@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { isNonEmptyString, isNonNegativeNumber } from '@/lib/validation'
+import { publishNotification } from '@/lib/notifications'
 
 export async function GET(request: NextRequest) {
   try {
@@ -74,6 +75,14 @@ export async function POST(request: NextRequest) {
         }
       }
     })
+    publishNotification({
+      type: 'expenses',
+      title: 'Expense created',
+      message: `${expense.category} · ${Number(expense.amount || 0).toFixed(2)}`,
+      entityId: expense.id,
+      severity: 'warning',
+    })
+
     return NextResponse.json(expense)
   } catch (error: any) {
     console.error('Error creating expense:', error)
