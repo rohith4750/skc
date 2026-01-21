@@ -146,7 +146,7 @@ export default function WorkforcePage() {
       billNumber: `WF-${member.id.slice(0, 8).toUpperCase()}`,
       date: new Date().toISOString(),
       workforceDetails: {
-        name: member.name,
+        name: member.name || 'Unknown',
         role: member.role,
         totalAmount: member.totalAmount || 0,
         totalPaid: member.totalPaidAmount || 0,
@@ -388,7 +388,9 @@ export default function WorkforcePage() {
               })()}
             </span>
           )}
-          <span className="font-medium">{member.name}</span>
+          <span className="font-medium text-gray-900">
+            {member.name?.trim() || 'Unknown'}
+          </span>
         </div>
       ),
     },

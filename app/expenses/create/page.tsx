@@ -20,6 +20,7 @@ const EXPENSE_CATEGORIES = [
   'store',
   'other'
 ]
+const WORKFORCE_RECIPIENT_ROLES = ['supervisor', 'chef', 'labours', 'boys', 'transport', 'gas', 'pan', 'store', 'other']
 
 interface WorkforceMember {
   id: string
@@ -660,13 +661,13 @@ export default function CreateExpensePage() {
                 <label className="block text-sm font-semibold text-gray-700 mb-2">
                   Recipient
                 </label>
-                {['supervisor', 'chef', 'transport', 'boys', 'labours'].includes(formData.category) ? (
+                {WORKFORCE_RECIPIENT_ROLES.includes(formData.category) && workforce.some((member) => member.role === formData.category) ? (
                   <select
                     value={formData.recipient}
                     onChange={(e) => setFormData({ ...formData, recipient: e.target.value })}
                     className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
                   >
-                    <option value="">Select {formData.category.charAt(0).toUpperCase() + formData.category.slice(1)}</option>
+                    <option value="">Select recipient</option>
                     {workforce
                       .filter((member) => member.role === formData.category)
                       .map((member) => (
