@@ -1,0 +1,31 @@
+export const isNonEmptyString = (value: unknown) =>
+  typeof value === 'string' && value.trim().length > 0
+
+export const isNumber = (value: unknown) =>
+  typeof value === 'number' && Number.isFinite(value)
+
+export const isNonNegativeNumber = (value: unknown) =>
+  isNumber(value) && value >= 0
+
+export const isEmail = (value: unknown) => {
+  if (!isNonEmptyString(value)) return false
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)
+}
+
+export const isPhone = (value: unknown) => {
+  if (!isNonEmptyString(value)) return false
+  return /^[0-9+\-() ]{8,15}$/.test(value)
+}
+
+export const validateRequiredFields = (data: Record<string, unknown>, fields: string[]) => {
+  const missing = fields.filter(field => !isNonEmptyString(data[field]))
+  return missing.length > 0 ? missing : null
+}
+
+export const validateEnum = (value: unknown, allowed: string[]) => {
+  if (!isNonEmptyString(value)) return false
+  return allowed.includes(value)
+}
+
+export const isPositiveNumber = (value: unknown) =>
+  isNumber(value) && value > 0

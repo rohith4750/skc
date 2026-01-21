@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import bcrypt from 'bcryptjs'
+import { isEmail, isNonEmptyString } from '@/lib/validation'
 
 export async function GET(
   request: NextRequest,
@@ -53,6 +54,16 @@ export async function PUT(
           { status: 400 }
         )
       }
+    }
+
+    if (data.username !== undefined && !isNonEmptyString(data.username)) {
+      return NextResponse.json({ error: 'Username is required' }, { status: 400 })
+    }
+    if (data.email !== undefined && !isEmail(data.email)) {
+      return NextResponse.json({ error: 'Invalid email address' }, { status: 400 })
+    }
+    if (data.password !== undefined && (!isNonEmptyString(data.password) || data.password.length < 6)) {
+      return NextResponse.json({ error: 'Password must be at least 6 characters' }, { status: 400 })
     }
 
     // Build update data

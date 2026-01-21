@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import { FaArrowLeft } from 'react-icons/fa'
 import toast from 'react-hot-toast'
 import Link from 'next/link'
+import FormError from '@/components/FormError'
 
 const WORKFORCE_ROLES = ['supervisor', 'chef', 'labours', 'boys', 'transport', 'gas', 'pan', 'store', 'other']
 
@@ -23,6 +24,7 @@ export default function CreateWorkforcePage() {
 
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
+  const [formError, setFormError] = useState('')
   const [formData, setFormData] = useState({
     name: '',
     role: 'supervisor',
@@ -63,9 +65,11 @@ export default function CreateWorkforcePage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setSaving(true)
+    setFormError('')
 
     if (!formData.name.trim()) {
       toast.error('Please enter a name')
+      setFormError('Please enter a name')
       setSaving(false)
       return
     }
@@ -95,7 +99,9 @@ export default function CreateWorkforcePage() {
       router.push('/workforce')
     } catch (error: any) {
       console.error('Failed to save workforce member:', error)
-      toast.error(error.message || 'Failed to save workforce member. Please try again.')
+      const message = error.message || 'Failed to save workforce member. Please try again.'
+      toast.error(message)
+      setFormError(message)
     } finally {
       setSaving(false)
     }
@@ -170,6 +176,7 @@ export default function CreateWorkforcePage() {
             </div>
 
             <div className="flex justify-end gap-4 mt-6">
+              <FormError message={formError} className="mr-auto self-center" />
               <Link
                 href="/workforce"
                 className="px-6 py-2.5 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors font-medium"

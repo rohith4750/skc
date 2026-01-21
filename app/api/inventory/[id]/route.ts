@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
+import { isNonEmptyString, isNonNegativeNumber } from '@/lib/validation'
 
 export async function GET(
   request: NextRequest,
@@ -54,6 +55,19 @@ export async function PUT(
           { status: 400 }
         )
       }
+    }
+
+    if (data.name !== undefined && !isNonEmptyString(data.name)) {
+      return NextResponse.json({ error: 'Name is required' }, { status: 400 })
+    }
+    if (data.unit !== undefined && !isNonEmptyString(data.unit)) {
+      return NextResponse.json({ error: 'Unit is required' }, { status: 400 })
+    }
+    if (data.quantity !== undefined && !isNonNegativeNumber(parseFloat(data.quantity))) {
+      return NextResponse.json({ error: 'Quantity must be a valid number' }, { status: 400 })
+    }
+    if (data.purchasePrice !== undefined && data.purchasePrice !== null && !isNonNegativeNumber(parseFloat(data.purchasePrice))) {
+      return NextResponse.json({ error: 'Purchase price must be a valid number' }, { status: 400 })
     }
 
     // Build update data

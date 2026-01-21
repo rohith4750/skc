@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
+import { isNonEmptyString, isNonNegativeNumber } from '@/lib/validation'
 
 export async function GET(
   request: NextRequest,
@@ -32,6 +33,13 @@ export async function PUT(
 ) {
   try {
     const data = await request.json()
+
+    if (data.category !== undefined && !isNonEmptyString(data.category)) {
+      return NextResponse.json({ error: 'Category is required' }, { status: 400 })
+    }
+    if (data.amount !== undefined && !isNonNegativeNumber(data.amount)) {
+      return NextResponse.json({ error: 'Amount must be a valid number' }, { status: 400 })
+    }
     
     // Handle paidAmount - parse if provided (even if empty string)
     let paidAmount: number | undefined = undefined

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
+import { isNonNegativeNumber, validateEnum } from '@/lib/validation'
 
 export async function PUT(
   request: NextRequest,
@@ -21,6 +22,19 @@ export async function PUT(
     const status = data.status
     const paymentMethod = data.paymentMethod || 'cash'
     const paymentNotes = data.paymentNotes || ''
+
+    if (!validateEnum(status, ['pending', 'partial', 'paid'])) {
+      return NextResponse.json({ error: 'Invalid status' }, { status: 400 })
+    }
+    if (!isNonNegativeNumber(paidAmount) || !isNonNegativeNumber(remainingAmount)) {
+      return NextResponse.json({ error: 'Invalid amounts' }, { status: 400 })
+    }
+    if (paidAmount > existingBill.totalAmount || remainingAmount > existingBill.totalAmount) {
+      return NextResponse.json({ error: 'Amounts exceed total bill' }, { status: 400 })
+    }
+    if (!validateEnum(paymentMethod, ['cash', 'upi', 'card', 'bank_transfer', 'other'])) {
+      return NextResponse.json({ error: 'Invalid payment method' }, { status: 400 })
+    }
 
     const paymentHistory = Array.isArray(existingBill.paymentHistory) ? existingBill.paymentHistory : []
     const deltaPaid = paidAmount - existingBill.paidAmount

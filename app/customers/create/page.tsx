@@ -5,6 +5,8 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import { FaArrowLeft } from 'react-icons/fa'
 import toast from 'react-hot-toast'
 import Link from 'next/link'
+import { isEmail, isPhone, isNonEmptyString } from '@/lib/validation'
+import FormError from '@/components/FormError'
 
 interface Customer {
   id: string
@@ -23,6 +25,7 @@ export default function CreateCustomerPage() {
 
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
+  const [formError, setFormError] = useState('')
   const [formData, setFormData] = useState({
     name: '',
     phone: '',
@@ -64,9 +67,25 @@ export default function CreateCustomerPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setSaving(true)
+    setFormError('')
     
-    if (!formData.name || !formData.phone || !formData.email || !formData.address) {
+    if (![formData.name, formData.phone, formData.email, formData.address].every(isNonEmptyString)) {
       toast.error('Please fill in all required fields')
+      setFormError('Please fill in all required fields')
+      setSaving(false)
+      return
+    }
+
+    if (!isPhone(formData.phone)) {
+      toast.error('Please enter a valid phone number')
+      setFormError('Please enter a valid phone number')
+      setSaving(false)
+      return
+    }
+
+    if (!isEmail(formData.email)) {
+      toast.error('Please enter a valid email address')
+      setFormError('Please enter a valid email address')
       setSaving(false)
       return
     }
@@ -97,7 +116,9 @@ export default function CreateCustomerPage() {
       router.push('/customers')
     } catch (error: any) {
       console.error('Failed to save customer:', error)
-      toast.error(error.message || 'Failed to save customer. Please try again.')
+      const message = error.message || 'Failed to save customer. Please try again.'
+      toast.error(message)
+      setFormError(message)
     } finally {
       setSaving(false)
     }
@@ -184,6 +205,7 @@ export default function CreateCustomerPage() {
           </div>
 
           <div className="flex flex-col-reverse sm:flex-row justify-end gap-4 pt-4 border-t border-gray-200">
+            <FormError message={formError} className="sm:mr-auto sm:self-center" />
             <Link
               href="/customers"
               className="px-6 py-2.5 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors text-center font-medium"

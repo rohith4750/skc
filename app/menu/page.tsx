@@ -9,6 +9,8 @@ import toast from 'react-hot-toast'
 import Table from '@/components/Table'
 import { getMenuItemTableConfig } from '@/components/table-configs'
 import ConfirmModal from '@/components/ConfirmModal'
+import { isNonEmptyString } from '@/lib/validation'
+import FormError from '@/components/FormError'
 
 export default function MenuPage() {
   const [menuItems, setMenuItems] = useState<MenuItem[]>([])
@@ -18,6 +20,7 @@ export default function MenuPage() {
   const [itemsPerPage, setItemsPerPage] = useState(10)
   const [showModal, setShowModal] = useState(false)
   const [editingItem, setEditingItem] = useState<MenuItem | null>(null)
+  const [formError, setFormError] = useState('')
   const [deleteConfirm, setDeleteConfirm] = useState<{ isOpen: boolean; id: string | null }>({
     isOpen: false,
     id: null,
@@ -118,8 +121,15 @@ export default function MenuPage() {
 
   const handleSubmit = async (e: any) => {
     e.preventDefault()
+    setFormError('')
     
     try {
+      if (!isNonEmptyString(formData.name) || !isNonEmptyString(formData.type)) {
+        toast.error('Please enter name and select type')
+        setFormError('Please enter name and select type')
+        return
+      }
+
       // For new menu items, don't include ID (database will generate it)
       // For editing, include the existing ID
       const menuItem: any = {
@@ -139,7 +149,9 @@ export default function MenuPage() {
       toast.success(editingItem ? 'Menu item updated successfully!' : 'Menu item created successfully!')
     } catch (error) {
       console.error('Failed to save menu item:', error)
-      toast.error('Failed to save menu item. Please try again.')
+      const message = 'Failed to save menu item. Please try again.'
+      toast.error(message)
+      setFormError(message)
     }
   }
 
@@ -152,6 +164,7 @@ export default function MenuPage() {
     })
     setEditingItem(null)
     setShowModal(false)
+    setFormError('')
   }
 
   const handleEdit = (item: MenuItem) => {
@@ -389,7 +402,8 @@ export default function MenuPage() {
                 {editingItem ? 'Edit Menu Item' : 'Add New Menu Item'}
               </h2>
             </div>
-            <form onSubmit={handleSubmit} className="p-4 sm:p-6">
+        <form onSubmit={handleSubmit} className="p-4 sm:p-6">
+          <FormError message={formError} className="mb-4" />
               <div className="space-y-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">

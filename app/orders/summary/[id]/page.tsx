@@ -71,6 +71,12 @@ export default function OrderSummaryPage() {
     itemsByMealType[type].push(item)
   })
 
+  const totalAmount = order.totalAmount || 0
+  const paidAmount = order.advancePaid || 0
+  const percentPaidRaw = totalAmount > 0 ? (paidAmount / totalAmount) * 100 : 0
+  const percentPaid = Math.min(100, Math.round(percentPaidRaw))
+  const overpaidAmount = Math.max(0, paidAmount - totalAmount)
+
   const mealTypeIcons: Record<string, any> = {
     breakfast: <FaUtensils className="text-orange-500" />,
     lunch: <FaUtensils className="text-green-500" />,
@@ -199,15 +205,20 @@ export default function OrderSummaryPage() {
                     <span className="text-[10px] font-black text-slate-500 uppercase block mb-1 tracking-widest">Percentage Paid</span>
                     <div className="flex items-center gap-3">
                       <span className="text-2xl font-black text-white">
-                        {order.totalAmount > 0 ? Math.round((order.advancePaid / order.totalAmount) * 100) : 0}%
+                        {percentPaid}%
                       </span>
                       <div className="w-32 h-2 bg-slate-800 rounded-full overflow-hidden">
                         <div 
                           className="h-full bg-emerald-500 rounded-full shadow-[0_0_10px_rgba(16,185,129,0.5)] transition-all duration-1000"
-                          style={{ width: `${order.totalAmount > 0 ? Math.min(100, (order.advancePaid / order.totalAmount) * 100) : 0}%` }}
+                          style={{ width: `${percentPaid}%` }}
                         ></div>
                       </div>
                     </div>
+                    {overpaidAmount > 0 && (
+                      <p className="mt-3 text-[10px] font-black text-rose-400 uppercase tracking-widest">
+                        Overpaid: {formatCurrency(overpaidAmount)}
+                      </p>
+                    )}
                   </div>
                 </div>
               </div>

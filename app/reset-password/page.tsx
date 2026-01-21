@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import { FaLock, FaEnvelope, FaEye, FaEyeSlash, FaKey, FaCheckCircle } from 'react-icons/fa'
 import toast from 'react-hot-toast'
 import Logo from '@/components/Logo'
+import FormError from '@/components/FormError'
 
 export default function ResetPasswordPage() {
   const router = useRouter()
@@ -21,6 +22,7 @@ export default function ResetPasswordPage() {
   const [isSendingCode, setIsSendingCode] = useState(false)
   const [codeSent, setCodeSent] = useState(false)
   const [emailValid, setEmailValid] = useState(false)
+  const [formError, setFormError] = useState('')
 
   useEffect(() => {
     if (emailFromQuery) {
@@ -42,9 +44,11 @@ export default function ResetPasswordPage() {
   const handleSendCode = async (e: React.FormEvent) => {
     e.preventDefault()
     setIsSendingCode(true)
+    setFormError('')
 
     if (!validateEmail(formData.email)) {
       toast.error('Please enter a valid email address')
+      setFormError('Please enter a valid email address')
       setIsSendingCode(false)
       return
     }
@@ -69,7 +73,9 @@ export default function ResetPasswordPage() {
       toast.success('Verification code has been sent to your email. Please check your inbox.')
       setCodeSent(true)
     } catch (error: any) {
-      toast.error(error.message || 'Failed to send code. Please try again.')
+      const message = error.message || 'Failed to send code. Please try again.'
+      toast.error(message)
+      setFormError(message)
     } finally {
       setIsSendingCode(false)
     }
@@ -78,15 +84,18 @@ export default function ResetPasswordPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setIsLoading(true)
+    setFormError('')
 
     if (!formData.code || formData.code.length !== 6) {
       toast.error('Please enter the 6-digit code')
+      setFormError('Please enter the 6-digit code')
       setIsLoading(false)
       return
     }
 
     if (!formData.newPassword || formData.newPassword.length < 6) {
       toast.error('Password must be at least 6 characters')
+      setFormError('Password must be at least 6 characters')
       setIsLoading(false)
       return
     }
@@ -115,7 +124,9 @@ export default function ResetPasswordPage() {
         router.push('/login')
       }, 2000)
     } catch (error: any) {
-      toast.error(error.message || 'Failed to reset password. Please check your code and try again.')
+      const message = error.message || 'Failed to reset password. Please check your code and try again.'
+      toast.error(message)
+      setFormError(message)
       setIsLoading(false)
     }
   }
@@ -142,6 +153,7 @@ export default function ResetPasswordPage() {
 
           {!codeSent ? (
             <form onSubmit={handleSendCode} className="space-y-5">
+              <FormError message={formError} />
               {/* Email Field */}
               <div>
                 <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-2">
@@ -192,6 +204,7 @@ export default function ResetPasswordPage() {
             </form>
           ) : (
             <form onSubmit={handleSubmit} className="space-y-5">
+              <FormError message={formError} />
               {/* Email Field - Read Only */}
               <div>
                 <label htmlFor="reset-email" className="block text-sm font-medium text-gray-700 mb-2">

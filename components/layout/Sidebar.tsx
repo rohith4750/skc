@@ -31,6 +31,7 @@ const menuItems = [
   { href: '/menu', icon: FaUtensils, label: 'Menu', section: 'core' },
   { href: '/orders', icon: FaShoppingCart, label: 'Create Order', section: 'core' },
   { href: '/orders/history', icon: FaHistory, label: 'Order History', section: 'core' },
+  { href: '/orders/overview', icon: FaChartLine, label: 'Order Center', section: 'core' },
   { href: '/bills', icon: FaFileInvoiceDollar, label: 'Bills', section: 'core' },
   
   // 2. Financial Management

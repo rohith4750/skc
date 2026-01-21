@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
+import { isNonEmptyString, isNonNegativeNumber } from '@/lib/validation'
 
 export async function GET(
   request: NextRequest,
@@ -108,9 +109,17 @@ export async function PUT(
       return NextResponse.json({ order, bill })
     }
 
+    if (!isNonEmptyString(data.customerId)) {
+      return NextResponse.json({ error: 'Customer is required' }, { status: 400 })
+    }
+
     const totalAmount = parseFloat(data.totalAmount) || 0
     const advancePaid = parseFloat(data.advancePaid) || 0
     const remainingAmount = Math.max(0, parseFloat(data.remainingAmount) || (totalAmount - advancePaid))
+
+    if (!isNonNegativeNumber(totalAmount) || !isNonNegativeNumber(advancePaid) || !isNonNegativeNumber(remainingAmount)) {
+      return NextResponse.json({ error: 'Invalid amounts' }, { status: 400 })
+    }
     const discount = parseFloat(data.discount) || 0
     const transportCost = parseFloat(data.transportCost) || 0
     const additionalPayment = parseFloat(data.additionalPayment) || 0

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
+import { isNonEmptyString, isNonNegativeNumber } from '@/lib/validation'
 
 export async function GET() {
   try {
@@ -21,11 +22,17 @@ export async function POST(request: NextRequest) {
   try {
     const data = await request.json()
 
-    if (!data.name || !data.category || !data.unit) {
+    if (!isNonEmptyString(data.name) || !isNonEmptyString(data.category) || !isNonEmptyString(data.unit)) {
       return NextResponse.json(
         { error: 'Name, category, and unit are required' },
         { status: 400 }
       )
+    }
+    if (data.quantity !== undefined && !isNonNegativeNumber(parseFloat(data.quantity))) {
+      return NextResponse.json({ error: 'Quantity must be a valid number' }, { status: 400 })
+    }
+    if (data.purchasePrice !== undefined && data.purchasePrice !== null && !isNonNegativeNumber(parseFloat(data.purchasePrice))) {
+      return NextResponse.json({ error: 'Purchase price must be a valid number' }, { status: 400 })
     }
 
     // Validate category

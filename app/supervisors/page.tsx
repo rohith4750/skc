@@ -8,6 +8,7 @@ import Table from '@/components/Table'
 import { getSupervisorTableConfig } from '@/components/table-configs'
 import ConfirmModal from '@/components/ConfirmModal'
 import toast from 'react-hot-toast'
+import FormError from '@/components/FormError'
 
 export default function SupervisorsPage() {
   const [supervisors, setSupervisors] = useState<Supervisor[]>([])
@@ -15,6 +16,7 @@ export default function SupervisorsPage() {
   const [itemsPerPage, setItemsPerPage] = useState(10)
   const [showModal, setShowModal] = useState(false)
   const [editingSupervisor, setEditingSupervisor] = useState<Supervisor | null>(null)
+  const [formError, setFormError] = useState('')
   const [deleteConfirm, setDeleteConfirm] = useState<{ isOpen: boolean; id: string | null }>({
     isOpen: false,
     id: null,
@@ -43,6 +45,7 @@ export default function SupervisorsPage() {
 
   const handleSubmit = async (e: any) => {
     e.preventDefault()
+    setFormError('')
     
     try {
       // For new supervisors, don't include ID (database will generate it)
@@ -65,7 +68,9 @@ export default function SupervisorsPage() {
       toast.success(editingSupervisor ? 'Supervisor updated successfully!' : 'Supervisor created successfully!')
     } catch (error) {
       console.error('Failed to save supervisor:', error)
-      toast.error('Failed to save supervisor. Please try again.')
+      const message = 'Failed to save supervisor. Please try again.'
+      toast.error(message)
+      setFormError(message)
     }
   }
 
@@ -79,6 +84,7 @@ export default function SupervisorsPage() {
     })
     setEditingSupervisor(null)
     setShowModal(false)
+    setFormError('')
   }
 
   const handleEdit = (supervisor: Supervisor) => {
@@ -90,6 +96,7 @@ export default function SupervisorsPage() {
       cateringServiceName: supervisor.cateringServiceName,
       isActive: supervisor.isActive,
     })
+    setFormError('')
     setShowModal(true)
   }
 
@@ -203,6 +210,7 @@ export default function SupervisorsPage() {
               </h2>
             </div>
             <form onSubmit={handleSubmit} className="p-6">
+              <FormError message={formError} className="mb-4" />
               <div className="space-y-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
+import { isNonEmptyString, isPositiveNumber, isNonNegativeNumber, validateEnum } from '@/lib/validation'
 
 export async function GET(
   request: NextRequest,
@@ -28,18 +29,25 @@ export async function POST(
   try {
     const data = await request.json()
 
-    if (!data.type || !data.quantity) {
+    if (!isNonEmptyString(data.type) || data.quantity === undefined) {
       return NextResponse.json(
         { error: 'Type and quantity are required' },
         { status: 400 }
       )
     }
 
-    if (!['in', 'out'].includes(data.type)) {
+    if (!validateEnum(data.type, ['in', 'out'])) {
       return NextResponse.json(
         { error: 'Type must be "in" or "out"' },
         { status: 400 }
       )
+    }
+    const quantity = parseFloat(data.quantity)
+    if (!isPositiveNumber(quantity)) {
+      return NextResponse.json({ error: 'Quantity must be greater than 0' }, { status: 400 })
+    }
+    if (data.price !== undefined && data.price !== null && !isNonNegativeNumber(parseFloat(data.price))) {
+      return NextResponse.json({ error: 'Price must be a valid number' }, { status: 400 })
     }
 
     // Get current stock
@@ -57,9 +65,9 @@ export async function POST(
     // Calculate new stock level
     let newStock = stock.currentStock
     if (data.type === 'in') {
-      newStock = stock.currentStock + data.quantity
+      newStock = stock.currentStock + quantity
     } else if (data.type === 'out') {
-      newStock = stock.currentStock - data.quantity
+      newStock = stock.currentStock - quantity
       if (newStock < 0) {
         return NextResponse.json(
           { error: 'Insufficient stock. Available: ' + stock.currentStock },
@@ -69,15 +77,16 @@ export async function POST(
     }
 
     // Calculate total amount if price is provided
-    const totalAmount = data.price ? data.quantity * data.price : null
+    const price = data.price ? parseFloat(data.price) : null
+    const totalAmount = price !== null ? quantity * price : null
 
     // Create transaction
     const transaction = await (prisma as any).stockTransaction.create({
       data: {
         stockId: params.id,
         type: data.type,
-        quantity: data.quantity,
-        price: data.price || null,
+        quantity: quantity,
+        price: price,
         totalAmount: totalAmount,
         reference: data.reference || null,
         notes: data.notes || null,

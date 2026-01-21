@@ -1,12 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import bcrypt from 'bcryptjs'
+import { isNonEmptyString } from '@/lib/validation'
 
 export async function POST(request: NextRequest) {
   try {
     const { username, password } = await request.json()
 
-    if (!username || !password) {
+    if (!isNonEmptyString(username) || !isNonEmptyString(password)) {
       return NextResponse.json(
         { error: 'Username and password are required' },
         { status: 400 }

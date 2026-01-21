@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
+import { isEmail, isPhone, validateRequiredFields } from '@/lib/validation'
 
 export async function GET() {
   try {
@@ -15,6 +16,20 @@ export async function GET() {
 export async function POST(request: NextRequest) {
   try {
     const data = await request.json()
+    const missingFields = validateRequiredFields(data, ['name', 'phone', 'email', 'address'])
+    if (missingFields) {
+      return NextResponse.json(
+        { error: 'Missing required fields', details: missingFields },
+        { status: 400 }
+      )
+    }
+    if (!isPhone(data.phone)) {
+      return NextResponse.json({ error: 'Invalid phone number' }, { status: 400 })
+    }
+    if (!isEmail(data.email)) {
+      return NextResponse.json({ error: 'Invalid email address' }, { status: 400 })
+    }
+
     const customer = await prisma.customer.create({
       data: {
         name: data.name,

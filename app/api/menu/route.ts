@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
+import { validateRequiredFields } from '@/lib/validation'
 
 export async function GET() {
   try {
@@ -15,6 +16,13 @@ export async function GET() {
 export async function POST(request: NextRequest) {
   try {
     const data = await request.json()
+    const missingFields = validateRequiredFields(data, ['name', 'type'])
+    if (missingFields) {
+      return NextResponse.json(
+        { error: 'Missing required fields', details: missingFields },
+        { status: 400 }
+      )
+    }
     const menuItem = await prisma.menuItem.create({
       data: {
         name: data.name,

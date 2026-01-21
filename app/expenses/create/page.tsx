@@ -7,6 +7,7 @@ import { Expense, Order } from '@/types'
 import { FaArrowLeft } from 'react-icons/fa'
 import toast from 'react-hot-toast'
 import Link from 'next/link'
+import FormError from '@/components/FormError'
 
 const EXPENSE_CATEGORIES = [
   'supervisor',
@@ -36,6 +37,7 @@ export default function CreateExpensePage() {
   const [workforce, setWorkforce] = useState<WorkforceMember[]>([])
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
+  const [formError, setFormError] = useState('')
   const [existingExpenses, setExistingExpenses] = useState<any[]>([])
   const [customCategoryInputType, setCustomCategoryInputType] = useState<'select' | 'input'>('select')
   const [formData, setFormData] = useState({
@@ -163,9 +165,11 @@ export default function CreateExpensePage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setSaving(true)
+    setFormError('')
     
     if (!formData.category || calculatedAmount <= 0) {
       toast.error('Please fill in all required fields and ensure amount is greater than 0')
+      setFormError('Please fill in all required fields and ensure amount is greater than 0')
       setSaving(false)
       return
     }
@@ -174,6 +178,7 @@ export default function CreateExpensePage() {
     if (formData.category === 'chef' && formData.calculationMethod === 'plate-wise') {
       if (!formData.plates || !formData.amount) {
         toast.error('Please enter number of plates and amount per plate')
+        setFormError('Please enter number of plates and amount per plate')
         setSaving(false)
         return
       }
@@ -181,6 +186,7 @@ export default function CreateExpensePage() {
     if (formData.category === 'labours') {
       if (!formData.numberOfLabours || !formData.labourAmount || !formData.eventDate) {
         toast.error('Please enter number of labours, amount per labour, and event date')
+        setFormError('Please enter number of labours, amount per labour, and event date')
         setSaving(false)
         return
       }
@@ -188,6 +194,7 @@ export default function CreateExpensePage() {
     if (formData.category === 'boys') {
       if (!formData.numberOfBoys || !formData.boyAmount || !formData.eventDate) {
         toast.error('Please enter number of boys, amount per boy, and event date')
+        setFormError('Please enter number of boys, amount per boy, and event date')
         setSaving(false)
         return
       }
@@ -257,7 +264,9 @@ export default function CreateExpensePage() {
       router.push('/expenses')
     } catch (error: any) {
       console.error('Failed to save expense:', error)
-      toast.error(error.message || 'Failed to save expense. Please try again.')
+      const message = error.message || 'Failed to save expense. Please try again.'
+      toast.error(message)
+      setFormError(message)
     } finally {
       setSaving(false)
     }
@@ -767,6 +776,7 @@ export default function CreateExpensePage() {
 
             {/* Form Footer */}
             <div className="flex justify-end gap-4 pt-6 border-t border-gray-200">
+              <FormError message={formError} className="mr-auto self-center" />
               <Link
                 href="/expenses"
                 className="px-6 py-2.5 border border-gray-300 rounded-lg text-gray-700 font-medium hover:bg-gray-50 transition-colors"

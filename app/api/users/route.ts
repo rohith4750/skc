@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import bcrypt from 'bcryptjs'
+import { isEmail, isNonEmptyString, validateRequiredFields } from '@/lib/validation'
 
 export async function GET() {
   try {
@@ -31,11 +32,18 @@ export async function POST(request: NextRequest) {
   try {
     const data = await request.json()
 
-    if (!data.username || !data.email || !data.password || !data.role) {
+    const missingFields = validateRequiredFields(data, ['username', 'email', 'password', 'role'])
+    if (missingFields) {
       return NextResponse.json(
-        { error: 'Username, email, password, and role are required' },
+        { error: 'Missing required fields', details: missingFields },
         { status: 400 }
       )
+    }
+    if (!isEmail(data.email)) {
+      return NextResponse.json({ error: 'Invalid email address' }, { status: 400 })
+    }
+    if (!isNonEmptyString(data.password) || data.password.length < 6) {
+      return NextResponse.json({ error: 'Password must be at least 6 characters' }, { status: 400 })
     }
 
     // Validate role - only admin and super_admin allowed in User model

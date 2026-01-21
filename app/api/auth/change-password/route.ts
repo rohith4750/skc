@@ -1,13 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import bcrypt from 'bcryptjs'
+import { isNonEmptyString } from '@/lib/validation'
 
 // Change password for current user
 export async function POST(request: NextRequest) {
   try {
     const { username, currentPassword, newPassword } = await request.json()
 
-    if (!username || !currentPassword || !newPassword) {
+    if (!isNonEmptyString(username) || !isNonEmptyString(currentPassword) || !isNonEmptyString(newPassword)) {
       return NextResponse.json(
         { error: 'Username, current password, and new password are required' },
         { status: 400 }

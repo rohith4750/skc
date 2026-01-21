@@ -7,6 +7,8 @@ import { FaUtensils, FaLock, FaUser, FaEye, FaEyeSlash, FaAward, FaUsers, FaCale
 import toast from 'react-hot-toast'
 import { setAuth, isAuthenticated } from '@/lib/auth'
 import Logo from '@/components/Logo'
+import { isNonEmptyString } from '@/lib/validation'
+import FormError from '@/components/FormError'
 
 export default function LoginPage() {
   const router = useRouter()
@@ -16,6 +18,7 @@ export default function LoginPage() {
   })
   const [showPassword, setShowPassword] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
+  const [formError, setFormError] = useState('')
 
   // Redirect if already authenticated
   useEffect(() => {
@@ -27,8 +30,16 @@ export default function LoginPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setIsLoading(true)
+    setFormError('')
 
     try {
+      if (!isNonEmptyString(formData.username) || !isNonEmptyString(formData.password)) {
+        toast.error('Please enter your username/email and password')
+        setFormError('Please enter your username/email and password')
+        setIsLoading(false)
+        return
+      }
+
       const response = await fetch('/api/auth/login', {
         method: 'POST',
         headers: {
@@ -51,7 +62,9 @@ export default function LoginPage() {
                   toast.success('Login successful!')
                   router.push('/')
     } catch (error: any) {
-      toast.error(error.message || 'Login failed. Please check your credentials.')
+      const message = error.message || 'Login failed. Please check your credentials.'
+      toast.error(message)
+      setFormError(message)
       setIsLoading(false)
     }
   }
@@ -80,6 +93,7 @@ export default function LoginPage() {
           {/* Login Form */}
           <div className="bg-white rounded-2xl shadow-xl p-6 sm:p-8 border border-gray-100">
             <form onSubmit={handleSubmit} className="space-y-5">
+              <FormError message={formError} />
               {/* Username Field */}
               <div>
                 <label htmlFor="username" className="block text-sm font-medium text-gray-700 mb-2">

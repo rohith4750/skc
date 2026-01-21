@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
+import { isNonNegativeNumber, isNonEmptyString } from '@/lib/validation'
 
 export async function GET() {
   try {
@@ -25,11 +26,22 @@ export async function GET() {
 export async function POST(request: NextRequest) {
   try {
     const data = await request.json()
+
+    if (!isNonEmptyString(data.customerId)) {
+      return NextResponse.json({ error: 'Customer is required' }, { status: 400 })
+    }
+    if (!Array.isArray(data.items) || data.items.length === 0) {
+      return NextResponse.json({ error: 'At least one menu item is required' }, { status: 400 })
+    }
     
     // Convert amounts to numbers to ensure proper type
     const totalAmount = parseFloat(data.totalAmount) || 0
     const advancePaid = parseFloat(data.advancePaid) || 0
     const remainingAmount = parseFloat(data.remainingAmount) || (totalAmount - advancePaid)
+
+    if (!isNonNegativeNumber(totalAmount) || !isNonNegativeNumber(advancePaid) || !isNonNegativeNumber(remainingAmount)) {
+      return NextResponse.json({ error: 'Invalid amounts' }, { status: 400 })
+    }
     const discount = parseFloat(data.discount) || 0
     const transportCost = parseFloat(data.transportCost) || 0
     

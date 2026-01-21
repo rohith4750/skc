@@ -8,6 +8,7 @@ import Table from '@/components/Table'
 import ConfirmModal from '@/components/ConfirmModal'
 import RoleGuard from '@/components/RoleGuard'
 import { isSuperAdmin } from '@/lib/auth'
+import FormError from '@/components/FormError'
 
 interface User {
   id: string
@@ -44,6 +45,7 @@ export default function UsersPage() {
     isOpen: false,
     id: null,
   })
+  const [formError, setFormError] = useState('')
   const [formData, setFormData] = useState({
     username: '',
     email: '',
@@ -79,6 +81,7 @@ export default function UsersPage() {
       role: 'admin',
       isActive: true,
     })
+    setFormError('')
     setShowModal(true)
   }
 
@@ -91,6 +94,7 @@ export default function UsersPage() {
       role: user.role,
       isActive: user.isActive,
     })
+    setFormError('')
     setShowModal(true)
   }
 
@@ -123,6 +127,7 @@ export default function UsersPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    setFormError('')
 
     try {
       const url = editingUser ? `/api/users/${editingUser.id}` : '/api/users'
@@ -137,6 +142,7 @@ export default function UsersPage() {
       // If creating, password is required
       if (!editingUser && !submitData.password) {
         toast.error('Password is required for new users')
+        setFormError('Password is required for new users')
         return
       }
 
@@ -158,7 +164,9 @@ export default function UsersPage() {
       toast.success(`User ${editingUser ? 'updated' : 'created'} successfully!`)
     } catch (error: any) {
       console.error('Failed to save user:', error)
-      toast.error(error.message || 'Failed to save user. Please try again.')
+      const message = error.message || 'Failed to save user. Please try again.'
+      toast.error(message)
+      setFormError(message)
     }
   }
 
@@ -263,6 +271,7 @@ export default function UsersPage() {
                 </h2>
               </div>
               <form onSubmit={handleSubmit} className="p-6 space-y-4">
+                <FormError message={formError} />
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
                     Username *

@@ -2,12 +2,13 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import crypto from 'crypto'
 import { sendEmail } from '@/lib/email-server'
+import { isEmail } from '@/lib/validation'
 
 export async function POST(request: NextRequest) {
   try {
     const { email } = await request.json()
 
-    if (!email) {
+    if (!isEmail(email)) {
       return NextResponse.json(
         { error: 'Email is required' },
         { status: 400 }

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
+import { isNonEmptyString, validateEnum } from '@/lib/validation'
 
 export async function GET(
   request: NextRequest,
@@ -37,12 +38,16 @@ export async function PUT(
     // Validate role if provided
     if (data.role) {
       const validRoles = ['supervisor', 'chef', 'labours', 'boys', 'transport', 'gas', 'pan', 'store', 'other']
-      if (!validRoles.includes(data.role)) {
+      if (!validateEnum(data.role, validRoles)) {
         return NextResponse.json(
           { error: 'Invalid role. Must be one of: supervisor, chef, labours, boys, transport, gas, pan, store, other' },
           { status: 400 }
         )
       }
+    }
+
+    if (data.name !== undefined && !isNonEmptyString(data.name)) {
+      return NextResponse.json({ error: 'Name is required' }, { status: 400 })
     }
 
     // Build update data

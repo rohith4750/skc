@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
+import { isEmail, isPhone, validateRequiredFields } from '@/lib/validation'
 
 export async function PUT(
   request: NextRequest,
@@ -7,6 +8,19 @@ export async function PUT(
 ) {
   try {
     const data = await request.json()
+    const missingFields = validateRequiredFields(data, ['name', 'email', 'phone', 'cateringServiceName'])
+    if (missingFields) {
+      return NextResponse.json(
+        { error: 'Missing required fields', details: missingFields },
+        { status: 400 }
+      )
+    }
+    if (!isEmail(data.email)) {
+      return NextResponse.json({ error: 'Invalid email address' }, { status: 400 })
+    }
+    if (!isPhone(data.phone)) {
+      return NextResponse.json({ error: 'Invalid phone number' }, { status: 400 })
+    }
     const supervisor = await prisma.supervisor.update({
       where: { id: params.id },
       data: {

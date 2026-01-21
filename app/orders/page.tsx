@@ -8,12 +8,14 @@ import { FaSearch, FaPlus } from 'react-icons/fa'
 import Link from 'next/link'
 import { useSearchParams, useRouter } from 'next/navigation'
 import toast from 'react-hot-toast'
+import FormError from '@/components/FormError'
 
 export default function OrdersPage() {
   const searchParams = useSearchParams()
   const router = useRouter()
   const editOrderId = searchParams.get('edit')
   const isEditMode = !!editOrderId
+  const financialLink = editOrderId ? `/orders/financial/${editOrderId}` : '/orders/financial'
 
   const [customers, setCustomers] = useState<Customer[]>([])
   const [menuItems, setMenuItems] = useState<MenuItem[]>([])
@@ -28,6 +30,7 @@ export default function OrdersPage() {
   const [collapsedMealTypes, setCollapsedMealTypes] = useState<Record<string, boolean>>({})
   const [originalAdvancePaid, setOriginalAdvancePaid] = useState<number>(0)
   const [originalMealTypeAmounts, setOriginalMealTypeAmounts] = useState<Record<string, any>>({})
+  const [formError, setFormError] = useState<string>('')
   
   const [formData, setFormData] = useState({
     customerId: '',
@@ -325,8 +328,31 @@ export default function OrdersPage() {
     }
   }
 
+  const normalizeDate = (value: string | undefined | null) => {
+    if (!value) return ''
+    return value.split('T')[0]
+  }
+
+  const findExistingOrderForCustomerDate = async () => {
+    const datesToCheck = formData.mealTypes
+      .map(mealType => normalizeDate(mealType.date))
+      .filter(Boolean)
+
+    if (!formData.customerId || datesToCheck.length === 0) return null
+
+    const orders = await Storage.getOrders()
+    return orders.find((order: any) => {
+      if (order.customerId !== formData.customerId) return false
+      const existingDates = Object.values(order.mealTypeAmounts || {})
+        .map((data: any) => normalizeDate(typeof data === 'object' ? data?.date : ''))
+        .filter(Boolean)
+      return existingDates.some((date: string) => datesToCheck.includes(date))
+    })
+  }
+
   const handleSubmit = async (e: any) => {
     e.preventDefault()
+    setFormError('')
     
     // Validate that at least one meal type is added
     if (formData.mealTypes.length === 0) {
@@ -355,6 +381,15 @@ export default function OrdersPage() {
     }
 
     try {
+      if (!isEditMode) {
+        const existingOrder = await findExistingOrderForCustomerDate()
+        if (existingOrder?.id) {
+          toast.error('Order already exists for this customer on the same date. Please update the existing order.')
+          router.push(`/orders?edit=${existingOrder.id}`)
+          return
+        }
+      }
+
       const totalAmount = parseFloat(formData.totalAmount) || 0
       const inputAdvancePaid = parseFloat(formData.advancePaid) || 0
       const effectiveAdvancePaid = isEditMode ? originalAdvancePaid + inputAdvancePaid : inputAdvancePaid
@@ -430,7 +465,9 @@ export default function OrdersPage() {
       }
     } catch (error) {
       console.error('Failed to create order:', error)
-      toast.error('Failed to create order. Please try again.')
+      const message = (error as Error)?.message || 'Failed to create order. Please try again.'
+      setFormError(message)
+      toast.error(message)
     }
   }
 
@@ -575,13 +612,23 @@ export default function OrdersPage() {
 
   return (
     <div className="p-8">
-      <div className="mb-6">
-        <h1 className="text-3xl font-bold text-gray-800 mb-2">
-          {isEditMode ? 'Edit Order' : 'Create New Order'}
-        </h1>
-        <p className="text-gray-600">
-          {isEditMode ? 'Update the order details below' : 'Fill in the form below to create a new catering order'}
-        </p>
+      <div className="mb-6 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+        <div>
+          <h1 className="text-3xl font-bold text-gray-800 mb-2">
+            {isEditMode ? 'Edit Order' : 'Create New Order'}
+          </h1>
+          <p className="text-gray-600">
+            {isEditMode ? 'Update the order details below' : 'Fill in the form below to create a new catering order'}
+          </p>
+        </div>
+        {isEditMode && (
+          <Link
+            href={financialLink}
+            className="inline-flex items-center justify-center px-4 py-2 rounded-lg bg-primary-500 text-white text-sm font-medium hover:bg-primary-600 transition-colors"
+          >
+            Go to Financial Tracking
+          </Link>
+        )}
       </div>
 
       {/* Order Form */}
@@ -1009,7 +1056,41 @@ export default function OrdersPage() {
               )}
             </div>
 
-            {/* Stalls, Discount, Advance Paid, Total Amount Section */}
+            {isEditMode && (
+              <div className="mt-4 p-4 bg-orange-50 border border-orange-200 rounded-lg">
+                <h4 className="text-sm font-bold text-orange-800 mb-3 flex items-center gap-2">
+                  <span className="w-2 h-2 bg-orange-500 rounded-full"></span>
+                  Member Change Summary
+                </h4>
+                <div className="space-y-2">
+                  {formData.mealTypes.map(mt => {
+                    const original = originalMealTypeAmounts[mt.menuType]
+                    const oldMembers = original?.numberOfMembers || 0
+                    const newMembers = parseInt(mt.numberOfMembers) || 0
+                    const diff = newMembers - oldMembers
+                    
+                    if (diff === 0) return null
+                    
+                    return (
+                      <div key={mt.id} className="flex justify-between items-center text-sm">
+                        <span className="text-gray-700 capitalize font-medium">{mt.menuType}:</span>
+                        <div className="flex items-center gap-3">
+                          <span className="text-gray-500">{oldMembers} → {newMembers}</span>
+                          <span className={`font-bold px-2 py-0.5 rounded text-xs ${diff > 0 ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+                            {diff > 0 ? '+' : ''}{diff} Members
+                          </span>
+                        </div>
+                      </div>
+                    )
+                  })}
+                  {!formData.mealTypes.some(mt => (parseInt(mt.numberOfMembers) || 0) !== (originalMealTypeAmounts[mt.menuType]?.numberOfMembers || 0)) && (
+                    <p className="text-xs text-gray-500 italic">No member changes detected yet.</p>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {!isEditMode && (
             <div className="border-t border-gray-200 pt-4">
               <h3 className="text-lg font-semibold text-gray-800 mb-4">Additional Charges</h3>
 
@@ -1215,40 +1296,6 @@ export default function OrdersPage() {
                 />
               </div>
 
-              {isEditMode && (
-                <div className="mt-6 p-4 bg-orange-50 border border-orange-200 rounded-lg">
-                  <h4 className="text-sm font-bold text-orange-800 mb-3 flex items-center gap-2">
-                    <span className="w-2 h-2 bg-orange-500 rounded-full"></span>
-                    Member Change Summary
-                  </h4>
-                  <div className="space-y-2">
-                    {formData.mealTypes.map(mt => {
-                      const original = originalMealTypeAmounts[mt.menuType]
-                      const oldMembers = original?.numberOfMembers || 0
-                      const newMembers = parseInt(mt.numberOfMembers) || 0
-                      const diff = newMembers - oldMembers
-                      
-                      if (diff === 0) return null
-                      
-                      return (
-                        <div key={mt.id} className="flex justify-between items-center text-sm">
-                          <span className="text-gray-700 capitalize font-medium">{mt.menuType}:</span>
-                          <div className="flex items-center gap-3">
-                            <span className="text-gray-500">{oldMembers} → {newMembers}</span>
-                            <span className={`font-bold px-2 py-0.5 rounded text-xs ${diff > 0 ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
-                              {diff > 0 ? '+' : ''}{diff} Members
-                            </span>
-                          </div>
-                        </div>
-                      )
-                    })}
-                    {!formData.mealTypes.some(mt => (parseInt(mt.numberOfMembers) || 0) !== (originalMealTypeAmounts[mt.menuType]?.numberOfMembers || 0)) && (
-                      <p className="text-xs text-gray-500 italic">No member changes detected yet.</p>
-                    )}
-                  </div>
-                </div>
-              )}
-
               <div className="mt-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -1266,8 +1313,28 @@ export default function OrdersPage() {
                 </div>
               </div>
             </div>
+            )}
+
+            {isEditMode && (
+              <div className="border-t border-gray-200 pt-4">
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                  <p className="text-sm text-blue-700 font-medium">
+                    Financial updates (payments, discounts, transport, stalls) are handled in the Financial Tracking page.
+                  </p>
+                  <div className="mt-3">
+                    <Link
+                      href={financialLink}
+                      className="inline-flex items-center px-4 py-2 rounded-lg bg-blue-600 text-white text-sm font-medium hover:bg-blue-700 transition-colors"
+                    >
+                      Open Financial Tracking
+                    </Link>
+                  </div>
+                </div>
+              </div>
+            )}
 
             <div className="flex justify-end gap-4 pt-4 border-t border-gray-200">
+              <FormError message={formError} className="mr-auto self-center" />
               <button
                 type="button"
                 onClick={resetForm}

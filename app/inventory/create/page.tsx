@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import { FaArrowLeft, FaCircle, FaCookieBite, FaUtensils, FaBox, FaWarehouse, FaTools } from 'react-icons/fa'
 import toast from 'react-hot-toast'
 import Link from 'next/link'
+import FormError from '@/components/FormError'
 
 const INVENTORY_CATEGORIES = ['glasses', 'vessels', 'cooking_utensils', 'serving_items', 'storage', 'other']
 
@@ -32,6 +33,7 @@ export default function CreateInventoryPage() {
 
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
+  const [formError, setFormError] = useState('')
   const [formData, setFormData] = useState({
     name: '',
     category: 'glasses',
@@ -87,9 +89,11 @@ export default function CreateInventoryPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setSaving(true)
+    setFormError('')
     
     if (!formData.name || !formData.unit) {
       toast.error('Please fill in all required fields')
+      setFormError('Please fill in all required fields')
       setSaving(false)
       return
     }
@@ -127,7 +131,9 @@ export default function CreateInventoryPage() {
       router.push('/inventory')
     } catch (error: any) {
       console.error('Failed to save inventory item:', error)
-      toast.error(error.message || 'Failed to save inventory item. Please try again.')
+      const message = error.message || 'Failed to save inventory item. Please try again.'
+      toast.error(message)
+      setFormError(message)
     } finally {
       setSaving(false)
     }
@@ -321,6 +327,7 @@ export default function CreateInventoryPage() {
             </div>
 
             <div className="flex justify-end gap-4 pt-6 border-t border-gray-200">
+              <FormError message={formError} className="mr-auto self-center" />
               <Link
                 href="/inventory"
                 className="px-6 py-2.5 border border-gray-300 rounded-lg text-gray-700 font-medium hover:bg-gray-50 transition-colors"

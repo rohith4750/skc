@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import { FaArrowLeft, FaArrowUp, FaArrowDown, FaTimes } from 'react-icons/fa'
 import toast from 'react-hot-toast'
 import Link from 'next/link'
+import FormError from '@/components/FormError'
 
 interface StockItem {
   id: string
@@ -29,6 +30,7 @@ export default function StockTransactionPage() {
 
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
+  const [formError, setFormError] = useState('')
   const [stockItem, setStockItem] = useState<StockItem | null>(null)
   const [transactionData, setTransactionData] = useState({
     type: (transactionType === 'out' ? 'out' : 'in') as 'in' | 'out',
@@ -73,9 +75,11 @@ export default function StockTransactionPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setSaving(true)
+    setFormError('')
 
     if (!transactionData.quantity || !stockItem) {
       toast.error('Please fill in all required fields')
+      setFormError('Please fill in all required fields')
       setSaving(false)
       return
     }
@@ -84,12 +88,14 @@ export default function StockTransactionPage() {
       const quantity = parseFloat(transactionData.quantity)
       if (quantity <= 0) {
         toast.error('Quantity must be greater than 0')
+        setFormError('Quantity must be greater than 0')
         setSaving(false)
         return
       }
 
       if (transactionData.type === 'out' && quantity > stockItem.currentStock) {
         toast.error(`Insufficient stock. Available: ${stockItem.currentStock} ${stockItem.unit}`)
+        setFormError(`Insufficient stock. Available: ${stockItem.currentStock} ${stockItem.unit}`)
         setSaving(false)
         return
       }
@@ -117,7 +123,9 @@ export default function StockTransactionPage() {
       router.push('/stock')
     } catch (error: any) {
       console.error('Failed to create transaction:', error)
-      toast.error(error.message || 'Failed to create transaction. Please try again.')
+      const message = error.message || 'Failed to create transaction. Please try again.'
+      toast.error(message)
+      setFormError(message)
     } finally {
       setSaving(false)
     }
@@ -274,6 +282,7 @@ export default function StockTransactionPage() {
 
             {/* Actions */}
             <div className="flex justify-end gap-4 pt-4 border-t border-gray-200">
+              <FormError message={formError} className="mr-auto self-center" />
               <Link
                 href="/stock"
                 className="px-6 py-2.5 border border-gray-300 rounded-lg text-gray-700 font-medium hover:bg-gray-50 transition-colors"
