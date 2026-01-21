@@ -1,11 +1,11 @@
-export const isNonEmptyString = (value: unknown) =>
+export const isNonEmptyString = (value: unknown): value is string =>
   typeof value === 'string' && value.trim().length > 0
 
 export const isNumber = (value: unknown) =>
   typeof value === 'number' && Number.isFinite(value)
 
 export const isNonNegativeNumber = (value: unknown) =>
-  isNumber(value) && value >= 0
+  typeof value === 'number' && Number.isFinite(value) && value >= 0
 
 export const isEmail = (value: unknown) => {
   if (!isNonEmptyString(value)) return false
@@ -28,4 +28,4 @@ export const validateEnum = (value: unknown, allowed: string[]) => {
 }
 
 export const isPositiveNumber = (value: unknown) =>
-  isNumber(value) && value > 0
+  typeof value === 'number' && Number.isFinite(value) && value > 0
