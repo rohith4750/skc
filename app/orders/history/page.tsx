@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState, useMemo } from 'react'
-import { formatCurrency, formatDateTime, formatDate } from '@/lib/utils'
+import { formatDateTime, formatDate } from '@/lib/utils'
 import { Order } from '@/types'
 import { FaTrash, FaFilePdf, FaChevronLeft, FaChevronRight, FaEdit, FaFilter, FaChartLine, FaClock, FaCheckCircle, FaTimesCircle } from 'react-icons/fa'
 import Link from 'next/link'
@@ -465,10 +465,9 @@ export default function OrdersHistoryPage() {
                 <tr>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Customer</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Event Name</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Meal Types</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Total Amount</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Advance Paid</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Remaining</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Event Type</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Venue</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Guests</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Event Dates</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Created</th>
@@ -477,18 +476,8 @@ export default function OrdersHistoryPage() {
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
                 {paginatedOrders.map((order: any) => {
-                  // Group items by meal type
-                  const groupedItems: Record<string, any[]> = {}
-                  order.items.forEach((item: any) => {
-                    const mealType = item.menuItem?.type?.toLowerCase() || 'other'
-                    if (!groupedItems[mealType]) {
-                      groupedItems[mealType] = []
-                    }
-                    groupedItems[mealType].push(item)
-                  })
-                  const mealTypeAmounts = order.mealTypeAmounts as Record<string, { amount: number; date: string } | number> | null
-                  
                   // Extract all event dates from meal types
+                  const mealTypeAmounts = order.mealTypeAmounts as Record<string, { amount: number; date: string } | number> | null
                   const eventDates: Array<{ mealType: string; date: string }> = []
                   if (mealTypeAmounts) {
                     Object.entries(mealTypeAmounts).forEach(([mealType, data]) => {
@@ -509,28 +498,20 @@ export default function OrdersHistoryPage() {
                           {(order as any).eventName || <span className="text-gray-400">-</span>}
                         </div>
                       </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="text-sm text-gray-900">
+                          {(order as any).eventType || <span className="text-gray-400">-</span>}
+                        </div>
+                      </td>
                       <td className="px-6 py-4">
-                        <div className="text-sm text-gray-900 space-y-1">
-                          {Object.entries(groupedItems).map(([mealType, items]) => {
-                            const mealTypeData = mealTypeAmounts?.[mealType]
-                            const amount = typeof mealTypeData === 'object' && mealTypeData !== null ? mealTypeData.amount : (typeof mealTypeData === 'number' ? mealTypeData : null)
-                            return (
-                              <div key={mealType} className="flex items-center justify-between">
-                                <span className="capitalize font-medium">{mealType}:</span>
-                                <span className="ml-2 text-primary-600">{amount !== null ? formatCurrency(amount) : '-'}</span>
-                              </div>
-                            )
-                          })}
+                        <div className="text-sm text-gray-900 max-w-[200px] truncate" title={(order as any).venue || ''}>
+                          {(order as any).venue || <span className="text-gray-400">-</span>}
                         </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm font-bold text-gray-900">{formatCurrency(order.totalAmount)}</div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm font-medium text-green-600">{formatCurrency(order.advancePaid)}</div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm font-medium text-red-600">{formatCurrency(order.remainingAmount)}</div>
+                        <div className="text-sm font-medium text-gray-900">
+                          {(order as any).numberOfMembers || <span className="text-gray-400">-</span>}
+                        </div>
                       </td>
                       <td className="px-6 py-4">
                         <div className="text-sm text-gray-900 space-y-1.5">
