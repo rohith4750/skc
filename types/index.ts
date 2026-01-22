@@ -91,6 +91,14 @@ export interface Supervisor {
   isActive: boolean
 }
 
+export interface BulkAllocation {
+  orderId: string
+  orderName: string // Customer name + event name for display
+  amount: number
+  percentage?: number
+  plates?: number  // For "by-plates" allocation method
+}
+
 export interface Expense {
   id: string
   orderId?: string
@@ -112,6 +120,10 @@ export interface Expense {
     numberOfBoys?: number
     perUnitAmount?: number
   }
+  // Bulk Allocation Fields
+  isBulkExpense?: boolean
+  bulkAllocations?: BulkAllocation[]
+  allocationMethod?: 'equal' | 'manual' | 'by-plates' | 'by-percentage'
   createdAt: string
   updatedAt: string
 }

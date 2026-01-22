@@ -3,8 +3,8 @@
 import { useEffect, useState, useMemo } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { formatCurrency } from '@/lib/utils'
-import { Expense, Order } from '@/types'
-import { FaArrowLeft } from 'react-icons/fa'
+import { Expense, Order, BulkAllocation } from '@/types'
+import { FaArrowLeft, FaLayerGroup, FaChevronDown, FaChevronUp, FaTimes, FaInfoCircle } from 'react-icons/fa'
 import toast from 'react-hot-toast'
 import Link from 'next/link'
 import FormError from '@/components/FormError'
@@ -21,6 +21,13 @@ const EXPENSE_CATEGORIES = [
   'other'
 ]
 const WORKFORCE_RECIPIENT_ROLES = ['supervisor', 'chef', 'labours', 'boys', 'transport', 'gas', 'pan', 'store', 'other']
+
+const ALLOCATION_METHODS = [
+  { value: 'equal', label: 'Equal Split', description: 'Divide amount equally among all events' },
+  { value: 'manual', label: 'Manual', description: 'Specify exact amount for each event' },
+  { value: 'by-plates', label: 'By Plates', description: 'Allocate proportionally by number of plates/members' },
+  { value: 'by-percentage', label: 'By Percentage', description: 'Allocate by custom percentage for each event' },
+]
 
 interface WorkforceMember {
   id: string
@@ -41,6 +48,14 @@ export default function CreateExpensePage() {
   const [formError, setFormError] = useState('')
   const [existingExpenses, setExistingExpenses] = useState<any[]>([])
   const [customCategoryInputType, setCustomCategoryInputType] = useState<'select' | 'input'>('select')
+  
+  // Bulk allocation state
+  const [isBulkExpense, setIsBulkExpense] = useState(false)
+  const [selectedOrderIds, setSelectedOrderIds] = useState<string[]>([])
+  const [allocationMethod, setAllocationMethod] = useState<'equal' | 'manual' | 'by-plates' | 'by-percentage'>('equal')
+  const [bulkAllocations, setBulkAllocations] = useState<BulkAllocation[]>([])
+  const [showAllocationDetails, setShowAllocationDetails] = useState(true)
+  
   const [formData, setFormData] = useState({
     orderId: '',
     category: 'supervisor',
@@ -114,6 +129,15 @@ export default function CreateExpensePage() {
         if (isCustomCategory) {
           setCustomCategoryInputType('input')
         }
+        
+        // Load bulk allocation data if it's a bulk expense
+        if (expenseData.isBulkExpense && expenseData.bulkAllocations) {
+          setIsBulkExpense(true)
+          setAllocationMethod(expenseData.allocationMethod || 'manual')
+          const allocations = expenseData.bulkAllocations as BulkAllocation[]
+          setBulkAllocations(allocations)
+          setSelectedOrderIds(allocations.map((a: BulkAllocation) => a.orderId))
+        }
       }
     } catch (error) {
       console.error('Failed to load data:', error)
@@ -162,6 +186,153 @@ export default function CreateExpensePage() {
       return parseFloat(formData.amount) || 0
     }
   }, [formData])
+  
+  // Get order name for display
+  const getOrderDisplayName = (order: Order) => {
+    const customerName = order.customer?.name || 'Unknown'
+    const eventName = order.eventName || 'No Event Name'
+    const date = new Date(order.createdAt).toLocaleDateString()
+    return `${customerName} - ${eventName} (${date})`
+  }
+  
+  // Get plates/members count for an order (for by-plates allocation)
+  const getOrderPlates = (order: Order): number => {
+    if (order.numberOfMembers) return order.numberOfMembers
+    // Try to get from mealTypeAmounts
+    if (order.mealTypeAmounts) {
+      let totalPlates = 0
+      Object.values(order.mealTypeAmounts).forEach((meal: any) => {
+        if (typeof meal === 'object' && meal.numberOfPlates) {
+          totalPlates += meal.numberOfPlates
+        } else if (typeof meal === 'object' && meal.numberOfMembers) {
+          totalPlates += meal.numberOfMembers
+        }
+      })
+      if (totalPlates > 0) return totalPlates
+    }
+    return 100 // Default if not found
+  }
+  
+  // Recalculate allocations when method or selected orders change
+  const recalculateAllocations = (method: string, orderIds: string[], totalAmount: number) => {
+    if (orderIds.length === 0) {
+      setBulkAllocations([])
+      return
+    }
+    
+    const selectedOrders = orders.filter(o => orderIds.includes(o.id))
+    
+    if (method === 'equal') {
+      const perOrderAmount = totalAmount / orderIds.length
+      const newAllocations: BulkAllocation[] = selectedOrders.map(order => ({
+        orderId: order.id,
+        orderName: getOrderDisplayName(order),
+        amount: Math.round(perOrderAmount * 100) / 100,
+        percentage: 100 / orderIds.length,
+      }))
+      // Adjust last allocation for rounding
+      const sum = newAllocations.reduce((s, a) => s + a.amount, 0)
+      if (newAllocations.length > 0 && Math.abs(sum - totalAmount) > 0.01) {
+        newAllocations[newAllocations.length - 1].amount += totalAmount - sum
+      }
+      setBulkAllocations(newAllocations)
+    } else if (method === 'by-plates') {
+      const ordersWithPlates = selectedOrders.map(order => ({
+        order,
+        plates: getOrderPlates(order)
+      }))
+      const totalPlates = ordersWithPlates.reduce((sum, o) => sum + o.plates, 0)
+      
+      const newAllocations: BulkAllocation[] = ordersWithPlates.map(({ order, plates }) => {
+        const percentage = (plates / totalPlates) * 100
+        return {
+          orderId: order.id,
+          orderName: getOrderDisplayName(order),
+          amount: Math.round((totalAmount * plates / totalPlates) * 100) / 100,
+          percentage: percentage,
+          plates: plates,
+        }
+      })
+      // Adjust last allocation for rounding
+      const sum = newAllocations.reduce((s, a) => s + a.amount, 0)
+      if (newAllocations.length > 0 && Math.abs(sum - totalAmount) > 0.01) {
+        newAllocations[newAllocations.length - 1].amount += totalAmount - sum
+      }
+      setBulkAllocations(newAllocations)
+    } else if (method === 'by-percentage') {
+      // For percentage, keep existing percentages if available, otherwise equal
+      const newAllocations: BulkAllocation[] = selectedOrders.map(order => {
+        const existing = bulkAllocations.find(a => a.orderId === order.id)
+        const percentage = existing?.percentage || (100 / orderIds.length)
+        return {
+          orderId: order.id,
+          orderName: getOrderDisplayName(order),
+          amount: Math.round((totalAmount * percentage / 100) * 100) / 100,
+          percentage: percentage,
+        }
+      })
+      setBulkAllocations(newAllocations)
+    } else {
+      // Manual - keep existing amounts if available
+      const newAllocations: BulkAllocation[] = selectedOrders.map(order => {
+        const existing = bulkAllocations.find(a => a.orderId === order.id)
+        return {
+          orderId: order.id,
+          orderName: getOrderDisplayName(order),
+          amount: existing?.amount || 0,
+        }
+      })
+      setBulkAllocations(newAllocations)
+    }
+  }
+  
+  // Handle order selection for bulk expense
+  const handleOrderSelection = (orderId: string, isSelected: boolean) => {
+    const newSelectedIds = isSelected 
+      ? [...selectedOrderIds, orderId]
+      : selectedOrderIds.filter(id => id !== orderId)
+    setSelectedOrderIds(newSelectedIds)
+    recalculateAllocations(allocationMethod, newSelectedIds, calculatedAmount)
+  }
+  
+  // Handle allocation method change
+  const handleAllocationMethodChange = (method: 'equal' | 'manual' | 'by-plates' | 'by-percentage') => {
+    setAllocationMethod(method)
+    recalculateAllocations(method, selectedOrderIds, calculatedAmount)
+  }
+  
+  // Handle manual allocation amount change
+  const handleAllocationAmountChange = (orderId: string, amount: number) => {
+    setBulkAllocations(prev => prev.map(a => 
+      a.orderId === orderId ? { ...a, amount } : a
+    ))
+  }
+  
+  // Handle percentage change
+  const handlePercentageChange = (orderId: string, percentage: number) => {
+    setBulkAllocations(prev => prev.map(a => 
+      a.orderId === orderId 
+        ? { ...a, percentage, amount: Math.round((calculatedAmount * percentage / 100) * 100) / 100 } 
+        : a
+    ))
+  }
+  
+  // Calculate total allocated
+  const totalAllocated = useMemo(() => {
+    return bulkAllocations.reduce((sum, a) => sum + (a.amount || 0), 0)
+  }, [bulkAllocations])
+  
+  // Allocation difference (should be 0 when properly allocated)
+  const allocationDifference = useMemo(() => {
+    return Math.round((calculatedAmount - totalAllocated) * 100) / 100
+  }, [calculatedAmount, totalAllocated])
+
+  // Recalculate allocations when total amount changes
+  useEffect(() => {
+    if (isBulkExpense && selectedOrderIds.length >= 2 && calculatedAmount > 0) {
+      recalculateAllocations(allocationMethod, selectedOrderIds, calculatedAmount)
+    }
+  }, [calculatedAmount])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -173,6 +344,22 @@ export default function CreateExpensePage() {
       setFormError('Please fill in all required fields and ensure amount is greater than 0')
       setSaving(false)
       return
+    }
+    
+    // Validate bulk expense allocation
+    if (isBulkExpense) {
+      if (selectedOrderIds.length < 2) {
+        toast.error('Bulk expense must cover at least 2 events')
+        setFormError('Bulk expense must cover at least 2 events')
+        setSaving(false)
+        return
+      }
+      if (Math.abs(allocationDifference) > 0.01) {
+        toast.error(`Allocation amounts must equal total expense. Difference: ${formatCurrency(allocationDifference)}`)
+        setFormError(`Allocation amounts must equal total expense. Difference: ${formatCurrency(allocationDifference)}`)
+        setSaving(false)
+        return
+      }
     }
 
     // Validate category-specific fields
@@ -234,7 +421,7 @@ export default function CreateExpensePage() {
         : formData.category
       
       const expenseData: any = {
-        orderId: formData.orderId || null,
+        orderId: isBulkExpense ? null : (formData.orderId || null),
         category: finalCategory,
         amount: calculatedAmount,
         paidAmount: paidAmount,
@@ -245,6 +432,10 @@ export default function CreateExpensePage() {
         eventDate: (formData.category === 'labours' || formData.category === 'boys') && formData.eventDate ? formData.eventDate : null,
         notes: formData.notes || null,
         calculationDetails: Object.keys(calculationDetails).length > 0 ? calculationDetails : null,
+        // Bulk allocation fields
+        isBulkExpense: isBulkExpense,
+        bulkAllocations: isBulkExpense ? bulkAllocations : null,
+        allocationMethod: isBulkExpense ? allocationMethod : null,
       }
       
       const url = expenseId ? `/api/expenses/${expenseId}` : '/api/expenses'
@@ -261,7 +452,10 @@ export default function CreateExpensePage() {
         throw new Error(error.error || 'Failed to save expense')
       }
 
-      toast.success(expenseId ? 'Expense updated successfully!' : 'Expense added successfully!')
+      const successMessage = isBulkExpense 
+        ? `Bulk expense ${expenseId ? 'updated' : 'added'} for ${selectedOrderIds.length} events!`
+        : `Expense ${expenseId ? 'updated' : 'added'} successfully!`
+      toast.success(successMessage)
       router.push('/expenses')
     } catch (error: any) {
       console.error('Failed to save expense:', error)
@@ -296,29 +490,135 @@ export default function CreateExpensePage() {
         {/* Form */}
         <div className="bg-white rounded-xl shadow-md border border-gray-200 p-6">
           <form onSubmit={handleSubmit} className="space-y-6">
-            {/* Order Selection */}
-            <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-2">
-                Event/Order (Optional)
-              </label>
-              <select
-                value={formData.orderId}
-                onChange={(e) => setFormData({ ...formData, orderId: e.target.value })}
-                className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-              >
-                <option value="">No specific event/order</option>
-                {orders.map((order: any) => {
-                  const customerName = order.customer?.name || 'Unknown'
-                  const eventName = order.eventName || 'No Event Name'
-                  const date = new Date(order.createdAt).toLocaleDateString()
-                  return (
-                    <option key={order.id} value={order.id}>
-                      {customerName} - {eventName} - {date}
-                    </option>
-                  )
-                })}
-              </select>
+            {/* Bulk Expense Toggle */}
+            <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg p-4 border border-blue-200">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <FaLayerGroup className={`text-xl ${isBulkExpense ? 'text-blue-600' : 'text-gray-400'}`} />
+                  <div>
+                    <h3 className="font-semibold text-gray-900">Bulk Expense (Multiple Events)</h3>
+                    <p className="text-sm text-gray-600">
+                      Split one payment across multiple events (e.g., weekly chef payment)
+                    </p>
+                  </div>
+                </div>
+                <label className="relative inline-flex items-center cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={isBulkExpense}
+                    onChange={(e) => {
+                      setIsBulkExpense(e.target.checked)
+                      if (!e.target.checked) {
+                        setSelectedOrderIds([])
+                        setBulkAllocations([])
+                      }
+                    }}
+                    className="sr-only peer"
+                  />
+                  <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                </label>
+              </div>
             </div>
+
+            {/* Single Order Selection (when NOT bulk) */}
+            {!isBulkExpense && (
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                  Event/Order (Optional)
+                </label>
+                <select
+                  value={formData.orderId}
+                  onChange={(e) => setFormData({ ...formData, orderId: e.target.value })}
+                  className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                >
+                  <option value="">No specific event/order</option>
+                  {orders.map((order: any) => {
+                    const customerName = order.customer?.name || 'Unknown'
+                    const eventName = order.eventName || 'No Event Name'
+                    const date = new Date(order.createdAt).toLocaleDateString()
+                    return (
+                      <option key={order.id} value={order.id}>
+                        {customerName} - {eventName} - {date}
+                      </option>
+                    )
+                  })}
+                </select>
+              </div>
+            )}
+
+            {/* Bulk Event Selection (when bulk mode is ON) */}
+            {isBulkExpense && (
+              <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
+                <div className="bg-gray-50 px-4 py-3 border-b border-gray-200">
+                  <div className="flex items-center justify-between">
+                    <h3 className="font-semibold text-gray-900">
+                      Select Events ({selectedOrderIds.length} selected)
+                    </h3>
+                    {selectedOrderIds.length > 0 && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setSelectedOrderIds([])
+                          setBulkAllocations([])
+                        }}
+                        className="text-sm text-red-600 hover:text-red-700"
+                      >
+                        Clear All
+                      </button>
+                    )}
+                  </div>
+                </div>
+                <div className="max-h-60 overflow-y-auto p-2">
+                  {orders.length === 0 ? (
+                    <p className="text-gray-500 text-sm p-4 text-center">No events available</p>
+                  ) : (
+                    <div className="space-y-1">
+                      {orders.map((order: any) => {
+                        const isSelected = selectedOrderIds.includes(order.id)
+                        const plates = getOrderPlates(order)
+                        return (
+                          <label
+                            key={order.id}
+                            className={`flex items-center gap-3 p-3 rounded-lg cursor-pointer transition-colors ${
+                              isSelected 
+                                ? 'bg-blue-50 border border-blue-200' 
+                                : 'hover:bg-gray-50 border border-transparent'
+                            }`}
+                          >
+                            <input
+                              type="checkbox"
+                              checked={isSelected}
+                              onChange={(e) => handleOrderSelection(order.id, e.target.checked)}
+                              className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                            />
+                            <div className="flex-1 min-w-0">
+                              <div className="font-medium text-gray-900 truncate">
+                                {order.customer?.name || 'Unknown'} - {order.eventName || 'No Event Name'}
+                              </div>
+                              <div className="text-xs text-gray-500 flex items-center gap-2">
+                                <span>{new Date(order.createdAt).toLocaleDateString()}</span>
+                                <span>•</span>
+                                <span>{plates} plates/members</span>
+                                <span>•</span>
+                                <span>{formatCurrency(order.totalAmount)}</span>
+                              </div>
+                            </div>
+                          </label>
+                        )
+                      })}
+                    </div>
+                  )}
+                </div>
+                {selectedOrderIds.length < 2 && isBulkExpense && (
+                  <div className="bg-yellow-50 px-4 py-2 border-t border-yellow-200">
+                    <p className="text-sm text-yellow-700 flex items-center gap-2">
+                      <FaInfoCircle />
+                      Select at least 2 events for bulk expense
+                    </p>
+                  </div>
+                )}
+              </div>
+            )}
 
             {/* Category and Calculation Method */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -747,6 +1047,186 @@ export default function CreateExpensePage() {
                 </div>
               </div>
             </div>
+
+            {/* Bulk Allocation Details */}
+            {isBulkExpense && selectedOrderIds.length >= 2 && calculatedAmount > 0 && (
+              <div className="bg-gradient-to-r from-indigo-50 to-purple-50 rounded-lg border border-indigo-200 overflow-hidden">
+                <div 
+                  className="bg-indigo-100 px-4 py-3 border-b border-indigo-200 cursor-pointer"
+                  onClick={() => setShowAllocationDetails(!showAllocationDetails)}
+                >
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <FaLayerGroup className="text-indigo-600" />
+                      <h3 className="font-semibold text-indigo-900">
+                        Allocation Breakdown
+                      </h3>
+                      <span className="text-sm text-indigo-600">
+                        ({selectedOrderIds.length} events)
+                      </span>
+                    </div>
+                    {showAllocationDetails ? <FaChevronUp className="text-indigo-600" /> : <FaChevronDown className="text-indigo-600" />}
+                  </div>
+                </div>
+                
+                {showAllocationDetails && (
+                  <div className="p-4 space-y-4">
+                    {/* Allocation Method Selection */}
+                    <div>
+                      <label className="block text-sm font-semibold text-gray-700 mb-2">
+                        Allocation Method
+                      </label>
+                      <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+                        {ALLOCATION_METHODS.map((method) => (
+                          <button
+                            key={method.value}
+                            type="button"
+                            onClick={() => handleAllocationMethodChange(method.value as any)}
+                            className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors text-center ${
+                              allocationMethod === method.value
+                                ? 'bg-indigo-600 text-white shadow-md'
+                                : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
+                            }`}
+                            title={method.description}
+                          >
+                            {method.label}
+                          </button>
+                        ))}
+                      </div>
+                      <p className="text-xs text-gray-500 mt-1">
+                        {ALLOCATION_METHODS.find(m => m.value === allocationMethod)?.description}
+                      </p>
+                    </div>
+
+                    {/* Allocation Table */}
+                    <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
+                      <table className="w-full text-sm">
+                        <thead className="bg-gray-50">
+                          <tr>
+                            <th className="px-4 py-2 text-left font-semibold text-gray-700">Event</th>
+                            {allocationMethod === 'by-plates' && (
+                              <th className="px-4 py-2 text-center font-semibold text-gray-700">Plates</th>
+                            )}
+                            {allocationMethod === 'by-percentage' && (
+                              <th className="px-4 py-2 text-center font-semibold text-gray-700 w-24">%</th>
+                            )}
+                            <th className="px-4 py-2 text-right font-semibold text-gray-700 w-32">Amount</th>
+                            {allocationMethod === 'manual' && (
+                              <th className="px-4 py-2 w-10"></th>
+                            )}
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-gray-200">
+                          {bulkAllocations.map((allocation, idx) => (
+                            <tr key={allocation.orderId} className="hover:bg-gray-50">
+                              <td className="px-4 py-3">
+                                <div className="font-medium text-gray-900 truncate max-w-xs">
+                                  {allocation.orderName}
+                                </div>
+                              </td>
+                              {allocationMethod === 'by-plates' && (
+                                <td className="px-4 py-3 text-center text-gray-600">
+                                  {allocation.plates || '-'}
+                                </td>
+                              )}
+                              {allocationMethod === 'by-percentage' && (
+                                <td className="px-4 py-3">
+                                  <input
+                                    type="number"
+                                    min="0"
+                                    max="100"
+                                    step="0.1"
+                                    value={allocation.percentage?.toFixed(1) || ''}
+                                    onChange={(e) => handlePercentageChange(allocation.orderId, parseFloat(e.target.value) || 0)}
+                                    className="w-20 px-2 py-1 text-center border border-gray-300 rounded focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                                  />
+                                </td>
+                              )}
+                              <td className="px-4 py-3 text-right">
+                                {allocationMethod === 'manual' ? (
+                                  <input
+                                    type="number"
+                                    min="0"
+                                    step="0.01"
+                                    value={allocation.amount || ''}
+                                    onChange={(e) => handleAllocationAmountChange(allocation.orderId, parseFloat(e.target.value) || 0)}
+                                    className="w-28 px-2 py-1 text-right border border-gray-300 rounded focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                                  />
+                                ) : (
+                                  <span className="font-medium text-gray-900">
+                                    {formatCurrency(allocation.amount)}
+                                  </span>
+                                )}
+                              </td>
+                              {allocationMethod === 'manual' && (
+                                <td className="px-2 py-3">
+                                  <button
+                                    type="button"
+                                    onClick={() => handleOrderSelection(allocation.orderId, false)}
+                                    className="text-gray-400 hover:text-red-500 transition-colors"
+                                  >
+                                    <FaTimes />
+                                  </button>
+                                </td>
+                              )}
+                            </tr>
+                          ))}
+                        </tbody>
+                        <tfoot className="bg-gray-50 font-semibold">
+                          <tr>
+                            <td className="px-4 py-3 text-gray-700">
+                              Total
+                            </td>
+                            {allocationMethod === 'by-plates' && (
+                              <td className="px-4 py-3 text-center text-gray-700">
+                                {bulkAllocations.reduce((sum, a) => sum + (a.plates || 0), 0)}
+                              </td>
+                            )}
+                            {allocationMethod === 'by-percentage' && (
+                              <td className="px-4 py-3 text-center text-gray-700">
+                                {bulkAllocations.reduce((sum, a) => sum + (a.percentage || 0), 0).toFixed(1)}%
+                              </td>
+                            )}
+                            <td className={`px-4 py-3 text-right ${
+                              Math.abs(allocationDifference) > 0.01 ? 'text-red-600' : 'text-green-600'
+                            }`}>
+                              {formatCurrency(totalAllocated)}
+                            </td>
+                            {allocationMethod === 'manual' && <td></td>}
+                          </tr>
+                        </tfoot>
+                      </table>
+                    </div>
+
+                    {/* Allocation Status */}
+                    {Math.abs(allocationDifference) > 0.01 && (
+                      <div className={`p-3 rounded-lg ${
+                        allocationDifference > 0 
+                          ? 'bg-yellow-50 border border-yellow-200' 
+                          : 'bg-red-50 border border-red-200'
+                      }`}>
+                        <p className={`text-sm font-medium ${
+                          allocationDifference > 0 ? 'text-yellow-700' : 'text-red-700'
+                        }`}>
+                          {allocationDifference > 0 
+                            ? `Under-allocated: ${formatCurrency(allocationDifference)} remaining to allocate`
+                            : `Over-allocated: ${formatCurrency(Math.abs(allocationDifference))} exceeds total`
+                          }
+                        </p>
+                      </div>
+                    )}
+
+                    {Math.abs(allocationDifference) <= 0.01 && (
+                      <div className="p-3 rounded-lg bg-green-50 border border-green-200">
+                        <p className="text-sm font-medium text-green-700 flex items-center gap-2">
+                          ✓ Allocation complete - {formatCurrency(calculatedAmount)} split across {selectedOrderIds.length} events
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
 
             {/* Description and Notes */}
             <div>

@@ -404,82 +404,6 @@ export default function WorkforcePage() {
       ),
     },
     {
-      key: 'expenseCount',
-      header: 'Expenses',
-      render: (member: Workforce) => (
-        <div className="flex items-center gap-2">
-          <FaReceipt className="text-gray-400" />
-          <span className="font-medium">{member.expenseCount || 0}</span>
-        </div>
-      ),
-    },
-    {
-      key: 'totalAmount',
-      header: 'Total / Paid',
-      render: (member: Workforce) => {
-        const totalAmount = member.totalAmount || 0
-        const totalPaidAmount = member.totalPaidAmount || 0
-        const remainingBalance = totalAmount - totalPaidAmount
-        
-        return (
-          <div className="flex flex-col gap-1">
-            <div className="flex items-center gap-2">
-              <FaDollarSign className="text-gray-600" />
-              <span className="font-semibold text-gray-700">
-                {formatCurrency(totalAmount)}
-              </span>
-            </div>
-            <div className="flex items-center gap-2">
-              <FaCheckCircle className="text-green-600" />
-              <span className="text-sm font-medium text-green-700">
-                {formatCurrency(totalPaidAmount)} paid
-              </span>
-            </div>
-            {remainingBalance > 0 && (
-              <div className="flex items-center gap-2">
-                <FaExclamationCircle className="text-orange-600" />
-                <span className="text-sm font-medium text-orange-700">
-                  {formatCurrency(remainingBalance)} remaining
-                </span>
-              </div>
-            )}
-          </div>
-        )
-      },
-    },
-    {
-      key: 'paymentStatus',
-      header: 'Payment Status',
-      render: (member: Workforce) => {
-        const status = member.overallPaymentStatus || 'pending'
-        const totalAmount = member.totalAmount || 0
-        const totalPaidAmount = member.totalPaidAmount || 0
-        const remainingAmount = totalAmount - totalPaidAmount
-        
-        const statusConfig = {
-          paid: { color: 'bg-green-100 text-green-800', icon: FaCheckCircle, label: 'Paid' },
-          partial: { color: 'bg-yellow-100 text-yellow-800', icon: FaExclamationCircle, label: 'Partial' },
-          pending: { color: 'bg-red-100 text-red-800', icon: FaClock, label: 'Pending' },
-        }
-        const config = statusConfig[status] || statusConfig.pending
-        const Icon = config.icon
-        
-        return (
-          <div className="flex flex-col gap-1">
-            <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium ${config.color}`}>
-              <Icon className="text-xs" />
-              {config.label}
-            </span>
-            {(status === 'pending' || status === 'partial') && remainingAmount > 0 && (
-              <span className="text-xs text-orange-600 font-medium">
-                Remaining: {formatCurrency(remainingAmount)}
-              </span>
-            )}
-          </div>
-        )
-      },
-    },
-    {
       key: 'isActive',
       header: 'Status',
       render: (member: Workforce) => (
@@ -491,7 +415,8 @@ export default function WorkforcePage() {
   ]
 
   const totalPayments = filteredWorkforce.reduce((sum, m) => sum + (m.totalAmount || 0), 0)
-  const totalExpenses = filteredWorkforce.reduce((sum, m) => sum + (m.expenseCount || 0), 0)
+  const totalPaid = filteredWorkforce.reduce((sum, m) => sum + (m.totalPaidAmount || 0), 0)
+  const totalPending = totalPayments - totalPaid
 
   return (
     <div className="p-3 sm:p-4 md:p-5 lg:p-6 xl:p-8">
@@ -682,7 +607,7 @@ export default function WorkforcePage() {
       )}
 
       {/* Summary Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 sm:gap-4 md:gap-5 lg:gap-6 mb-4 sm:mb-5 md:mb-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4 md:gap-5 lg:gap-6 mb-4 sm:mb-5 md:mb-6">
         <div className="bg-white rounded-lg shadow-md p-4 sm:p-5 md:p-6 border-l-4 border-primary-500 relative overflow-hidden">
           {/* Icon at top right corner */}
           <div className="bg-primary-500 absolute top-0 right-0 p-3 sm:p-4 rounded-bl-2xl">
@@ -698,28 +623,55 @@ export default function WorkforcePage() {
             )}
           </div>
         </div>
-        <div className="bg-white rounded-lg shadow-md p-5 sm:p-6 border-l-4 border-green-500 relative overflow-hidden">
+        <div className="bg-white rounded-lg shadow-md p-5 sm:p-6 border-l-4 border-blue-500 relative overflow-hidden">
           {/* Icon at top right corner */}
-          <div className="bg-green-500 absolute top-0 right-0 p-3 sm:p-4 rounded-bl-2xl">
+          <div className="bg-blue-500 absolute top-0 right-0 p-3 sm:p-4 rounded-bl-2xl">
             <FaDollarSign className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
           </div>
           
           {/* Content */}
           <div className="relative pr-12 sm:pr-16">
-            <p className="text-sm text-gray-600 mb-3">Total Payments</p>
+            <p className="text-sm text-gray-600 mb-3">Total Amount</p>
             <p className="text-lg sm:text-xl lg:text-2xl font-bold text-gray-800 break-words leading-tight">{formatCurrency(totalPayments)}</p>
           </div>
         </div>
-        <div className="bg-white rounded-lg shadow-md p-5 sm:p-6 border-l-4 border-blue-500 relative overflow-hidden">
+        <div className="bg-white rounded-lg shadow-md p-5 sm:p-6 border-l-4 border-green-500 relative overflow-hidden">
           {/* Icon at top right corner */}
-          <div className="bg-blue-500 absolute top-0 right-0 p-3 sm:p-4 rounded-bl-2xl">
-            <FaReceipt className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
+          <div className="bg-green-500 absolute top-0 right-0 p-3 sm:p-4 rounded-bl-2xl">
+            <FaCheckCircle className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
           </div>
           
           {/* Content */}
           <div className="relative pr-12 sm:pr-16">
-            <p className="text-sm text-gray-600 mb-3">Total Expenses</p>
-            <p className="text-lg sm:text-xl lg:text-2xl font-bold text-gray-800 break-words leading-tight">{totalExpenses}</p>
+            <p className="text-sm text-gray-600 mb-3">Total Paid</p>
+            <p className="text-lg sm:text-xl lg:text-2xl font-bold text-green-600 break-words leading-tight">{formatCurrency(totalPaid)}</p>
+          </div>
+        </div>
+        <div className={`rounded-lg shadow-md p-5 sm:p-6 border-l-4 relative overflow-hidden ${
+          totalPending > 0 
+            ? 'bg-gradient-to-br from-red-50 to-orange-50 border-red-500' 
+            : 'bg-white border-green-500'
+        }`}>
+          {/* Icon at top right corner */}
+          <div className={`absolute top-0 right-0 p-3 sm:p-4 rounded-bl-2xl ${
+            totalPending > 0 ? 'bg-red-500' : 'bg-green-500'
+          }`}>
+            <FaExclamationCircle className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
+          </div>
+          
+          {/* Content */}
+          <div className="relative pr-12 sm:pr-16">
+            <p className="text-sm text-gray-600 mb-3">
+              {totalPending > 0 ? 'Amount to Pay' : 'Pending Balance'}
+            </p>
+            <p className={`text-lg sm:text-xl lg:text-2xl font-bold break-words leading-tight ${
+              totalPending > 0 ? 'text-red-600' : 'text-green-600'
+            }`}>
+              {totalPending > 0 ? formatCurrency(totalPending) : 'All Paid ✓'}
+            </p>
+            {totalPending > 0 && (
+              <p className="text-xs text-red-500 mt-2 font-medium">Needs to be paid</p>
+            )}
           </div>
         </div>
       </div>
@@ -893,6 +845,103 @@ export default function WorkforcePage() {
           </table>
         </div>
       </div>
+
+      {/* Audit Log - Paid Payments Table */}
+      {filteredWorkforce.some(m => m.expenses && m.expenses.some((e: any) => e.paymentStatus === 'paid' || e.paidAmount > 0)) && (
+        <div className="mt-6 bg-white rounded-lg shadow-md overflow-hidden">
+          <div className="bg-gradient-to-r from-green-500 to-emerald-500 px-6 py-4">
+            <h2 className="text-lg font-bold text-white flex items-center gap-2">
+              <FaCheckCircle className="w-5 h-5" />
+              Payment Audit Log
+            </h2>
+            <p className="text-green-100 text-sm mt-1">Track all paid amounts for workforce</p>
+          </div>
+          
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[800px]">
+              <thead className="bg-gray-50 border-b border-gray-200">
+                <tr>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Name</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Role</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Category</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Recipient</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Event</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Date</th>
+                  <th className="px-4 py-3 text-right text-xs font-semibold text-gray-600 uppercase">Paid Amount</th>
+                  <th className="px-4 py-3 text-center text-xs font-semibold text-gray-600 uppercase">Status</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-200">
+                {filteredWorkforce
+                  .filter(member => member.expenses && member.expenses.some((e: any) => e.paymentStatus === 'paid' || e.paidAmount > 0))
+                  .flatMap((member) => {
+                    const paidExpenses = (member.expenses || []).filter(
+                      (exp: any) => exp.paymentStatus === 'paid' || exp.paidAmount > 0
+                    )
+                    const Icon = roleIcons[member.role] || FaCircle
+                    
+                    return paidExpenses.map((expense: any) => {
+                      const paidAmount = expense.paidAmount || expense.amount || 0
+                      return (
+                        <tr key={expense.id} className="hover:bg-green-50">
+                          <td className="px-4 py-3">
+                            <div className="flex items-center gap-2">
+                              <div className={`p-1.5 rounded-full ${roleColors[member.role] || 'bg-gray-100'}`}>
+                                <Icon className="w-3 h-3" />
+                              </div>
+                              <span className="font-medium text-gray-900">{member.name}</span>
+                            </div>
+                          </td>
+                          <td className="px-4 py-3">
+                            <span className={`px-2 py-1 rounded text-xs font-medium ${roleColors[member.role] || 'bg-gray-100 text-gray-800'}`}>
+                              {member.role.toUpperCase()}
+                            </span>
+                          </td>
+                          <td className="px-4 py-3">
+                            <span className={`px-2 py-1 rounded text-xs font-medium ${CATEGORY_COLORS[expense.category] || 'bg-gray-100 text-gray-800'}`}>
+                              {expense.category.toUpperCase()}
+                            </span>
+                          </td>
+                          <td className="px-4 py-3 text-sm text-gray-700">
+                            {expense.recipient || '-'}
+                          </td>
+                          <td className="px-4 py-3 text-sm text-gray-600">
+                            {expense.order?.customer?.name || '-'}
+                          </td>
+                          <td className="px-4 py-3 text-sm text-gray-600">
+                            {formatDate(expense.paymentDate)}
+                          </td>
+                          <td className="px-4 py-3 text-right">
+                            <span className="font-bold text-green-600 text-lg">
+                              {formatCurrency(paidAmount)}
+                            </span>
+                          </td>
+                          <td className="px-4 py-3 text-center">
+                            <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-700">
+                              <FaCheckCircle className="text-[10px]" />
+                              Paid
+                            </span>
+                          </td>
+                        </tr>
+                      )
+                    })
+                  })}
+              </tbody>
+              <tfoot className="bg-gray-50 border-t-2 border-gray-300">
+                <tr>
+                  <td colSpan={6} className="px-4 py-4 text-right font-semibold text-gray-700">
+                    Total Paid Amount:
+                  </td>
+                  <td className="px-4 py-4 text-right">
+                    <span className="text-xl font-bold text-green-600">{formatCurrency(totalPaid)}</span>
+                  </td>
+                  <td></td>
+                </tr>
+              </tfoot>
+            </table>
+          </div>
+        </div>
+      )}
 
       {/* Delete Confirmation Modal */}
       <ConfirmModal

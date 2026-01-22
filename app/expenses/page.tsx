@@ -4,7 +4,7 @@ import { useEffect, useState, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import { formatCurrency, formatDate, formatDateTime } from '@/lib/utils'
 import { Expense, Order } from '@/types'
-import { 
+import {
   FaPlus, 
   FaEdit, 
   FaTrash, 
@@ -24,7 +24,10 @@ import {
   FaGasPump,
   FaStore,
   FaBox,
-  FaPrint
+  FaPrint,
+  FaLayerGroup,
+  FaChevronDown,
+  FaChevronUp
 } from 'react-icons/fa'
 import toast from 'react-hot-toast'
 import Table from '@/components/Table'
@@ -83,6 +86,7 @@ export default function ExpensesPage() {
     isOpen: false,
     id: null,
   })
+  const [expandedBulkExpenseId, setExpandedBulkExpenseId] = useState<string | null>(null)
 
   useEffect(() => {
     loadData()
@@ -356,10 +360,18 @@ export default function ExpensesPage() {
       accessor: (row: Expense) => {
         const Icon = CATEGORY_ICONS[row.category] || FaBox
         return (
-          <span className={`inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-semibold border ${CATEGORY_COLORS[row.category] || CATEGORY_COLORS.other}`}>
-            <Icon className="text-xs" />
-            {row.category.charAt(0).toUpperCase() + row.category.slice(1)}
-          </span>
+          <div className="flex flex-col gap-1">
+            <span className={`inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-semibold border ${CATEGORY_COLORS[row.category] || CATEGORY_COLORS.other}`}>
+              <Icon className="text-xs" />
+              {row.category.charAt(0).toUpperCase() + row.category.slice(1)}
+            </span>
+            {row.isBulkExpense && (
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-indigo-100 text-indigo-700 border border-indigo-200">
+                <FaLayerGroup className="text-[10px]" />
+                Bulk
+              </span>
+            )}
+          </div>
         )
       },
     },
@@ -367,6 +379,55 @@ export default function ExpensesPage() {
       key: 'order',
       header: 'Event/Order',
       accessor: (row: Expense) => {
+        // Check if bulk expense
+        if (row.isBulkExpense && row.bulkAllocations) {
+          const allocations = row.bulkAllocations as any[]
+          const isExpanded = expandedBulkExpenseId === row.id
+          return (
+            <div className="space-y-2">
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation()
+                  setExpandedBulkExpenseId(isExpanded ? null : row.id)
+                }}
+                className="flex items-start gap-2 text-left w-full hover:bg-indigo-50 rounded p-1 -m-1 transition-colors"
+              >
+                <FaLayerGroup className="text-indigo-500 mt-0.5 flex-shrink-0" />
+                <div className="flex-1 min-w-0">
+                  <div className="text-sm font-medium text-indigo-700 flex items-center gap-1">
+                    Bulk: {allocations.length} events
+                    {isExpanded ? <FaChevronUp className="text-xs" /> : <FaChevronDown className="text-xs" />}
+                  </div>
+                  <div className="text-xs text-gray-500 truncate max-w-[200px]">
+                    {allocations.slice(0, 2).map((a: any, i: number) => (
+                      <span key={a.orderId}>
+                        {a.orderName?.split(' - ')[0] || 'Unknown'}
+                        {i < Math.min(allocations.length - 1, 1) && ', '}
+                      </span>
+                    ))}
+                    {allocations.length > 2 && <span className="text-indigo-600"> +{allocations.length - 2} more</span>}
+                  </div>
+                </div>
+              </button>
+              {isExpanded && (
+                <div className="bg-indigo-50 rounded-lg p-2 ml-5 border border-indigo-200">
+                  <div className="text-xs font-semibold text-indigo-800 mb-1">
+                    Allocation ({row.allocationMethod || 'manual'}):
+                  </div>
+                  <div className="space-y-1">
+                    {allocations.map((a: any) => (
+                      <div key={a.orderId} className="flex justify-between text-xs">
+                        <span className="text-gray-700 truncate max-w-[140px]">{a.orderName?.split(' - ')[0] || 'Unknown'}</span>
+                        <span className="font-medium text-indigo-700">{formatCurrency(a.amount)}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          )
+        }
         if (row.order?.customer) {
           return (
             <div>

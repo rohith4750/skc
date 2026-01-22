@@ -60,10 +60,33 @@ export async function PUT(
       }
     }
     
+    // Validate bulk allocation if present
+    const isBulkExpense = data.isBulkExpense === true
+    let bulkAllocations = null
+    
+    if (isBulkExpense && data.bulkAllocations) {
+      if (!Array.isArray(data.bulkAllocations) || data.bulkAllocations.length < 2) {
+        return NextResponse.json({ 
+          error: 'Bulk expense must have at least 2 event allocations' 
+        }, { status: 400 })
+      }
+      
+      // Validate total allocation matches the amount
+      const totalAllocated = data.bulkAllocations.reduce((sum: number, alloc: any) => sum + (alloc.amount || 0), 0)
+      if (Math.abs(totalAllocated - data.amount) > 0.01) {
+        return NextResponse.json({ 
+          error: `Allocation total (${totalAllocated.toFixed(2)}) must match expense amount (${data.amount.toFixed(2)})` 
+        }, { status: 400 })
+      }
+      
+      bulkAllocations = data.bulkAllocations
+    }
+    
     // Build update data object, only including fields that are provided
     const updateData: any = {}
     
-    if (data.orderId !== undefined) updateData.orderId = data.orderId || null
+    // For bulk expenses, orderId should be null
+    if (data.orderId !== undefined) updateData.orderId = isBulkExpense ? null : (data.orderId || null)
     if (data.category !== undefined) updateData.category = data.category
     if (data.amount !== undefined) updateData.amount = data.amount
     if (paidAmount !== undefined) updateData.paidAmount = paidAmount
@@ -74,6 +97,10 @@ export async function PUT(
     if (data.eventDate !== undefined) updateData.eventDate = data.eventDate ? new Date(data.eventDate) : null
     if (data.notes !== undefined) updateData.notes = data.notes || null
     if (data.calculationDetails !== undefined) updateData.calculationDetails = data.calculationDetails || null
+    // Bulk allocation fields
+    if (data.isBulkExpense !== undefined) updateData.isBulkExpense = isBulkExpense
+    if (bulkAllocations !== null) updateData.bulkAllocations = bulkAllocations
+    if (data.allocationMethod !== undefined) updateData.allocationMethod = isBulkExpense ? (data.allocationMethod || 'manual') : null
     
     const expense = await (prisma as any).expense.update({
       where: { id: params.id },

@@ -7,11 +7,11 @@ export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url)
     const orderId = searchParams.get('orderId')
+    const includeBulkAllocated = searchParams.get('includeBulkAllocated') === 'true'
     
-    const where = orderId ? { orderId } : {}
-    
-    const expenses = await prisma.expense.findMany({
-      where,
+    // Base query for direct orderId match
+    let expenses = await prisma.expense.findMany({
+      where: orderId ? { orderId } : {},
       include: {
         order: {
           include: {
@@ -21,6 +21,42 @@ export async function GET(request: NextRequest) {
       },
       orderBy: { paymentDate: 'desc' }
     })
+    
+    // If orderId is provided and we want to include bulk allocated expenses
+    if (orderId && includeBulkAllocated) {
+      // Also find bulk expenses that have this orderId in their allocations
+      const bulkExpenses = await prisma.expense.findMany({
+        where: {
+          isBulkExpense: true,
+          orderId: null  // Bulk expenses don't have a direct orderId
+        },
+        include: {
+          order: {
+            include: {
+              customer: true
+            }
+          }
+        }
+      })
+      
+      // Filter bulk expenses that have allocation to this orderId
+      const relevantBulkExpenses = bulkExpenses.filter(expense => {
+        const allocations = expense.bulkAllocations as any[]
+        return allocations?.some((alloc: any) => alloc.orderId === orderId)
+      })
+      
+      // Combine and remove duplicates
+      const expenseIds = new Set(expenses.map(e => e.id))
+      relevantBulkExpenses.forEach(e => {
+        if (!expenseIds.has(e.id)) {
+          expenses.push(e)
+        }
+      })
+      
+      // Re-sort by payment date
+      expenses.sort((a, b) => new Date(b.paymentDate).getTime() - new Date(a.paymentDate).getTime())
+    }
+    
     return NextResponse.json(expenses)
   } catch (error) {
     console.error('Error fetching expenses:', error)
@@ -39,6 +75,28 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Amount must be a valid number' }, { status: 400 })
     }
     
+    // Validate bulk allocation if present
+    const isBulkExpense = data.isBulkExpense === true
+    let bulkAllocations = null
+    
+    if (isBulkExpense) {
+      if (!data.bulkAllocations || !Array.isArray(data.bulkAllocations) || data.bulkAllocations.length < 2) {
+        return NextResponse.json({ 
+          error: 'Bulk expense must have at least 2 event allocations' 
+        }, { status: 400 })
+      }
+      
+      // Validate total allocation matches the amount
+      const totalAllocated = data.bulkAllocations.reduce((sum: number, alloc: any) => sum + (alloc.amount || 0), 0)
+      if (Math.abs(totalAllocated - data.amount) > 0.01) {
+        return NextResponse.json({ 
+          error: `Allocation total (${totalAllocated.toFixed(2)}) must match expense amount (${data.amount.toFixed(2)})` 
+        }, { status: 400 })
+      }
+      
+      bulkAllocations = data.bulkAllocations
+    }
+    
     // Calculate payment status if not provided
     const paidAmount = data.paidAmount !== undefined ? data.paidAmount : (data.amount || 0)
     let paymentStatus = data.paymentStatus
@@ -55,7 +113,7 @@ export async function POST(request: NextRequest) {
     
     const expense = await prisma.expense.create({
       data: {
-        orderId: data.orderId || null,
+        orderId: isBulkExpense ? null : (data.orderId || null), // Bulk expenses don't have direct orderId
         category: data.category,
         amount: data.amount,
         paidAmount: paidAmount,
@@ -66,6 +124,9 @@ export async function POST(request: NextRequest) {
         eventDate: data.eventDate ? new Date(data.eventDate) : null,
         notes: data.notes || null,
         calculationDetails: data.calculationDetails || null,
+        isBulkExpense: isBulkExpense,
+        bulkAllocations: bulkAllocations,
+        allocationMethod: isBulkExpense ? (data.allocationMethod || 'manual') : null,
       },
       include: {
         order: {
@@ -75,10 +136,14 @@ export async function POST(request: NextRequest) {
         }
       }
     })
+    
+    const eventCount = isBulkExpense ? data.bulkAllocations.length : 1
     publishNotification({
       type: 'expenses',
-      title: 'Expense created',
-      message: `${expense.category} · ${Number(expense.amount || 0).toFixed(2)}`,
+      title: isBulkExpense ? 'Bulk expense created' : 'Expense created',
+      message: isBulkExpense 
+        ? `${expense.category} · ${Number(expense.amount || 0).toFixed(2)} (${eventCount} events)`
+        : `${expense.category} · ${Number(expense.amount || 0).toFixed(2)}`,
       entityId: expense.id,
       severity: 'warning',
     })

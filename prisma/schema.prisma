@@ -119,6 +119,10 @@ model Expense {
   eventDate          DateTime? // Event date for labours and boys
   notes              String?
   calculationDetails Json?    // Store calculation details: { method: 'plate-wise'|'total', plates?: number, numberOfLabours?: number, numberOfBoys?: number, perUnitAmount?: number }
+  // Bulk Allocation Fields
+  isBulkExpense      Boolean  @default(false)  // True if this expense covers multiple events
+  bulkAllocations    Json?    // Array of { orderId: string, orderName: string, amount: number, percentage?: number }
+  allocationMethod   String?  // "equal", "manual", "by-plates", "by-percentage" 
   createdAt          DateTime @default(now())
   updatedAt          DateTime @updatedAt
 
