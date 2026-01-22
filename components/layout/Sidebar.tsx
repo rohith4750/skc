@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
+import Image from 'next/image'
 import { usePathname } from 'next/navigation'
 import { 
   FaHome, 
@@ -120,12 +121,20 @@ export default function Sidebar() {
         `}
       >
         {/* Brand Section - Fixed at top */}
-        <div className="w-full border-b border-gray-800 flex-shrink-0 bg-gray-900 flex flex-col items-center justify-center py-4 px-4">
-          <div className="text-center w-full">
-            <div className="text-2xl sm:text-3xl font-bold text-white tracking-wide">SKC</div>
-            <div className="text-xs text-gray-400 mt-1 font-medium">ESTD 1989</div>
-            <div className="text-[10px] text-white mt-2 font-bold tracking-wide">Proprietor: Telidevara Rajendraprasad</div>
-          </div>
+        <div className="w-full border-b border-gray-800 flex-shrink-0 bg-gray-900 flex flex-col items-center justify-center py-3 px-2">
+          <Link href="/" className="flex flex-col items-center">
+            <Image 
+              src="/images/logo-dark.png" 
+              alt="SKC Logo" 
+              width={100} 
+              height={100}
+              className="drop-shadow-lg"
+              priority
+            />
+            <div className="text-[9px] text-amber-400/80 mt-1 font-medium tracking-wide">
+              Proprietor: Telidevara Rajendraprasad
+            </div>
+          </Link>
         </div>
         
         {/* Navigation Menu - Scrollable */}

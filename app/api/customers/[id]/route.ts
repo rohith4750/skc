@@ -83,30 +83,6 @@ export async function DELETE(
   { params }: { params: { id: string } }
 ) {
   try {
-    // Check if customer has any orders
-    const customerWithOrders = await prisma.customer.findUnique({
-      where: { id: params.id },
-      include: {
-        orders: {
-          select: { id: true }
-        }
-      }
-    })
-
-    if (!customerWithOrders) {
-      return NextResponse.json({ 
-        error: 'Customer not found',
-        details: `No customer found with id: ${params.id}`
-      }, { status: 404 })
-    }
-
-    if (customerWithOrders.orders.length > 0) {
-      return NextResponse.json({ 
-        error: 'Cannot delete customer',
-        details: `This customer has ${customerWithOrders.orders.length} order(s). Please delete the orders first or mark the customer as inactive instead.`
-      }, { status: 400 })
-    }
-
     await prisma.customer.delete({
       where: { id: params.id }
     })
@@ -120,14 +96,6 @@ export async function DELETE(
         error: 'Customer not found',
         details: `No customer found with id: ${params.id}`
       }, { status: 404 })
-    }
-
-    // Handle foreign key constraint error
-    if (error.code === 'P2003') {
-      return NextResponse.json({ 
-        error: 'Cannot delete customer',
-        details: 'This customer has related records (orders, bills). Please delete those first.'
-      }, { status: 400 })
     }
     
     return NextResponse.json({ 
