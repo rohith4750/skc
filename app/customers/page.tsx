@@ -47,13 +47,21 @@ export default function CustomersPage() {
   const confirmDelete = async () => {
     if (!deleteConfirm.id) return
     try {
-      await Storage.deleteCustomer(deleteConfirm.id)
+      const response = await fetch(`/api/customers/${deleteConfirm.id}`, {
+        method: 'DELETE',
+      })
+      
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.details || errorData.error || 'Failed to delete customer')
+      }
+      
       await loadCustomers()
       toast.success('Customer deleted successfully!')
       setDeleteConfirm({ isOpen: false, id: null })
-    } catch (error) {
+    } catch (error: any) {
       console.error('Failed to delete customer:', error)
-      toast.error('Failed to delete customer. Please try again.')
+      toast.error(error.message || 'Failed to delete customer. Please try again.')
       setDeleteConfirm({ isOpen: false, id: null })
     }
   }
