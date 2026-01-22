@@ -140,8 +140,27 @@ model User {
   isActive          Boolean  @default(true)
   createdAt         DateTime @default(now())
   updatedAt         DateTime @updatedAt
+  loginLogs         LoginAuditLog[]
 
   @@map("users")
+}
+
+model LoginAuditLog {
+  id          String   @id @default(uuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  username    String
+  ipAddress   String?
+  userAgent   String?  // Browser/device info
+  device      String?  // Parsed device type: "Desktop", "Mobile", "Tablet"
+  browser     String?  // Parsed browser name
+  os          String?  // Operating system
+  location    String?  // Approximate location (optional)
+  loginTime   DateTime @default(now())
+  success     Boolean  @default(true)
+  failReason  String?  // If login failed, store reason
+
+  @@map("login_audit_logs")
 }
 
 model Workforce {

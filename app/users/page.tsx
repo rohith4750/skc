@@ -2,13 +2,14 @@
 
 import { useEffect, useState } from 'react'
 import { formatDateTime } from '@/lib/utils'
-import { FaPlus, FaEdit, FaTrash, FaUserShield, FaUtensils, FaUserTie, FaTruck, FaUser } from 'react-icons/fa'
+import { FaPlus, FaEdit, FaTrash, FaUserShield, FaUtensils, FaUserTie, FaTruck, FaUser, FaHistory } from 'react-icons/fa'
 import toast from 'react-hot-toast'
 import Table from '@/components/Table'
 import ConfirmModal from '@/components/ConfirmModal'
 import RoleGuard from '@/components/RoleGuard'
 import { isSuperAdmin } from '@/lib/auth'
 import FormError from '@/components/FormError'
+import Link from 'next/link'
 
 interface User {
   id: string
@@ -71,6 +72,7 @@ export default function UsersPage() {
       setLoading(false)
     }
   }
+
 
   const handleCreate = () => {
     setEditingUser(null)
@@ -260,6 +262,17 @@ export default function UsersPage() {
             </div>
           )}
         />
+
+        {/* Link to Audit Logs */}
+        <div className="mt-6">
+          <Link
+            href="/audit-logs"
+            className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-indigo-500 to-purple-500 text-white font-medium rounded-lg hover:from-indigo-600 hover:to-purple-600 transition-all shadow-md"
+          >
+            <FaHistory className="w-4 h-4" />
+            View Login Audit Logs
+          </Link>
+        </div>
 
         {/* Create/Edit Modal */}
         {showModal && (

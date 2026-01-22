@@ -4,7 +4,50 @@ import bcrypt from 'bcryptjs'
 import { isNonEmptyString } from '@/lib/validation'
 import { publishNotification } from '@/lib/notifications'
 
+// Parse user agent to get device info
+function parseUserAgent(userAgent: string | null) {
+  if (!userAgent) return { device: 'Unknown', browser: 'Unknown', os: 'Unknown' }
+  
+  // Detect device type
+  let device = 'Desktop'
+  if (/Mobile|Android|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(userAgent)) {
+    if (/iPad|Tablet/i.test(userAgent)) {
+      device = 'Tablet'
+    } else {
+      device = 'Mobile'
+    }
+  }
+  
+  // Detect browser
+  let browser = 'Unknown'
+  if (userAgent.includes('Firefox')) browser = 'Firefox'
+  else if (userAgent.includes('Edg')) browser = 'Edge'
+  else if (userAgent.includes('Chrome')) browser = 'Chrome'
+  else if (userAgent.includes('Safari')) browser = 'Safari'
+  else if (userAgent.includes('Opera') || userAgent.includes('OPR')) browser = 'Opera'
+  else if (userAgent.includes('MSIE') || userAgent.includes('Trident')) browser = 'Internet Explorer'
+  
+  // Detect OS
+  let os = 'Unknown'
+  if (userAgent.includes('Windows NT 10')) os = 'Windows 10/11'
+  else if (userAgent.includes('Windows')) os = 'Windows'
+  else if (userAgent.includes('Mac OS X')) os = 'macOS'
+  else if (userAgent.includes('Android')) os = 'Android'
+  else if (userAgent.includes('iPhone') || userAgent.includes('iPad')) os = 'iOS'
+  else if (userAgent.includes('Linux')) os = 'Linux'
+  
+  return { device, browser, os }
+}
+
 export async function POST(request: NextRequest) {
+  // Get client info
+  const userAgent = request.headers.get('user-agent')
+  const forwardedFor = request.headers.get('x-forwarded-for')
+  const realIp = request.headers.get('x-real-ip')
+  const ipAddress = forwardedFor?.split(',')[0] || realIp || 'Unknown'
+  
+  const { device, browser, os } = parseUserAgent(userAgent)
+  
   try {
     const { username, password } = await request.json()
 
@@ -27,6 +70,25 @@ export async function POST(request: NextRequest) {
     })
 
     if (!user) {
+      // Log failed login attempt (user not found)
+      try {
+        await (prisma as any).loginAuditLog.create({
+          data: {
+            userId: 'unknown',
+            username: username,
+            ipAddress,
+            userAgent,
+            device,
+            browser,
+            os,
+            success: false,
+            failReason: 'User not found or inactive',
+          }
+        })
+      } catch (e) {
+        // Ignore if table doesn't exist yet
+      }
+      
       return NextResponse.json(
         { error: 'Invalid username or password' },
         { status: 401 }
@@ -37,17 +99,55 @@ export async function POST(request: NextRequest) {
     const isPasswordValid = await bcrypt.compare(password, user.passwordHash)
 
     if (!isPasswordValid) {
+      // Log failed login attempt (wrong password)
+      try {
+        await (prisma as any).loginAuditLog.create({
+          data: {
+            userId: user.id,
+            username: user.username,
+            ipAddress,
+            userAgent,
+            device,
+            browser,
+            os,
+            success: false,
+            failReason: 'Invalid password',
+          }
+        })
+      } catch (e) {
+        // Ignore if table doesn't exist yet
+      }
+      
       return NextResponse.json(
         { error: 'Invalid username or password' },
         { status: 401 }
       )
     }
 
-    // Return success (in production, you might want to generate a JWT token here)
+    // Log successful login
+    try {
+      await (prisma as any).loginAuditLog.create({
+        data: {
+          userId: user.id,
+          username: user.username,
+          ipAddress,
+          userAgent,
+          device,
+          browser,
+          os,
+          success: true,
+        }
+      })
+    } catch (e) {
+      // Ignore if table doesn't exist yet
+      console.log('Login audit log not available:', e)
+    }
+
+    // Return success
     publishNotification({
       type: 'auth',
       title: 'User login',
-      message: `${user.username} logged in`,
+      message: `${user.username} logged in from ${device} (${browser} on ${os})`,
       entityId: user.id,
       severity: 'info',
     })
