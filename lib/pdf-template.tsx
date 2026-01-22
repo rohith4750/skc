@@ -458,12 +458,29 @@ function generateBillContent(data: PDFTemplateData): string {
         <span class="form-value">${servicesDisplay}</span>
       </div>
       ` : ''}
+    </div>
+
+    <!-- Members Summary -->
+    <div class="form-section" style="background: #f0fdf4; padding: 12px; border-radius: 8px; margin: 15px 0; border: 1px solid #86efac;">
+      <div style="font-weight: bold; font-size: 14px; color: #166534; margin-bottom: 10px; text-transform: uppercase;">👥 Members / Guests Summary</div>
       ${data.numberOfMembers ? `
       <div class="form-row">
-        <span class="form-label">Number of Members:</span>
-        <span class="form-value">${data.numberOfMembers}</span>
+        <span class="form-label" style="font-weight: bold;">Total Members:</span>
+        <span class="form-value" style="font-size: 16px; font-weight: bold; color: #166534;">${data.numberOfMembers}</span>
       </div>
       ` : ''}
+      ${Object.keys(mealTypeAmounts).length > 0 ? Object.entries(mealTypeAmounts).map(([mealType, mealData]) => {
+        const dataObj = typeof mealData === 'object' && mealData !== null ? mealData : { amount: 0 }
+        const persons = (typeof dataObj === 'object' && 'numberOfMembers' in dataObj) ? (dataObj.numberOfMembers || 0) : 0
+        if (!persons) return ''
+        const mealTypeName = mealType.charAt(0).toUpperCase() + mealType.slice(1).toLowerCase()
+        return `
+        <div class="form-row" style="margin-top: 5px;">
+          <span class="form-label">${mealTypeName} Members:</span>
+          <span class="form-value" style="font-weight: 600;">${persons}</span>
+        </div>
+        `
+      }).join('') : ''}
     </div>
 
     <!-- Meal Details -->

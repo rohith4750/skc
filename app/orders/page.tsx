@@ -517,9 +517,10 @@ export default function OrdersPage() {
     let mealTypesTotal = 0
     formData.mealTypes.forEach(mealType => {
       if (mealType.pricingMethod === 'plate-based') {
-        const plates = parseFloat(mealType.numberOfPlates) || 0
+        // Use numberOfMembers as the plate count for plate-based pricing
+        const members = parseFloat(mealType.numberOfMembers) || 0
         const price = parseFloat(mealType.platePrice) || 0
-        mealTypesTotal += plates * price
+        mealTypesTotal += members * price
       } else {
         mealTypesTotal += parseFloat(mealType.manualAmount) || 0
       }
@@ -997,37 +998,30 @@ export default function OrdersPage() {
                             </div>
 
                             {mealType.pricingMethod === 'plate-based' ? (
-                              <div className="grid grid-cols-2 gap-4">
-                                <div>
-                                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                                    Number of Plates *
-                                  </label>
-                                  <input
-                                    type="number"
-                                    step="1"
-                                    min="1"
-                                    required
-                                    value={mealType.numberOfPlates}
-                                    onChange={(e: any) => handleUpdateMealType(mealType.id, 'numberOfPlates', e.target.value)}
-                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-                                    placeholder="0"
-                                  />
-                                </div>
-                                <div>
-                                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                                    Price Per Plate *
-                                  </label>
-                                  <input
-                                    type="number"
-                                    step="0.01"
-                                    min="0"
-                                    required
-                                    value={mealType.platePrice}
-                                    onChange={(e: any) => handleUpdateMealType(mealType.id, 'platePrice', e.target.value)}
-                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-                                    placeholder="0.00"
-                                  />
-                                </div>
+                              <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">
+                                  Per Plate Amount *
+                                </label>
+                                <input
+                                  type="number"
+                                  step="0.01"
+                                  min="0"
+                                  required
+                                  value={mealType.platePrice}
+                                  onChange={(e: any) => handleUpdateMealType(mealType.id, 'platePrice', e.target.value)}
+                                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                                  placeholder="0.00"
+                                />
+                                {mealType.numberOfMembers && parseFloat(mealType.platePrice) > 0 && (
+                                  <p className="text-sm text-green-600 mt-2 font-medium">
+                                    Total: {mealType.numberOfMembers} members × ₹{parseFloat(mealType.platePrice).toFixed(2)} = ₹{(parseFloat(mealType.numberOfMembers) * parseFloat(mealType.platePrice)).toFixed(2)}
+                                  </p>
+                                )}
+                                {!mealType.numberOfMembers && (
+                                  <p className="text-xs text-orange-500 mt-1">
+                                    ⚠ Enter Number of Members above to calculate total
+                                  </p>
+                                )}
                               </div>
                             ) : (
                               <div>
