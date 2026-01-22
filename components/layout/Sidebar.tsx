@@ -20,7 +20,8 @@ import {
   FaUserCircle,
   FaChartLine,
   FaFileInvoice,
-  FaClipboardList
+  FaClipboardList,
+  FaBell
 } from 'react-icons/fa'
 import { isSuperAdmin, getUserRole } from '@/lib/auth'
 
@@ -28,6 +29,7 @@ import { isSuperAdmin, getUserRole } from '@/lib/auth'
 const menuItems = [
   // 1. Core Business Operations - Order Management Flow
   { href: '/', icon: FaHome, label: 'Dashboard', section: 'core' },
+  { href: '/alerts', icon: FaBell, label: 'Alerts', section: 'core' },
   { href: '/customers', icon: FaUsers, label: 'Customers', section: 'core' },
   { href: '/menu', icon: FaUtensils, label: 'Menu', section: 'core' },
   { href: '/orders', icon: FaShoppingCart, label: 'Create Order', section: 'core' },
