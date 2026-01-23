@@ -49,8 +49,8 @@ export async function GET(request: NextRequest) {
       const unpaidBills = await prisma.bill.findMany({
         where: {
           OR: [
-            { paymentStatus: 'pending' },
-            { paymentStatus: 'partial' }
+            { status: 'pending' },
+            { status: 'partial' }
           ]
         },
         include: {
@@ -80,7 +80,8 @@ export async function GET(request: NextRequest) {
           createdAt: bill.createdAt.toISOString(),
           data: {
             customerName: bill.order?.customer?.name,
-            billNumber: bill.billNumber,
+            billId: bill.id,
+            orderId: bill.orderId,
             totalAmount: bill.totalAmount,
             paidAmount: bill.paidAmount || 0,
             pendingAmount,
