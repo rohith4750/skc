@@ -135,6 +135,108 @@ This structure helps track enquiries domain-wise.
 - On submit, sends POST request to skccaterers.in API
 - Displays success or error message to user
 
+### ReactJS Integration (skconline.in repo)
+
+Follow these steps in your React app (Vite/CRA/Next.js client component) to avoid frontend issues.
+
+#### 1) Define the API URL (recommended)
+
+Set a single source of truth so you can change it later without editing code.
+
+```
+VITE_ENQUIRY_API_URL=https://www.skccaterers.in/api/enquiry
+```
+
+If you are not using Vite, define a similar env variable (e.g. `REACT_APP_ENQUIRY_API_URL`).
+
+#### 2) Create a small API helper
+
+```jsx
+export const submitEnquiry = async payload => {
+  const response = await fetch(import.meta.env.VITE_ENQUIRY_API_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  })
+
+  const data = await response.json().catch(() => ({}))
+  if (!response.ok) {
+    throw new Error(data?.error || 'Enquiry submission failed')
+  }
+  return data
+}
+```
+
+#### 3) Use it in the form
+
+```jsx
+import { useState } from 'react'
+import { submitEnquiry } from './api/enquiry'
+
+const EnquiryForm = () => {
+  const [form, setForm] = useState({
+    name: '',
+    phone: '',
+    email: '',
+    subject: '',
+    message: '',
+  })
+  const [status, setStatus] = useState({ type: '', message: '' })
+  const [loading, setLoading] = useState(false)
+
+  const handleChange = e => {
+    const { name, value } = e.target
+    setForm(prev => ({ ...prev, [name]: value }))
+  }
+
+  const handleSubmit = async e => {
+    e.preventDefault()
+    setLoading(true)
+    setStatus({ type: '', message: '' })
+
+    try {
+      await submitEnquiry({ ...form, source: 'skconline.in' })
+      setStatus({ type: 'success', message: 'Enquiry submitted successfully.' })
+      setForm({ name: '', phone: '', email: '', subject: '', message: '' })
+    } catch (error) {
+      setStatus({ type: 'error', message: error.message || 'Something went wrong.' })
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  return (
+    <form onSubmit={handleSubmit} style={{ maxWidth: 520 }}>
+      <input name="name" value={form.name} onChange={handleChange} placeholder="Name" required />
+      <input name="phone" value={form.phone} onChange={handleChange} placeholder="Phone" required />
+      <input name="email" value={form.email} onChange={handleChange} placeholder="Email" required />
+      <input name="subject" value={form.subject} onChange={handleChange} placeholder="Subject" required />
+      <textarea name="message" value={form.message} onChange={handleChange} placeholder="Message" required />
+
+      <button type="submit" disabled={loading}>
+        {loading ? 'Sending...' : 'Send Enquiry'}
+      </button>
+
+      {status.message && (
+        <p style={{ color: status.type === 'success' ? 'green' : 'red' }}>
+          {status.message}
+        </p>
+      )}
+    </form>
+  )
+}
+
+export default EnquiryForm
+```
+
+#### 4) Frontend safety checklist
+
+- Always send all fields: `name`, `phone`, `email`, `subject`, `message`.
+- Keep values as **non-empty strings**; the API validates them.
+- Use HTTPS only and set `Content-Type: application/json`.
+- Do not block the UI; show a loading state to prevent double submission.
+- The backend already allows CORS for `https://www.skconline.in`.
+
 ---
 
 ## 10. Notifications (Optional Enhancements)

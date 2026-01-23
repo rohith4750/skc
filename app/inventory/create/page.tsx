@@ -30,7 +30,7 @@ interface InventoryItem {
 export default function CreateInventoryPage() {
   const router = useRouter()
   const searchParams = useSearchParams()
-  const inventoryId = searchParams.get('id')
+  const inventoryId = searchParams?.get('id') ?? null
 
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)

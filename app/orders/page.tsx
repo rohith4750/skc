@@ -13,7 +13,7 @@ import FormError from '@/components/FormError'
 export default function OrdersPage() {
   const searchParams = useSearchParams()
   const router = useRouter()
-  const editOrderId = searchParams.get('edit')
+  const editOrderId = searchParams?.get('edit') ?? null
   const isEditMode = !!editOrderId
   const financialLink = editOrderId ? `/orders/financial/${editOrderId}` : '/orders/financial'
 
