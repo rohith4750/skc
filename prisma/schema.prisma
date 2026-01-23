@@ -24,6 +24,19 @@ model Customer {
   @@map("customers")
 }
 
+model Enquiry {
+  id        String   @id @default(uuid())
+  name      String
+  phone     String
+  email     String
+  subject   String
+  message   String
+  source    String
+  createdAt DateTime @default(now())
+
+  @@map("enquiries")
+}
+
 model MenuItem {
   id              String  @id @default(uuid())
   name            String
