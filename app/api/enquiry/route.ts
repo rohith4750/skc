@@ -53,6 +53,38 @@ const parseBody = async (req: Request) => {
   }
 }
 
+export async function GET() {
+  try {
+    const enquiries = await (prisma as any).enquiry.findMany({
+      orderBy: { createdAt: 'desc' },
+      select: {
+        id: true,
+        name: true,
+        phone: true,
+        email: true,
+        subject: true,
+        message: true,
+        source: true,
+        createdAt: true,
+      },
+    }) as {
+      id: string
+      name: string
+      phone: string
+      email: string
+      subject: string
+      message: string
+      source: string
+      createdAt: Date
+    }[]
+
+    return NextResponse.json(enquiries)
+  } catch (error) {
+    console.error('Error fetching enquiries:', error)
+    return NextResponse.json({ error: 'Failed to fetch enquiries' }, { status: 500 })
+  }
+}
+
 export async function OPTIONS(req: Request) {
   const origin = req.headers.get('origin')
   const corsHeaders = buildCorsHeaders(origin)

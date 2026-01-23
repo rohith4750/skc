@@ -22,7 +22,8 @@ import {
   FaChartLine,
   FaFileInvoice,
   FaClipboardList,
-  FaBell
+  FaBell,
+  FaEnvelope
 } from 'react-icons/fa'
 import { isSuperAdmin, getUserRole } from '@/lib/auth'
 
@@ -53,6 +54,7 @@ const menuItems = [
   // 5. System Administration
   { href: '/users', icon: FaUserShield, label: 'User Management', requiredRole: 'super_admin', section: 'system' },
   { href: '/audit-logs', icon: FaClipboardList, label: 'Login Audit Logs', requiredRole: 'super_admin', section: 'system' },
+  { href: '/enquiries', icon: FaEnvelope, label: 'Enquiries', requiredRole: 'super_admin', section: 'system' },
   
   // 6. Profile
   { href: '/profile', icon: FaUserCircle, label: 'Profile', section: 'profile' },
