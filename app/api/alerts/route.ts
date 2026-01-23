@@ -5,11 +5,6 @@ export async function GET(request: NextRequest) {
   try {
     const alerts: any[] = []
     const now = new Date()
-    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
-    const tomorrow = new Date(today)
-    tomorrow.setDate(tomorrow.getDate() + 1)
-    const dayAfterTomorrow = new Date(today)
-    dayAfterTomorrow.setDate(dayAfterTomorrow.getDate() + 2)
 
     // 1. LOW STOCK WARNINGS
     try {
@@ -94,54 +89,7 @@ export async function GET(request: NextRequest) {
       console.log('Could not fetch payment alerts:', e)
     }
 
-    // 3. UPCOMING EVENT ALERTS
-    try {
-      const upcomingOrders = await prisma.order.findMany({
-        where: {
-          eventDate: {
-            gte: today,
-            lt: dayAfterTomorrow
-          },
-          status: {
-            not: 'cancelled'
-          }
-        },
-        include: {
-          customer: true
-        },
-        orderBy: { eventDate: 'asc' }
-      })
-
-      upcomingOrders.forEach(order => {
-        const eventDate = new Date(order.eventDate)
-        const isToday = eventDate >= today && eventDate < tomorrow
-        const severity = isToday ? 'critical' : 'high'
-        
-        alerts.push({
-          id: `event-${order.id}`,
-          type: 'upcoming_event',
-          title: isToday ? '🔔 Event TODAY!' : '📅 Event Tomorrow',
-          message: `${order.eventName} - ${order.customer?.name || 'Unknown'} (${order.numberOfMembers} guests)`,
-          severity,
-          entityId: order.id,
-          entityType: 'order',
-          createdAt: now.toISOString(),
-          data: {
-            eventName: order.eventName,
-            customerName: order.customer?.name,
-            eventDate: order.eventDate,
-            numberOfMembers: order.numberOfMembers,
-            venue: order.venue,
-            eventType: order.eventType,
-            isToday
-          }
-        })
-      })
-    } catch (e) {
-      console.log('Could not fetch event alerts:', e)
-    }
-
-    // 4. FAILED LOGIN ATTEMPTS (Last 24 hours)
+    // 3. FAILED LOGIN ATTEMPTS (Last 24 hours)
     try {
       const yesterday = new Date(now)
       yesterday.setDate(yesterday.getDate() - 1)
@@ -213,7 +161,6 @@ export async function GET(request: NextRequest) {
       byType: {
         low_stock: alerts.filter(a => a.type === 'low_stock').length,
         payment_reminder: alerts.filter(a => a.type === 'payment_reminder').length,
-        upcoming_event: alerts.filter(a => a.type === 'upcoming_event').length,
         failed_login: alerts.filter(a => a.type === 'failed_login').length,
       }
     }
