@@ -22,6 +22,7 @@ const buildCorsHeaders = (origin: string | null) => {
     'Access-Control-Allow-Headers': allowedHeaders,
     'Access-Control-Max-Age': '86400',
     Vary: 'Origin',
+    'X-Cors-Debug': 'app-route',
   }
 }
 
