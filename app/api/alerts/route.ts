@@ -13,25 +13,21 @@ export async function GET(request: NextRequest) {
 
     // 1. LOW STOCK WARNINGS
     try {
-      const lowStockItems = await prisma.inventory.findMany({
-        where: {
-          quantity: {
-            lte: prisma.inventory.fields.minQuantity
-          }
-        }
+      // Get all inventory and filter by minQuantity threshold
+      const allInventory = await prisma.inventory.findMany()
+      const lowStock = allInventory.filter(item => {
+        const minQty = item.minQuantity ?? 10 // Default threshold: 10 if not set
+        return item.quantity <= minQty
       })
       
-      // Fallback: Get all inventory and filter manually
-      const allInventory = await prisma.inventory.findMany()
-      const lowStock = allInventory.filter(item => item.quantity <= (item.minQuantity || 10))
-      
       lowStock.forEach(item => {
+        const minQty = item.minQuantity ?? 10 // Default threshold: 10 if not set
         const severity = item.quantity === 0 ? 'critical' : item.quantity <= 5 ? 'high' : 'medium'
         alerts.push({
           id: `stock-${item.id}`,
           type: 'low_stock',
           title: item.quantity === 0 ? 'Out of Stock!' : 'Low Stock Warning',
-          message: `${item.name}: ${item.quantity} ${item.unit} remaining (Min: ${item.minQuantity || 10})`,
+          message: `${item.name}: ${item.quantity} ${item.unit} remaining (Min: ${minQty})`,
           severity,
           entityId: item.id,
           entityType: 'inventory',
@@ -39,7 +35,7 @@ export async function GET(request: NextRequest) {
           data: {
             itemName: item.name,
             currentQty: item.quantity,
-            minQty: item.minQuantity || 10,
+            minQty: minQty,
             unit: item.unit
           }
         })

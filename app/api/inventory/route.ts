@@ -31,6 +31,9 @@ export async function POST(request: NextRequest) {
     if (data.quantity !== undefined && !isNonNegativeNumber(parseFloat(data.quantity))) {
       return NextResponse.json({ error: 'Quantity must be a valid number' }, { status: 400 })
     }
+    if (data.minQuantity !== undefined && data.minQuantity !== null && !isNonNegativeNumber(parseFloat(data.minQuantity))) {
+      return NextResponse.json({ error: 'Min quantity must be a valid number' }, { status: 400 })
+    }
     if (data.purchasePrice !== undefined && data.purchasePrice !== null && !isNonNegativeNumber(parseFloat(data.purchasePrice))) {
       return NextResponse.json({ error: 'Purchase price must be a valid number' }, { status: 400 })
     }
@@ -59,6 +62,7 @@ export async function POST(request: NextRequest) {
         name: data.name,
         category: data.category,
         quantity: data.quantity || 0,
+        minQuantity: data.minQuantity || null,
         unit: data.unit,
         condition: data.condition || 'good',
         location: data.location || null,
