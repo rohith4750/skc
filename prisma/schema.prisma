@@ -21,9 +21,19 @@ enum OrderSource {
 }
 
 model CustomerUser {
-  id         String @id @default(uuid())
-  customerId String @unique
-  phone      String @unique
+  id               String    @id @default(uuid())
+  customerId       String    @unique
+  customer         Customer  @relation(fields: [customerId], references: [id])
+  phone            String    @unique
+  email            String    @unique
+  username         String    @unique
+  passwordHash     String
+  resetToken       String?
+  resetTokenExpiry DateTime?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  @@map("customer_users")
 }
 
 model CustomerOtp {
@@ -66,6 +76,7 @@ model Customer {
   updatedAt DateTime          @updatedAt
   orders    Order[]
   sessions  CustomerSession[]
+  user      CustomerUser?
 
   @@map("customers")
 }
