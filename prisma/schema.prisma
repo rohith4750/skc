@@ -10,16 +10,62 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+enum OrderType {
+  EVENT
+  LUNCH_PACK
+}
+
+enum OrderSource {
+  ADMIN
+  CUSTOMER
+}
+
+model CustomerUser {
+  id         String @id @default(uuid())
+  customerId String @unique
+  phone      String @unique
+}
+
+model CustomerOtp {
+  id         String   @id @default(uuid())
+  phone      String
+  code       String
+  source     String?
+  expiresAt  DateTime
+  verifiedAt DateTime?
+  attempts   Int      @default(0)
+  createdAt  DateTime @default(now())
+
+  @@index([phone, code])
+  @@index([phone, createdAt])
+  @@map("customer_otps")
+}
+
+model CustomerSession {
+  id          String   @id @default(uuid())
+  customerId  String
+  customer    Customer @relation(fields: [customerId], references: [id])
+  token       String   @unique
+  createdAt   DateTime @default(now())
+  expiresAt   DateTime
+  userAgent   String?
+  ipAddress   String?
+  revokedAt   DateTime?
+
+  @@map("customer_sessions")
+}
+
 model Customer {
-  id        String   @id @default(uuid())
+  id        String            @id @default(uuid())
   name      String
   phone     String
   email     String
   address   String
   message   String?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt DateTime          @default(now())
+  updatedAt DateTime          @updatedAt
   orders    Order[]
+  sessions  CustomerSession[]
 
   @@map("customers")
 }
@@ -69,6 +115,8 @@ model Order {
   supervisorId    String?
   supervisor      Supervisor? @relation(fields: [supervisorId], references: [id])
   items           OrderItem[]
+  orderType       OrderType?   @default(EVENT)
+  orderSource     OrderSource? @default(ADMIN)
   totalAmount     Float
   advancePaid     Float     @default(0)
   remainingAmount Float
@@ -78,6 +126,20 @@ model Order {
   transportCost   Float     @default(0)
   discount        Float     @default(0)
   eventName       String?
+  eventType       String?
+  eventDate       DateTime?
+  timeSlot        String?
+  venueType       String?
+  venue           String?
+  venueAddress    String?
+  city            String?
+  menuPackage     String?
+  specialRequests String?
+  internalNote    String?
+  sourceDomain    String?
+  customerContactName  String?
+  customerContactEmail String?
+  customerContactPhone String?
   services        Json?
   numberOfMembers Int?
   createdAt       DateTime  @default(now())

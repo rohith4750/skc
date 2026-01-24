@@ -28,11 +28,27 @@ export interface Order {
   customerId: string
   customer?: Customer
   items: OrderItem[]
+  orderType?: 'EVENT' | 'LUNCH_PACK'
+  orderSource?: 'ADMIN' | 'CUSTOMER'
   totalAmount: number
   advancePaid: number
   remainingAmount: number
   status: 'pending' | 'in-progress' | 'completed' | 'cancelled'
   eventName?: string | null
+  eventType?: string | null
+  eventDate?: string | null
+  timeSlot?: string | null
+  venueType?: string | null
+  venue?: string | null
+  venueAddress?: string | null
+  city?: string | null
+  menuPackage?: string | null
+  specialRequests?: string | null
+  internalNote?: string | null
+  sourceDomain?: string | null
+  customerContactName?: string | null
+  customerContactEmail?: string | null
+  customerContactPhone?: string | null
   discount?: number
   services?: string[] | null
   mealTypeAmounts?: Record<string, {
