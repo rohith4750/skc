@@ -8,6 +8,8 @@ const allowedOrigins = new Set([
   'https://skconline.in',
   'https://www.skccaterers.in',
   'https://skccaterers.in',
+  'http://localhost:5173',
+  'http://127.0.0.1:5173',
 ])
 
 const allowedMethods = 'POST, OPTIONS'
@@ -91,7 +93,7 @@ export async function POST(req: NextRequest) {
 
   try {
     // Find a matching, unexpired OTP
-    const existingOtp = await prisma.customerOtp.findFirst({
+    const existingOtp = await (prisma as any).customerOtp.findFirst({
       where: {
         phone: contact,
         code: otp,
@@ -102,13 +104,13 @@ export async function POST(req: NextRequest) {
 
     if (!existingOtp) {
       // Increment attempts for the latest OTP on this phone (if any), but do not leak details to client
-      const latestForPhone = await prisma.customerOtp.findFirst({
+      const latestForPhone = await (prisma as any).customerOtp.findFirst({
         where: { phone: contact },
         orderBy: { createdAt: 'desc' },
       })
 
       if (latestForPhone) {
-        await prisma.customerOtp.update({
+        await (prisma as any).customerOtp.update({
           where: { id: latestForPhone.id },
           data: { attempts: latestForPhone.attempts + 1 },
         })
@@ -121,7 +123,7 @@ export async function POST(req: NextRequest) {
     }
 
     // Mark OTP as verified
-    await prisma.customerOtp.update({
+    await (prisma as any).customerOtp.update({
       where: { id: existingOtp.id },
       data: {
         verifiedAt: now,
@@ -160,7 +162,7 @@ export async function POST(req: NextRequest) {
     const realIp = req.headers.get('x-real-ip')
     const ipAddress = (forwardedFor?.split(',')[0] || realIp || undefined) as string | undefined
 
-    await prisma.customerSession.create({
+    await (prisma as any).customerSession.create({
       data: {
         customerId: customer.id,
         token,

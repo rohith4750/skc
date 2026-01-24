@@ -7,6 +7,8 @@ const allowedOrigins = new Set([
   'https://skconline.in',
   'https://www.skccaterers.in',
   'https://skccaterers.in',
+  'http://localhost:5173',
+  'http://127.0.0.1:5173',
 ])
 
 const allowedMethods = 'POST, OPTIONS'

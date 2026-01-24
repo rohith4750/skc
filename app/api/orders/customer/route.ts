@@ -7,6 +7,8 @@ const allowedOrigins = new Set([
   'https://skconline.in',
   'https://www.skccaterers.in',
   'https://skccaterers.in',
+  'http://localhost:5173',
+  'http://127.0.0.1:5173',
 ])
 
 const allowedMethods = 'POST, OPTIONS'
@@ -50,7 +52,7 @@ const getAuthenticatedCustomer = async (request: NextRequest) => {
   if (!token) return null
 
   const now = new Date()
-  const session = await prisma.customerSession.findUnique({
+  const session = await (prisma as any).customerSession.findUnique({
     where: { token },
     include: { customer: true },
   })
@@ -222,10 +224,9 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    const order = await prisma.order.create({
+    const order = await (prisma as any).order.create({
       data: {
         customerId,
-        orderType: 'EVENT',
         orderSource: orderSource === 'ADMIN' ? 'ADMIN' : 'CUSTOMER',
         totalAmount: 0,
         advancePaid: 0,
@@ -251,7 +252,7 @@ export async function POST(request: NextRequest) {
       include: {
         customer: true,
       },
-    })
+    }) as any
 
     return NextResponse.json(
       {

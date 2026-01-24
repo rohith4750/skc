@@ -6,6 +6,8 @@ const allowedOrigins = new Set([
   'https://skconline.in',
   'https://www.skccaterers.in',
   'https://skccaterers.in',
+  'http://localhost:5173',
+  'http://127.0.0.1:5173',
 ])
 
 const allowedMethods = 'GET, OPTIONS'
@@ -41,7 +43,7 @@ const getAuthenticatedCustomer = async (request: NextRequest) => {
   if (!token) return null
 
   const now = new Date()
-  const session = await prisma.customerSession.findUnique({
+  const session = await (prisma as any).customerSession.findUnique({
     where: { token },
     include: { customer: true },
   })
@@ -88,7 +90,7 @@ export async function GET(request: NextRequest) {
       orderBy: { createdAt: 'desc' },
     })
 
-    const mapped = orders.map((order) => ({
+    const mapped = orders.map((order: any) => ({
       id: order.id,
       eventType: order.eventType,
       eventDate: order.eventDate ? order.eventDate.toISOString().split('T')[0] : null,
