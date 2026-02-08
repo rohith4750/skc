@@ -29,7 +29,7 @@ interface StockItem {
 export default function CreateStockPage() {
   const router = useRouter()
   const searchParams = useSearchParams()
-  const stockId = searchParams.get('id')
+  const stockId = searchParams?.get('id') ?? null
 
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)

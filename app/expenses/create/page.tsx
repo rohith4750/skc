@@ -39,7 +39,7 @@ interface WorkforceMember {
 export default function CreateExpensePage() {
   const router = useRouter()
   const searchParams = useSearchParams()
-  const expenseId = searchParams.get('id')
+  const expenseId = searchParams?.get('id') ?? null
 
   const [orders, setOrders] = useState<Order[]>([])
   const [workforce, setWorkforce] = useState<WorkforceMember[]>([])

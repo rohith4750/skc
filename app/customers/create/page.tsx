@@ -21,7 +21,7 @@ interface Customer {
 export default function CreateCustomerPage() {
   const router = useRouter()
   const searchParams = useSearchParams()
-  const customerId = searchParams.get('id')
+  const customerId = searchParams?.get('id') ?? null
 
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)

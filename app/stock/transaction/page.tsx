@@ -25,8 +25,8 @@ interface StockItem {
 export default function StockTransactionPage() {
   const router = useRouter()
   const searchParams = useSearchParams()
-  const stockId = searchParams.get('id')
-  const transactionType = searchParams.get('type') || 'in'
+  const stockId = searchParams?.get('id') ?? null
+  const transactionType = searchParams?.get('type') || 'in'
 
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)

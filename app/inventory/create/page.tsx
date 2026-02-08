@@ -14,6 +14,7 @@ interface InventoryItem {
   name: string
   category: string
   quantity: number
+  minQuantity?: number | null
   unit: string
   condition: string
   location?: string | null
@@ -29,7 +30,7 @@ interface InventoryItem {
 export default function CreateInventoryPage() {
   const router = useRouter()
   const searchParams = useSearchParams()
-  const inventoryId = searchParams.get('id')
+  const inventoryId = searchParams?.get('id') ?? null
 
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
@@ -38,6 +39,7 @@ export default function CreateInventoryPage() {
     name: '',
     category: 'glasses',
     quantity: '',
+    minQuantity: '',
     unit: 'pieces',
     condition: 'good',
     location: '',
@@ -68,6 +70,7 @@ export default function CreateInventoryPage() {
         name: data.name,
         category: data.category,
         quantity: data.quantity.toString(),
+        minQuantity: data.minQuantity?.toString() || '',
         unit: data.unit,
         condition: data.condition,
         location: data.location || '',
@@ -103,6 +106,7 @@ export default function CreateInventoryPage() {
         name: formData.name,
         category: formData.category,
         quantity: parseInt(formData.quantity) || 0,
+        minQuantity: formData.minQuantity ? parseInt(formData.minQuantity) : null,
         unit: formData.unit,
         condition: formData.condition,
         location: formData.location || null,
@@ -196,7 +200,7 @@ export default function CreateInventoryPage() {
               </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-2">
                   Quantity *
@@ -209,6 +213,21 @@ export default function CreateInventoryPage() {
                   onChange={(e) => setFormData({ ...formData, quantity: e.target.value })}
                   className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
                   placeholder="0"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                  Min Quantity
+                </label>
+                <input
+                  type="number"
+                  step="1"
+                  value={formData.minQuantity}
+                  onChange={(e) => setFormData({ ...formData, minQuantity: e.target.value })}
+                  className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                  placeholder="10"
+                  title="Minimum quantity threshold for low stock alerts"
                 />
               </div>
 

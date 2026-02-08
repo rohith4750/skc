@@ -10,6 +10,7 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+
 enum OrderStatus {
   pending
   in_progress
@@ -40,18 +41,88 @@ enum InventoryCondition {
   repair
 }
 
+enum OrderType {
+  EVENT
+  LUNCH_PACK
+}
+
+enum OrderSource {
+  ADMIN
+  CUSTOMER
+}
+
+model CustomerUser {
+  id               String    @id @default(uuid())
+  customerId       String    @unique
+  customer         Customer  @relation(fields: [customerId], references: [id])
+  phone            String    @unique
+  email            String    @unique
+  username         String    @unique
+  passwordHash     String
+  resetToken       String?
+  resetTokenExpiry DateTime?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  @@map("customer_users")
+}
+
+model CustomerOtp {
+  id         String   @id @default(uuid())
+  phone      String
+  code       String
+  source     String?
+  expiresAt  DateTime
+  verifiedAt DateTime?
+  attempts   Int      @default(0)
+  createdAt  DateTime @default(now())
+
+  @@index([phone, code])
+  @@index([phone, createdAt])
+  @@map("customer_otps")
+}
+
+model CustomerSession {
+  id          String   @id @default(uuid())
+  customerId  String
+  customer    Customer @relation(fields: [customerId], references: [id])
+  token       String   @unique
+  createdAt   DateTime @default(now())
+  expiresAt   DateTime
+  userAgent   String?
+  ipAddress   String?
+  revokedAt   DateTime?
+
+  @@map("customer_sessions")
+}
+
 model Customer {
-  id        String   @id @default(uuid())
+  id        String            @id @default(uuid())
   name      String
   phone     String
   email     String
   address   String
   message   String?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt DateTime          @default(now())
+  updatedAt DateTime          @updatedAt
   orders    Order[]
+  sessions  CustomerSession[]
+  user      CustomerUser?
 
   @@map("customers")
+}
+
+model Enquiry {
+  id        String   @id @default(uuid())
+  name      String
+  phone     String
+  email     String
+  subject   String
+  message   String
+  source    String
+  createdAt DateTime @default(now())
+
+  @@map("enquiries")
 }
 
 model MenuItem {
@@ -86,7 +157,8 @@ model Order {
   supervisorId    String?
   supervisor      Supervisor? @relation(fields: [supervisorId], references: [id], onDelete: SetNull)
   items           OrderItem[]
-
+  orderType       OrderType?   @default(EVENT)
+  orderSource     OrderSource? @default(ADMIN)
   totalAmount     Decimal   @db.Decimal(10, 2)
   advancePaid     Decimal   @default(0) @db.Decimal(10, 2)
   remainingAmount Decimal   @db.Decimal(10, 2)
@@ -96,6 +168,20 @@ model Order {
   transportCost   Decimal   @default(0) @db.Decimal(10, 2)
   discount        Decimal   @default(0) @db.Decimal(10, 2)
   eventName       String?
+  eventType       String?
+  eventDate       DateTime?
+  timeSlot        String?
+  venueType       String?
+  venue           String?
+  venueAddress    String?
+  city            String?
+  menuPackage     String?
+  specialRequests String?
+  internalNote    String?
+  sourceDomain    String?
+  customerContactName  String?
+  customerContactEmail String?
+  customerContactPhone String?
   services        Json?
   numberOfMembers Int?
   createdAt       DateTime  @default(now())
@@ -246,6 +332,7 @@ model Inventory {
   name        String
   category    String            // "glasses", "vessels", "cooking_utensils", "serving_items", "storage", "other"
   quantity    Int               @default(0)
+  minQuantity Int?              // Minimum quantity level for alerts
   unit        String            // "pieces", "sets", "units"
   condition   InventoryCondition @default(good) // "good", "fair", "damaged", "repair"
   location    String?           // Storage location

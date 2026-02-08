@@ -19,7 +19,7 @@ interface WorkforceMember {
 export default function CreateWorkforcePage() {
   const router = useRouter()
   const searchParams = useSearchParams()
-  const workforceId = searchParams.get('id')
+  const workforceId = searchParams?.get('id') ?? null
   const isEditMode = !!workforceId
 
   const [loading, setLoading] = useState(true)

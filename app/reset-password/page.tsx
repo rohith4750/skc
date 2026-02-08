@@ -10,7 +10,7 @@ import FormError from '@/components/FormError'
 export default function ResetPasswordPage() {
   const router = useRouter()
   const searchParams = useSearchParams()
-  const emailFromQuery = searchParams.get('email') || ''
+  const emailFromQuery = searchParams?.get('email') || ''
 
   const [formData, setFormData] = useState({
     email: emailFromQuery,

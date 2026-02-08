@@ -5,11 +5,6 @@ export async function GET(request: NextRequest) {
   try {
     const alerts: any[] = []
     const now = new Date()
-    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
-    const tomorrow = new Date(today)
-    tomorrow.setDate(tomorrow.getDate() + 1)
-    const dayAfterTomorrow = new Date(today)
-    dayAfterTomorrow.setDate(dayAfterTomorrow.getDate() + 2)
 
     // 1. LOW STOCK WARNINGS (Using Stock model which has minStock)
     try {
@@ -17,7 +12,7 @@ export async function GET(request: NextRequest) {
         where: { isActive: true }
       })
       const lowStock = allStock.filter(item => item.minStock && item.currentStock <= item.minStock)
-      
+
       lowStock.forEach(item => {
         const severity = item.currentStock === 0 ? 'critical' : item.currentStock <= (item.minStock || 0) / 2 ? 'high' : 'medium'
         alerts.push({
@@ -42,20 +37,25 @@ export async function GET(request: NextRequest) {
       console.log('Could not fetch stock alerts:', e)
     }
 
-    // Also check Inventory items (using a default threshold since no minQuantity exists)
+    // Also check Inventory items
     try {
+      // Get all inventory and filter by minQuantity threshold
       const allInventory = await prisma.inventory.findMany({
         where: { isActive: true }
       })
-      const lowInventory = allInventory.filter(item => item.quantity <= 5) // Default threshold of 5
-      
+      const lowInventory = allInventory.filter(item => {
+        const minQty = item.minQuantity ?? 10 // Default threshold: 10 if not set
+        return item.quantity <= minQty
+      })
+
       lowInventory.forEach(item => {
-        const severity = item.quantity === 0 ? 'critical' : item.quantity <= 2 ? 'high' : 'medium'
+        const minQty = item.minQuantity ?? 10 // Default threshold: 10 if not set
+        const severity = item.quantity === 0 ? 'critical' : item.quantity <= 5 ? 'high' : 'medium'
         alerts.push({
           id: `inventory-${item.id}`,
           type: 'low_stock',
           title: item.quantity === 0 ? 'Out of Stock!' : 'Low Inventory Warning',
-          message: `${item.name}: ${item.quantity} ${item.unit} remaining`,
+          message: `${item.name}: ${item.quantity} ${item.unit} remaining (Min: ${minQty})`,
           severity,
           entityId: item.id,
           entityType: 'inventory',
@@ -63,7 +63,7 @@ export async function GET(request: NextRequest) {
           data: {
             itemName: item.name,
             currentQty: item.quantity,
-            minQty: 5,
+            minQty: minQty,
             unit: item.unit,
             category: item.category
           }
@@ -94,10 +94,10 @@ export async function GET(request: NextRequest) {
       })
 
       unpaidBills.forEach(bill => {
-        const pendingAmount = bill.totalAmount - (bill.paidAmount || 0)
+        const pendingAmount = Number(bill.totalAmount) - Number(bill.paidAmount || 0)
         const daysSinceCreated = Math.floor((now.getTime() - new Date(bill.createdAt).getTime()) / (1000 * 60 * 60 * 24))
         const severity = daysSinceCreated > 30 ? 'critical' : daysSinceCreated > 14 ? 'high' : daysSinceCreated > 7 ? 'medium' : 'low'
-        
+
         alerts.push({
           id: `payment-${bill.id}`,
           type: 'payment_reminder',
@@ -109,6 +109,7 @@ export async function GET(request: NextRequest) {
           createdAt: bill.createdAt.toISOString(),
           data: {
             customerName: bill.order?.customer?.name,
+            billId: bill.id,
             orderId: bill.orderId,
             totalAmount: bill.totalAmount,
             paidAmount: bill.paidAmount || 0,
@@ -125,13 +126,13 @@ export async function GET(request: NextRequest) {
     // 3. UPCOMING EVENT ALERTS (Based on recent pending orders)
     try {
       // Get pending/confirmed orders from last 30 days (since there's no eventDate field)
-      const thirtyDaysAgo = new Date(today)
+      const thirtyDaysAgo = new Date(now)
       thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30)
-      
+
       const recentOrders = await prisma.order.findMany({
         where: {
           status: {
-            in: ['pending', 'confirmed']
+            in: ['pending', 'in_progress'] // Updated to use Enum values if possible, or string mapping
           },
           createdAt: {
             gte: thirtyDaysAgo
@@ -147,7 +148,7 @@ export async function GET(request: NextRequest) {
       recentOrders.forEach(order => {
         const daysSinceCreated = Math.floor((now.getTime() - new Date(order.createdAt).getTime()) / (1000 * 60 * 60 * 24))
         const severity = daysSinceCreated <= 1 ? 'critical' : daysSinceCreated <= 3 ? 'high' : 'medium'
-        
+
         alerts.push({
           id: `event-${order.id}`,
           type: 'upcoming_event',
@@ -175,7 +176,7 @@ export async function GET(request: NextRequest) {
     try {
       const yesterday = new Date(now)
       yesterday.setDate(yesterday.getDate() - 1)
-      
+
       const failedLogins = await (prisma as any).loginAuditLog.findMany({
         where: {
           success: false,
@@ -199,7 +200,7 @@ export async function GET(request: NextRequest) {
       Object.entries(failuresByUser).forEach(([username, failures]) => {
         const severity = failures.length >= 5 ? 'critical' : failures.length >= 3 ? 'high' : 'medium'
         const latestFailure = failures[0]
-        
+
         alerts.push({
           id: `login-fail-${username}-${latestFailure.id}`,
           type: 'failed_login',
@@ -243,7 +244,6 @@ export async function GET(request: NextRequest) {
       byType: {
         low_stock: alerts.filter(a => a.type === 'low_stock').length,
         payment_reminder: alerts.filter(a => a.type === 'payment_reminder').length,
-        upcoming_event: alerts.filter(a => a.type === 'upcoming_event').length,
         failed_login: alerts.filter(a => a.type === 'failed_login').length,
       }
     }
@@ -251,10 +251,10 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ alerts, summary })
   } catch (error: any) {
     console.error('Error fetching alerts:', error)
-    return NextResponse.json({ 
-      alerts: [], 
+    return NextResponse.json({
+      alerts: [],
       summary: { total: 0, critical: 0, high: 0, medium: 0, low: 0, byType: {} },
-      error: 'Failed to fetch alerts' 
+      error: 'Failed to fetch alerts'
     })
   }
 }

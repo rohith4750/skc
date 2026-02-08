@@ -1,9 +1,9 @@
 'use client'
 
 import { useEffect, useState, useMemo } from 'react'
-import { formatCurrency, formatDateTime, formatDate } from '@/lib/utils'
+import { formatCurrency, formatDateTime, formatDate, sendWhatsAppMessage } from '@/lib/utils'
 import { Bill, Order, Customer } from '@/types'
-import { FaPrint, FaCheck, FaEdit, FaFilter, FaChartLine, FaWallet, FaPercent, FaCalendarAlt, FaEnvelope } from 'react-icons/fa'
+import { FaPrint, FaCheck, FaEdit, FaFilter, FaChartLine, FaWallet, FaPercent, FaCalendarAlt, FaEnvelope, FaWhatsapp } from 'react-icons/fa'
 import toast from 'react-hot-toast'
 import { fetchWithLoader } from '@/lib/fetch-with-loader'
 import Table from '@/components/Table'
@@ -161,6 +161,32 @@ export default function BillsPage() {
       console.error('Failed to send bill email:', error)
       toast.error(error.message || 'Failed to send bill email')
     }
+  }
+
+  const handleSendBillWhatsApp = (bill: any) => {
+    const customer = bill.order?.customer
+    const customerPhone = customer?.phone
+    if (!customerPhone) {
+      toast.error('Customer phone number not available')
+      return
+    }
+    const eventName = bill.order?.eventName || 'Catering Event'
+    const total = formatCurrency(bill.totalAmount || 0)
+    const paid = formatCurrency(bill.paidAmount || 0)
+    const remaining = formatCurrency(bill.remainingAmount || 0)
+
+    const message = [
+      'srivatsasa and Koundinya Caterers',
+      'Bill Summary',
+      `Customer: ${customer?.name || 'Unknown'}`,
+      `Event: ${eventName}`,
+      `Total: ${total}`,
+      `Paid: ${paid}`,
+      `Remaining: ${remaining}`,
+      `Bill ID: ${bill.id.slice(0, 8).toUpperCase()}`,
+    ].join('\n')
+
+    sendWhatsAppMessage(customerPhone, message)
   }
 
   const handleGeneratePDF = async (bill: any) => {
@@ -564,6 +590,14 @@ export default function BillsPage() {
               disabled={!bill.order?.customer?.email}
             >
               <FaEnvelope />
+            </button>
+            <button
+              onClick={() => handleSendBillWhatsApp(bill)}
+              className="text-emerald-600 hover:text-emerald-700 p-2 hover:bg-emerald-50 rounded transition-all active:scale-90"
+              title={bill.order?.customer?.phone ? 'Send bill via WhatsApp to customer' : 'Customer phone not available'}
+              disabled={!bill.order?.customer?.phone}
+            >
+              <FaWhatsapp />
             </button>
             <button
               onClick={() => handleGeneratePDF(bill)}
