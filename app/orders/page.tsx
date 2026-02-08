@@ -573,11 +573,11 @@ export default function OrdersPage() {
   const getFilteredMenuItems = (mealTypeId: string, menuType: string) => {
     if (!menuType) return []
 
-    // For lunch or dinner, show ALL active menu items
+    // For lunch or dinner, show all items EXCEPT breakfast
     let filtered = menuItems.filter((m: any) => {
       const itemType = m.type.toLowerCase()
       if (menuType.toLowerCase() === 'lunch' || menuType.toLowerCase() === 'dinner') {
-        return m.isActive !== false // Show all active items
+        return m.isActive !== false && itemType !== 'breakfast' // Exclude breakfast from lunch/dinner
       }
       return itemType === menuType.toLowerCase()
     })
