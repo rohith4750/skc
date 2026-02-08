@@ -10,6 +10,36 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+enum OrderStatus {
+  pending
+  in_progress
+  completed
+  cancelled
+}
+
+enum PaymentStatus {
+  pending
+  partial
+  paid
+}
+
+enum UserRole {
+  admin
+  super_admin
+}
+
+enum StockTransactionType {
+  in
+  out
+}
+
+enum InventoryCondition {
+  good
+  fair
+  damaged
+  repair
+}
+
 model Customer {
   id        String   @id @default(uuid())
   name      String
@@ -52,18 +82,19 @@ model Supervisor {
 model Order {
   id              String    @id @default(uuid())
   customerId      String
-  customer        Customer  @relation(fields: [customerId], references: [id])
+  customer        Customer  @relation(fields: [customerId], references: [id], onDelete: Cascade)
   supervisorId    String?
-  supervisor      Supervisor? @relation(fields: [supervisorId], references: [id])
+  supervisor      Supervisor? @relation(fields: [supervisorId], references: [id], onDelete: SetNull)
   items           OrderItem[]
-  totalAmount     Float
-  advancePaid     Float     @default(0)
-  remainingAmount Float
-  status          String    @default("pending")
+
+  totalAmount     Decimal   @db.Decimal(10, 2)
+  advancePaid     Decimal   @default(0) @db.Decimal(10, 2)
+  remainingAmount Decimal   @db.Decimal(10, 2)
+  status          OrderStatus @default(pending)
   mealTypeAmounts Json?
   stalls          Json?
-  transportCost   Float     @default(0)
-  discount        Float     @default(0)
+  transportCost   Decimal   @default(0) @db.Decimal(10, 2)
+  discount        Decimal   @default(0) @db.Decimal(10, 2)
   eventName       String?
   services        Json?
   numberOfMembers Int?
@@ -91,12 +122,12 @@ model OrderItem {
 model Bill {
   id              String   @id @default(uuid())
   orderId         String   @unique
-  order           Order    @relation(fields: [orderId], references: [id])
-  totalAmount     Float
-  advancePaid     Float    @default(0)
-  remainingAmount Float
-  paidAmount      Float    @default(0)
-  status          String   @default("pending")
+  order           Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  totalAmount     Decimal   @db.Decimal(10, 2)
+  advancePaid     Decimal   @default(0) @db.Decimal(10, 2)
+  remainingAmount Decimal   @db.Decimal(10, 2)
+  paidAmount      Decimal   @default(0) @db.Decimal(10, 2)
+  status          PaymentStatus @default(pending)
   paymentHistory  Json?
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
@@ -110,9 +141,9 @@ model Expense {
   orderId            String?
   order              Order?   @relation(fields: [orderId], references: [id], onDelete: SetNull)
   category           String   // supervisor, chef, labours, boys, transport, gas, pan, store, other
-  amount             Float
-  paidAmount         Float    @default(0) // Actual amount paid (can be less than amount for partial payment)
-  paymentStatus      String   @default("pending") // pending, partial, paid
+  amount             Decimal  @db.Decimal(10, 2)
+  paidAmount         Decimal  @default(0) @db.Decimal(10, 2) // Actual amount paid (can be less than amount for partial payment)
+  paymentStatus      PaymentStatus @default(pending) // pending, partial, paid
   description        String?
   recipient          String?  // Name of person/vendor receiving payment
   paymentDate        DateTime @default(now())
@@ -134,7 +165,7 @@ model User {
   username          String   @unique
   email             String   @unique
   passwordHash      String
-  role              String   @default("admin") // "admin" or "super_admin" only
+  role              UserRole @default(admin) // "admin" or "super_admin" only
   resetToken        String?
   resetTokenExpiry  DateTime?
   isActive          Boolean  @default(true)
@@ -179,10 +210,10 @@ model Stock {
   name        String
   category    String            // "gas", "store", "vegetables", "disposables"
   unit        String            // "kg", "liters", "pieces", "boxes", etc.
-  currentStock Float            @default(0)
-  minStock    Float?            // Minimum stock level for alerts
-  maxStock    Float?            // Maximum stock level
-  price       Float?            // Price per unit (optional)
+  currentStock Decimal          @default(0) @db.Decimal(10, 2)
+  minStock    Decimal?          @db.Decimal(10, 2) // Minimum stock level for alerts
+  maxStock    Decimal?          @db.Decimal(10, 2) // Maximum stock level
+  price       Decimal?          @db.Decimal(10, 2) // Price per unit (optional)
   supplier    String?           // Supplier/vendor name
   location    String?           // Storage location
   description String?
@@ -198,10 +229,10 @@ model StockTransaction {
   id          String   @id @default(uuid())
   stockId     String
   stock       Stock    @relation(fields: [stockId], references: [id], onDelete: Cascade)
-  type        String   // "in" or "out"
-  quantity    Float
-  price       Float?   // Price per unit at time of transaction
-  totalAmount Float?   // Total amount (quantity * price)
+  type        StockTransactionType   // "in" or "out"
+  quantity    Decimal  @db.Decimal(10, 2)
+  price       Decimal? @db.Decimal(10, 2)  // Price per unit at time of transaction
+  totalAmount Decimal? @db.Decimal(10, 2)  // Total amount (quantity * price)
   reference   String?  // Reference number, invoice number, etc.
   notes       String?
   createdAt   DateTime @default(now())
@@ -216,11 +247,11 @@ model Inventory {
   category    String            // "glasses", "vessels", "cooking_utensils", "serving_items", "storage", "other"
   quantity    Int               @default(0)
   unit        String            // "pieces", "sets", "units"
-  condition   String            @default("good") // "good", "fair", "damaged", "repair"
+  condition   InventoryCondition @default(good) // "good", "fair", "damaged", "repair"
   location    String?           // Storage location
   supplier    String?           // Supplier/vendor name
   purchaseDate DateTime?        // Purchase date
-  purchasePrice Float?          // Purchase price
+  purchasePrice Decimal?        @db.Decimal(10, 2) // Purchase price
   description String?
   isActive    Boolean           @default(true)
   createdAt   DateTime          @default(now())

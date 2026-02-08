@@ -11,27 +11,51 @@ export async function GET(request: NextRequest) {
     const dayAfterTomorrow = new Date(today)
     dayAfterTomorrow.setDate(dayAfterTomorrow.getDate() + 2)
 
-    // 1. LOW STOCK WARNINGS
+    // 1. LOW STOCK WARNINGS (Using Stock model which has minStock)
     try {
-      const lowStockItems = await prisma.inventory.findMany({
-        where: {
-          quantity: {
-            lte: prisma.inventory.fields.minQuantity
-          }
-        }
+      const allStock = await prisma.stock.findMany({
+        where: { isActive: true }
       })
-      
-      // Fallback: Get all inventory and filter manually
-      const allInventory = await prisma.inventory.findMany()
-      const lowStock = allInventory.filter(item => item.quantity <= (item.minQuantity || 10))
+      const lowStock = allStock.filter(item => item.minStock && item.currentStock <= item.minStock)
       
       lowStock.forEach(item => {
-        const severity = item.quantity === 0 ? 'critical' : item.quantity <= 5 ? 'high' : 'medium'
+        const severity = item.currentStock === 0 ? 'critical' : item.currentStock <= (item.minStock || 0) / 2 ? 'high' : 'medium'
         alerts.push({
           id: `stock-${item.id}`,
           type: 'low_stock',
-          title: item.quantity === 0 ? 'Out of Stock!' : 'Low Stock Warning',
-          message: `${item.name}: ${item.quantity} ${item.unit} remaining (Min: ${item.minQuantity || 10})`,
+          title: item.currentStock === 0 ? 'Out of Stock!' : 'Low Stock Warning',
+          message: `${item.name}: ${item.currentStock} ${item.unit} remaining (Min: ${item.minStock || 0})`,
+          severity,
+          entityId: item.id,
+          entityType: 'stock',
+          createdAt: now.toISOString(),
+          data: {
+            itemName: item.name,
+            currentQty: item.currentStock,
+            minQty: item.minStock || 0,
+            unit: item.unit,
+            category: item.category
+          }
+        })
+      })
+    } catch (e) {
+      console.log('Could not fetch stock alerts:', e)
+    }
+
+    // Also check Inventory items (using a default threshold since no minQuantity exists)
+    try {
+      const allInventory = await prisma.inventory.findMany({
+        where: { isActive: true }
+      })
+      const lowInventory = allInventory.filter(item => item.quantity <= 5) // Default threshold of 5
+      
+      lowInventory.forEach(item => {
+        const severity = item.quantity === 0 ? 'critical' : item.quantity <= 2 ? 'high' : 'medium'
+        alerts.push({
+          id: `inventory-${item.id}`,
+          type: 'low_stock',
+          title: item.quantity === 0 ? 'Out of Stock!' : 'Low Inventory Warning',
+          message: `${item.name}: ${item.quantity} ${item.unit} remaining`,
           severity,
           entityId: item.id,
           entityType: 'inventory',
@@ -39,8 +63,9 @@ export async function GET(request: NextRequest) {
           data: {
             itemName: item.name,
             currentQty: item.quantity,
-            minQty: item.minQuantity || 10,
-            unit: item.unit
+            minQty: 5,
+            unit: item.unit,
+            category: item.category
           }
         })
       })
@@ -53,8 +78,8 @@ export async function GET(request: NextRequest) {
       const unpaidBills = await prisma.bill.findMany({
         where: {
           OR: [
-            { paymentStatus: 'pending' },
-            { paymentStatus: 'partial' }
+            { status: 'pending' },
+            { status: 'partial' }
           ]
         },
         include: {
@@ -84,7 +109,7 @@ export async function GET(request: NextRequest) {
           createdAt: bill.createdAt.toISOString(),
           data: {
             customerName: bill.order?.customer?.name,
-            billNumber: bill.billNumber,
+            orderId: bill.orderId,
             totalAmount: bill.totalAmount,
             paidAmount: bill.paidAmount || 0,
             pendingAmount,
@@ -97,46 +122,48 @@ export async function GET(request: NextRequest) {
       console.log('Could not fetch payment alerts:', e)
     }
 
-    // 3. UPCOMING EVENT ALERTS
+    // 3. UPCOMING EVENT ALERTS (Based on recent pending orders)
     try {
-      const upcomingOrders = await prisma.order.findMany({
+      // Get pending/confirmed orders from last 30 days (since there's no eventDate field)
+      const thirtyDaysAgo = new Date(today)
+      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30)
+      
+      const recentOrders = await prisma.order.findMany({
         where: {
-          eventDate: {
-            gte: today,
-            lt: dayAfterTomorrow
-          },
           status: {
-            not: 'cancelled'
+            in: ['pending', 'confirmed']
+          },
+          createdAt: {
+            gte: thirtyDaysAgo
           }
         },
         include: {
           customer: true
         },
-        orderBy: { eventDate: 'asc' }
+        orderBy: { createdAt: 'desc' },
+        take: 20
       })
 
-      upcomingOrders.forEach(order => {
-        const eventDate = new Date(order.eventDate)
-        const isToday = eventDate >= today && eventDate < tomorrow
-        const severity = isToday ? 'critical' : 'high'
+      recentOrders.forEach(order => {
+        const daysSinceCreated = Math.floor((now.getTime() - new Date(order.createdAt).getTime()) / (1000 * 60 * 60 * 24))
+        const severity = daysSinceCreated <= 1 ? 'critical' : daysSinceCreated <= 3 ? 'high' : 'medium'
         
         alerts.push({
           id: `event-${order.id}`,
           type: 'upcoming_event',
-          title: isToday ? '🔔 Event TODAY!' : '📅 Event Tomorrow',
-          message: `${order.eventName} - ${order.customer?.name || 'Unknown'} (${order.numberOfMembers} guests)`,
+          title: daysSinceCreated <= 1 ? '🔔 Recent Order!' : '📅 Pending Order',
+          message: `${order.eventName || 'Order'} - ${order.customer?.name || 'Unknown'} (${order.numberOfMembers || 0} guests)`,
           severity,
           entityId: order.id,
           entityType: 'order',
-          createdAt: now.toISOString(),
+          createdAt: order.createdAt.toISOString(),
           data: {
             eventName: order.eventName,
             customerName: order.customer?.name,
-            eventDate: order.eventDate,
+            createdAt: order.createdAt,
             numberOfMembers: order.numberOfMembers,
-            venue: order.venue,
-            eventType: order.eventType,
-            isToday
+            totalAmount: order.totalAmount,
+            status: order.status
           }
         })
       })
@@ -177,7 +204,7 @@ export async function GET(request: NextRequest) {
           id: `login-fail-${username}-${latestFailure.id}`,
           type: 'failed_login',
           title: failures.length >= 5 ? '🚨 Multiple Failed Logins!' : 'Failed Login Attempt',
-          message: `${username}: ${failures.length} failed attempt(s) in last 24h from ${latestFailure.device} (${latestFailure.browser})`,
+          message: `${username}: ${failures.length} failed attempt(s) in last 24h from ${latestFailure.device || 'Unknown'} (${latestFailure.browser || 'Unknown'})`,
           severity,
           entityId: latestFailure.id,
           entityType: 'login_audit',
@@ -231,4 +258,3 @@ export async function GET(request: NextRequest) {
     })
   }
 }
-
