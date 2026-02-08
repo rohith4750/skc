@@ -370,8 +370,8 @@ export default function OrdersPage() {
         toast.error(`Please select at least one menu item for ${mealType.menuType}`)
         return
       }
-      if (mealType.pricingMethod === 'plate-based' && (!mealType.numberOfPlates || !mealType.platePrice)) {
-        toast.error(`Please enter plates and price for ${mealType.menuType}`)
+      if (mealType.pricingMethod === 'plate-based' && (!mealType.numberOfMembers || !mealType.platePrice)) {
+        toast.error(`Please enter number of members and price for ${mealType.menuType}`)
         return
       }
       if (mealType.pricingMethod === 'manual' && !mealType.manualAmount) {
@@ -887,8 +887,8 @@ export default function OrdersPage() {
                                         type="button"
                                         onClick={() => setSelectedSubFilter(prev => ({ ...prev, [mealType.id]: 'all' }))}
                                         className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${subFilter === 'all'
-                                            ? 'bg-primary-500 text-white'
-                                            : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                                          ? 'bg-primary-500 text-white'
+                                          : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                                           }`}
                                       >
                                         All {mealType.menuType}
@@ -899,8 +899,8 @@ export default function OrdersPage() {
                                           type="button"
                                           onClick={() => setSelectedSubFilter(prev => ({ ...prev, [mealType.id]: subcategory }))}
                                           className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${subFilter === subcategory
-                                              ? 'bg-green-600 text-white'
-                                              : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                                            ? 'bg-green-600 text-white'
+                                            : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                                             }`}
                                         >
                                           {subcategory}
