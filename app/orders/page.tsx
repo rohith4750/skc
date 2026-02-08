@@ -134,8 +134,17 @@ export default function OrdersPage() {
         manualAmount?: number
       } | number> | null
 
-      // Build mealTypes array from mealTypeAmounts and assign ALL order items to each meal type
-      // This preserves items regardless of their original menuItem.type
+      // Group order items by their menuItem.type
+      const itemsByType: Record<string, string[]> = {}
+      order.items.forEach((item: any) => {
+        const itemType = item.menuItem?.type?.toLowerCase() || 'other'
+        if (!itemsByType[itemType]) {
+          itemsByType[itemType] = []
+        }
+        itemsByType[itemType].push(item.menuItemId)
+      })
+
+      // Build mealTypes array from mealTypeAmounts, matching items by type
       const mealTypesArray = mealTypeAmounts
         ? Object.entries(mealTypeAmounts).map(([menuType, mealTypeData]) => {
           const amount = typeof mealTypeData === 'object' && mealTypeData !== null ? mealTypeData.amount : (typeof mealTypeData === 'number' ? mealTypeData : 0)
@@ -161,10 +170,13 @@ export default function OrdersPage() {
               ? mealTypeData.manualAmount.toString()
               : amount.toString()
 
+          // Assign items that match this meal type by their menuItem.type
+          const selectedMenuItems = itemsByType[menuType.toLowerCase()] || []
+
           return {
             id: generateId(),
             menuType: menuType,
-            selectedMenuItems: order.items.map((item: any) => item.menuItemId), // All items assigned to this meal type
+            selectedMenuItems,
             pricingMethod,
             numberOfPlates,
             platePrice,
