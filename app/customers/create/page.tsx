@@ -48,7 +48,7 @@ export default function CreateCustomerPage() {
       const response = await fetch(`/api/customers/${customerId}`)
       if (!response.ok) throw new Error('Failed to fetch customer')
       const data: Customer = await response.json()
-      
+
       setFormData({
         name: data.name,
         phone: data.phone,
@@ -68,22 +68,25 @@ export default function CreateCustomerPage() {
     e.preventDefault()
     setSaving(true)
     setFormError('')
-    
-    if (![formData.name, formData.phone, formData.email, formData.address].every(isNonEmptyString)) {
-      toast.error('Please fill in all required fields')
-      setFormError('Please fill in all required fields')
+
+    // Only name and address are required
+    if (!isNonEmptyString(formData.name) || !isNonEmptyString(formData.address)) {
+      toast.error('Please fill in name and address')
+      setFormError('Please fill in name and address')
       setSaving(false)
       return
     }
 
-    if (!isPhone(formData.phone)) {
+    // Validate phone only if provided
+    if (formData.phone && !isPhone(formData.phone)) {
       toast.error('Please enter a valid phone number')
       setFormError('Please enter a valid phone number')
       setSaving(false)
       return
     }
 
-    if (!isEmail(formData.email)) {
+    // Validate email only if provided
+    if (formData.email && !isEmail(formData.email)) {
       toast.error('Please enter a valid email address')
       setFormError('Please enter a valid email address')
       setSaving(false)
@@ -98,7 +101,7 @@ export default function CreateCustomerPage() {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(formData),
         })
-        
+
         if (!response.ok) throw new Error('Failed to update customer')
         toast.success('Customer updated successfully!')
       } else {
@@ -108,11 +111,11 @@ export default function CreateCustomerPage() {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(formData),
         })
-        
+
         if (!response.ok) throw new Error('Failed to create customer')
         toast.success('Customer created successfully!')
       }
-      
+
       router.push('/customers')
     } catch (error: any) {
       console.error('Failed to save customer:', error)
@@ -163,29 +166,27 @@ export default function CreateCustomerPage() {
 
             <div>
               <label className="block text-sm font-semibold text-gray-700 mb-2">
-                Phone *
+                Phone
               </label>
               <input
                 type="tel"
-                required
                 value={formData.phone}
                 onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
                 className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-                placeholder="Enter phone number"
+                placeholder="Enter phone number (optional)"
               />
             </div>
 
             <div>
               <label className="block text-sm font-semibold text-gray-700 mb-2">
-                Email *
+                Email
               </label>
               <input
                 type="email"
-                required
                 value={formData.email}
                 onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                 className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-                placeholder="Enter email address"
+                placeholder="Enter email address (optional)"
               />
             </div>
 
