@@ -960,9 +960,24 @@ export default function OrdersPage() {
                                   </div>
                                 </div>
                                 {mealType.selectedMenuItems.length > 0 && (
-                                  <p className="text-sm text-gray-600 mt-2">
-                                    {mealType.selectedMenuItems.length} item(s) selected
-                                  </p>
+                                  <div className="mt-3 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                                    <p className="text-sm font-semibold text-blue-800 mb-2">
+                                      Selected Items ({mealType.selectedMenuItems.length}):
+                                    </p>
+                                    <div className="flex flex-wrap gap-2">
+                                      {mealType.selectedMenuItems.map((itemId: string) => {
+                                        const item = menuItems.find((m: any) => m.id === itemId)
+                                        return item ? (
+                                          <span
+                                            key={itemId}
+                                            className="inline-flex items-center gap-1 px-2 py-1 bg-blue-100 text-blue-800 text-xs font-medium rounded-md"
+                                          >
+                                            {item.name}
+                                          </span>
+                                        ) : null
+                                      })}
+                                    </div>
+                                  </div>
                                 )}
                               </div>
                             )}
