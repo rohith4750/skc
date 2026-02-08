@@ -112,14 +112,14 @@ export async function GET(request: NextRequest) {
     expenses.forEach((expense) => {
       const key = getMonthKey(new Date(expense.createdAt))
       if (monthsMap[key]) {
-        monthsMap[key].expenses += expense.amount || 0
+        monthsMap[key].expenses += Number(expense.amount) || 0
       }
     })
 
     orders.forEach((order) => {
       const key = getMonthKey(new Date(order.createdAt))
       if (monthsMap[key]) {
-        monthsMap[key].revenue += order.totalAmount || 0
+        monthsMap[key].revenue += Number(order.totalAmount) || 0
         monthsMap[key].orders += 1
       }
     })
