@@ -11,23 +11,25 @@ export async function GET(request: NextRequest) {
       const allStock = await prisma.stock.findMany({
         where: { isActive: true }
       })
-      const lowStock = allStock.filter(item => item.minStock && item.currentStock <= item.minStock)
+      const lowStock = allStock.filter(item => item.minStock && Number(item.currentStock) <= Number(item.minStock))
 
       lowStock.forEach(item => {
-        const severity = item.currentStock === 0 ? 'critical' : item.currentStock <= (item.minStock || 0) / 2 ? 'high' : 'medium'
+        const currentStock = Number(item.currentStock)
+        const minStock = Number(item.minStock || 0)
+        const severity = currentStock === 0 ? 'critical' : currentStock <= minStock / 2 ? 'high' : 'medium'
         alerts.push({
           id: `stock-${item.id}`,
           type: 'low_stock',
-          title: item.currentStock === 0 ? 'Out of Stock!' : 'Low Stock Warning',
-          message: `${item.name}: ${item.currentStock} ${item.unit} remaining (Min: ${item.minStock || 0})`,
+          title: currentStock === 0 ? 'Out of Stock!' : 'Low Stock Warning',
+          message: `${item.name}: ${currentStock} ${item.unit} remaining (Min: ${minStock})`,
           severity,
           entityId: item.id,
           entityType: 'stock',
           createdAt: now.toISOString(),
           data: {
             itemName: item.name,
-            currentQty: item.currentStock,
-            minQty: item.minStock || 0,
+            currentQty: currentStock,
+            minQty: minStock,
             unit: item.unit,
             category: item.category
           }
