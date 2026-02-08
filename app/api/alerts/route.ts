@@ -45,12 +45,12 @@ export async function GET(request: NextRequest) {
       const allInventory = await prisma.inventory.findMany({
         where: { isActive: true }
       })
-      const lowInventory = allInventory.filter(item => {
+      const lowInventory = allInventory.filter((item: any) => {
         const minQty = item.minQuantity ?? 10 // Default threshold: 10 if not set
         return item.quantity <= minQty
       })
 
-      lowInventory.forEach(item => {
+      lowInventory.forEach((item: any) => {
         const minQty = item.minQuantity ?? 10 // Default threshold: 10 if not set
         const severity = item.quantity === 0 ? 'critical' : item.quantity <= 5 ? 'high' : 'medium'
         alerts.push({
