@@ -22,7 +22,7 @@ async function deleteDuplicates() {
     let deleted = 0
 
     // Delete duplicates, keeping only the first (oldest) one
-    for (const [name, items] of itemsByName.entries()) {
+    for (const [name, items] of Array.from(itemsByName.entries())) {
         if (items.length > 1) {
             console.log(`\nFound ${items.length} items named "${items[0].name}":`)
 

@@ -54,7 +54,7 @@ async function cleanupMenuItems() {
     }
 
     // Find and remove duplicates, keeping only the version from data file
-    for (const [name, items] of itemsByName.entries()) {
+    for (const [name, items] of Array.from(itemsByName.entries())) {
         if (items.length > 1) {
             const dataItem = dataFileMap.get(name)
             if (dataItem) {
