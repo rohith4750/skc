@@ -122,16 +122,7 @@ export default function OrdersPage() {
         return
       }
 
-      // Group items by meal type (using menuItem.type)
-      const groupedItems: Record<string, any[]> = {}
-      order.items.forEach((item: any) => {
-        const mealType = item.menuItem?.type?.toLowerCase() || 'other'
-        if (!groupedItems[mealType]) {
-          groupedItems[mealType] = []
-        }
-        groupedItems[mealType].push(item)
-      })
-
+      // Get meal types from mealTypeAmounts (this is where meal types are stored)
       const mealTypeAmounts = order.mealTypeAmounts as Record<string, {
         amount: number
         date: string
@@ -143,45 +134,47 @@ export default function OrdersPage() {
         manualAmount?: number
       } | number> | null
 
-      // Build mealTypes array from grouped items
-      const mealTypesArray = Object.entries(groupedItems).map(([menuType, items]) => {
-        const mealTypeData = mealTypeAmounts?.[menuType]
-        const amount = typeof mealTypeData === 'object' && mealTypeData !== null ? mealTypeData.amount : (typeof mealTypeData === 'number' ? mealTypeData : 0)
-        const date = typeof mealTypeData === 'object' && mealTypeData !== null ? mealTypeData.date : ''
-        const services = typeof mealTypeData === 'object' && mealTypeData !== null && mealTypeData.services ? mealTypeData.services : []
-        const numberOfMembers = typeof mealTypeData === 'object' && mealTypeData !== null && mealTypeData.numberOfMembers ? mealTypeData.numberOfMembers.toString() : ''
+      // Build mealTypes array from mealTypeAmounts and assign ALL order items to each meal type
+      // This preserves items regardless of their original menuItem.type
+      const mealTypesArray = mealTypeAmounts
+        ? Object.entries(mealTypeAmounts).map(([menuType, mealTypeData]) => {
+          const amount = typeof mealTypeData === 'object' && mealTypeData !== null ? mealTypeData.amount : (typeof mealTypeData === 'number' ? mealTypeData : 0)
+          const date = typeof mealTypeData === 'object' && mealTypeData !== null ? mealTypeData.date : ''
+          const services = typeof mealTypeData === 'object' && mealTypeData !== null && mealTypeData.services ? mealTypeData.services : []
+          const numberOfMembers = typeof mealTypeData === 'object' && mealTypeData !== null && mealTypeData.numberOfMembers ? mealTypeData.numberOfMembers.toString() : ''
 
-        const pricingMethod: 'manual' | 'plate-based' =
-          typeof mealTypeData === 'object' && mealTypeData !== null && mealTypeData.pricingMethod
-            ? mealTypeData.pricingMethod
-            : 'manual'
+          const pricingMethod: 'manual' | 'plate-based' =
+            typeof mealTypeData === 'object' && mealTypeData !== null && mealTypeData.pricingMethod
+              ? mealTypeData.pricingMethod
+              : 'manual'
 
-        const numberOfPlates =
-          typeof mealTypeData === 'object' && mealTypeData !== null && mealTypeData.numberOfPlates !== undefined
-            ? mealTypeData.numberOfPlates.toString()
-            : ''
-        const platePrice =
-          typeof mealTypeData === 'object' && mealTypeData !== null && mealTypeData.platePrice !== undefined
-            ? mealTypeData.platePrice.toString()
-            : ''
-        const manualAmount =
-          typeof mealTypeData === 'object' && mealTypeData !== null && mealTypeData.manualAmount !== undefined
-            ? mealTypeData.manualAmount.toString()
-            : amount.toString()
+          const numberOfPlates =
+            typeof mealTypeData === 'object' && mealTypeData !== null && mealTypeData.numberOfPlates !== undefined
+              ? mealTypeData.numberOfPlates.toString()
+              : ''
+          const platePrice =
+            typeof mealTypeData === 'object' && mealTypeData !== null && mealTypeData.platePrice !== undefined
+              ? mealTypeData.platePrice.toString()
+              : ''
+          const manualAmount =
+            typeof mealTypeData === 'object' && mealTypeData !== null && mealTypeData.manualAmount !== undefined
+              ? mealTypeData.manualAmount.toString()
+              : amount.toString()
 
-        return {
-          id: generateId(),
-          menuType: menuType,
-          selectedMenuItems: items.map((item: any) => item.menuItemId),
-          pricingMethod,
-          numberOfPlates,
-          platePrice,
-          manualAmount,
-          date: date || '',
-          services,
-          numberOfMembers
-        }
-      })
+          return {
+            id: generateId(),
+            menuType: menuType,
+            selectedMenuItems: order.items.map((item: any) => item.menuItemId), // All items assigned to this meal type
+            pricingMethod,
+            numberOfPlates,
+            platePrice,
+            manualAmount,
+            date: date || '',
+            services,
+            numberOfMembers
+          }
+        })
+        : []
 
       // Parse stalls
       const stallsArray = order.stalls && Array.isArray(order.stalls)
