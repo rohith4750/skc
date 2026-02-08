@@ -587,18 +587,12 @@ export default function OrdersPage() {
   const getFilteredMenuItems = (mealTypeId: string, menuType: string) => {
     if (!menuType) return []
 
-    // For lunch or dinner,  const getFilteredMenuItems = (menuType: string) => {
+    // Match items by exact type
     let filtered = menuItems.filter((m: any) => {
       const itemType = m.type.toLowerCase()
       const selectedType = menuType.toLowerCase()
 
-      // Dinner shows the same items as lunch
-      if (selectedType === 'dinner' || selectedType === 'lunch') {
-        return m.isActive !== false && itemType !== 'breakfast' // Exclude breakfast from lunch/dinner
-      }
-
-      // Other meal types (breakfast, snacks, sweets) match exactly
-      return itemType === selectedType
+      return m.isActive !== false && itemType === selectedType
     })
 
     // Filter by subcategory if selected
