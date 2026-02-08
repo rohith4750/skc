@@ -134,14 +134,15 @@ export default function OrdersPage() {
         manualAmount?: number
       } | number> | null
 
-      // Group order items by their menuItem.type
+      // Group order items by their stored mealType (not menuItem.type)
       const itemsByType: Record<string, string[]> = {}
       order.items.forEach((item: any) => {
-        const itemType = item.menuItem?.type?.toLowerCase() || 'other'
-        if (!itemsByType[itemType]) {
-          itemsByType[itemType] = []
+        // Use stored mealType if available, otherwise fall back to menuItem.type
+        const mealType = item.mealType || item.menuItem?.type?.toLowerCase() || 'other'
+        if (!itemsByType[mealType]) {
+          itemsByType[mealType] = []
         }
-        itemsByType[itemType].push(item.menuItemId)
+        itemsByType[mealType].push(item.menuItemId)
       })
 
       // Build mealTypes array from mealTypeAmounts, matching items by type
@@ -432,11 +433,12 @@ export default function OrdersPage() {
         }
       })
 
-      // Combine all menu items from all meal types
+      // Combine all menu items from all meal types with their mealType
       const orderItems: OrderItem[] = formData.mealTypes.flatMap(mealType =>
         mealType.selectedMenuItems.map(menuItemId => ({
           menuItemId,
           quantity: 1,
+          mealType: mealType.menuType, // Store which meal type this item was selected for
         }))
       )
 

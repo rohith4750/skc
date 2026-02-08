@@ -74,6 +74,7 @@ export async function POST(request: NextRequest) {
         create: data.items.map((item: any) => ({
           menuItemId: item.menuItemId,
           quantity: item.quantity || 1,
+          mealType: item.mealType || null, // Store which meal type this item was selected for
         }))
       }
     }
