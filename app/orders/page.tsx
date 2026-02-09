@@ -592,6 +592,11 @@ export default function OrdersPage() {
       const itemType = m.type.toLowerCase()
       const selectedType = menuType.toLowerCase()
 
+      // Allow sweets to show up for lunch and dinner
+      if (selectedType === 'lunch' || selectedType === 'dinner') {
+        return m.isActive !== false && (itemType === selectedType || itemType === 'sweets')
+      }
+
       return m.isActive !== false && itemType === selectedType
     })
 
