@@ -199,11 +199,11 @@ export default function OrdersHistoryPage() {
         .header-subtitle { font-size: 14px; color: #666; margin-bottom: 12px; font-style: italic; font-family: 'Poppins', sans-serif; }
         .header-details { font-size: 9px; line-height: 1.6; color: #444; margin-top: 10px; font-family: 'Poppins', sans-serif; }
         .header-details div { margin-bottom: 3px; }
-        .section { margin-bottom: 20px; font-family: 'Poppins', sans-serif; }
-        .section-title { font-size: 14px; font-weight: 600; margin-bottom: 10px; padding-bottom: 5px; border-bottom: 1px solid #ddd; color: #222; font-family: 'Poppins', sans-serif; }
+        .section { margin-bottom: 15px; font-family: 'Poppins', sans-serif; }
+        .section-title { font-size: 14px; font-weight: 600; margin-bottom: 8px; padding-bottom: 4px; border-bottom: 2px solid #ddd; color: #222; font-family: 'Poppins', sans-serif; }
         .info-row { margin-bottom: 6px; font-family: 'Poppins', sans-serif; }
         .info-label { font-weight: 600; display: inline-block; width: 120px; font-family: 'Poppins', sans-serif; }
-        .menu-item { padding: 4px 0; border-bottom: 1px dotted #ccc; font-family: 'Poppins', sans-serif; }
+        .menu-item { padding: 2px 4px; border-bottom: 1px dotted #ccc; font-family: 'Poppins', sans-serif; font-size: 9px; line-height: 1.3; }
         .financial-row { display: flex; justify-content: space-between; padding: 6px 0; border-bottom: 1px solid #eee; font-family: 'Poppins', sans-serif; }
         .financial-row.total { font-weight: 700; font-size: 13px; border-top: 2px solid #333; border-bottom: 2px solid #333; margin-top: 5px; padding-top: 8px; }
         .financial-label { font-weight: 600; }
@@ -242,7 +242,7 @@ export default function OrdersHistoryPage() {
       
       <div class="section">
         <div class="section-title">Menu Items</div>
-        <div style="font-size: 11px;">
+        <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; font-size: 9px;">
     `
     
     // Group items by type
@@ -255,18 +255,24 @@ export default function OrdersHistoryPage() {
       itemsByType[type].push(item)
     })
     
-    // Display items grouped by type
-    let itemIndex = 1
+    // Display items grouped by type in compact grid
     Object.keys(itemsByType).forEach((type) => {
-      // Add type heading
-      htmlContent += `<div style="font-weight: 700; font-size: 12px; margin-top: ${itemIndex > 1 ? '12px' : '0'}; margin-bottom: 6px; color: #222; text-transform: uppercase; font-family: 'Poppins', sans-serif;">${type}</div>`
+      // Add type section
+      htmlContent += `
+        <div style="grid-column: span 4; font-weight: 700; font-size: 10px; margin-top: 6px; margin-bottom: 3px; color: #222; text-transform: uppercase; border-bottom: 1px solid #ddd; padding-bottom: 2px; font-family: 'Poppins', sans-serif;">
+          ${type}
+        </div>
+      `
       
-      // Add items for this type
-      itemsByType[type].forEach((item: any) => {
+      // Add items for this type in grid
+      itemsByType[type].forEach((item: any, index: number) => {
         // Use Telugu name if available, otherwise fall back to English name
         const itemName = item.menuItem?.nameTelugu || item.menuItem?.name || 'Unknown Item'
-        htmlContent += `<div class="menu-item">${itemIndex}. ${itemName}</div>`
-        itemIndex++
+        htmlContent += `
+          <div style="padding: 2px 4px; border-bottom: 1px dotted #ddd; font-family: 'Poppins', sans-serif; line-height: 1.3;">
+            ${index + 1}. ${itemName}
+          </div>
+        `
       })
     })
     
