@@ -81,6 +81,7 @@ export async function POST(request: NextRequest) {
           menuItemId: item.menuItemId,
           quantity: item.quantity || 1,
           mealType: item.mealType || null, // Store which meal type this item was selected for
+          customization: item.customization || null,
         }))
       }
     }
@@ -123,7 +124,7 @@ export async function POST(request: NextRequest) {
         entityId: order.id,
         severity: 'info',
       })
-      
+
       // Send payment received email alert
       sendPaymentReceivedAlert(order.id, advancePaid).catch(error => {
         console.error('Failed to send payment received email alert:', error)

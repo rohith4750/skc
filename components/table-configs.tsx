@@ -87,11 +87,10 @@ export function getSupervisorTableConfig(): TableConfig<Supervisor> {
             onClick={(e) => {
               e.stopPropagation()
             }}
-            className={`px-3 py-1 rounded-full text-xs font-medium ${
-              supervisor.isActive 
-                ? 'bg-green-100 text-green-800' 
+            className={`px-3 py-1 rounded-full text-xs font-medium ${supervisor.isActive
+                ? 'bg-green-100 text-green-800'
                 : 'bg-red-100 text-red-800'
-            }`}
+              }`}
           >
             {supervisor.isActive ? 'Active' : 'Inactive'}
           </button>
@@ -132,11 +131,10 @@ export function getMenuItemTableConfig(): TableConfig<MenuItem> {
             onClick={(e) => {
               e.stopPropagation()
             }}
-            className={`px-3 py-1 rounded-full text-xs font-medium ${
-              item.isActive 
-                ? 'bg-green-100 text-green-800' 
+            className={`px-3 py-1 rounded-full text-xs font-medium ${item.isActive
+                ? 'bg-green-100 text-green-800'
                 : 'bg-red-100 text-red-800'
-            }`}
+              }`}
           >
             {item.isActive ? 'Active' : 'Inactive'}
           </button>
@@ -206,8 +204,11 @@ export function getBillTableConfig(): TableConfig<BillWithOrder> {
       },
       {
         key: 'createdAt',
-        header: 'Date',
-        render: (bill) => <div className="text-sm text-gray-900">{formatDateTime(bill.createdAt)}</div>,
+        header: 'Event Date',
+        render: (bill) => {
+          const eventDate = getEventDate(bill)
+          return <div className="text-sm text-gray-900">{eventDate || formatDateTime(bill.createdAt)}</div>
+        },
       },
       {
         key: 'details',
@@ -266,11 +267,10 @@ export function getBillTableConfig(): TableConfig<BillWithOrder> {
         key: 'status',
         header: 'Status',
         render: (bill) => (
-          <span className={`px-3 py-1 rounded-full text-xs font-medium ${
-            bill.status === 'paid' ? 'bg-green-100 text-green-800' :
-            bill.status === 'partial' ? 'bg-yellow-100 text-yellow-800' :
-            'bg-red-100 text-red-800'
-          }`}>
+          <span className={`px-3 py-1 rounded-full text-xs font-medium ${bill.status === 'paid' ? 'bg-green-100 text-green-800' :
+              bill.status === 'partial' ? 'bg-yellow-100 text-yellow-800' :
+                'bg-red-100 text-red-800'
+            }`}>
             {bill.status.charAt(0).toUpperCase() + bill.status.slice(1)}
           </span>
         ),

@@ -133,8 +133,8 @@ export async function PUT(
         }
       })
 
-      return NextResponse.json({ 
-        order: transformDecimal(updatedOrderWithRelations), 
+      return NextResponse.json({
+        order: transformDecimal(updatedOrderWithRelations),
         bill: transformDecimal(bill),
         _billCreated: bill ? true : false,
         _billId: bill?.id,
@@ -234,6 +234,8 @@ export async function PUT(
               orderId: params.id,
               menuItemId: item.menuItemId,
               quantity: item.quantity || 1,
+              mealType: item.mealType || null,
+              customization: item.customization || null,
             }))
           })
         }
@@ -351,7 +353,7 @@ export async function PUT(
         entityId: updatedOrder?.id,
         severity: 'success',
       })
-      
+
       // Send payment received email alert to all users
       if (updatedOrder?.id) {
         sendPaymentReceivedAlert(updatedOrder.id, totalAdvanceDelta).catch(error => {

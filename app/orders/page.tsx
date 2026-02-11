@@ -46,6 +46,7 @@ export default function OrdersPage() {
       date: string
       services: string[] // Array of selected services: 'buffet', 'vaddana', 'handover'
       numberOfMembers: string
+      itemCustomizations: Record<string, string> // menuItemId -> customization text
     }>,
     stalls: [] as Array<{ category: string; description: string; cost: string }>,
     discount: '',
@@ -145,6 +146,18 @@ export default function OrdersPage() {
         itemsByType[mealType].push(item.menuItemId)
       })
 
+      // Extract item customizations
+      const customizationsByItemAndType: Record<string, Record<string, string>> = {}
+      order.items.forEach((item: any) => {
+        const mealType = item.mealType || item.menuItem?.type?.toLowerCase() || 'other'
+        if (!customizationsByItemAndType[mealType]) {
+          customizationsByItemAndType[mealType] = {}
+        }
+        if (item.customization) {
+          customizationsByItemAndType[mealType][item.menuItemId] = item.customization
+        }
+      })
+
       // Build mealTypes array from mealTypeAmounts, matching items by type
       const mealTypesArray = mealTypeAmounts
         ? Object.entries(mealTypeAmounts).map(([menuType, mealTypeData]) => {
@@ -178,6 +191,7 @@ export default function OrdersPage() {
             id: generateId(),
             menuType: menuType,
             selectedMenuItems,
+            itemCustomizations: customizationsByItemAndType[menuType] || {},
             pricingMethod,
             numberOfPlates,
             platePrice,
@@ -257,6 +271,7 @@ export default function OrdersPage() {
         date: '',
         services: [],
         numberOfMembers: '',
+        itemCustomizations: {},
       }]
     }))
     // New meal type starts expanded
@@ -280,6 +295,7 @@ export default function OrdersPage() {
         date: '',
         services: [],
         numberOfMembers: '',
+        itemCustomizations: {},
       }]
     }))
     // New meal type starts expanded
@@ -291,6 +307,8 @@ export default function OrdersPage() {
   }
 
   const handleRemoveMealType = (mealTypeId: string) => {
+    if (!window.confirm("Are you sure you want to remove this meal type?")) return
+
     setFormData(prev => ({
       ...prev,
       mealTypes: prev.mealTypes.filter(mealType => mealType.id !== mealTypeId)
@@ -337,14 +355,14 @@ export default function OrdersPage() {
   // Move item up in the order
   const handleMoveItemUp = (mealTypeId: string, itemIndex: number) => {
     if (itemIndex === 0) return // Already at the top
-    
+
     setFormData(prev => ({
       ...prev,
       mealTypes: prev.mealTypes.map(mealType => {
         if (mealType.id === mealTypeId) {
           const newItems = [...mealType.selectedMenuItems]
-          // Swap with the item above
-          ;[newItems[itemIndex - 1], newItems[itemIndex]] = [newItems[itemIndex], newItems[itemIndex - 1]]
+            // Swap with the item above
+            ;[newItems[itemIndex - 1], newItems[itemIndex]] = [newItems[itemIndex], newItems[itemIndex - 1]]
           return { ...mealType, selectedMenuItems: newItems }
         }
         return mealType
@@ -359,10 +377,10 @@ export default function OrdersPage() {
       mealTypes: prev.mealTypes.map(mealType => {
         if (mealType.id === mealTypeId) {
           if (itemIndex === mealType.selectedMenuItems.length - 1) return mealType // Already at the bottom
-          
+
           const newItems = [...mealType.selectedMenuItems]
-          // Swap with the item below
-          ;[newItems[itemIndex], newItems[itemIndex + 1]] = [newItems[itemIndex + 1], newItems[itemIndex]]
+            // Swap with the item below
+            ;[newItems[itemIndex], newItems[itemIndex + 1]] = [newItems[itemIndex + 1], newItems[itemIndex]]
           return { ...mealType, selectedMenuItems: newItems }
         }
         return mealType
@@ -376,9 +394,30 @@ export default function OrdersPage() {
       ...prev,
       mealTypes: prev.mealTypes.map(mealType => {
         if (mealType.id === mealTypeId) {
+          const newCustomizations = { ...mealType.itemCustomizations }
+          delete newCustomizations[itemId]
           return {
             ...mealType,
-            selectedMenuItems: mealType.selectedMenuItems.filter(id => id !== itemId)
+            selectedMenuItems: mealType.selectedMenuItems.filter(id => id !== itemId),
+            itemCustomizations: newCustomizations
+          }
+        }
+        return mealType
+      })
+    }))
+  }
+
+  const handleUpdateItemCustomization = (mealTypeId: string, itemId: string, value: string) => {
+    setFormData(prev => ({
+      ...prev,
+      mealTypes: prev.mealTypes.map(mealType => {
+        if (mealType.id === mealTypeId) {
+          return {
+            ...mealType,
+            itemCustomizations: {
+              ...mealType.itemCustomizations,
+              [itemId]: value
+            }
           }
         }
         return mealType
@@ -491,6 +530,7 @@ export default function OrdersPage() {
           menuItemId,
           quantity: 1,
           mealType: mealType.menuType, // Store which meal type this item was selected for
+          customization: mealType.itemCustomizations?.[menuItemId] || '',
         }))
       )
 
@@ -1027,48 +1067,63 @@ export default function OrdersPage() {
                                     <p className="text-sm font-semibold text-blue-800 mb-2">
                                       Selected Items ({mealType.selectedMenuItems.length}):
                                     </p>
-                                    <div className="flex flex-wrap gap-2">
+                                    <div className="flex flex-col gap-2">
                                       {mealType.selectedMenuItems.map((itemId: string, index: number) => {
                                         const item = menuItems.find((m: any) => m.id === itemId)
                                         const isFirst = index === 0
                                         const isLast = index === mealType.selectedMenuItems.length - 1
-                                        
+
                                         return item ? (
                                           <div
                                             key={`${itemId}-${index}`}
-                                            className="inline-flex items-center gap-1 px-2 py-1 bg-blue-100 text-blue-800 text-xs font-medium rounded-md group"
+                                            className="flex flex-col sm:flex-row sm:items-center gap-2 p-2 bg-blue-100 rounded-md border border-blue-200"
                                           >
-                                            <span className="mr-1">{item.name}</span>
-                                            <div className="flex items-center gap-0.5 ml-1 border-l border-blue-300 pl-1">
+                                            <div className="flex-1 flex items-center justify-between">
+                                              <span className="text-sm font-medium text-blue-900">{item.name}</span>
+                                              <div className="flex items-center gap-1 sm:hidden">
+                                                {/* Mobile controls */}
+                                                <button type="button" onClick={() => handleMoveItemUp(mealType.id, index)} disabled={isFirst} className={`p-1 hover:bg-blue-200 rounded ${isFirst ? 'opacity-30' : ''}`}><FaArrowUp className="w-3 h-3" /></button>
+                                                <button type="button" onClick={() => handleMoveItemDown(mealType.id, index)} disabled={isLast} className={`p-1 hover:bg-blue-200 rounded ${isLast ? 'opacity-30' : ''}`}><FaArrowDown className="w-3 h-3" /></button>
+                                                <button type="button" onClick={() => handleRemoveItem(mealType.id, itemId)} className="p-1 hover:bg-red-200 text-red-600 rounded"><FaTimes className="w-3 h-3" /></button>
+                                              </div>
+                                            </div>
+
+                                            <input
+                                              type="text"
+                                              placeholder="Customization (e.g. Spice Level)"
+                                              value={mealType.itemCustomizations?.[itemId] || ''}
+                                              onChange={(e) => handleUpdateItemCustomization(mealType.id, itemId, e.target.value)}
+                                              className="text-xs border border-blue-300 rounded px-2 py-1 flex-1 min-w-[150px] focus:ring-1 focus:ring-blue-500 outline-none"
+                                            />
+
+                                            <div className="hidden sm:flex items-center gap-1 border-l border-blue-300 pl-2 ml-2">
                                               <button
                                                 type="button"
                                                 onClick={() => handleMoveItemUp(mealType.id, index)}
                                                 disabled={isFirst}
-                                                className={`p-0.5 hover:bg-blue-200 rounded transition-colors ${
-                                                  isFirst ? 'opacity-30 cursor-not-allowed' : 'cursor-pointer'
-                                                }`}
+                                                className={`p-1 hover:bg-blue-200 rounded transition-colors ${isFirst ? 'opacity-30 cursor-not-allowed' : 'cursor-pointer'
+                                                  }`}
                                                 title="Move up"
                                               >
-                                                <FaArrowUp className="w-2.5 h-2.5" />
+                                                <FaArrowUp className="w-3 h-3" />
                                               </button>
                                               <button
                                                 type="button"
                                                 onClick={() => handleMoveItemDown(mealType.id, index)}
                                                 disabled={isLast}
-                                                className={`p-0.5 hover:bg-blue-200 rounded transition-colors ${
-                                                  isLast ? 'opacity-30 cursor-not-allowed' : 'cursor-pointer'
-                                                }`}
+                                                className={`p-1 hover:bg-blue-200 rounded transition-colors ${isLast ? 'opacity-30 cursor-not-allowed' : 'cursor-pointer'
+                                                  }`}
                                                 title="Move down"
                                               >
-                                                <FaArrowDown className="w-2.5 h-2.5" />
+                                                <FaArrowDown className="w-3 h-3" />
                                               </button>
                                               <button
                                                 type="button"
                                                 onClick={() => handleRemoveItem(mealType.id, itemId)}
-                                                className="p-0.5 hover:bg-red-200 hover:text-red-700 rounded transition-colors"
+                                                className="p-1 hover:bg-red-200 hover:text-red-700 rounded transition-colors"
                                                 title="Remove item"
                                               >
-                                                <FaTimes className="w-2.5 h-2.5" />
+                                                <FaTimes className="w-3 h-3" />
                                               </button>
                                             </div>
                                           </div>

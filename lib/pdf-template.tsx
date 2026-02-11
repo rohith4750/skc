@@ -334,16 +334,18 @@ function generateBillContent(data: PDFTemplateData): string {
       const persons = (typeof dataObj === 'object' && 'numberOfMembers' in dataObj) ? (dataObj.numberOfMembers || 0) : 0
       const amount = (typeof dataObj === 'object' && 'amount' in dataObj) ? dataObj.amount : (typeof mealData === 'number' ? mealData : 0)
       const rate = persons > 0 ? amount / persons : 0
-      
+
       // Format meal type name (capitalize first letter)
       const mealTypeName = mealType.charAt(0).toUpperCase() + mealType.slice(1).toLowerCase()
-      
+
       mealTypeRows.push(`
         <div class="form-row">
-          <span class="form-label">${mealTypeName} number of Persons:</span>
-          <span class="form-value-inline">${persons || ''}</span>
-          <span style="margin-left: 10px;">Rate per Head:</span>
-          <span class="form-value-inline">${rate > 0 ? formatCurrency(rate) : ''}</span>
+          <span class="form-label">${mealTypeName} No of Persons:</span>
+          <span class="form-value-inline" style="width: 50px;">${persons || ''}</span>
+          <span style="margin-left: 10px;">Rate:</span>
+          <span class="form-value-inline" style="width: 80px;">${rate > 0 ? formatCurrency(rate) : ''}</span>
+          <span style="margin-left: 10px;">Total:</span>
+          <span class="form-value-inline" style="width: 100px;">${amount > 0 ? formatCurrency(amount) : ''}</span>
         </div>
       `)
     })

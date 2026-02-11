@@ -202,6 +202,7 @@ model OrderItem {
   menuItem   MenuItem @relation(fields: [menuItemId], references: [id])
   quantity   Int?     @default(1)
   mealType   String?  // Stores which meal type (breakfast/lunch/dinner) this item was selected for
+  customization String? // Custom notes for the item (e.g., spice level, onions)
 
   @@map("order_items")
 }
