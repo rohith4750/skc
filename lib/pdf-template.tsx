@@ -109,8 +109,8 @@ export function generatePDFTemplate(data: PDFTemplateData): string {
           width: 100%;
           max-width: 100%;
           margin: 0 auto;
-          border-left: 2px solid #ffb6c1;
-          border-right: 2px solid #ffb6c1;
+          border-left: 2px solid #000;
+          border-right: 2px solid #000;
           padding: 0 15mm;
           min-height: 277mm;
         }
@@ -255,15 +255,15 @@ export function generatePDFTemplate(data: PDFTemplateData): string {
           font-weight: bold;
         }
         .expense-details {
-          background: #f9f9f9;
+          background: #fff;
           padding: 10px;
-          border-radius: 5px;
+          border: 1px solid #000;
           margin: 10px 0;
         }
         .workforce-summary {
-          background: #f9f9f9;
+          background: #fff;
           padding: 10px;
-          border-radius: 5px;
+          border: 1px solid #000;
           margin: 10px 0;
         }
         .expense-item {
@@ -325,11 +325,6 @@ function generateBillContent(data: PDFTemplateData): string {
   const financial = data.financial || { totalAmount: 0 }
   const mealTypeAmounts = data.mealTypeAmounts || {}
   const stalls = data.stalls || []
-  const statusColor = data.status ? {
-    paid: { bg: '#10b981', text: '#ffffff' },
-    partial: { bg: '#f59e0b', text: '#ffffff' },
-    pending: { bg: '#ef4444', text: '#ffffff' },
-  }[data.status] : { bg: '#ef4444', text: '#ffffff' }
 
   // Process all meal types dynamically from mealTypeAmounts
   const mealTypeRows: string[] = []
@@ -404,11 +399,6 @@ function generateBillContent(data: PDFTemplateData): string {
     })
   }
 
-  // Services display
-  const servicesDisplay = data.services && data.services.length > 0 
-    ? data.services.join(', ') 
-    : ''
-
   return `
     <!-- Bill Info -->
     <div class="bill-info">
@@ -416,7 +406,7 @@ function generateBillContent(data: PDFTemplateData): string {
         <div class="bill-number">Bill No: ${data.billNumber || 'N/A'}</div>
         <div style="font-size: 10px; margin-top: 3px;">Date: ${formatDate(data.date)}</div>
       </div>
-      <div class="status-badge" style="background-color: ${statusColor.bg}; color: ${statusColor.text};">
+      <div class="status-badge" style="background-color: #fff; color: #000; border: 2px solid #000;">
         ${data.status ? data.status.toUpperCase() : 'PENDING'}
       </div>
     </div>
@@ -448,82 +438,17 @@ function generateBillContent(data: PDFTemplateData): string {
         <span class="form-label">Function Time:</span>
         <span class="form-value">${eventDetails.functionTime || ''}</span>
       </div>
-      <div class="form-row">
-        <span class="form-label">Function Venue:</span>
-        <span class="form-value">${eventDetails.functionVenue || ''}</span>
-      </div>
-      ${servicesDisplay ? `
-      <div class="form-row">
-        <span class="form-label">Services:</span>
-        <span class="form-value">${servicesDisplay}</span>
-      </div>
-      ` : ''}
     </div>
 
-    <!-- Members Summary -->
-    <div class="form-section" style="background: #f0fdf4; padding: 12px; border-radius: 8px; margin: 15px 0; border: 1px solid #86efac;">
-      <div style="font-weight: bold; font-size: 14px; color: #166534; margin-bottom: 10px; text-transform: uppercase;">👥 Members / Guests Summary</div>
-      ${data.numberOfMembers ? `
-      <div class="form-row">
-        <span class="form-label" style="font-weight: bold;">Total Members:</span>
-        <span class="form-value" style="font-size: 16px; font-weight: bold; color: #166534;">${data.numberOfMembers}</span>
-      </div>
-      ` : ''}
-      ${Object.keys(mealTypeAmounts).length > 0 ? Object.entries(mealTypeAmounts).map(([mealType, mealData]) => {
-        const dataObj = typeof mealData === 'object' && mealData !== null ? mealData : { amount: 0 }
-        const persons = (typeof dataObj === 'object' && 'numberOfMembers' in dataObj) ? (dataObj.numberOfMembers || 0) : 0
-        if (!persons) return ''
-        const mealTypeName = mealType.charAt(0).toUpperCase() + mealType.slice(1).toLowerCase()
-        return `
-        <div class="form-row" style="margin-top: 5px;">
-          <span class="form-label">${mealTypeName} Members:</span>
-          <span class="form-value" style="font-weight: 600;">${persons}</span>
-        </div>
-        `
-      }).join('') : ''}
+    <!-- Members / Guests Summary -->
+    <div class="form-section" style="border: 2px solid #000; padding: 12px; margin: 15px 0;">
+      <div style="font-weight: bold; font-size: 14px; margin-bottom: 10px; text-transform: uppercase; text-align: center;">MEMBERS / GUESTS SUMMARY</div>
+      ${mealTypeRows.length > 0 ? mealTypeRows.join('') : ''}
     </div>
 
-    <!-- Meal Details -->
-    ${mealTypeRows.length > 0 ? `
-    <div class="form-section">
-      ${mealTypeRows.join('')}
-    </div>
-    ` : ''}
-
-    ${stallsRows.length > 0 ? `
-    <!-- Stalls/Extra Charges -->
-    <div class="form-section">
-      <div class="section-title">ADDITIONAL CHARGES</div>
-      ${stallsRows.join('')}
-    </div>
-    ` : ''}
 
     <!-- Financial Summary -->
     <div class="financial-section">
-      ${financial.sariAmount ? `
-      <div class="form-row">
-        <span class="form-label">Sari Amount:</span>
-        <span class="form-value">${formatCurrency(financial.sariAmount)}</span>
-      </div>
-      ` : ''}
-      ${financial.transport ? `
-      <div class="form-row">
-        <span class="form-label">Transport:</span>
-        <span class="form-value">${formatCurrency(financial.transport)}</span>
-      </div>
-      ` : ''}
-      ${financial.extra ? `
-      <div class="form-row">
-        <span class="form-label">If any Extra:</span>
-        <span class="form-value">${formatCurrency(financial.extra)}</span>
-      </div>
-      ` : ''}
-      ${financial.discount && financial.discount > 0 ? `
-      <div class="form-row">
-        <span class="form-label">Discount:</span>
-        <span class="form-value">${formatCurrency(financial.discount)}</span>
-      </div>
-      ` : ''}
       <div class="financial-row">
         <span class="financial-label">Total Amount:</span>
         <span class="financial-value">${formatCurrency(financial.totalAmount)}</span>
@@ -532,12 +457,6 @@ function generateBillContent(data: PDFTemplateData): string {
         <span class="financial-label">Advance Paid:</span>
         <span class="financial-value">${financial.advancePaid ? formatCurrency(financial.advancePaid) : formatCurrency(0)}</span>
       </div>
-      ${financial.paidAmount && financial.paidAmount > 0 ? `
-      <div class="financial-row">
-        <span class="financial-label">Amount Paid:</span>
-        <span class="financial-value">${formatCurrency(financial.paidAmount)}</span>
-      </div>
-      ` : ''}
       <div class="financial-row">
         <span class="financial-label">Balance Amount:</span>
         <span class="financial-value">${formatCurrency(financial.balanceAmount || financial.remainingAmount || 0)}</span>
@@ -550,11 +469,6 @@ function generateExpenseContent(data: PDFTemplateData): string {
   const expense = data.expenseDetails || { amount: 0 }
   const customer = data.customer || {}
   const paymentStatus = expense.paymentStatus || 'pending'
-  const statusColor = {
-    paid: { bg: '#10b981', text: '#ffffff' },
-    partial: { bg: '#f59e0b', text: '#ffffff' },
-    pending: { bg: '#ef4444', text: '#ffffff' },
-  }[paymentStatus] || { bg: '#ef4444', text: '#ffffff' }
 
   return `
     <!-- Expense Info -->
@@ -563,7 +477,7 @@ function generateExpenseContent(data: PDFTemplateData): string {
         <div class="bill-number">Expense Receipt No: ${data.billNumber || 'N/A'}</div>
         <div style="font-size: 10px; margin-top: 3px;">Date: ${formatDate(data.date)}</div>
       </div>
-      <div class="status-badge" style="background-color: ${statusColor.bg}; color: ${statusColor.text};">
+      <div class="status-badge" style="background-color: #fff; color: #000; border: 1px solid #000;">
         ${paymentStatus.toUpperCase()}
       </div>
     </div>
