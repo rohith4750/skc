@@ -91,7 +91,7 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 via-orange-50 to-red-50">
+    <div className="h-screen bg-gradient-to-br from-gray-50 via-orange-50 to-red-50 overflow-hidden">
       {/* Mobile & Tablet Header with Logo */}
       <div className="lg:hidden bg-gradient-to-r from-red-800 via-red-900 to-amber-900 text-white py-4 sm:py-6 md:py-8 px-4">
         <div className="flex flex-col items-center">
@@ -107,28 +107,28 @@ export default function LoginPage() {
         </div>
       </div>
 
-      <div className="flex flex-col lg:flex-row min-h-[calc(100vh-100px)] sm:min-h-[calc(100vh-120px)] lg:min-h-screen">
+      <div className="flex flex-col lg:flex-row h-[calc(100vh-100px)] sm:h-[calc(100vh-120px)] lg:h-screen">
         {/* Left Side - Login Form */}
-        <div className="flex-1 flex items-center justify-center p-4 sm:p-6 md:p-8 lg:p-6 xl:p-10 2xl:p-12">
-          <div className="w-full max-w-md lg:max-w-md xl:max-w-lg 2xl:max-w-xl">
+        <div className="flex-1 flex items-center justify-center p-4 sm:p-6 md:p-8 lg:p-6 xl:p-8 overflow-y-auto">
+          <div className="w-full max-w-md">
             {/* Welcome Text */}
-            <div className="mb-4 sm:mb-5 md:mb-6 lg:mb-5 xl:mb-6 2xl:mb-8 text-center lg:text-left">
-              <h1 className="text-2xl sm:text-3xl md:text-4xl lg:text-3xl xl:text-4xl 2xl:text-5xl font-bold text-gray-900 mb-2">
+            <div className="mb-4 sm:mb-5 md:mb-6 lg:mb-3 xl:mb-4 text-center lg:text-left">
+              <h1 className="text-2xl sm:text-3xl md:text-4xl lg:text-2xl xl:text-3xl font-bold text-gray-900 mb-2">
                 Welcome Back
               </h1>
-              <p className="text-gray-600 text-sm sm:text-base md:text-lg lg:text-base xl:text-lg">
+              <p className="text-gray-600 text-sm sm:text-base md:text-lg lg:text-sm xl:text-base">
                 Sign in to manage your catering business
               </p>
             </div>
 
             {/* Login Form Card */}
-            <div className="bg-white rounded-xl sm:rounded-2xl shadow-lg sm:shadow-xl p-4 sm:p-6 md:p-7 lg:p-6 xl:p-7 2xl:p-8 border border-gray-100 hover:shadow-2xl transition-shadow duration-300">
-              <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-5 md:space-y-6 lg:space-y-4 xl:space-y-5 2xl:space-y-6">
+            <div className="bg-white rounded-xl sm:rounded-2xl shadow-lg sm:shadow-xl p-4 sm:p-6 md:p-7 lg:p-5 xl:p-6 border border-gray-100 hover:shadow-2xl transition-shadow duration-300">
+              <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-5 md:space-y-6 lg:space-y-3 xl:space-y-4">
                 <FormError message={formError} />
                 
                 {/* Username Field */}
                 <div>
-                  <label htmlFor="username" className="block text-sm sm:text-base lg:text-sm xl:text-base font-medium text-gray-700 mb-1.5 lg:mb-1.5 xl:mb-2">
+                  <label htmlFor="username" className="block text-sm sm:text-base lg:text-sm xl:text-base font-medium text-gray-700 mb-1.5 lg:mb-1 xl:mb-1.5">
                     Username or Email
                   </label>
                   <div className="relative">
@@ -140,7 +140,7 @@ export default function LoginPage() {
                       type="text"
                       value={formData.username}
                       onChange={(e) => setFormData({ ...formData, username: e.target.value })}
-                      className="block w-full pl-10 sm:pl-12 lg:pl-10 xl:pl-12 pr-3 sm:pr-4 py-3 sm:py-3.5 md:py-4 lg:py-2.5 xl:py-3 2xl:py-4 border border-gray-300 rounded-lg sm:rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-all outline-none text-sm sm:text-base lg:text-sm xl:text-base hover:border-gray-400"
+                      className="block w-full pl-10 sm:pl-12 lg:pl-10 xl:pl-12 pr-3 sm:pr-4 py-3 sm:py-3.5 md:py-4 lg:py-2 xl:py-2.5 border border-gray-300 rounded-lg sm:rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-all outline-none text-sm sm:text-base lg:text-sm xl:text-base hover:border-gray-400"
                       placeholder="Enter username or email"
                       required
                     />
@@ -149,7 +149,7 @@ export default function LoginPage() {
 
                 {/* Password Field */}
                 <div>
-                  <label htmlFor="password" className="block text-sm sm:text-base lg:text-sm xl:text-base font-medium text-gray-700 mb-1.5 lg:mb-1.5 xl:mb-2">
+                  <label htmlFor="password" className="block text-sm sm:text-base lg:text-sm xl:text-base font-medium text-gray-700 mb-1.5 lg:mb-1 xl:mb-1.5">
                     Password
                   </label>
                   <div className="relative">
@@ -161,7 +161,7 @@ export default function LoginPage() {
                       type={showPassword ? 'text' : 'password'}
                       value={formData.password}
                       onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                      className="block w-full pl-10 sm:pl-12 lg:pl-10 xl:pl-12 pr-12 sm:pr-14 py-3 sm:py-3.5 md:py-4 lg:py-2.5 xl:py-3 2xl:py-4 border border-gray-300 rounded-lg sm:rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-all outline-none text-sm sm:text-base lg:text-sm xl:text-base hover:border-gray-400"
+                      className="block w-full pl-10 sm:pl-12 lg:pl-10 xl:pl-12 pr-12 sm:pr-14 py-3 sm:py-3.5 md:py-4 lg:py-2 xl:py-2.5 border border-gray-300 rounded-lg sm:rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-all outline-none text-sm sm:text-base lg:text-sm xl:text-base hover:border-gray-400"
                       placeholder="Enter password"
                       required
                     />
@@ -177,8 +177,8 @@ export default function LoginPage() {
                 </div>
 
                 {/* Remember Me & Forgot Password */}
-                <div className="flex items-center justify-between text-xs sm:text-sm md:text-base lg:text-sm xl:text-base gap-2">
-                  <label className="flex items-center cursor-pointer touch-manipulation min-h-[44px] lg:min-h-[36px] xl:min-h-[44px]">
+                <div className="flex items-center justify-between text-xs sm:text-sm md:text-base lg:text-xs xl:text-sm gap-2">
+                  <label className="flex items-center cursor-pointer touch-manipulation min-h-[44px] lg:min-h-[32px] xl:min-h-[36px]">
                     <input
                       type="checkbox"
                       checked={formData.rememberMe}
@@ -190,7 +190,7 @@ export default function LoginPage() {
                   <button
                     type="button"
                     onClick={() => router.push('/reset-password')}
-                    className="text-primary-600 hover:text-primary-700 font-medium transition-colors touch-manipulation min-h-[44px] lg:min-h-[36px] xl:min-h-[44px] px-2"
+                    className="text-primary-600 hover:text-primary-700 font-medium transition-colors touch-manipulation min-h-[44px] lg:min-h-[32px] xl:min-h-[36px] px-2"
                   >
                     Forgot password?
                   </button>
@@ -200,7 +200,7 @@ export default function LoginPage() {
                 <button
                   type="submit"
                   disabled={isLoading}
-                  className="w-full bg-gradient-to-r from-red-700 to-amber-700 text-white py-3 sm:py-3.5 md:py-4 lg:py-2.5 xl:py-3 2xl:py-4 rounded-lg sm:rounded-xl font-semibold text-sm sm:text-base md:text-lg lg:text-base xl:text-lg hover:from-red-800 hover:to-amber-800 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg hover:shadow-xl active:shadow-md flex items-center justify-center gap-2 touch-manipulation min-h-[48px] lg:min-h-[44px] xl:min-h-[48px]"
+                  className="w-full bg-gradient-to-r from-red-700 to-amber-700 text-white py-3 sm:py-3.5 md:py-4 lg:py-2 xl:py-2.5 rounded-lg sm:rounded-xl font-semibold text-sm sm:text-base md:text-lg lg:text-sm xl:text-base hover:from-red-800 hover:to-amber-800 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg hover:shadow-xl active:shadow-md flex items-center justify-center gap-2 touch-manipulation min-h-[48px] lg:min-h-[40px] xl:min-h-[44px]"
                 >
                   {isLoading ? (
                     <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
@@ -274,14 +274,14 @@ export default function LoginPage() {
             </div>
 
             {/* Footer */}
-            <div className="mt-4 sm:mt-6 md:mt-8 text-center text-[10px] sm:text-xs md:text-sm text-gray-500 px-4">
+            <div className="mt-4 sm:mt-6 md:mt-8 lg:mt-3 xl:mt-4 text-center text-[10px] sm:text-xs md:text-sm text-gray-500 px-4">
               <p>© 2024 Srivatsasa & Koundinya Caterers. All rights reserved.</p>
             </div>
           </div>
         </div>
 
         {/* Right Side - Desktop Only */}
-        <div className="hidden lg:flex lg:flex-1 xl:flex-[1.1] 2xl:flex-[1.2] lg:flex-col lg:items-center lg:justify-center lg:p-6 xl:p-10 2xl:p-16 bg-gradient-to-br from-red-800 via-red-900 to-amber-900 relative overflow-hidden">
+        <div className="hidden lg:flex lg:flex-1 lg:flex-col lg:items-center lg:justify-center lg:p-6 xl:p-8 bg-gradient-to-br from-red-800 via-red-900 to-amber-900 relative overflow-y-auto">
           {/* Decorative Elements */}
           <div className="absolute inset-0 overflow-hidden pointer-events-none">
             <div className="absolute top-10 right-10 w-64 h-64 border border-amber-400/20 rounded-full"></div>
@@ -293,101 +293,101 @@ export default function LoginPage() {
           </div>
 
           {/* Content */}
-          <div className="relative z-10 w-full max-w-md lg:max-w-md xl:max-w-lg 2xl:max-w-xl text-center">
+          <div className="relative z-10 w-full max-w-md text-center">
             {/* Logo */}
-            <div className="mb-4 lg:mb-4 xl:mb-6 2xl:mb-8">
+            <div className="mb-4 lg:mb-3 xl:mb-4">
               <Image 
                 src="/images/logo-dark.png" 
                 alt="SKC Logo" 
-                width={260} 
-                height={260}
-                className="drop-shadow-2xl mx-auto w-40 h-40 lg:w-44 lg:h-44 xl:w-56 xl:h-56 2xl:w-72 2xl:h-72"
+                width={200} 
+                height={200}
+                className="drop-shadow-2xl mx-auto w-32 h-32 lg:w-36 lg:h-36 xl:w-40 xl:h-40"
                 priority
               />
             </div>
 
             {/* Decorative Line */}
-            <div className="flex items-center justify-center gap-4 mb-6">
+            <div className="flex items-center justify-center gap-4 mb-3 lg:mb-3 xl:mb-4">
               <div className="w-16 h-0.5 bg-gradient-to-r from-transparent to-amber-400/70"></div>
-              <FaStar className="text-amber-400/70" />
+              <FaStar className="text-amber-400/70 text-sm" />
               <div className="w-16 h-0.5 bg-gradient-to-l from-transparent to-amber-400/70"></div>
             </div>
 
             {/* Stats Cards */}
-            <div className="grid grid-cols-3 gap-2 lg:gap-2 xl:gap-3 2xl:gap-4 mb-4 lg:mb-4 xl:mb-6 2xl:mb-8">
-              <div className="bg-white/10 backdrop-blur-sm rounded-lg lg:rounded-xl xl:rounded-2xl p-2 lg:p-2.5 xl:p-3 2xl:p-5 border border-amber-400/30 hover:bg-white/15 hover:scale-105 transition-all cursor-pointer">
-                <FaAward className="text-amber-300 text-lg lg:text-xl xl:text-2xl 2xl:text-4xl mx-auto mb-0.5 lg:mb-1 xl:mb-1.5" />
-                <div className="text-white text-base lg:text-lg xl:text-xl 2xl:text-3xl font-bold">35+</div>
-                <div className="text-amber-200/80 text-[9px] lg:text-[10px] xl:text-xs 2xl:text-sm">Years</div>
+            <div className="grid grid-cols-3 gap-2 lg:gap-2 xl:gap-3 mb-3 lg:mb-3 xl:mb-4">
+              <div className="bg-white/10 backdrop-blur-sm rounded-lg lg:rounded-xl p-2 lg:p-2.5 xl:p-3 border border-amber-400/30 hover:bg-white/15 hover:scale-105 transition-all cursor-pointer">
+                <FaAward className="text-amber-300 text-lg lg:text-xl xl:text-2xl mx-auto mb-0.5 lg:mb-1" />
+                <div className="text-white text-base lg:text-lg xl:text-xl font-bold">35+</div>
+                <div className="text-amber-200/80 text-[9px] lg:text-[10px] xl:text-xs">Years</div>
               </div>
-              <div className="bg-white/10 backdrop-blur-sm rounded-lg lg:rounded-xl xl:rounded-2xl p-2 lg:p-2.5 xl:p-3 2xl:p-5 border border-amber-400/30 hover:bg-white/15 hover:scale-105 transition-all cursor-pointer">
-                <FaUsers className="text-amber-300 text-lg lg:text-xl xl:text-2xl 2xl:text-4xl mx-auto mb-0.5 lg:mb-1 xl:mb-1.5" />
-                <div className="text-white text-base lg:text-lg xl:text-xl 2xl:text-3xl font-bold">10K+</div>
-                <div className="text-amber-200/80 text-[9px] lg:text-[10px] xl:text-xs 2xl:text-sm">Customers</div>
+              <div className="bg-white/10 backdrop-blur-sm rounded-lg lg:rounded-xl p-2 lg:p-2.5 xl:p-3 border border-amber-400/30 hover:bg-white/15 hover:scale-105 transition-all cursor-pointer">
+                <FaUsers className="text-amber-300 text-lg lg:text-xl xl:text-2xl mx-auto mb-0.5 lg:mb-1" />
+                <div className="text-white text-base lg:text-lg xl:text-xl font-bold">10K+</div>
+                <div className="text-amber-200/80 text-[9px] lg:text-[10px] xl:text-xs">Customers</div>
               </div>
-              <div className="bg-white/10 backdrop-blur-sm rounded-lg lg:rounded-xl xl:rounded-2xl p-2 lg:p-2.5 xl:p-3 2xl:p-5 border border-amber-400/30 hover:bg-white/15 hover:scale-105 transition-all cursor-pointer">
-                <FaCalendarCheck className="text-amber-300 text-lg lg:text-xl xl:text-2xl 2xl:text-4xl mx-auto mb-0.5 lg:mb-1 xl:mb-1.5" />
-                <div className="text-white text-base lg:text-lg xl:text-xl 2xl:text-3xl font-bold">50K+</div>
-                <div className="text-amber-200/80 text-[9px] lg:text-[10px] xl:text-xs 2xl:text-sm">Events</div>
+              <div className="bg-white/10 backdrop-blur-sm rounded-lg lg:rounded-xl p-2 lg:p-2.5 xl:p-3 border border-amber-400/30 hover:bg-white/15 hover:scale-105 transition-all cursor-pointer">
+                <FaCalendarCheck className="text-amber-300 text-lg lg:text-xl xl:text-2xl mx-auto mb-0.5 lg:mb-1" />
+                <div className="text-white text-base lg:text-lg xl:text-xl font-bold">50K+</div>
+                <div className="text-amber-200/80 text-[9px] lg:text-[10px] xl:text-xs">Events</div>
               </div>
             </div>
 
             {/* Services */}
-            <div className="bg-black/20 backdrop-blur-sm rounded-lg lg:rounded-xl xl:rounded-2xl p-3 lg:p-3 xl:p-4 2xl:p-6 border border-amber-400/20 mb-4 lg:mb-4 xl:mb-6 2xl:mb-8 hover:bg-black/30 transition-all">
-              <h3 className="text-amber-300 font-semibold mb-2 lg:mb-2.5 xl:mb-3 2xl:mb-4 text-[10px] lg:text-xs xl:text-sm 2xl:text-base uppercase tracking-wider flex items-center justify-center gap-1.5 lg:gap-2">
-                <FaLeaf className="text-sm lg:text-sm xl:text-base" /> Our Services
+            <div className="bg-black/20 backdrop-blur-sm rounded-lg lg:rounded-xl p-3 lg:p-3 xl:p-4 border border-amber-400/20 mb-3 lg:mb-3 xl:mb-4 hover:bg-black/30 transition-all">
+              <h3 className="text-amber-300 font-semibold mb-2 lg:mb-2 xl:mb-2.5 text-[10px] lg:text-xs xl:text-sm uppercase tracking-wider flex items-center justify-center gap-1.5">
+                <FaLeaf className="text-xs lg:text-sm" /> Our Services
               </h3>
-              <div className="grid grid-cols-2 gap-1.5 lg:gap-2 xl:gap-2.5 2xl:gap-3 text-left">
-                <div className="flex items-center gap-1.5 text-amber-100/90 text-[10px] lg:text-xs xl:text-sm 2xl:text-base">
-                  <FaCheckCircle className="text-green-400 text-[10px] lg:text-xs xl:text-sm flex-shrink-0" />
+              <div className="grid grid-cols-2 gap-1.5 lg:gap-2 text-left">
+                <div className="flex items-center gap-1.5 text-amber-100/90 text-[10px] lg:text-xs xl:text-sm">
+                  <FaCheckCircle className="text-green-400 text-[10px] lg:text-xs flex-shrink-0" />
                   <span>Wedding Catering</span>
                 </div>
-                <div className="flex items-center gap-1.5 text-amber-100/90 text-[10px] lg:text-xs xl:text-sm 2xl:text-base">
-                  <FaCheckCircle className="text-green-400 text-[10px] lg:text-xs xl:text-sm flex-shrink-0" />
+                <div className="flex items-center gap-1.5 text-amber-100/90 text-[10px] lg:text-xs xl:text-sm">
+                  <FaCheckCircle className="text-green-400 text-[10px] lg:text-xs flex-shrink-0" />
                   <span>Corporate Events</span>
                 </div>
-                <div className="flex items-center gap-1.5 text-amber-100/90 text-[10px] lg:text-xs xl:text-sm 2xl:text-base">
-                  <FaCheckCircle className="text-green-400 text-[10px] lg:text-xs xl:text-sm flex-shrink-0" />
+                <div className="flex items-center gap-1.5 text-amber-100/90 text-[10px] lg:text-xs xl:text-sm">
+                  <FaCheckCircle className="text-green-400 text-[10px] lg:text-xs flex-shrink-0" />
                   <span>Birthday Parties</span>
                 </div>
-                <div className="flex items-center gap-1.5 text-amber-100/90 text-[10px] lg:text-xs xl:text-sm 2xl:text-base">
-                  <FaCheckCircle className="text-green-400 text-[10px] lg:text-xs xl:text-sm flex-shrink-0" />
+                <div className="flex items-center gap-1.5 text-amber-100/90 text-[10px] lg:text-xs xl:text-sm">
+                  <FaCheckCircle className="text-green-400 text-[10px] lg:text-xs flex-shrink-0" />
                   <span>Religious Functions</span>
                 </div>
-                <div className="flex items-center gap-1.5 text-amber-100/90 text-[10px] lg:text-xs xl:text-sm 2xl:text-base">
-                  <FaCheckCircle className="text-green-400 text-[10px] lg:text-xs xl:text-sm flex-shrink-0" />
+                <div className="flex items-center gap-1.5 text-amber-100/90 text-[10px] lg:text-xs xl:text-sm">
+                  <FaCheckCircle className="text-green-400 text-[10px] lg:text-xs flex-shrink-0" />
                   <span>House Warming</span>
                 </div>
-                <div className="flex items-center gap-1.5 text-amber-100/90 text-[10px] lg:text-xs xl:text-sm 2xl:text-base">
-                  <FaCheckCircle className="text-green-400 text-[10px] lg:text-xs xl:text-sm flex-shrink-0" />
+                <div className="flex items-center gap-1.5 text-amber-100/90 text-[10px] lg:text-xs xl:text-sm">
+                  <FaCheckCircle className="text-green-400 text-[10px] lg:text-xs flex-shrink-0" />
                   <span>Anniversary</span>
                 </div>
               </div>
             </div>
 
             {/* Contact Info */}
-            <div className="bg-black/20 backdrop-blur-sm rounded-lg lg:rounded-xl xl:rounded-2xl p-3 lg:p-3 xl:p-4 2xl:p-6 border border-amber-400/20 mb-4 lg:mb-4 xl:mb-6 2xl:mb-8 hover:bg-black/30 transition-all">
-              <div className="grid grid-cols-1 gap-1.5 lg:gap-2 xl:gap-2.5 2xl:gap-3 text-[10px] lg:text-xs xl:text-sm 2xl:text-base">
-                <div className="flex items-center justify-center gap-1.5 lg:gap-2 xl:gap-3 text-amber-100">
-                  <FaPhone className="text-amber-400 flex-shrink-0 text-xs lg:text-sm xl:text-base" />
+            <div className="bg-black/20 backdrop-blur-sm rounded-lg lg:rounded-xl p-3 lg:p-3 xl:p-4 border border-amber-400/20 mb-3 lg:mb-3 xl:mb-4 hover:bg-black/30 transition-all">
+              <div className="grid grid-cols-1 gap-1.5 lg:gap-2 text-[10px] lg:text-xs xl:text-sm">
+                <div className="flex items-center justify-center gap-1.5 lg:gap-2 text-amber-100">
+                  <FaPhone className="text-amber-400 flex-shrink-0 text-xs lg:text-sm" />
                   <span className="break-all">9866652150 | 9900119302 | 9656501388</span>
                 </div>
-                <div className="flex items-center justify-center gap-1.5 lg:gap-2 xl:gap-3 text-amber-100">
-                  <FaEnvelope className="text-amber-400 flex-shrink-0 text-xs lg:text-sm xl:text-base" />
+                <div className="flex items-center justify-center gap-1.5 lg:gap-2 text-amber-100">
+                  <FaEnvelope className="text-amber-400 flex-shrink-0 text-xs lg:text-sm" />
                   <span className="break-all">pujaysri1989@gmail.com</span>
                 </div>
-                <div className="flex items-center justify-center gap-1.5 lg:gap-2 xl:gap-3 text-amber-100">
-                  <FaMapMarkerAlt className="text-amber-400 flex-shrink-0 text-xs lg:text-sm xl:text-base" />
+                <div className="flex items-center justify-center gap-1.5 lg:gap-2 text-amber-100">
+                  <FaMapMarkerAlt className="text-amber-400 flex-shrink-0 text-xs lg:text-sm" />
                   <span>Vanathalipuram, Hyderabad - 500070</span>
                 </div>
               </div>
             </div>
 
             {/* Tagline */}
-            <div className="flex items-center justify-center gap-2 xl:gap-3 text-amber-200/90">
-              <FaHeart className="text-red-400 text-xs lg:text-sm xl:text-base animate-pulse" />
-              <p className="text-xs lg:text-sm xl:text-base 2xl:text-lg italic">"Catering to your success, one event at a time"</p>
-              <FaHeart className="text-red-400 text-xs lg:text-sm xl:text-base animate-pulse" style={{ animationDelay: '0.5s' }} />
+            <div className="flex items-center justify-center gap-2 text-amber-200/90">
+              <FaHeart className="text-red-400 text-xs lg:text-sm animate-pulse" />
+              <p className="text-xs lg:text-sm xl:text-base italic">"Catering to your success, one event at a time"</p>
+              <FaHeart className="text-red-400 text-xs lg:text-sm animate-pulse" style={{ animationDelay: '0.5s' }} />
             </div>
           </div>
         </div>
