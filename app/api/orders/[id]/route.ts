@@ -119,7 +119,27 @@ export async function PUT(
         severity: status === 'completed' ? 'success' : 'info',
       })
 
-      return NextResponse.json({ order: transformDecimal(order), bill: transformDecimal(bill) })
+      // Fetch the updated order with all relations to return complete data
+      const updatedOrderWithRelations = await prisma.order.findUnique({
+        where: { id: params.id },
+        include: {
+          customer: true,
+          supervisor: true,
+          items: {
+            include: {
+              menuItem: true
+            }
+          }
+        }
+      })
+
+      return NextResponse.json({ 
+        order: transformDecimal(updatedOrderWithRelations), 
+        bill: transformDecimal(bill),
+        _billCreated: bill ? true : false,
+        _billId: bill?.id,
+        _billStatus: bill ? 'created' : 'none'
+      })
     }
 
     if (!isNonEmptyString(data.customerId)) {

@@ -82,7 +82,7 @@ export default function OrdersHistoryPage() {
   const statusSummary = useMemo(() => {
     const totalOrders = filteredOrders.length
     const pending = filteredOrders.filter((order) => order.status === 'pending').length
-    const inProgress = filteredOrders.filter((order) => order.status === 'in-progress').length
+    const inProgress = filteredOrders.filter((order) => order.status === 'in_progress').length
     const completed = filteredOrders.filter((order) => order.status === 'completed').length
     const cancelled = filteredOrders.filter((order) => order.status === 'cancelled').length
     return { totalOrders, pending, inProgress, completed, cancelled }
@@ -136,24 +136,25 @@ export default function OrdersHistoryPage() {
         throw new Error(error.error || 'Failed to update status')
       }
 
-      const updatedOrder = await response.json()
-      console.log(`[Order History] Order status updated.`, updatedOrder)
+      const responseData = await response.json()
+      console.log(`[Order History] Order status updated.`, responseData)
       
+      // Reload data to get the latest orders with updated status
       await loadData()
       
-      // If status changed to in-progress or completed, check if bill was created
-      if (newStatus === 'in-progress' || newStatus === 'completed') {
-        if (updatedOrder._billCreated) {
-          console.log(`[Order History] ✅ Bill created: ${updatedOrder._billId}`)
+      // If status changed to in_progress or completed, check if bill was created
+      if (newStatus === 'in_progress' || newStatus === 'completed') {
+        if (responseData._billCreated) {
+          console.log(`[Order History] ✅ Bill created: ${responseData._billId}`)
           toast.success(`Order status updated to ${newStatus}. Bill has been generated!`, {
             duration: 4000,
           })
-        } else if (updatedOrder._billError) {
-          console.error(`[Order History] ❌ Bill creation failed:`, updatedOrder._billError)
-          toast.error(`Order status updated, but bill creation failed: ${updatedOrder._billError.message}`, {
+        } else if (responseData._billError) {
+          console.error(`[Order History] ❌ Bill creation failed:`, responseData._billError)
+          toast.error(`Order status updated, but bill creation failed: ${responseData._billError.message}`, {
             duration: 5000,
           })
-        } else if (updatedOrder._billStatus === 'exists') {
+        } else if (responseData._billStatus === 'exists') {
           console.log(`[Order History] Bill already exists for this order`)
           toast.success(`Order status updated to ${newStatus}. Bill already exists.`, {
             duration: 4000,
@@ -203,7 +204,7 @@ export default function OrdersHistoryPage() {
         .section-title { font-size: 14px; font-weight: 600; margin-bottom: 8px; padding-bottom: 4px; border-bottom: 2px solid #ddd; color: #222; font-family: 'Poppins', sans-serif; }
         .info-row { margin-bottom: 6px; font-family: 'Poppins', sans-serif; }
         .info-label { font-weight: 600; display: inline-block; width: 120px; font-family: 'Poppins', sans-serif; }
-        .menu-item { padding: 2px 4px; border-bottom: 1px dotted #ccc; font-family: 'Poppins', sans-serif; font-size: 9px; line-height: 1.3; }
+        .menu-item { padding: 2px 4px; font-family: 'Poppins', sans-serif; font-size: 9px; line-height: 1.3; font-weight: 600; }
         .financial-row { display: flex; justify-content: space-between; padding: 6px 0; border-bottom: 1px solid #eee; font-family: 'Poppins', sans-serif; }
         .financial-row.total { font-weight: 700; font-size: 13px; border-top: 2px solid #333; border-bottom: 2px solid #333; margin-top: 5px; padding-top: 8px; }
         .financial-label { font-weight: 600; }
@@ -259,7 +260,7 @@ export default function OrdersHistoryPage() {
     Object.keys(itemsByType).forEach((type) => {
       // Add type section
       htmlContent += `
-        <div style="grid-column: span 4; font-weight: 700; font-size: 10px; margin-top: 6px; margin-bottom: 3px; color: #222; text-transform: uppercase; border-bottom: 1px solid #ddd; padding-bottom: 2px; font-family: 'Poppins', sans-serif;">
+        <div style="grid-column: span 4; font-weight: 700; font-size: 10px; margin-top: 6px; margin-bottom: 3px; color: #222; text-transform: uppercase; padding-bottom: 2px; font-family: 'Poppins', sans-serif;">
           ${type}
         </div>
       `
@@ -269,7 +270,7 @@ export default function OrdersHistoryPage() {
         // Use Telugu name if available, otherwise fall back to English name
         const itemName = item.menuItem?.nameTelugu || item.menuItem?.name || 'Unknown Item'
         htmlContent += `
-          <div style="padding: 2px 4px; border-bottom: 1px dotted #ddd; font-family: 'Poppins', sans-serif; line-height: 1.3;">
+          <div style="padding: 2px 4px; font-family: 'Poppins', sans-serif; line-height: 1.3; font-weight: 600;">
             ${index + 1}. ${itemName}
           </div>
         `
@@ -405,7 +406,7 @@ export default function OrdersHistoryPage() {
               >
                 <option value="all">All Status</option>
                 <option value="pending">Pending</option>
-                <option value="in-progress">In Progress</option>
+                <option value="in_progress">In Progress</option>
                 <option value="completed">Completed</option>
                 <option value="cancelled">Cancelled</option>
               </select>
@@ -539,13 +540,13 @@ export default function OrdersHistoryPage() {
                           onChange={(e) => handleStatusChange(order.id, e.target.value)}
                           className={`px-3 py-1.5 text-xs font-semibold rounded-full border-0 cursor-pointer focus:ring-2 focus:ring-primary-500 focus:outline-none ${
                             order.status === 'completed' ? 'bg-green-100 text-green-800 hover:bg-green-200' :
-                            order.status === 'in-progress' ? 'bg-yellow-100 text-yellow-800 hover:bg-yellow-200' :
+                            order.status === 'in_progress' ? 'bg-yellow-100 text-yellow-800 hover:bg-yellow-200' :
                             order.status === 'cancelled' ? 'bg-red-100 text-red-800 hover:bg-red-200' :
                             'bg-gray-100 text-gray-800 hover:bg-gray-200'
                           }`}
                         >
                           <option value="pending">Pending</option>
-                          <option value="in-progress">In Progress</option>
+                          <option value="in_progress">In Progress</option>
                           <option value="completed">Completed</option>
                           <option value="cancelled">Cancelled</option>
                         </select>

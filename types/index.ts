@@ -33,7 +33,7 @@ export interface Order {
   totalAmount: number
   advancePaid: number
   remainingAmount: number
-  status: 'pending' | 'in-progress' | 'completed' | 'cancelled'
+  status: 'pending' | 'in_progress' | 'completed' | 'cancelled'
   eventName?: string | null
   eventType?: string | null
   eventDate?: string | null
