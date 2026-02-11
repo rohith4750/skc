@@ -116,14 +116,14 @@ export default function Sidebar() {
       <div
         className={`
           fixed lg:static inset-y-0 left-0 z-40
-          w-56 bg-gray-900 text-white shadow-xl
+          w-56 lg:w-72 bg-gray-900 text-white shadow-xl
           transform transition-transform duration-300 ease-in-out
           ${isOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
           flex flex-col h-screen
         `}
       >
         {/* Brand Section - Fixed at top */}
-        <div className="w-full border-b border-gray-800 flex-shrink-0 bg-gray-900 flex flex-col items-center justify-center py-2 px-2">
+        <div className="w-full border-b border-gray-800 flex-shrink-0 bg-gray-900 flex flex-col items-center justify-center py-2 px-2 lg:py-4 lg:px-4">
           <Link href="/" className="flex flex-col items-center">
             <Image
               src="/images/logo-dark.png"

@@ -6,41 +6,44 @@
   --foreground-rgb: 0, 0, 0;
   --background-start-rgb: 214, 219, 220;
   --background-end-rgb: 255, 255, 255;
-  
+
   /* SKC Caterers Color Scheme */
   --primary-50: #fff7ed;
   --primary-100: #ffedd5;
   --primary-200: #fed7aa;
   --primary-300: #fdba74;
   --primary-400: #fb923c;
-  --primary-500: #f97316; /* Main Orange */
+  --primary-500: #f97316;
+  /* Main Orange */
   --primary-600: #ea580c;
   --primary-700: #c2410c;
   --primary-800: #9a3412;
   --primary-900: #7c2d12;
-  
+
   --secondary-50: #fef2f2;
   --secondary-100: #fee2e2;
   --secondary-200: #fecaca;
   --secondary-300: #fca5a5;
   --secondary-400: #f87171;
-  --secondary-500: #ef4444; /* Red accent */
+  --secondary-500: #ef4444;
+  /* Red accent */
   --secondary-600: #dc2626;
   --secondary-700: #b91c1c;
   --secondary-800: #991b1b;
   --secondary-900: #7f1d1d;
-  
+
   --accent-50: #fefce8;
   --accent-100: #fef9c3;
   --accent-200: #fef08a;
   --accent-300: #fde047;
   --accent-400: #facc15;
-  --accent-500: #eab308; /* Yellow accent */
+  --accent-500: #eab308;
+  /* Yellow accent */
   --accent-600: #ca8a04;
   --accent-700: #a16207;
   --accent-800: #854d0e;
   --accent-900: #713f12;
-  
+
   --gray-50: #f9fafb;
   --gray-100: #f3f4f6;
   --gray-200: #e5e7eb;
@@ -51,19 +54,19 @@
   --gray-700: #374151;
   --gray-800: #1f2937;
   --gray-900: #111827;
-  
+
   --success: #10b981;
   --success-light: #34d399;
   --success-dark: #059669;
-  
+
   --error: #ef4444;
   --error-light: #f87171;
   --error-dark: #dc2626;
-  
+
   --warning: #f59e0b;
   --warning-light: #fbbf24;
   --warning-dark: #d97706;
-  
+
   --info: #3b82f6;
   --info-light: #60a5fa;
   --info-dark: #2563eb;
@@ -77,18 +80,24 @@
   }
 }
 
+/* Increase base font size for large screens */
+@media (min-width: 1024px) {
+  html {
+    font-size: 12px;
+  }
+}
+
+
 html {
-  font-size: 14px; /* Reduce base font size from default 16px to 14px */
+  font-size: 14px;
+  /* Reduce base font size from default 16px to 14px */
 }
 
 body {
   color: rgb(var(--foreground-rgb));
-  background: linear-gradient(
-      to bottom,
+  background: linear-gradient(to bottom,
       transparent,
-      rgb(var(--background-end-rgb))
-    )
-    rgb(var(--background-start-rgb));
+      rgb(var(--background-end-rgb))) rgb(var(--background-start-rgb));
 }
 
 /* Ensure input fields have proper text color - visible at all times */
@@ -139,36 +148,42 @@ select:-webkit-autofill:active {
   .text-balance {
     text-wrap: balance;
   }
-  
+
   /* Primary Colors */
   .bg-primary {
     background-color: var(--primary-500);
   }
+
   .bg-primary-light {
     background-color: var(--primary-400);
   }
+
   .bg-primary-dark {
     background-color: var(--primary-600);
   }
+
   .text-primary {
     color: var(--primary-500);
   }
+
   .border-primary {
     border-color: var(--primary-500);
   }
-  
+
   /* Secondary Colors */
   .bg-secondary {
     background-color: var(--secondary-500);
   }
+
   .text-secondary {
     color: var(--secondary-500);
   }
-  
+
   /* Accent Colors */
   .bg-accent {
     background-color: var(--accent-500);
   }
+
   .text-accent {
     color: var(--accent-500);
   }
