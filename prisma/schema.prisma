@@ -152,6 +152,7 @@ model Supervisor {
 
 model Order {
   id              String    @id @default(uuid())
+  serialNumber    Int       @default(autoincrement())
   customerId      String
   customer        Customer  @relation(fields: [customerId], references: [id], onDelete: Cascade)
   supervisorId    String?
