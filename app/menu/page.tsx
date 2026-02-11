@@ -4,7 +4,7 @@ import { useEffect, useState, useMemo } from 'react'
 import { Storage } from '@/lib/storage-api'
 import { initializeMenuItems } from '@/lib/initMenu'
 import { MenuItem } from '@/types'
-import { FaPlus, FaEdit, FaTrash, FaDownload } from 'react-icons/fa'
+import { FaPlus, FaEdit, FaTrash, FaDownload, FaPrint } from 'react-icons/fa'
 import toast from 'react-hot-toast'
 import Table from '@/components/Table'
 import { getMenuItemTableConfig } from '@/components/table-configs'
@@ -229,6 +229,193 @@ export default function MenuPage() {
     }
   }
 
+  const handlePrintMenu = () => {
+    // Group menu items by type
+    const breakfastItems = menuItems.filter(item => item.type === 'breakfast' && item.isActive)
+    const lunchItems = menuItems.filter(item => item.type === 'lunch' && item.isActive)
+    const dinnerItems = menuItems.filter(item => item.type === 'dinner' && item.isActive)
+    const snacksItems = menuItems.filter(item => item.type === 'snacks' && item.isActive)
+
+    // Group items by subcategory within each meal type
+    const groupBySubcategory = (items: MenuItem[]) => {
+      const grouped: Record<string, MenuItem[]> = {}
+      items.forEach(item => {
+        const subcategory = extractSubcategory(item.description) || 'Other'
+        if (!grouped[subcategory]) {
+          grouped[subcategory] = []
+        }
+        grouped[subcategory].push(item)
+      })
+      return grouped
+    }
+
+    const breakfastGrouped = groupBySubcategory(breakfastItems)
+    const lunchGrouped = groupBySubcategory(lunchItems)
+    const dinnerGrouped = groupBySubcategory(dinnerItems)
+    const snacksGrouped = groupBySubcategory(snacksItems)
+
+    // Create a new window for printing
+    const printWindow = window.open('', '_blank')
+    if (!printWindow) {
+      toast.error('Please allow popups to print the menu')
+      return
+    }
+
+    // Generate HTML for printing
+    const renderCategory = (title: string, grouped: Record<string, MenuItem[]>) => {
+      if (Object.keys(grouped).length === 0) return ''
+      
+      return `
+        <div class="category">
+          <h2 class="category-title">${title}</h2>
+          <div class="items-grid">
+            ${Object.entries(grouped).map(([subcategory, items]) => `
+              <div class="subcategory">
+                <h3 class="subcategory-title">${subcategory}</h3>
+                <div class="items-list">
+                  ${items.map(item => `
+                    <div class="item">• ${item.name}${item.nameTelugu ? ` (${item.nameTelugu})` : ''}</div>
+                  `).join('')}
+                </div>
+              </div>
+            `).join('')}
+          </div>
+        </div>
+      `
+    }
+
+    printWindow.document.write(`
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <title>SKC Caterers - Complete Menu</title>
+          <meta charset="utf-8">
+          <style>
+            @page {
+              size: A4;
+              margin: 10mm;
+            }
+            * {
+              margin: 0;
+              padding: 0;
+              box-sizing: border-box;
+            }
+            body {
+              font-family: Arial, sans-serif;
+              font-size: 7px;
+              line-height: 1.2;
+              color: #000;
+              background: white;
+            }
+            .container {
+              width: 100%;
+              height: 100%;
+              padding: 8px;
+            }
+            .header {
+              text-align: center;
+              margin-bottom: 6px;
+              border-bottom: 2px solid #d97706;
+              padding-bottom: 4px;
+            }
+            .header h1 {
+              font-size: 14px;
+              color: #c2410c;
+              margin-bottom: 2px;
+            }
+            .header p {
+              font-size: 7px;
+              color: #666;
+            }
+            .menu-grid {
+              display: grid;
+              grid-template-columns: repeat(2, 1fr);
+              gap: 6px;
+            }
+            .category {
+              border: 1px solid #ddd;
+              padding: 4px;
+              background: #fafafa;
+            }
+            .category-title {
+              font-size: 9px;
+              font-weight: bold;
+              color: #c2410c;
+              margin-bottom: 3px;
+              text-transform: uppercase;
+              border-bottom: 1px solid #d97706;
+              padding-bottom: 2px;
+            }
+            .items-grid {
+              display: grid;
+              grid-template-columns: repeat(2, 1fr);
+              gap: 3px;
+            }
+            .subcategory {
+              margin-bottom: 2px;
+            }
+            .subcategory-title {
+              font-size: 7px;
+              font-weight: bold;
+              color: #047857;
+              margin-bottom: 1px;
+            }
+            .items-list {
+              font-size: 6px;
+              line-height: 1.3;
+            }
+            .item {
+              margin-bottom: 1px;
+              padding-left: 2px;
+            }
+            .footer {
+              margin-top: 6px;
+              text-align: center;
+              font-size: 6px;
+              color: #666;
+              border-top: 1px solid #ddd;
+              padding-top: 3px;
+            }
+            @media print {
+              body {
+                print-color-adjust: exact;
+                -webkit-print-color-adjust: exact;
+              }
+            }
+          </style>
+        </head>
+        <body>
+          <div class="container">
+            <div class="header">
+              <h1>SRIVATSASA & KOWNDINYA CATERERS</h1>
+              <p>Pure Vegetarian • Complete Menu • Est. 1989</p>
+              <p>📞 9866652150, 9900119302, 9656501388 • 📧 pujaysri1989@gmail.com</p>
+            </div>
+            
+            <div class="menu-grid">
+              ${renderCategory('BREAKFAST', breakfastGrouped)}
+              ${renderCategory('LUNCH', lunchGrouped)}
+              ${renderCategory('DINNER', dinnerGrouped)}
+              ${renderCategory('SNACKS', snacksGrouped)}
+            </div>
+            
+            <div class="footer">
+              <p>Vanathalipuram, Hyderabad - 500070 • www.skccaterers.in</p>
+              <p>Serving quality vegetarian food since 1989</p>
+            </div>
+          </div>
+        </body>
+      </html>
+    `)
+
+    printWindow.document.close()
+    
+    // Wait for content to load, then print
+    setTimeout(() => {
+      printWindow.print()
+    }, 250)
+  }
+
   return (
     <div className="p-4 sm:p-6 lg:p-8 pt-16 lg:pt-8">
       <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 mb-6 sm:mb-8">
@@ -237,6 +424,12 @@ export default function MenuPage() {
           <p className="text-gray-600 mt-1 sm:mt-2 text-sm sm:text-base">Manage your catering menu items</p>
         </div>
         <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
+          <button
+            onClick={handlePrintMenu}
+            className="bg-purple-600 text-white px-4 sm:px-6 py-2 sm:py-3 rounded-lg hover:bg-purple-700 transition-colors flex items-center justify-center gap-2 text-sm sm:text-base"
+          >
+            <FaPrint /> <span className="hidden sm:inline">Print Menu</span><span className="sm:hidden">Print</span>
+          </button>
           <button
             onClick={handleInitialize}
             className="bg-green-600 text-white px-4 sm:px-6 py-2 sm:py-3 rounded-lg hover:bg-green-700 transition-colors flex items-center justify-center gap-2 text-sm sm:text-base"
