@@ -224,7 +224,7 @@ export default function ProfilePage() {
 
   if (!profile) {
     return (
-      <div className="p-3 sm:p-4 md:p-5 lg:p-6 xl:p-8 pt-14 sm:pt-16 lg:pt-6 xl:pt-8 min-h-screen flex items-center justify-center bg-gray-50">
+      <div className="p-3 sm:p-4 md:p-5 lg:p-5 xl:p-6 pt-12 sm:pt-14 lg:pt-5 xl:pt-6 min-h-screen flex items-center justify-center bg-gray-50">
         <div className="text-center">
           <p className="text-gray-600">No profile data available</p>
         </div>
@@ -233,7 +233,7 @@ export default function ProfilePage() {
   }
 
   return (
-    <div className="p-3 sm:p-4 md:p-5 lg:p-6 xl:p-8 pt-14 sm:pt-16 lg:pt-6 xl:pt-8 bg-gray-50 min-h-screen">
+    <div className="p-3 sm:p-4 md:p-5 lg:p-5 xl:p-6 pt-12 sm:pt-14 lg:pt-5 xl:pt-6 bg-gray-50 min-h-screen">
       {/* Header */}
       <div className="mb-4 sm:mb-5 md:mb-6">
         <h1 className="text-xl sm:text-2xl md:text-3xl font-bold text-gray-900">My Profile</h1>

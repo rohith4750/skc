@@ -77,6 +77,10 @@
   }
 }
 
+html {
+  font-size: 14px; /* Reduce base font size from default 16px to 14px */
+}
+
 body {
   color: rgb(var(--foreground-rgb));
   background: linear-gradient(
