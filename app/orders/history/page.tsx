@@ -270,7 +270,7 @@ export default function OrdersHistoryPage() {
       }
       itemsByType[type].push(item)
     })
-    
+
     // Get member count for each meal type
     const getMemberCount = (mealType: string): string => {
       if (mealTypeAmounts) {
@@ -281,7 +281,7 @@ export default function OrdersHistoryPage() {
       }
       return ''
     }
-    
+
     // Display items grouped by type in compact grid
     Object.keys(itemsByType).forEach((type) => {
       // Add type section with member count
@@ -298,7 +298,7 @@ export default function OrdersHistoryPage() {
         const itemName = item.menuItem?.nameTelugu || item.menuItem?.name || 'Unknown Item'
         htmlContent += `
           <div style="padding: 2px 4px; font-family: 'Poppins', sans-serif; line-height: 1.3; font-weight: 600;">
-            ${index + 1}. ${itemName}
+            ${index + 1}. ${itemName}${item.customization ? ` (${item.customization})` : ''}
           </div>
         `
       })
@@ -566,9 +566,9 @@ export default function OrdersHistoryPage() {
                           value={order.status}
                           onChange={(e) => handleStatusChange(order.id, e.target.value)}
                           className={`px-3 py-1.5 text-xs font-semibold rounded-full border-0 cursor-pointer focus:ring-2 focus:ring-primary-500 focus:outline-none ${order.status === 'completed' ? 'bg-green-100 text-green-800 hover:bg-green-200' :
-                              order.status === 'in_progress' ? 'bg-yellow-100 text-yellow-800 hover:bg-yellow-200' :
-                                order.status === 'cancelled' ? 'bg-red-100 text-red-800 hover:bg-red-200' :
-                                  'bg-gray-100 text-gray-800 hover:bg-gray-200'
+                            order.status === 'in_progress' ? 'bg-yellow-100 text-yellow-800 hover:bg-yellow-200' :
+                              order.status === 'cancelled' ? 'bg-red-100 text-red-800 hover:bg-red-200' :
+                                'bg-gray-100 text-gray-800 hover:bg-gray-200'
                             }`}
                         >
                           <option value="pending">Pending</option>
@@ -632,8 +632,8 @@ export default function OrdersHistoryPage() {
               onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
               disabled={currentPage === 1}
               className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${currentPage === 1
-                  ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
-                  : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
                 }`}
             >
               <FaChevronLeft />
@@ -650,8 +650,8 @@ export default function OrdersHistoryPage() {
                       key={page}
                       onClick={() => setCurrentPage(page)}
                       className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${currentPage === page
-                          ? 'bg-blue-600 text-white'
-                          : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                        ? 'bg-blue-600 text-white'
+                        : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
                         }`}
                     >
                       {page}
@@ -667,8 +667,8 @@ export default function OrdersHistoryPage() {
               onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
               disabled={currentPage === totalPages}
               className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${currentPage === totalPages
-                  ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
-                  : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
                 }`}
             >
               <FaChevronRight />
