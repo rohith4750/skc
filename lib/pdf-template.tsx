@@ -333,11 +333,20 @@ function generateBillContent(data: PDFTemplateData): string {
 
       const pricingMethod = (dataObj as any).pricingMethod || 'manual'
       const platePrice = (dataObj as any).platePrice || 0
+      const manualAmount = (dataObj as any).manualAmount || 0
+
+      let displayAmount = amount
+      if (pricingMethod === 'manual' && manualAmount > 0) {
+        displayAmount = manualAmount
+      }
 
       let rateDisplay = ''
 
       if (pricingMethod === 'plate-based' && platePrice > 0) {
         rateDisplay = formatCurrency(platePrice)
+        if (!displayAmount || displayAmount === 0) {
+          displayAmount = persons * platePrice
+        }
       }
 
       // Format meal type name (capitalize first letter)
@@ -350,7 +359,7 @@ function generateBillContent(data: PDFTemplateData): string {
           <span style="margin-left: 10px;">Rate:</span>
           <span class="form-value-inline" style="width: 80px;">${rateDisplay}</span>
           <span style="margin-left: 10px;">Total:</span>
-          <span class="form-value-inline" style="width: 100px;">${amount > 0 ? formatCurrency(amount) : ''}</span>
+          <span class="form-value-inline" style="width: 100px;">${displayAmount > 0 ? formatCurrency(displayAmount) : ''}</span>
         </div>
       `)
     })
