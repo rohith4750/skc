@@ -68,7 +68,7 @@ export async function POST(request: NextRequest) {
       totalAmount: totalAmount,
       advancePaid: advancePaid,
       remainingAmount: remainingAmount,
-      status: data.status === 'in-progress' ? 'in_progress' : (data.status || 'pending'),
+      status: data.status || 'pending',
       eventName: data.eventName || null,
       services: data.services && Array.isArray(data.services) && data.services.length > 0 ? data.services : null,
       numberOfMembers: data.numberOfMembers || null,
@@ -85,7 +85,7 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Create order only - bills will be generated when status changes to in-progress or completed
+    // Create order only - bills will be generated when status changes to in_progress or completed
     const order = await prisma.order.create({
       data: orderData,
       include: {

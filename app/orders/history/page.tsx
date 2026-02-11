@@ -31,7 +31,7 @@ export default function OrdersHistoryPage() {
     try {
       const response = await fetch('/api/orders')
       if (!response.ok) throw new Error('Failed to fetch orders')
-      const allOrders = await response.json()
+      const allOrders = await response.json() as Order[]
       setOrders(allOrders)
     } catch (error) {
       console.error('Failed to load data:', error)

@@ -84,7 +84,7 @@ export default function Dashboard() {
         const collectionRate = totalBilled > 0 ? (totalRevenue / totalBilled) * 100 : 0
         
         // Order status counts
-        const pendingOrders = orders.filter((o: any) => o.status === 'pending' || o.status === 'in-progress').length
+        const pendingOrders = orders.filter((o: any) => o.status === 'pending' || o.status === 'in_progress').length
         const completedOrders = orders.filter((o: any) => o.status === 'completed').length
 
         // Bill status counts

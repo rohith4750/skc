@@ -268,7 +268,7 @@ export default function AnalyticsPage() {
   const ordersMetrics = useMemo(() => {
     const totalOrders = filteredData.orders.length
     const completedOrders = filteredData.orders.filter((o: any) => o.status === 'completed').length
-    const pendingOrders = filteredData.orders.filter((o: any) => o.status === 'pending' || o.status === 'in-progress').length
+    const pendingOrders = filteredData.orders.filter((o: any) => o.status === 'pending' || o.status === 'in_progress').length
     const cancelledOrders = filteredData.orders.filter((o: any) => o.status === 'cancelled').length
     const totalOrderValue = filteredData.orders.reduce((sum: number, o: any) => sum + (o.totalAmount || 0), 0)
     const avgOrderValue = totalOrders > 0 ? totalOrderValue / totalOrders : 0

@@ -42,7 +42,7 @@ export async function PUT(
 
     // -------- STATUS UPDATE (MOST IMPORTANT PART) --------
     if (data.status && Object.keys(data).length === 1) {
-      const status = data.status === 'in-progress' ? 'in_progress' : data.status
+      const status = data.status
 
       const order = await prisma.order.update({
         where: { id: params.id },
