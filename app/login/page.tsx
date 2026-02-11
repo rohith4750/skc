@@ -109,8 +109,8 @@ export default function LoginPage() {
 
       <div className="flex flex-col lg:flex-row h-[calc(100vh-100px)] sm:h-[calc(100vh-120px)] lg:h-screen">
         {/* Left Side - Login Form */}
-        <div className="flex-1 flex items-center justify-center p-4 sm:p-6 md:p-8 lg:p-6 xl:p-8 overflow-y-auto">
-          <div className="w-full max-w-md">
+        <div className="flex-1 flex items-center justify-center p-4 sm:p-6 md:p-8 lg:p-4 xl:p-6 overflow-y-auto">
+          <div className="w-full max-w-md lg:max-w-lg xl:max-w-xl">
             {/* Welcome Text */}
             <div className="mb-4 sm:mb-5 md:mb-6 lg:mb-3 xl:mb-4 text-center lg:text-left">
               <h1 className="text-2xl sm:text-3xl md:text-4xl lg:text-2xl xl:text-3xl font-bold text-gray-900 mb-2">
@@ -281,7 +281,7 @@ export default function LoginPage() {
         </div>
 
         {/* Right Side - Desktop Only */}
-        <div className="hidden lg:flex lg:flex-1 lg:flex-col lg:items-center lg:justify-center lg:p-6 xl:p-8 bg-gradient-to-br from-red-800 via-red-900 to-amber-900 relative overflow-y-auto">
+        <div className="hidden lg:flex lg:flex-1 lg:flex-col lg:items-center lg:justify-center lg:p-4 xl:p-6 bg-gradient-to-br from-red-800 via-red-900 to-amber-900 relative overflow-y-auto">
           {/* Decorative Elements */}
           <div className="absolute inset-0 overflow-hidden pointer-events-none">
             <div className="absolute top-10 right-10 w-64 h-64 border border-amber-400/20 rounded-full"></div>
@@ -293,101 +293,111 @@ export default function LoginPage() {
           </div>
 
           {/* Content */}
-          <div className="relative z-10 w-full max-w-md text-center">
+          <div className="relative z-10 w-full max-w-md lg:max-w-lg xl:max-w-xl text-center">
             {/* Logo */}
-            <div className="mb-4 lg:mb-3 xl:mb-4">
+            <div className="mb-3 lg:mb-2 xl:mb-2.5">
               <Image 
                 src="/images/logo-dark.png" 
                 alt="SKC Logo" 
-                width={200} 
-                height={200}
-                className="drop-shadow-2xl mx-auto w-32 h-32 lg:w-36 lg:h-36 xl:w-40 xl:h-40"
+                width={160} 
+                height={160}
+                className="drop-shadow-2xl mx-auto w-28 h-28 lg:w-32 lg:h-32 xl:w-36 xl:h-36"
                 priority
               />
             </div>
 
             {/* Decorative Line */}
-            <div className="flex items-center justify-center gap-4 mb-3 lg:mb-3 xl:mb-4">
-              <div className="w-16 h-0.5 bg-gradient-to-r from-transparent to-amber-400/70"></div>
-              <FaStar className="text-amber-400/70 text-sm" />
-              <div className="w-16 h-0.5 bg-gradient-to-l from-transparent to-amber-400/70"></div>
+            <div className="flex items-center justify-center gap-3 lg:gap-4 mb-2.5 lg:mb-2 xl:mb-2.5">
+              <div className="w-12 lg:w-16 h-0.5 bg-gradient-to-r from-transparent to-amber-400/70"></div>
+              <FaStar className="text-amber-400/70 text-xs lg:text-sm" />
+              <div className="w-12 lg:w-16 h-0.5 bg-gradient-to-l from-transparent to-amber-400/70"></div>
             </div>
 
             {/* Stats Cards */}
-            <div className="grid grid-cols-3 gap-2 lg:gap-2 xl:gap-3 mb-3 lg:mb-3 xl:mb-4">
-              <div className="bg-white/10 backdrop-blur-sm rounded-lg lg:rounded-xl p-2 lg:p-2.5 xl:p-3 border border-amber-400/30 hover:bg-white/15 hover:scale-105 transition-all cursor-pointer">
-                <FaAward className="text-amber-300 text-lg lg:text-xl xl:text-2xl mx-auto mb-0.5 lg:mb-1" />
-                <div className="text-white text-base lg:text-lg xl:text-xl font-bold">35+</div>
-                <div className="text-amber-200/80 text-[9px] lg:text-[10px] xl:text-xs">Years</div>
+            <div className="grid grid-cols-3 gap-2 lg:gap-2 xl:gap-3 mb-3 lg:mb-2.5 xl:mb-3">
+              <div className="bg-white/10 backdrop-blur-sm rounded-lg lg:rounded-xl p-2 lg:p-2 xl:p-2.5 border border-amber-400/30 hover:bg-white/15 hover:scale-105 transition-all cursor-pointer">
+                <FaAward className="text-amber-300 text-lg lg:text-lg xl:text-xl mx-auto mb-0.5" />
+                <div className="text-white text-base lg:text-base xl:text-lg font-bold">35+</div>
+                <div className="text-amber-200/80 text-[9px] lg:text-[9px] xl:text-[10px]">Years</div>
               </div>
-              <div className="bg-white/10 backdrop-blur-sm rounded-lg lg:rounded-xl p-2 lg:p-2.5 xl:p-3 border border-amber-400/30 hover:bg-white/15 hover:scale-105 transition-all cursor-pointer">
-                <FaUsers className="text-amber-300 text-lg lg:text-xl xl:text-2xl mx-auto mb-0.5 lg:mb-1" />
-                <div className="text-white text-base lg:text-lg xl:text-xl font-bold">10K+</div>
-                <div className="text-amber-200/80 text-[9px] lg:text-[10px] xl:text-xs">Customers</div>
+              <div className="bg-white/10 backdrop-blur-sm rounded-lg lg:rounded-xl p-2 lg:p-2 xl:p-2.5 border border-amber-400/30 hover:bg-white/15 hover:scale-105 transition-all cursor-pointer">
+                <FaUsers className="text-amber-300 text-lg lg:text-lg xl:text-xl mx-auto mb-0.5" />
+                <div className="text-white text-base lg:text-base xl:text-lg font-bold">10K+</div>
+                <div className="text-amber-200/80 text-[9px] lg:text-[9px] xl:text-[10px]">Customers</div>
               </div>
-              <div className="bg-white/10 backdrop-blur-sm rounded-lg lg:rounded-xl p-2 lg:p-2.5 xl:p-3 border border-amber-400/30 hover:bg-white/15 hover:scale-105 transition-all cursor-pointer">
-                <FaCalendarCheck className="text-amber-300 text-lg lg:text-xl xl:text-2xl mx-auto mb-0.5 lg:mb-1" />
-                <div className="text-white text-base lg:text-lg xl:text-xl font-bold">50K+</div>
-                <div className="text-amber-200/80 text-[9px] lg:text-[10px] xl:text-xs">Events</div>
-              </div>
-            </div>
-
-            {/* Services */}
-            <div className="bg-black/20 backdrop-blur-sm rounded-lg lg:rounded-xl p-3 lg:p-3 xl:p-4 border border-amber-400/20 mb-3 lg:mb-3 xl:mb-4 hover:bg-black/30 transition-all">
-              <h3 className="text-amber-300 font-semibold mb-2 lg:mb-2 xl:mb-2.5 text-[10px] lg:text-xs xl:text-sm uppercase tracking-wider flex items-center justify-center gap-1.5">
-                <FaLeaf className="text-xs lg:text-sm" /> Our Services
-              </h3>
-              <div className="grid grid-cols-2 gap-1.5 lg:gap-2 text-left">
-                <div className="flex items-center gap-1.5 text-amber-100/90 text-[10px] lg:text-xs xl:text-sm">
-                  <FaCheckCircle className="text-green-400 text-[10px] lg:text-xs flex-shrink-0" />
-                  <span>Wedding Catering</span>
-                </div>
-                <div className="flex items-center gap-1.5 text-amber-100/90 text-[10px] lg:text-xs xl:text-sm">
-                  <FaCheckCircle className="text-green-400 text-[10px] lg:text-xs flex-shrink-0" />
-                  <span>Corporate Events</span>
-                </div>
-                <div className="flex items-center gap-1.5 text-amber-100/90 text-[10px] lg:text-xs xl:text-sm">
-                  <FaCheckCircle className="text-green-400 text-[10px] lg:text-xs flex-shrink-0" />
-                  <span>Birthday Parties</span>
-                </div>
-                <div className="flex items-center gap-1.5 text-amber-100/90 text-[10px] lg:text-xs xl:text-sm">
-                  <FaCheckCircle className="text-green-400 text-[10px] lg:text-xs flex-shrink-0" />
-                  <span>Religious Functions</span>
-                </div>
-                <div className="flex items-center gap-1.5 text-amber-100/90 text-[10px] lg:text-xs xl:text-sm">
-                  <FaCheckCircle className="text-green-400 text-[10px] lg:text-xs flex-shrink-0" />
-                  <span>House Warming</span>
-                </div>
-                <div className="flex items-center gap-1.5 text-amber-100/90 text-[10px] lg:text-xs xl:text-sm">
-                  <FaCheckCircle className="text-green-400 text-[10px] lg:text-xs flex-shrink-0" />
-                  <span>Anniversary</span>
-                </div>
+              <div className="bg-white/10 backdrop-blur-sm rounded-lg lg:rounded-xl p-2 lg:p-2 xl:p-2.5 border border-amber-400/30 hover:bg-white/15 hover:scale-105 transition-all cursor-pointer">
+                <FaCalendarCheck className="text-amber-300 text-lg lg:text-lg xl:text-xl mx-auto mb-0.5" />
+                <div className="text-white text-base lg:text-base xl:text-lg font-bold">50K+</div>
+                <div className="text-amber-200/80 text-[9px] lg:text-[9px] xl:text-[10px]">Events</div>
               </div>
             </div>
 
-            {/* Contact Info */}
-            <div className="bg-black/20 backdrop-blur-sm rounded-lg lg:rounded-xl p-3 lg:p-3 xl:p-4 border border-amber-400/20 mb-3 lg:mb-3 xl:mb-4 hover:bg-black/30 transition-all">
-              <div className="grid grid-cols-1 gap-1.5 lg:gap-2 text-[10px] lg:text-xs xl:text-sm">
-                <div className="flex items-center justify-center gap-1.5 lg:gap-2 text-amber-100">
-                  <FaPhone className="text-amber-400 flex-shrink-0 text-xs lg:text-sm" />
-                  <span className="break-all">9866652150 | 9900119302 | 9656501388</span>
+            {/* Services & Contact Side by Side */}
+            <div className="grid lg:grid-cols-2 gap-2 lg:gap-2 xl:gap-3 mb-2.5 lg:mb-2 xl:mb-3">
+              {/* Services */}
+              <div className="bg-black/20 backdrop-blur-sm rounded-lg lg:rounded-xl p-2.5 lg:p-2.5 xl:p-3 border border-amber-400/20 hover:bg-black/30 transition-all">
+                <h3 className="text-amber-300 font-semibold mb-1.5 lg:mb-1.5 xl:mb-2 text-[9px] lg:text-[10px] xl:text-xs uppercase tracking-wider flex items-center justify-center gap-1">
+                  <FaLeaf className="text-[10px] lg:text-xs" /> Our Services
+                </h3>
+                <div className="grid grid-cols-1 gap-1 lg:gap-1 xl:gap-1.5 text-left">
+                  <div className="flex items-center gap-1 text-amber-100/90 text-[9px] lg:text-[10px] xl:text-xs">
+                    <FaCheckCircle className="text-green-400 text-[8px] lg:text-[9px] xl:text-[10px] flex-shrink-0" />
+                    <span>Weddings</span>
+                  </div>
+                  <div className="flex items-center gap-1 text-amber-100/90 text-[9px] lg:text-[10px] xl:text-xs">
+                    <FaCheckCircle className="text-green-400 text-[8px] lg:text-[9px] xl:text-[10px] flex-shrink-0" />
+                    <span>Corporate</span>
+                  </div>
+                  <div className="flex items-center gap-1 text-amber-100/90 text-[9px] lg:text-[10px] xl:text-xs">
+                    <FaCheckCircle className="text-green-400 text-[8px] lg:text-[9px] xl:text-[10px] flex-shrink-0" />
+                    <span>Birthdays</span>
+                  </div>
+                  <div className="flex items-center gap-1 text-amber-100/90 text-[9px] lg:text-[10px] xl:text-xs">
+                    <FaCheckCircle className="text-green-400 text-[8px] lg:text-[9px] xl:text-[10px] flex-shrink-0" />
+                    <span>Religious</span>
+                  </div>
+                  <div className="flex items-center gap-1 text-amber-100/90 text-[9px] lg:text-[10px] xl:text-xs">
+                    <FaCheckCircle className="text-green-400 text-[8px] lg:text-[9px] xl:text-[10px] flex-shrink-0" />
+                    <span>House Warming</span>
+                  </div>
+                  <div className="flex items-center gap-1 text-amber-100/90 text-[9px] lg:text-[10px] xl:text-xs">
+                    <FaCheckCircle className="text-green-400 text-[8px] lg:text-[9px] xl:text-[10px] flex-shrink-0" />
+                    <span>Anniversary</span>
+                  </div>
                 </div>
-                <div className="flex items-center justify-center gap-1.5 lg:gap-2 text-amber-100">
-                  <FaEnvelope className="text-amber-400 flex-shrink-0 text-xs lg:text-sm" />
-                  <span className="break-all">pujaysri1989@gmail.com</span>
-                </div>
-                <div className="flex items-center justify-center gap-1.5 lg:gap-2 text-amber-100">
-                  <FaMapMarkerAlt className="text-amber-400 flex-shrink-0 text-xs lg:text-sm" />
-                  <span>Vanathalipuram, Hyderabad - 500070</span>
+              </div>
+
+              {/* Contact Info */}
+              <div className="bg-black/20 backdrop-blur-sm rounded-lg lg:rounded-xl p-2.5 lg:p-2.5 xl:p-3 border border-amber-400/20 hover:bg-black/30 transition-all">
+                <h3 className="text-amber-300 font-semibold mb-1.5 lg:mb-1.5 xl:mb-2 text-[9px] lg:text-[10px] xl:text-xs uppercase tracking-wider flex items-center justify-center gap-1">
+                  <FaPhone className="text-[10px] lg:text-xs" /> Contact
+                </h3>
+                <div className="grid grid-cols-1 gap-1 lg:gap-1 xl:gap-1.5 text-[9px] lg:text-[10px] xl:text-xs">
+                  <div className="flex items-center gap-1 text-amber-100">
+                    <FaPhone className="text-amber-400 flex-shrink-0 text-[10px] lg:text-xs" />
+                    <span className="break-all leading-tight">9866652150 9900119302</span>
+                  </div>
+                  <div className="flex items-center gap-1 text-amber-100">
+                    <FaPhone className="text-amber-400 flex-shrink-0 text-[10px] lg:text-xs opacity-0" />
+                    <span className="break-all leading-tight">9656501388</span>
+                  </div>
+                  <div className="flex items-center gap-1 text-amber-100">
+                    <FaEnvelope className="text-amber-400 flex-shrink-0 text-[10px] lg:text-xs" />
+                    <span className="break-all leading-tight">pujaysri1989@gmail.com</span>
+                  </div>
+                  <div className="flex items-center gap-1 text-amber-100">
+                    <FaMapMarkerAlt className="text-amber-400 flex-shrink-0 text-[10px] lg:text-xs" />
+                    <span className="leading-tight">Vanathalipuram, HYD</span>
+                  </div>
                 </div>
               </div>
             </div>
 
             {/* Tagline */}
             <div className="flex items-center justify-center gap-2 text-amber-200/90">
-              <FaHeart className="text-red-400 text-xs lg:text-sm animate-pulse" />
-              <p className="text-xs lg:text-sm xl:text-base italic">"Catering to your success, one event at a time"</p>
-              <FaHeart className="text-red-400 text-xs lg:text-sm animate-pulse" style={{ animationDelay: '0.5s' }} />
+              <FaHeart className="text-red-400 text-[10px] lg:text-xs animate-pulse" />
+              <p className="text-[10px] lg:text-xs xl:text-sm italic">"Catering to your success, one event at a time"</p>
+              <FaHeart className="text-red-400 text-[10px] lg:text-xs animate-pulse" style={{ animationDelay: '0.5s' }} />
             </div>
           </div>
         </div>
