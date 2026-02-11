@@ -50,20 +50,20 @@ export default function OrdersOverviewPage() {
     const month = String(date.getMonth() + 1).padStart(2, '0')
     const day = String(date.getDate()).padStart(2, '0')
     const dateStr = `${year}-${month}-${day}`
-    
+
     return filteredOrders.filter(order => {
       if (!order.mealTypeAmounts) return false
       const mealTypeAmounts = order.mealTypeAmounts as Record<string, any>
       return Object.values(mealTypeAmounts).some((mealData: any) => {
         if (!mealData || typeof mealData !== 'object' || !mealData.date) return false
-        
+
         // Extract date part from the stored date (ignore time)
         const mealDate = new Date(mealData.date)
         const mealYear = mealDate.getFullYear()
         const mealMonth = String(mealDate.getMonth() + 1).padStart(2, '0')
         const mealDay = String(mealDate.getDate()).padStart(2, '0')
         const mealDateStr = `${mealYear}-${mealMonth}-${mealDay}`
-        
+
         return mealDateStr === dateStr
       })
     })
@@ -78,7 +78,7 @@ export default function OrdersOverviewPage() {
     const startingDayOfWeek = firstDay.getDay()
 
     const days = []
-    
+
     // Previous month's days
     const prevMonthDays = new Date(year, month, 0).getDate()
     for (let i = startingDayOfWeek - 1; i >= 0; i--) {
@@ -87,7 +87,7 @@ export default function OrdersOverviewPage() {
         isCurrentMonth: false
       })
     }
-    
+
     // Current month's days
     for (let i = 1; i <= daysInMonth; i++) {
       days.push({
@@ -95,7 +95,7 @@ export default function OrdersOverviewPage() {
         isCurrentMonth: true
       })
     }
-    
+
     // Next month's days to fill the grid
     const remainingDays = 42 - days.length // 6 rows * 7 days
     for (let i = 1; i <= remainingDays; i++) {
@@ -104,7 +104,7 @@ export default function OrdersOverviewPage() {
         isCurrentMonth: false
       })
     }
-    
+
     return days
   }
 
@@ -132,26 +132,24 @@ export default function OrdersOverviewPage() {
             <h1 className="text-3xl font-bold text-gray-800">Order Center</h1>
             <p className="text-sm text-gray-500">View orders in table or calendar format.</p>
           </div>
-          
+
           {/* View Toggle */}
           <div className="flex items-center gap-2">
             <button
               onClick={() => setViewMode('table')}
-              className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-colors ${
-                viewMode === 'table'
+              className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-colors ${viewMode === 'table'
                   ? 'bg-primary-500 text-white'
                   : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-              }`}
+                }`}
             >
               <FaTable /> Table
             </button>
             <button
               onClick={() => setViewMode('calendar')}
-              className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-colors ${
-                viewMode === 'calendar'
+              className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-colors ${viewMode === 'calendar'
                   ? 'bg-primary-500 text-white'
                   : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-              }`}
+                }`}
             >
               <FaCalendarAlt /> Calendar
             </button>
@@ -205,57 +203,52 @@ export default function OrdersOverviewPage() {
           </div>
 
           {/* Calendar Grid */}
-          <div className="p-4">
-            {/* Day Headers */}
-            <div className="grid grid-cols-7 gap-2 mb-2">
-              {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(day => (
-                <div key={day} className="text-center font-semibold text-gray-600 text-sm py-2">
-                  {day}
-                </div>
-              ))}
-            </div>
-
-            {/* Calendar Days */}
-            <div className="grid grid-cols-7 gap-2">
-              {generateCalendarDays().map((dayInfo, index) => {
-                const ordersForDay = getOrdersForDate(dayInfo.date)
-                const isToday = dayInfo.date.toDateString() === new Date().toDateString()
-                
-                return (
-                  <div
-                    key={index}
-                    className={`min-h-[100px] p-2 border rounded-lg ${
-                      !dayInfo.isCurrentMonth ? 'bg-gray-50' : 'bg-white'
-                    } ${isToday ? 'ring-2 ring-primary-500' : ''}`}
-                  >
-                    <div className={`text-sm font-medium mb-1 ${
-                      !dayInfo.isCurrentMonth ? 'text-gray-400' : isToday ? 'text-primary-600 font-bold' : 'text-gray-700'
-                    }`}>
-                      {dayInfo.date.getDate()}
-                    </div>
-                    
-                    {ordersForDay.length > 0 && (
-                      <div className="space-y-1">
-                        {ordersForDay.slice(0, 2).map(order => (
-                          <Link
-                            key={order.id}
-                            href={`/orders/summary/${order.id}`}
-                            className="block text-xs bg-primary-100 text-primary-800 px-2 py-1 rounded hover:bg-primary-200 transition-colors truncate"
-                            title={order.customer?.name || 'Unknown'}
-                          >
-                            {order.customer?.name || 'Unknown'}
-                          </Link>
-                        ))}
-                        {ordersForDay.length > 2 && (
-                          <div className="text-xs text-gray-500 font-medium px-2">
-                            +{ordersForDay.length - 2} more
-                          </div>
-                        )}
-                      </div>
-                    )}
+          <div className="p-4 overflow-x-auto">
+            <div className="min-w-[800px]">
+              {/* Day Headers */}
+              <div className="grid grid-cols-7 gap-2 mb-2">
+                {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(day => (
+                  <div key={day} className="text-center font-semibold text-gray-600 text-sm py-2">
+                    {day}
                   </div>
-                )
-              })}
+                ))}
+              </div>
+
+              {/* Calendar Days */}
+              <div className="grid grid-cols-7 gap-2">
+                {generateCalendarDays().map((dayInfo, index) => {
+                  const ordersForDay = getOrdersForDate(dayInfo.date)
+                  const isToday = dayInfo.date.toDateString() === new Date().toDateString()
+
+                  return (
+                    <div
+                      key={index}
+                      className={`min-h-[120px] p-2 border rounded-lg ${!dayInfo.isCurrentMonth ? 'bg-gray-50' : 'bg-white'
+                        } ${isToday ? 'ring-2 ring-primary-500' : ''}`}
+                    >
+                      <div className={`text-sm font-medium mb-1 ${!dayInfo.isCurrentMonth ? 'text-gray-400' : isToday ? 'text-primary-600 font-bold' : 'text-gray-700'
+                        }`}>
+                        {dayInfo.date.getDate()}
+                      </div>
+
+                      {ordersForDay.length > 0 && (
+                        <div className="space-y-1">
+                          {ordersForDay.map(order => (
+                            <Link
+                              key={order.id}
+                              href={`/orders/summary/${order.id}`}
+                              className="block text-xs bg-primary-100 text-primary-800 px-2 py-1 rounded hover:bg-primary-200 transition-colors truncate"
+                              title={order.customer?.name || 'Unknown'}
+                            >
+                              {order.customer?.name || 'Unknown'}
+                            </Link>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  )
+                })}
+              </div>
             </div>
           </div>
         </div>
