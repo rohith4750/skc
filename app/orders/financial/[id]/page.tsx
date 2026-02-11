@@ -19,7 +19,7 @@ export default function FinancialTrackingPage() {
   const [loading, setLoading] = useState(true)
   const [formError, setFormError] = useState<string>('')
   const mealTypeOptions = ['breakfast', 'lunch', 'dinner', 'snacks', 'sweets', 'saree']
-  
+
   const [formData, setFormData] = useState({
     transportCost: '0',
     discount: '0',
@@ -58,7 +58,7 @@ export default function FinancialTrackingPage() {
         return {
           menuType,
           pricingMethod: normalized.pricingMethod || 'manual',
-          numberOfPlates: normalized.numberOfPlates?.toString() || '',
+          numberOfPlates: normalized.numberOfPlates?.toString() || (normalized.pricingMethod === 'plate-based' && normalized.numberOfMembers ? normalized.numberOfMembers.toString() : ''),
           platePrice: normalized.platePrice?.toString() || '',
           manualAmount: normalized.manualAmount?.toString() || (normalized.amount?.toString() || '0'),
           numberOfMembers: normalized.numberOfMembers?.toString() || '',
@@ -142,7 +142,13 @@ export default function FinancialTrackingPage() {
 
   const getMealTypeAmount = (mealType: any) => {
     if (mealType.pricingMethod === 'plate-based') {
-      const plates = parseFloat(mealType.numberOfPlates) || 0
+      let plates = parseFloat(mealType.numberOfPlates)
+      // Fallback: If plates is 0 or invalid, use the calculated member count
+      // This ensures that loading an existing order with members but no specific 'plates' count works
+      if (!plates) {
+        plates = calculateMembers(mealType)
+      }
+
       const price = parseFloat(mealType.platePrice) || 0
       return plates * price
     }
@@ -189,7 +195,7 @@ export default function FinancialTrackingPage() {
   // Calculate new total based on meal type calculation + adjustments
   const calculatedTotals = useMemo(() => {
     if (!order) return { total: 0, paid: 0, remaining: 0 }
-    
+
     // 1. Base amount from meal types (from form)
     let mealTypesTotal = 0
     formData.mealTypes.forEach(mealType => {
@@ -200,14 +206,14 @@ export default function FinancialTrackingPage() {
     const transport = parseFloat(formData.transportCost) || 0
     const discount = parseFloat(formData.discount) || 0
     const stallsTotal = formData.stalls.reduce((sum, s) => sum + (parseFloat(s.cost) || 0), 0)
-    
+
     const newTotal = Math.max(0, mealTypesTotal + transport + stallsTotal - discount)
-    
+
     // 3. Payments
     const basePaid = parseFloat(formData.baseAdvancePaid) || 0
     const newPayment = parseFloat(formData.additionalPayment) || 0
     const totalPaid = basePaid + newPayment
-    
+
     return {
       total: newTotal,
       paid: totalPaid,
@@ -224,7 +230,7 @@ export default function FinancialTrackingPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setFormError('')
-    
+
     try {
       if (formData.mealTypes.some(mealType => !mealType.menuType)) {
         toast.error('Please select menu type for all meal types')
@@ -249,7 +255,7 @@ export default function FinancialTrackingPage() {
       // We send the full update to the existing PUT endpoint
       // but only changing the financial bits. 
       // The API route is generic enough to handle this.
-      
+
       const payload = {
         ...order, // Keep everything else (logistics) same
         transportCost: parseFloat(formData.transportCost) || 0,
@@ -276,7 +282,7 @@ export default function FinancialTrackingPage() {
         setFormError(message)
         throw new Error(message)
       }
-      
+
       toast.success('Financial adjustments saved!')
       router.push(`/orders/summary/${orderId}`)
     } catch (error) {
@@ -300,7 +306,7 @@ export default function FinancialTrackingPage() {
         <div className="flex items-center justify-between mb-8">
           <div>
             <h1 className="text-3xl font-black text-slate-900">Financial Management</h1>
-            <p className="text-slate-600 font-medium">Billing adjustments and payment tracking for <span className="text-primary-600">#SKC-ORDER-{(order as any).serialNumber || order.id.slice(0,8)}</span></p>
+            <p className="text-slate-600 font-medium">Billing adjustments and payment tracking for <span className="text-primary-600">#SKC-ORDER-{(order as any).serialNumber || order.id.slice(0, 8)}</span></p>
           </div>
           <div className="text-right">
             <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest block mb-1">Current Balance</span>
@@ -440,11 +446,10 @@ export default function FinancialTrackingPage() {
                                     min="0"
                                     value={mealType.numberOfPlates}
                                     readOnly={mealType.pricingMethod === 'plate-based'}
-                                    className={`w-full px-4 py-3 rounded-xl text-sm font-bold outline-none ${
-                                      mealType.pricingMethod === 'plate-based'
-                                        ? 'bg-slate-100 border border-slate-200 text-slate-600'
-                                        : 'bg-white border border-slate-200 text-slate-700 focus:ring-2 focus:ring-primary-500'
-                                    }`}
+                                    className={`w-full px-4 py-3 rounded-xl text-sm font-bold outline-none ${mealType.pricingMethod === 'plate-based'
+                                      ? 'bg-slate-100 border border-slate-200 text-slate-600'
+                                      : 'bg-white border border-slate-200 text-slate-700 focus:ring-2 focus:ring-primary-500'
+                                      }`}
                                   />
                                 </div>
                                 <div>
@@ -499,7 +504,7 @@ export default function FinancialTrackingPage() {
                       <input
                         type="number"
                         value={formData.transportCost}
-                        onChange={(e) => setFormData({...formData, transportCost: e.target.value})}
+                        onChange={(e) => setFormData({ ...formData, transportCost: e.target.value })}
                         className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-100 rounded-xl focus:ring-2 focus:ring-primary-500 outline-none font-bold text-slate-700"
                         placeholder="0.00"
                       />
@@ -512,7 +517,7 @@ export default function FinancialTrackingPage() {
                       <input
                         type="number"
                         value={formData.discount}
-                        onChange={(e) => setFormData({...formData, discount: e.target.value})}
+                        onChange={(e) => setFormData({ ...formData, discount: e.target.value })}
                         className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-100 rounded-xl focus:ring-2 focus:ring-primary-500 outline-none font-bold text-slate-700"
                         placeholder="0.00"
                       />
@@ -536,7 +541,7 @@ export default function FinancialTrackingPage() {
                     <FaPlus className="mr-2" /> Add Stall
                   </button>
                 </div>
-                
+
                 <div className="space-y-4">
                   {formData.stalls.length === 0 ? (
                     <div className="text-center py-8 border-2 border-dashed border-slate-100 rounded-2xl">
@@ -615,7 +620,7 @@ export default function FinancialTrackingPage() {
                       min="0"
                       max={remainingAllowed}
                       value={formData.additionalPayment}
-                      onChange={(e) => setFormData({...formData, additionalPayment: e.target.value})}
+                      onChange={(e) => setFormData({ ...formData, additionalPayment: e.target.value })}
                       className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none font-black text-slate-900"
                       placeholder="0.00"
                     />
@@ -627,7 +632,7 @@ export default function FinancialTrackingPage() {
                     <label className="block text-[10px] font-black text-slate-600 uppercase tracking-widest mb-2">Payment Method</label>
                     <select
                       value={formData.paymentMethod}
-                      onChange={(e) => setFormData({...formData, paymentMethod: e.target.value})}
+                      onChange={(e) => setFormData({ ...formData, paymentMethod: e.target.value })}
                       className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none font-bold text-slate-900"
                     >
                       <option value="cash">Cash</option>
@@ -643,7 +648,7 @@ export default function FinancialTrackingPage() {
                   <input
                     type="text"
                     value={formData.paymentNotes}
-                    onChange={(e) => setFormData({...formData, paymentNotes: e.target.value})}
+                    onChange={(e) => setFormData({ ...formData, paymentNotes: e.target.value })}
                     className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none font-medium text-slate-700"
                     placeholder="Transaction ID, specific notes, etc."
                   />
@@ -658,7 +663,7 @@ export default function FinancialTrackingPage() {
                   <div className="w-1.5 h-4 bg-primary-500 rounded-full"></div>
                   Final Impact
                 </h2>
-                
+
                 <div className="space-y-4 mb-8">
                   <div className="flex justify-between items-center text-sm font-bold">
                     <span className="text-slate-600">Projected Total</span>
@@ -687,7 +692,7 @@ export default function FinancialTrackingPage() {
                 >
                   <FaSave /> Save Adjustments
                 </button>
-                
+
                 <p className="mt-4 text-[10px] text-slate-500 font-bold text-center uppercase tracking-tighter">
                   This will update the ledger & bill record
                 </p>
