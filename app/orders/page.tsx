@@ -4,7 +4,8 @@ import { useEffect, useState, useMemo, useRef } from 'react'
 import { Storage } from '@/lib/storage-api'
 import { generateId, formatCurrency, formatDateTime } from '@/lib/utils'
 import { Customer, MenuItem, OrderItem } from '@/types'
-import { FaSearch, FaPlus, FaArrowUp, FaArrowDown, FaTimes } from 'react-icons/fa'
+import { FaSearch, FaPlus, FaTimes, FaGripLines } from 'react-icons/fa'
+import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd'
 import Link from 'next/link'
 import { useSearchParams, useRouter } from 'next/navigation'
 import toast from 'react-hot-toast'
@@ -352,41 +353,7 @@ export default function OrdersPage() {
     }
   }
 
-  // Move item up in the order
-  const handleMoveItemUp = (mealTypeId: string, itemIndex: number) => {
-    if (itemIndex === 0) return // Already at the top
 
-    setFormData(prev => ({
-      ...prev,
-      mealTypes: prev.mealTypes.map(mealType => {
-        if (mealType.id === mealTypeId) {
-          const newItems = [...mealType.selectedMenuItems]
-            // Swap with the item above
-            ;[newItems[itemIndex - 1], newItems[itemIndex]] = [newItems[itemIndex], newItems[itemIndex - 1]]
-          return { ...mealType, selectedMenuItems: newItems }
-        }
-        return mealType
-      })
-    }))
-  }
-
-  // Move item down in the order
-  const handleMoveItemDown = (mealTypeId: string, itemIndex: number) => {
-    setFormData(prev => ({
-      ...prev,
-      mealTypes: prev.mealTypes.map(mealType => {
-        if (mealType.id === mealTypeId) {
-          if (itemIndex === mealType.selectedMenuItems.length - 1) return mealType // Already at the bottom
-
-          const newItems = [...mealType.selectedMenuItems]
-            // Swap with the item below
-            ;[newItems[itemIndex], newItems[itemIndex + 1]] = [newItems[itemIndex + 1], newItems[itemIndex]]
-          return { ...mealType, selectedMenuItems: newItems }
-        }
-        return mealType
-      })
-    }))
-  }
 
   // Remove item from selection
   const handleRemoveItem = (mealTypeId: string, itemId: string) => {
@@ -428,6 +395,32 @@ export default function OrdersPage() {
   const normalizeDate = (value: string | undefined | null) => {
     if (!value) return ''
     return value.split('T')[0]
+  }
+
+  const handleDragEnd = (result: any) => {
+    if (!result.destination) return
+
+    const { source, destination, draggableId } = result
+    const mealTypeId = source.droppableId
+
+    if (source.droppableId !== destination.droppableId) return
+
+    setFormData(prev => ({
+      ...prev,
+      mealTypes: prev.mealTypes.map(mealType => {
+        if (mealType.id === mealTypeId) {
+          const newItems = Array.from(mealType.selectedMenuItems)
+          const [reorderedItem] = newItems.splice(source.index, 1)
+          newItems.splice(destination.index, 0, reorderedItem)
+
+          return {
+            ...mealType,
+            selectedMenuItems: newItems
+          }
+        }
+        return mealType
+      })
+    }))
   }
 
   const findExistingOrderForCustomerDate = async () => {
@@ -716,808 +709,821 @@ export default function OrdersPage() {
 
   return (
     <div className="p-8">
-      <div className="mb-6 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-800 mb-2">
-            {isEditMode ? 'Edit Order' : 'Create New Order'}
-          </h1>
-          <p className="text-gray-600">
-            {isEditMode ? 'Update the order details below' : 'Fill in the form below to create a new catering order'}
-          </p>
+      <DragDropContext onDragEnd={handleDragEnd}>
+        <div className="mb-6 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+          <div>
+            <h1 className="text-3xl font-bold text-gray-800 mb-2">
+              {isEditMode ? 'Edit Order' : 'Create New Order'}
+            </h1>
+            <p className="text-gray-600">
+              {isEditMode ? 'Update the order details below' : 'Fill in the form below to create a new catering order'}
+            </p>
+          </div>
+          {isEditMode && (
+            <Link
+              href={financialLink}
+              className="inline-flex items-center justify-center px-4 py-2 rounded-lg bg-primary-500 text-white text-sm font-medium hover:bg-primary-600 transition-colors"
+            >
+              Go to Financial Tracking
+            </Link>
+          )}
         </div>
-        {isEditMode && (
-          <Link
-            href={financialLink}
-            className="inline-flex items-center justify-center px-4 py-2 rounded-lg bg-primary-500 text-white text-sm font-medium hover:bg-primary-600 transition-colors"
-          >
-            Go to Financial Tracking
-          </Link>
-        )}
-      </div>
 
-      {/* Order Form */}
-      <div className="bg-white rounded-lg shadow-md p-6 mb-8">
-        <form onSubmit={handleSubmit}>
-          <div className="space-y-6">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Customer *
-              </label>
-              <div ref={customerSearchRef} className="relative">
-                <div className="relative">
-                  <FaSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
-                  <input
-                    type="text"
-                    required
-                    value={selectedCustomer ? `${selectedCustomer.name} - ${selectedCustomer.phone}` : customerSearchTerm}
-                    onChange={(e) => {
-                      setCustomerSearchTerm(e.target.value)
-                      setShowCustomerDropdown(true)
-                      if (selectedCustomer) {
-                        setFormData({ ...formData, customerId: '' })
-                      }
-                    }}
-                    onFocus={() => setShowCustomerDropdown(true)}
-                    placeholder="Search customer by name, phone, or email..."
-                    className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-                  />
-                  {formData.customerId && (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setFormData({ ...formData, customerId: '' })
-                        setCustomerSearchTerm('')
-                        setShowCustomerDropdown(false)
+        {/* Order Form */}
+        <div className="bg-white rounded-lg shadow-md p-6 mb-8">
+          <form onSubmit={handleSubmit}>
+            <div className="space-y-6">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Customer *
+                </label>
+                <div ref={customerSearchRef} className="relative">
+                  <div className="relative">
+                    <FaSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
+                    <input
+                      type="text"
+                      required
+                      value={selectedCustomer ? `${selectedCustomer.name} - ${selectedCustomer.phone}` : customerSearchTerm}
+                      onChange={(e) => {
+                        setCustomerSearchTerm(e.target.value)
+                        setShowCustomerDropdown(true)
+                        if (selectedCustomer) {
+                          setFormData({ ...formData, customerId: '' })
+                        }
                       }}
-                      className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 text-xl"
-                    >
-                      ×
-                    </button>
-                  )}
-                </div>
-                {showCustomerDropdown && filteredCustomers.length > 0 && (
-                  <div className="absolute z-50 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-60 overflow-auto">
-                    {filteredCustomers.map((customer: Customer) => (
-                      <div
-                        key={customer.id}
+                      onFocus={() => setShowCustomerDropdown(true)}
+                      placeholder="Search customer by name, phone, or email..."
+                      className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                    />
+                    {formData.customerId && (
+                      <button
+                        type="button"
                         onClick={() => {
-                          setFormData({ ...formData, customerId: customer.id })
+                          setFormData({ ...formData, customerId: '' })
                           setCustomerSearchTerm('')
                           setShowCustomerDropdown(false)
                         }}
-                        className={`px-4 py-2 hover:bg-primary-50 cursor-pointer ${formData.customerId === customer.id ? 'bg-primary-100' : ''
-                          }`}
+                        className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 text-xl"
                       >
-                        <div className="font-medium text-gray-900">{customer.name}</div>
-                        <div className="text-sm text-gray-500">{customer.phone}</div>
-                        {customer.email && (
-                          <div className="text-xs text-gray-400">{customer.email}</div>
-                        )}
-                      </div>
-                    ))}
+                        ×
+                      </button>
+                    )}
                   </div>
-                )}
-                {showCustomerDropdown && customerSearchTerm && filteredCustomers.length === 0 && (
-                  <div className="absolute z-50 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg p-4 text-center text-gray-500">
-                    No customers found
-                  </div>
-                )}
-              </div>
-              {formData.customerId && selectedCustomer && (
-                <input
-                  type="hidden"
-                  value={formData.customerId}
-                  required
-                />
-              )}
-            </div>
-
-            {/* Event Name */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Event Name
-              </label>
-              <input
-                type="text"
-                value={formData.eventName}
-                onChange={(e: any) => setFormData({ ...formData, eventName: e.target.value })}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-                placeholder="Enter event name (e.g., Wedding, Birthday, etc.)"
-              />
-            </div>
-
-            {/* Meal Types Section */}
-            <div className="border-t border-gray-200 pt-4">
-              <div className="flex justify-between items-center mb-4">
-                <h3 className="text-lg font-semibold text-gray-800">Meal Types</h3>
-                <button
-                  type="button"
-                  onClick={handleAddMealType}
-                  className="px-4 py-2 bg-primary-500 text-white rounded-lg hover:bg-primary-600 transition-colors flex items-center gap-2"
-                >
-                  <FaPlus /> Add Meal Type
-                </button>
-              </div>
-
-              {formData.mealTypes.length === 0 ? (
-                <p className="text-gray-500 text-center py-8 bg-gray-50 rounded-lg">
-                  No meal types added. Click "Add Meal Type" to add one.
-                </p>
-              ) : (
-                <div className="space-y-6">
-                  {formData.mealTypes.map((mealType, mealTypeIndex) => {
-                    const availableSubcategories = getAvailableSubcategories(mealType.menuType)
-                    const filteredMenuItems = getFilteredMenuItems(mealType.id, mealType.menuType)
-                    const subFilter = selectedSubFilter[mealType.id] || 'all'
-                    const search = menuItemSearch[mealType.id] || ''
-                    const isCollapsed = collapsedMealTypes[mealType.id] || false
-
-                    return (
-                      <div key={mealType.id} className="border border-gray-300 rounded-lg bg-gray-50">
-                        <div className="flex justify-between items-center p-4 border-b border-gray-300">
-                          <h4 className="text-md font-semibold text-gray-800">
-                            Meal Type #{mealTypeIndex + 1} {mealType.menuType && `- ${mealType.menuType.charAt(0).toUpperCase() + mealType.menuType.slice(1)}`}
-                          </h4>
-                          <div className="flex items-center gap-2">
-                            {!isCollapsed && (
-                              <button
-                                type="button"
-                                onClick={() => handleCollapseMealType(mealType.id)}
-                                className="px-4 py-1.5 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors text-sm font-medium"
-                              >
-                                OK
-                              </button>
-                            )}
-                            {isCollapsed && (
-                              <button
-                                type="button"
-                                onClick={() => handleExpandMealType(mealType.id)}
-                                className="px-4 py-1.5 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors text-sm font-medium"
-                              >
-                                Edit
-                              </button>
-                            )}
-                            <button
-                              type="button"
-                              onClick={() => handleRemoveMealType(mealType.id)}
-                              className="text-red-600 hover:text-red-800 text-sm font-medium"
-                            >
-                              Remove
-                            </button>
-                          </div>
+                  {showCustomerDropdown && filteredCustomers.length > 0 && (
+                    <div className="absolute z-50 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-60 overflow-auto">
+                      {filteredCustomers.map((customer: Customer) => (
+                        <div
+                          key={customer.id}
+                          onClick={() => {
+                            setFormData({ ...formData, customerId: customer.id })
+                            setCustomerSearchTerm('')
+                            setShowCustomerDropdown(false)
+                          }}
+                          className={`px-4 py-2 hover:bg-primary-50 cursor-pointer ${formData.customerId === customer.id ? 'bg-primary-100' : ''
+                            }`}
+                        >
+                          <div className="font-medium text-gray-900">{customer.name}</div>
+                          <div className="text-sm text-gray-500">{customer.phone}</div>
+                          {customer.email && (
+                            <div className="text-xs text-gray-400">{customer.email}</div>
+                          )}
                         </div>
+                      ))}
+                    </div>
+                  )}
+                  {showCustomerDropdown && customerSearchTerm && filteredCustomers.length === 0 && (
+                    <div className="absolute z-50 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg p-4 text-center text-gray-500">
+                      No customers found
+                    </div>
+                  )}
+                </div>
+                {formData.customerId && selectedCustomer && (
+                  <input
+                    type="hidden"
+                    value={formData.customerId}
+                    required
+                  />
+                )}
+              </div>
 
-                        {!isCollapsed && (
-                          <div className="p-6 space-y-4">
-                            {/* Menu Type Selector and Date */}
-                            <div className="grid grid-cols-2 gap-4">
-                              <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">
-                                  Menu Type *
-                                </label>
-                                <select
-                                  required
-                                  value={mealType.menuType}
-                                  onChange={(e: any) => handleUpdateMealType(mealType.id, 'menuType', e.target.value)}
-                                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+              {/* Event Name */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Event Name
+                </label>
+                <input
+                  type="text"
+                  value={formData.eventName}
+                  onChange={(e: any) => setFormData({ ...formData, eventName: e.target.value })}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                  placeholder="Enter event name (e.g., Wedding, Birthday, etc.)"
+                />
+              </div>
+
+              {/* Meal Types Section */}
+              <div className="border-t border-gray-200 pt-4">
+                <div className="flex justify-between items-center mb-4">
+                  <h3 className="text-lg font-semibold text-gray-800">Meal Types</h3>
+                  <button
+                    type="button"
+                    onClick={handleAddMealType}
+                    className="px-4 py-2 bg-primary-500 text-white rounded-lg hover:bg-primary-600 transition-colors flex items-center gap-2"
+                  >
+                    <FaPlus /> Add Meal Type
+                  </button>
+                </div>
+
+                {formData.mealTypes.length === 0 ? (
+                  <p className="text-gray-500 text-center py-8 bg-gray-50 rounded-lg">
+                    No meal types added. Click "Add Meal Type" to add one.
+                  </p>
+                ) : (
+                  <div className="space-y-6">
+                    {formData.mealTypes.map((mealType, mealTypeIndex) => {
+                      const availableSubcategories = getAvailableSubcategories(mealType.menuType)
+                      const filteredMenuItems = getFilteredMenuItems(mealType.id, mealType.menuType)
+                      const subFilter = selectedSubFilter[mealType.id] || 'all'
+                      const search = menuItemSearch[mealType.id] || ''
+                      const isCollapsed = collapsedMealTypes[mealType.id] || false
+
+                      return (
+                        <div key={mealType.id} className="border border-gray-300 rounded-lg bg-gray-50">
+                          <div className="flex justify-between items-center p-4 border-b border-gray-300">
+                            <h4 className="text-md font-semibold text-gray-800">
+                              Meal Type #{mealTypeIndex + 1} {mealType.menuType && `- ${mealType.menuType.charAt(0).toUpperCase() + mealType.menuType.slice(1)}`}
+                            </h4>
+                            <div className="flex items-center gap-2">
+                              {!isCollapsed && (
+                                <button
+                                  type="button"
+                                  onClick={() => handleCollapseMealType(mealType.id)}
+                                  className="px-4 py-1.5 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors text-sm font-medium"
                                 >
-                                  <option value="">Select Menu Type</option>
-                                  <option value="breakfast">Breakfast</option>
-                                  <option value="lunch">Lunch</option>
-                                  <option value="dinner">Dinner</option>
-                                  <option value="snacks">Snacks</option>
-                                  <option value="sweets">Sweets</option>
-                                  <option value="saree">Saree</option>
-                                </select>
-                              </div>
-                              <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">
-                                  Date *
-                                </label>
-                                <input
-                                  type="date"
-                                  required
-                                  value={mealType.date}
-                                  onChange={(e: any) => handleUpdateMealType(mealType.id, 'date', e.target.value)}
-                                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-                                />
-                              </div>
+                                  OK
+                                </button>
+                              )}
+                              {isCollapsed && (
+                                <button
+                                  type="button"
+                                  onClick={() => handleExpandMealType(mealType.id)}
+                                  className="px-4 py-1.5 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors text-sm font-medium"
+                                >
+                                  Edit
+                                </button>
+                              )}
+                              <button
+                                type="button"
+                                onClick={() => handleRemoveMealType(mealType.id)}
+                                className="text-red-600 hover:text-red-800 text-sm font-medium"
+                              >
+                                Remove
+                              </button>
                             </div>
+                          </div>
 
-                            {/* Services and Number of Members */}
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                              {/* Services */}
-                              <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-2">
-                                  Services
-                                </label>
-                                <div className="space-y-2">
-                                  {['buffet', 'vaddana', 'handover'].map((service) => (
-                                    <label key={service} className="flex items-center p-2 border border-gray-200 rounded-lg hover:bg-gray-50 cursor-pointer">
-                                      <input
-                                        type="checkbox"
-                                        checked={mealType.services.includes(service)}
-                                        onChange={(e) => {
-                                          if (e.target.checked) {
-                                            handleUpdateMealType(mealType.id, 'services', [...mealType.services, service])
-                                          } else {
-                                            handleUpdateMealType(mealType.id, 'services', mealType.services.filter((s: string) => s !== service))
-                                          }
-                                        }}
-                                        className="w-4 h-4 text-primary-600 border-gray-300 rounded focus:ring-primary-500 mr-3"
-                                      />
-                                      <span className="text-sm font-medium text-gray-900 capitalize">
-                                        {service.charAt(0).toUpperCase() + service.slice(1)}
-                                      </span>
-                                    </label>
-                                  ))}
+                          {!isCollapsed && (
+                            <div className="p-6 space-y-4">
+                              {/* Menu Type Selector and Date */}
+                              <div className="grid grid-cols-2 gap-4">
+                                <div>
+                                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                                    Menu Type *
+                                  </label>
+                                  <select
+                                    required
+                                    value={mealType.menuType}
+                                    onChange={(e: any) => handleUpdateMealType(mealType.id, 'menuType', e.target.value)}
+                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                                  >
+                                    <option value="">Select Menu Type</option>
+                                    <option value="breakfast">Breakfast</option>
+                                    <option value="lunch">Lunch</option>
+                                    <option value="dinner">Dinner</option>
+                                    <option value="snacks">Snacks</option>
+                                    <option value="sweets">Sweets</option>
+                                    <option value="saree">Saree</option>
+                                  </select>
+                                </div>
+                                <div>
+                                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                                    Date *
+                                  </label>
+                                  <input
+                                    type="date"
+                                    required
+                                    value={mealType.date}
+                                    onChange={(e: any) => handleUpdateMealType(mealType.id, 'date', e.target.value)}
+                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                                  />
                                 </div>
                               </div>
 
-                              {/* Number of Members */}
-                              <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">
-                                  Number of Members
-                                </label>
-                                <input
-                                  type="number"
-                                  min="1"
-                                  step="1"
-                                  value={mealType.numberOfMembers}
-                                  onChange={(e: any) => handleUpdateMealType(mealType.id, 'numberOfMembers', e.target.value)}
-                                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-                                  placeholder="Enter number of members/guests"
-                                />
-                                <p className="text-xs text-gray-500 mt-1">
-                                  Number of guests for this meal type
-                                </p>
-                              </div>
-                            </div>
+                              {/* Services and Number of Members */}
+                              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                {/* Services */}
+                                <div>
+                                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                                    Services
+                                  </label>
+                                  <div className="space-y-2">
+                                    {['buffet', 'vaddana', 'handover'].map((service) => (
+                                      <label key={service} className="flex items-center p-2 border border-gray-200 rounded-lg hover:bg-gray-50 cursor-pointer">
+                                        <input
+                                          type="checkbox"
+                                          checked={mealType.services.includes(service)}
+                                          onChange={(e) => {
+                                            if (e.target.checked) {
+                                              handleUpdateMealType(mealType.id, 'services', [...mealType.services, service])
+                                            } else {
+                                              handleUpdateMealType(mealType.id, 'services', mealType.services.filter((s: string) => s !== service))
+                                            }
+                                          }}
+                                          className="w-4 h-4 text-primary-600 border-gray-300 rounded focus:ring-primary-500 mr-3"
+                                        />
+                                        <span className="text-sm font-medium text-gray-900 capitalize">
+                                          {service.charAt(0).toUpperCase() + service.slice(1)}
+                                        </span>
+                                      </label>
+                                    ))}
+                                  </div>
+                                </div>
 
-                            {/* Menu Items Selection */}
-                            {mealType.menuType && (
-                              <div>
-                                {/* Subcategory Filter Buttons */}
-                                {availableSubcategories.length > 0 && (
-                                  <div className="mb-4">
-                                    <div className="mb-2">
-                                      <span className="text-sm font-medium text-gray-700">
-                                        {mealType.menuType.charAt(0).toUpperCase() + mealType.menuType.slice(1)} Categories:
-                                      </span>
-                                    </div>
-                                    <div className="flex flex-wrap gap-2">
-                                      <button
-                                        type="button"
-                                        onClick={() => setSelectedSubFilter(prev => ({ ...prev, [mealType.id]: 'all' }))}
-                                        className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${subFilter === 'all'
-                                          ? 'bg-primary-500 text-white'
-                                          : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                                          }`}
-                                      >
-                                        All {mealType.menuType}
-                                      </button>
-                                      {availableSubcategories.map((subcategory: string) => (
+                                {/* Number of Members */}
+                                <div>
+                                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                                    Number of Members
+                                  </label>
+                                  <input
+                                    type="number"
+                                    min="1"
+                                    step="1"
+                                    value={mealType.numberOfMembers}
+                                    onChange={(e: any) => handleUpdateMealType(mealType.id, 'numberOfMembers', e.target.value)}
+                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                                    placeholder="Enter number of members/guests"
+                                  />
+                                  <p className="text-xs text-gray-500 mt-1">
+                                    Number of guests for this meal type
+                                  </p>
+                                </div>
+                              </div>
+
+                              {/* Menu Items Selection */}
+                              {mealType.menuType && (
+                                <div>
+                                  {/* Subcategory Filter Buttons */}
+                                  {availableSubcategories.length > 0 && (
+                                    <div className="mb-4">
+                                      <div className="mb-2">
+                                        <span className="text-sm font-medium text-gray-700">
+                                          {mealType.menuType.charAt(0).toUpperCase() + mealType.menuType.slice(1)} Categories:
+                                        </span>
+                                      </div>
+                                      <div className="flex flex-wrap gap-2">
                                         <button
-                                          key={subcategory}
                                           type="button"
-                                          onClick={() => setSelectedSubFilter(prev => ({ ...prev, [mealType.id]: subcategory }))}
-                                          className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${subFilter === subcategory
-                                            ? 'bg-green-600 text-white'
+                                          onClick={() => setSelectedSubFilter(prev => ({ ...prev, [mealType.id]: 'all' }))}
+                                          className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${subFilter === 'all'
+                                            ? 'bg-primary-500 text-white'
                                             : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                                             }`}
                                         >
-                                          {subcategory}
+                                          All {mealType.menuType}
                                         </button>
-                                      ))}
-                                    </div>
-                                  </div>
-                                )}
-
-                                {/* Search Filter */}
-                                <div className="mb-3">
-                                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                                    Menu Items * (Select items by checking the boxes)
-                                  </label>
-                                  <div className="relative">
-                                    <FaSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
-                                    <input
-                                      type="text"
-                                      value={search}
-                                      onChange={(e: any) => setMenuItemSearch(prev => ({ ...prev, [mealType.id]: e.target.value }))}
-                                      placeholder="Search menu items by name or description..."
-                                      className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-                                    />
-                                  </div>
-                                </div>
-
-                                {/* Menu Items List */}
-                                <div className="border border-gray-200 rounded-lg p-4 max-h-96 overflow-y-auto">
-                                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-                                    {filteredMenuItems.length === 0 ? (
-                                      <p className="col-span-full text-gray-500 text-center py-8">
-                                        {search.trim()
-                                          ? `No menu items found matching "${search}"`
-                                          : 'No menu items found for this type'}
-                                      </p>
-                                    ) : (
-                                      filteredMenuItems.map((menuItem: any) => (
-                                        <label
-                                          key={menuItem.id}
-                                          className="flex items-center p-3 border border-gray-200 rounded-lg hover:bg-gray-50 cursor-pointer"
-                                        >
-                                          <input
-                                            type="checkbox"
-                                            checked={mealType.selectedMenuItems.includes(menuItem.id)}
-                                            onChange={() => handleMenuItemToggle(mealType.id, menuItem.id)}
-                                            className="w-4 h-4 text-primary-600 border-gray-300 rounded focus:ring-primary-500 mr-3"
-                                          />
-                                          <div className="flex-1">
-                                            <span className="text-sm font-medium text-gray-900">{menuItem.name}</span>
-                                            {menuItem.description && (
-                                              <p className="text-xs text-gray-500 mt-1">{menuItem.description}</p>
-                                            )}
-                                          </div>
-                                        </label>
-                                      ))
-                                    )}
-                                  </div>
-                                </div>
-                                {mealType.selectedMenuItems.length > 0 && (
-                                  <div className="mt-3 p-3 bg-blue-50 border border-blue-200 rounded-lg">
-                                    <p className="text-sm font-semibold text-blue-800 mb-2">
-                                      Selected Items ({mealType.selectedMenuItems.length}):
-                                    </p>
-                                    <div className="flex flex-col gap-2">
-                                      {mealType.selectedMenuItems.map((itemId: string, index: number) => {
-                                        const item = menuItems.find((m: any) => m.id === itemId)
-                                        const isFirst = index === 0
-                                        const isLast = index === mealType.selectedMenuItems.length - 1
-
-                                        return item ? (
-                                          <div
-                                            key={`${itemId}-${index}`}
-                                            className="flex flex-col sm:flex-row sm:items-center gap-2 p-2 bg-blue-100 rounded-md border border-blue-200"
+                                        {availableSubcategories.map((subcategory: string) => (
+                                          <button
+                                            key={subcategory}
+                                            type="button"
+                                            onClick={() => setSelectedSubFilter(prev => ({ ...prev, [mealType.id]: subcategory }))}
+                                            className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${subFilter === subcategory
+                                              ? 'bg-green-600 text-white'
+                                              : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                                              }`}
                                           >
-                                            <div className="flex-1 flex items-center justify-between">
-                                              <span className="text-sm font-medium text-blue-900">{item.name}</span>
-                                              <div className="flex items-center gap-1 sm:hidden">
-                                                {/* Mobile controls */}
-                                                <button type="button" onClick={() => handleMoveItemUp(mealType.id, index)} disabled={isFirst} className={`p-1 hover:bg-blue-200 rounded ${isFirst ? 'opacity-30' : ''}`}><FaArrowUp className="w-3 h-3" /></button>
-                                                <button type="button" onClick={() => handleMoveItemDown(mealType.id, index)} disabled={isLast} className={`p-1 hover:bg-blue-200 rounded ${isLast ? 'opacity-30' : ''}`}><FaArrowDown className="w-3 h-3" /></button>
-                                                <button type="button" onClick={() => handleRemoveItem(mealType.id, itemId)} className="p-1 hover:bg-red-200 text-red-600 rounded"><FaTimes className="w-3 h-3" /></button>
-                                              </div>
-                                            </div>
+                                            {subcategory}
+                                          </button>
+                                        ))}
+                                      </div>
+                                    </div>
+                                  )}
 
-                                            <input
-                                              type="text"
-                                              placeholder="Customization (e.g. Spice Level)"
-                                              value={mealType.itemCustomizations?.[itemId] || ''}
-                                              onChange={(e) => handleUpdateItemCustomization(mealType.id, itemId, e.target.value)}
-                                              className="text-xs border border-blue-300 rounded px-2 py-1 flex-1 min-w-[150px] focus:ring-1 focus:ring-blue-500 outline-none"
-                                            />
-
-                                            <div className="hidden sm:flex items-center gap-1 border-l border-blue-300 pl-2 ml-2">
-                                              <button
-                                                type="button"
-                                                onClick={() => handleMoveItemUp(mealType.id, index)}
-                                                disabled={isFirst}
-                                                className={`p-1 hover:bg-blue-200 rounded transition-colors ${isFirst ? 'opacity-30 cursor-not-allowed' : 'cursor-pointer'
-                                                  }`}
-                                                title="Move up"
-                                              >
-                                                <FaArrowUp className="w-3 h-3" />
-                                              </button>
-                                              <button
-                                                type="button"
-                                                onClick={() => handleMoveItemDown(mealType.id, index)}
-                                                disabled={isLast}
-                                                className={`p-1 hover:bg-blue-200 rounded transition-colors ${isLast ? 'opacity-30 cursor-not-allowed' : 'cursor-pointer'
-                                                  }`}
-                                                title="Move down"
-                                              >
-                                                <FaArrowDown className="w-3 h-3" />
-                                              </button>
-                                              <button
-                                                type="button"
-                                                onClick={() => handleRemoveItem(mealType.id, itemId)}
-                                                className="p-1 hover:bg-red-200 hover:text-red-700 rounded transition-colors"
-                                                title="Remove item"
-                                              >
-                                                <FaTimes className="w-3 h-3" />
-                                              </button>
-                                            </div>
-                                          </div>
-                                        ) : null
-                                      })}
+                                  {/* Search Filter */}
+                                  <div className="mb-3">
+                                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                                      Menu Items * (Select items by checking the boxes)
+                                    </label>
+                                    <div className="relative">
+                                      <FaSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
+                                      <input
+                                        type="text"
+                                        value={search}
+                                        onChange={(e: any) => setMenuItemSearch(prev => ({ ...prev, [mealType.id]: e.target.value }))}
+                                        placeholder="Search menu items by name or description..."
+                                        className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                                      />
                                     </div>
                                   </div>
-                                )}
-                              </div>
-                            )}
 
-                            {/* Pricing Section for this Meal Type */}
-                            <div className="border-t border-gray-200 pt-4">
-                              <h4 className="text-sm font-semibold text-gray-700 mb-3">Pricing for {mealType.menuType || 'this meal type'}</h4>
+                                  {/* Menu Items List */}
+                                  <div className="border border-gray-200 rounded-lg p-4 max-h-96 overflow-y-auto">
+                                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                                      {filteredMenuItems.length === 0 ? (
+                                        <p className="col-span-full text-gray-500 text-center py-8">
+                                          {search.trim()
+                                            ? `No menu items found matching "${search}"`
+                                            : 'No menu items found for this type'}
+                                        </p>
+                                      ) : (
+                                        filteredMenuItems.map((menuItem: any) => (
+                                          <label
+                                            key={menuItem.id}
+                                            className="flex items-center p-3 border border-gray-200 rounded-lg hover:bg-gray-50 cursor-pointer"
+                                          >
+                                            <input
+                                              type="checkbox"
+                                              checked={mealType.selectedMenuItems.includes(menuItem.id)}
+                                              onChange={() => handleMenuItemToggle(mealType.id, menuItem.id)}
+                                              className="w-4 h-4 text-primary-600 border-gray-300 rounded focus:ring-primary-500 mr-3"
+                                            />
+                                            <div className="flex-1">
+                                              <span className="text-sm font-medium text-gray-900">{menuItem.name}</span>
+                                              {menuItem.description && (
+                                                <p className="text-xs text-gray-500 mt-1">{menuItem.description}</p>
+                                              )}
+                                            </div>
+                                          </label>
+                                        ))
+                                      )}
+                                    </div>
+                                  </div>
+                                  {mealType.selectedMenuItems.length > 0 && (
+                                    <div className="mt-3 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                                      <p className="text-sm font-semibold text-blue-800 mb-2">
+                                        Selected Items ({mealType.selectedMenuItems.length}):
+                                      </p>
+                                      <Droppable droppableId={mealType.id}>
+                                        {(provided) => (
+                                          <div
+                                            {...provided.droppableProps}
+                                            ref={provided.innerRef}
+                                            className="flex flex-col gap-2"
+                                          >
+                                            {mealType.selectedMenuItems.map((itemId: string, index: number) => {
+                                              const item = menuItems.find((m: any) => m.id === itemId)
 
-                              <div className="mb-4 flex items-center gap-3">
-                                <label className="text-sm font-medium text-gray-700">
-                                  Use Plate-based Calculation
-                                </label>
-                                <button
-                                  type="button"
-                                  onClick={() => handleUpdateMealType(mealType.id, 'pricingMethod', mealType.pricingMethod === 'manual' ? 'plate-based' : 'manual')}
-                                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 ${mealType.pricingMethod === 'plate-based' ? 'bg-primary-500' : 'bg-gray-300'
-                                    }`}
-                                >
-                                  <span className="sr-only">Toggle Plate-based Calculation</span>
-                                  <span
-                                    className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${mealType.pricingMethod === 'plate-based' ? 'translate-x-6' : 'translate-x-1'
-                                      }`}
-                                  />
-                                </button>
-                                <span className="text-sm text-gray-600">
-                                  {mealType.pricingMethod === 'plate-based' ? 'Enabled' : 'Disabled'}
-                                </span>
-                              </div>
+                                              return item ? (
+                                                <Draggable key={`${mealType.id}-${itemId}`} draggableId={`${mealType.id}-${itemId}`} index={index}>
+                                                  {(provided, snapshot) => (
+                                                    <div
+                                                      ref={provided.innerRef}
+                                                      {...provided.draggableProps}
+                                                      className={`flex flex-col sm:flex-row sm:items-center gap-2 p-2 rounded-md border ${snapshot.isDragging
+                                                        ? 'bg-blue-200 border-blue-400 shadow-lg z-50'
+                                                        : 'bg-white border-blue-200 shadow-sm'
+                                                        }`}
+                                                      style={{
+                                                        ...provided.draggableProps.style,
+                                                        left: 'auto !important',
+                                                        top: 'auto !important'
+                                                      }}
+                                                    >
+                                                      <div className="flex-1 flex items-center gap-3">
+                                                        <div
+                                                          {...provided.dragHandleProps}
+                                                          className="text-blue-400 hover:text-blue-600 cursor-grab active:cursor-grabbing p-1"
+                                                          title="Drag to reorder"
+                                                        >
+                                                          <FaGripLines />
+                                                        </div>
+                                                        <span className="text-sm font-medium text-blue-900">{item.name}</span>
+                                                        <div className="flex items-center gap-1 sm:hidden ml-auto">
+                                                          <button type="button" onClick={() => handleRemoveItem(mealType.id, itemId)} className="p-1 hover:bg-red-200 text-red-600 rounded"><FaTimes className="w-3 h-3" /></button>
+                                                        </div>
+                                                      </div>
 
-                              {mealType.pricingMethod === 'plate-based' ? (
-                                <div>
-                                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                                    Per Plate Amount *
-                                  </label>
-                                  <input
-                                    type="number"
-                                    step="0.01"
-                                    min="0"
-                                    required
-                                    value={mealType.platePrice}
-                                    onChange={(e: any) => handleUpdateMealType(mealType.id, 'platePrice', e.target.value)}
-                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-                                    placeholder="0.00"
-                                  />
-                                  {mealType.numberOfMembers && parseFloat(mealType.platePrice) > 0 && (
-                                    <p className="text-sm text-green-600 mt-2 font-medium">
-                                      Total: {mealType.numberOfMembers} members × ₹{parseFloat(mealType.platePrice).toFixed(2)} = ₹{(parseFloat(mealType.numberOfMembers) * parseFloat(mealType.platePrice)).toFixed(2)}
-                                    </p>
+                                                      <div className="flex items-center w-full sm:w-auto gap-2">
+                                                        <input
+                                                          type="text"
+                                                          placeholder="Customization (e.g. Spice Level)"
+                                                          value={mealType.itemCustomizations?.[itemId] || ''}
+                                                          onChange={(e) => handleUpdateItemCustomization(mealType.id, itemId, e.target.value)}
+                                                          className="text-xs border border-blue-300 rounded px-2 py-1 flex-1 sm:w-48 focus:ring-1 focus:ring-blue-500 outline-none"
+                                                        />
+
+                                                        <div className="hidden sm:flex items-center gap-1 border-l border-blue-300 pl-2">
+                                                          <button
+                                                            type="button"
+                                                            onClick={() => handleRemoveItem(mealType.id, itemId)}
+                                                            className="p-1.5 hover:bg-red-100 hover:text-red-700 rounded transition-colors"
+                                                            title="Remove item"
+                                                          >
+                                                            <FaTimes className="w-3.5 h-3.5" />
+                                                          </button>
+                                                        </div>
+                                                      </div>
+                                                    </div>
+                                                  )}
+                                                </Draggable>
+                                              ) : null
+                                            })}
+                                            {provided.placeholder}
+                                          </div>
+                                        )}
+                                      </Droppable>
+                                    </div>
                                   )}
-                                  {!mealType.numberOfMembers && (
-                                    <p className="text-xs text-orange-500 mt-1">
-                                      ⚠ Enter Number of Members above to calculate total
-                                    </p>
-                                  )}
-                                </div>
-                              ) : (
-                                <div>
-                                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                                    Manual Amount *
-                                  </label>
-                                  <input
-                                    type="number"
-                                    step="0.01"
-                                    min="0"
-                                    required
-                                    value={mealType.manualAmount}
-                                    onChange={(e: any) => handleUpdateMealType(mealType.id, 'manualAmount', e.target.value)}
-                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-                                    placeholder="0.00"
-                                  />
+
                                 </div>
                               )}
+
+                              {/* Pricing Section for this Meal Type */}
+                              <div className="border-t border-gray-200 pt-4">
+                                <h4 className="text-sm font-semibold text-gray-700 mb-3">Pricing for {mealType.menuType || 'this meal type'}</h4>
+
+                                <div className="mb-4 flex items-center gap-3">
+                                  <label className="text-sm font-medium text-gray-700">
+                                    Use Plate-based Calculation
+                                  </label>
+                                  <button
+                                    type="button"
+                                    onClick={() => handleUpdateMealType(mealType.id, 'pricingMethod', mealType.pricingMethod === 'manual' ? 'plate-based' : 'manual')}
+                                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 ${mealType.pricingMethod === 'plate-based' ? 'bg-primary-500' : 'bg-gray-300'
+                                      }`}
+                                  >
+                                    <span className="sr-only">Toggle Plate-based Calculation</span>
+                                    <span
+                                      className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${mealType.pricingMethod === 'plate-based' ? 'translate-x-6' : 'translate-x-1'
+                                        }`}
+                                    />
+                                  </button>
+                                  <span className="text-sm text-gray-600">
+                                    {mealType.pricingMethod === 'plate-based' ? 'Enabled' : 'Disabled'}
+                                  </span>
+                                </div>
+
+                                {mealType.pricingMethod === 'plate-based' ? (
+                                  <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                                      Per Plate Amount *
+                                    </label>
+                                    <input
+                                      type="number"
+                                      step="0.01"
+                                      min="0"
+                                      required
+                                      value={mealType.platePrice}
+                                      onChange={(e: any) => handleUpdateMealType(mealType.id, 'platePrice', e.target.value)}
+                                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                                      placeholder="0.00"
+                                    />
+                                    {mealType.numberOfMembers && parseFloat(mealType.platePrice) > 0 && (
+                                      <p className="text-sm text-green-600 mt-2 font-medium">
+                                        Total: {mealType.numberOfMembers} members × ₹{parseFloat(mealType.platePrice).toFixed(2)} = ₹{(parseFloat(mealType.numberOfMembers) * parseFloat(mealType.platePrice)).toFixed(2)}
+                                      </p>
+                                    )}
+                                    {!mealType.numberOfMembers && (
+                                      <p className="text-xs text-orange-500 mt-1">
+                                        ⚠ Enter Number of Members above to calculate total
+                                      </p>
+                                    )}
+                                  </div>
+                                ) : (
+                                  <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                                      Manual Amount *
+                                    </label>
+                                    <input
+                                      type="number"
+                                      step="0.01"
+                                      min="0"
+                                      required
+                                      value={mealType.manualAmount}
+                                      onChange={(e: any) => handleUpdateMealType(mealType.id, 'manualAmount', e.target.value)}
+                                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                                      placeholder="0.00"
+                                    />
+                                  </div>
+                                )}
+                              </div>
                             </div>
-                          </div>
-                        )}
-                      </div>
-                    )
-                  })}
-                </div>
-              )}
-            </div>
-
-            {isEditMode && (
-              <div className="mt-4 p-4 bg-orange-50 border border-orange-200 rounded-lg">
-                <h4 className="text-sm font-bold text-orange-800 mb-3 flex items-center gap-2">
-                  <span className="w-2 h-2 bg-orange-500 rounded-full"></span>
-                  Member Change Summary
-                </h4>
-                <div className="space-y-2">
-                  {formData.mealTypes.map(mt => {
-                    const original = originalMealTypeAmounts[mt.menuType]
-                    const oldMembers = original?.numberOfMembers || 0
-                    const newMembers = parseInt(mt.numberOfMembers) || 0
-                    const diff = newMembers - oldMembers
-
-                    if (diff === 0) return null
-
-                    return (
-                      <div key={mt.id} className="flex justify-between items-center text-sm">
-                        <span className="text-gray-700 capitalize font-medium">{mt.menuType}:</span>
-                        <div className="flex items-center gap-3">
-                          <span className="text-gray-500">{oldMembers} → {newMembers}</span>
-                          <span className={`font-bold px-2 py-0.5 rounded text-xs ${diff > 0 ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
-                            {diff > 0 ? '+' : ''}{diff} Members
-                          </span>
+                          )}
                         </div>
-                      </div>
-                    )
-                  })}
-                  {!formData.mealTypes.some(mt => (parseInt(mt.numberOfMembers) || 0) !== (originalMealTypeAmounts[mt.menuType]?.numberOfMembers || 0)) && (
-                    <p className="text-xs text-gray-500 italic">No member changes detected yet.</p>
-                  )}
-                </div>
-              </div>
-            )}
+                      )
+                    })}
+                  </div >
+                )}
+              </div >
 
-            {!isEditMode && (
-              <div className="border-t border-gray-200 pt-4">
-                <h3 className="text-lg font-semibold text-gray-800 mb-4">Additional Charges</h3>
+              {isEditMode && (
+                <div className="mt-4 p-4 bg-orange-50 border border-orange-200 rounded-lg">
+                  <h4 className="text-sm font-bold text-orange-800 mb-3 flex items-center gap-2">
+                    <span className="w-2 h-2 bg-orange-500 rounded-full"></span>
+                    Member Change Summary
+                  </h4>
+                  <div className="space-y-2">
+                    {formData.mealTypes.map(mt => {
+                      const original = originalMealTypeAmounts[mt.menuType]
+                      const oldMembers = original?.numberOfMembers || 0
+                      const newMembers = parseInt(mt.numberOfMembers) || 0
+                      const diff = newMembers - oldMembers
 
-                <div className="mb-4 border-t border-gray-200 pt-4">
-                  <div className="flex justify-between items-center mb-4">
-                    <div className="flex items-center gap-3">
-                      <label className="block text-sm font-medium text-gray-700">
-                        Stalls (Separate from plate calculation)
-                      </label>
-                      <button
-                        type="button"
-                        onClick={() => setShowStalls(!showStalls)}
-                        className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 ${showStalls ? 'bg-primary-500' : 'bg-gray-300'
-                          }`}
-                      >
-                        <span className="sr-only">Toggle Stalls</span>
-                        <span
-                          className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${showStalls ? 'translate-x-6' : 'translate-x-1'
-                            }`}
-                        />
-                      </button>
-                      <span className="text-sm text-gray-500">
-                        {showStalls ? 'Enabled' : 'Disabled'}
-                      </span>
-                    </div>
-                    {showStalls && (
-                      <button
-                        type="button"
-                        onClick={handleAddStall}
-                        className="px-4 py-2 bg-primary-500 text-white rounded-lg hover:bg-primary-600 transition-colors text-sm"
-                      >
-                        + Add Stall
-                      </button>
+                      if (diff === 0) return null
+
+                      return (
+                        <div key={mt.id} className="flex justify-between items-center text-sm">
+                          <span className="text-gray-700 capitalize font-medium">{mt.menuType}:</span>
+                          <div className="flex items-center gap-3">
+                            <span className="text-gray-500">{oldMembers} → {newMembers}</span>
+                            <span className={`font-bold px-2 py-0.5 rounded text-xs ${diff > 0 ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+                              {diff > 0 ? '+' : ''}{diff} Members
+                            </span>
+                          </div>
+                        </div>
+                      )
+                    })}
+                    {!formData.mealTypes.some(mt => (parseInt(mt.numberOfMembers) || 0) !== (originalMealTypeAmounts[mt.menuType]?.numberOfMembers || 0)) && (
+                      <p className="text-xs text-gray-500 italic">No member changes detected yet.</p>
                     )}
                   </div>
+                </div>
+              )}
 
-                  {!showStalls ? (
-                    <p className="text-gray-500 text-sm text-center py-4 bg-gray-50 rounded-lg">
-                      Stalls are disabled. Toggle above to enable.
-                    </p>
-                  ) : formData.stalls.length === 0 ? (
-                    <p className="text-gray-500 text-sm text-center py-4 bg-gray-50 rounded-lg">
-                      No stalls added. Click "Add Stall" to add one.
-                    </p>
-                  ) : (
-                    <div className="space-y-4">
-                      {formData.stalls.map((stall, index) => (
-                        <div key={index} className="border border-gray-200 rounded-lg p-4 bg-gray-50">
-                          <div className="flex justify-between items-center mb-3">
-                            <h4 className="text-sm font-semibold text-gray-700">Stall #{index + 1}</h4>
-                            <button
-                              type="button"
-                              onClick={() => handleRemoveStall(index)}
-                              className="text-red-600 hover:text-red-800 text-sm font-medium"
-                            >
-                              Remove
-                            </button>
-                          </div>
+              {
+                !isEditMode && (
+                  <div className="border-t border-gray-200 pt-4">
+                    <h3 className="text-lg font-semibold text-gray-800 mb-4">Additional Charges</h3>
 
-                          <div className="space-y-3">
-                            <div>
-                              <label className="block text-sm font-medium text-gray-700 mb-1">
-                                Stall Category *
-                              </label>
-                              <select
-                                value={stall.category}
-                                onChange={(e: any) => handleUpdateStall(index, 'category', e.target.value)}
-                                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-                              >
-                                <option value="">Select Stall Category</option>
-                                <option value="Sweet Stall">Sweet Stall</option>
-                                <option value="Pan Stall">Pan Stall</option>
-                                <option value="LED Counter">LED Counter</option>
-                                <option value="Tiffin Counter">Tiffin Counter</option>
-                                <option value="Chat Counter">Chat Counter</option>
-                              </select>
-                            </div>
-
-                            <div>
-                              <label className="block text-sm font-medium text-gray-700 mb-1">
-                                Description/Tag
-                              </label>
-                              <textarea
-                                value={stall.description}
-                                onChange={(e: any) => handleUpdateStall(index, 'description', e.target.value)}
-                                rows={2}
-                                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-                                placeholder="Enter description or tag for this stall..."
-                              />
-                            </div>
-
-                            <div>
-                              <label className="block text-sm font-medium text-gray-700 mb-1">
-                                Cost
-                              </label>
-                              <input
-                                type="number"
-                                step="0.01"
-                                min="0"
-                                value={stall.cost}
-                                onChange={(e: any) => handleUpdateStall(index, 'cost', e.target.value)}
-                                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-                                placeholder="0.00"
-                              />
-                            </div>
-                          </div>
+                    <div className="mb-4 border-t border-gray-200 pt-4">
+                      <div className="flex justify-between items-center mb-4">
+                        <div className="flex items-center gap-3">
+                          <label className="block text-sm font-medium text-gray-700">
+                            Stalls (Separate from plate calculation)
+                          </label>
+                          <button
+                            type="button"
+                            onClick={() => setShowStalls(!showStalls)}
+                            className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 ${showStalls ? 'bg-primary-500' : 'bg-gray-300'
+                              }`}
+                          >
+                            <span className="sr-only">Toggle Stalls</span>
+                            <span
+                              className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${showStalls ? 'translate-x-6' : 'translate-x-1'
+                                }`}
+                            />
+                          </button>
+                          <span className="text-sm text-gray-500">
+                            {showStalls ? 'Enabled' : 'Disabled'}
+                          </span>
                         </div>
-                      ))}
+                        {showStalls && (
+                          <button
+                            type="button"
+                            onClick={handleAddStall}
+                            className="px-4 py-2 bg-primary-500 text-white rounded-lg hover:bg-primary-600 transition-colors text-sm"
+                          >
+                            + Add Stall
+                          </button>
+                        )}
+                      </div>
 
-                      {formData.stalls.length > 0 && (
-                        <div className="mt-4 p-3 bg-blue-50 rounded-lg">
-                          <div className="flex justify-between items-center">
-                            <span className="text-sm font-medium text-gray-700">Total Stalls Cost:</span>
-                            <span className="text-lg font-bold text-blue-600">{formatCurrency(totalStallsCost)}</span>
-                          </div>
+                      {!showStalls ? (
+                        <p className="text-gray-500 text-sm text-center py-4 bg-gray-50 rounded-lg">
+                          Stalls are disabled. Toggle above to enable.
+                        </p>
+                      ) : formData.stalls.length === 0 ? (
+                        <p className="text-gray-500 text-sm text-center py-4 bg-gray-50 rounded-lg">
+                          No stalls added. Click "Add Stall" to add one.
+                        </p>
+                      ) : (
+                        <div className="space-y-4">
+                          {formData.stalls.map((stall, index) => (
+                            <div key={index} className="border border-gray-200 rounded-lg p-4 bg-gray-50">
+                              <div className="flex justify-between items-center mb-3">
+                                <h4 className="text-sm font-semibold text-gray-700">Stall #{index + 1}</h4>
+                                <button
+                                  type="button"
+                                  onClick={() => handleRemoveStall(index)}
+                                  className="text-red-600 hover:text-red-800 text-sm font-medium"
+                                >
+                                  Remove
+                                </button>
+                              </div>
+
+                              <div className="space-y-3">
+                                <div>
+                                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                                    Stall Category *
+                                  </label>
+                                  <select
+                                    value={stall.category}
+                                    onChange={(e: any) => handleUpdateStall(index, 'category', e.target.value)}
+                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                                  >
+                                    <option value="">Select Stall Category</option>
+                                    <option value="Sweet Stall">Sweet Stall</option>
+                                    <option value="Pan Stall">Pan Stall</option>
+                                    <option value="LED Counter">LED Counter</option>
+                                    <option value="Tiffin Counter">Tiffin Counter</option>
+                                    <option value="Chat Counter">Chat Counter</option>
+                                  </select>
+                                </div>
+
+                                <div>
+                                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                                    Description/Tag
+                                  </label>
+                                  <textarea
+                                    value={stall.description}
+                                    onChange={(e: any) => handleUpdateStall(index, 'description', e.target.value)}
+                                    rows={2}
+                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                                    placeholder="Enter description or tag for this stall..."
+                                  />
+                                </div>
+
+                                <div>
+                                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                                    Cost
+                                  </label>
+                                  <input
+                                    type="number"
+                                    step="0.01"
+                                    min="0"
+                                    value={stall.cost}
+                                    onChange={(e: any) => handleUpdateStall(index, 'cost', e.target.value)}
+                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                                    placeholder="0.00"
+                                  />
+                                </div>
+                              </div>
+                            </div>
+                          ))}
+
+                          {formData.stalls.length > 0 && (
+                            <div className="mt-4 p-3 bg-blue-50 rounded-lg">
+                              <div className="flex justify-between items-center">
+                                <span className="text-sm font-medium text-gray-700">Total Stalls Cost:</span>
+                                <span className="text-lg font-bold text-blue-600">{formatCurrency(totalStallsCost)}</span>
+                              </div>
+                            </div>
+                          )}
                         </div>
                       )}
                     </div>
-                  )}
-                </div>
 
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Transport Cost
-                    </label>
-                    <input
-                      type="number"
-                      step="0.01"
-                      min="0"
-                      value={formData.transportCost}
-                      onChange={(e: any) => setFormData({ ...formData, transportCost: e.target.value })}
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-                      placeholder="0.00"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Discount
-                    </label>
-                    <input
-                      type="number"
-                      step="0.01"
-                      min="0"
-                      value={formData.discount}
-                      onChange={(e: any) => setFormData({ ...formData, discount: e.target.value })}
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-                      placeholder="0.00"
-                    />
-                  </div>
-                </div>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          Transport Cost
+                        </label>
+                        <input
+                          type="number"
+                          step="0.01"
+                          min="0"
+                          value={formData.transportCost}
+                          onChange={(e: any) => setFormData({ ...formData, transportCost: e.target.value })}
+                          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                          placeholder="0.00"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          Discount
+                        </label>
+                        <input
+                          type="number"
+                          step="0.01"
+                          min="0"
+                          value={formData.discount}
+                          onChange={(e: any) => setFormData({ ...formData, discount: e.target.value })}
+                          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                          placeholder="0.00"
+                        />
+                      </div>
+                    </div>
 
-                <div className="grid grid-cols-2 gap-4 mt-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      {isEditMode ? 'Additional Advance Paid' : 'Advance Paid'}
-                    </label>
-                    <input
-                      type="number"
-                      step="0.01"
-                      min="0"
-                      value={formData.advancePaid}
-                      onChange={(e: any) => setFormData({ ...formData, advancePaid: e.target.value })}
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-                      placeholder="0.00"
-                    />
-                    {isEditMode && (
-                      <p className="mt-1 text-xs text-gray-500">
-                        Current advance: {formatCurrency(originalAdvancePaid)} · New total: {formatCurrency(effectiveAdvancePaid)} · Remaining: {formatCurrency(effectiveRemainingAmount)}
+                    <div className="grid grid-cols-2 gap-4 mt-4">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          {isEditMode ? 'Additional Advance Paid' : 'Advance Paid'}
+                        </label>
+                        <input
+                          type="number"
+                          step="0.01"
+                          min="0"
+                          value={formData.advancePaid}
+                          onChange={(e: any) => setFormData({ ...formData, advancePaid: e.target.value })}
+                          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                          placeholder="0.00"
+                        />
+                        {isEditMode && (
+                          <p className="mt-1 text-xs text-gray-500">
+                            Current advance: {formatCurrency(originalAdvancePaid)} · New total: {formatCurrency(effectiveAdvancePaid)} · Remaining: {formatCurrency(effectiveRemainingAmount)}
+                          </p>
+                        )}
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          Payment Method
+                        </label>
+                        <select
+                          value={formData.paymentMethod}
+                          onChange={(e: any) => setFormData({ ...formData, paymentMethod: e.target.value })}
+                          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                        >
+                          <option value="cash">Cash</option>
+                          <option value="upi">UPI</option>
+                          <option value="card">Card</option>
+                          <option value="bank_transfer">Bank Transfer</option>
+                          <option value="other">Other</option>
+                        </select>
+                      </div>
+                    </div>
+
+                    <div className="mt-4">
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Payment Notes
+                      </label>
+                      <input
+                        type="text"
+                        value={formData.paymentNotes}
+                        onChange={(e: any) => setFormData({ ...formData, paymentNotes: e.target.value })}
+                        placeholder="e.g., Transaction ID, Reference, etc."
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                      />
+                    </div>
+
+                    <div className="mt-4">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          Total Amount * (Auto-calculated: Meal Types + Transport + Stalls - Discount)
+                        </label>
+                        <input
+                          type="number"
+                          step="0.01"
+                          required
+                          value={formData.totalAmount}
+                          readOnly
+                          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 bg-gray-50"
+                          placeholder="0.00"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                )
+              }
+
+              {
+                isEditMode && (
+                  <div className="border-t border-gray-200 pt-4">
+                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                      <p className="text-sm text-blue-700 font-medium">
+                        Financial updates (payments, discounts, transport, stalls) are handled in the Financial Tracking page.
                       </p>
-                    )}
+                      <div className="mt-3">
+                        <Link
+                          href={financialLink}
+                          className="inline-flex items-center px-4 py-2 rounded-lg bg-blue-600 text-white text-sm font-medium hover:bg-blue-700 transition-colors"
+                        >
+                          Open Financial Tracking
+                        </Link>
+                      </div>
+                    </div>
                   </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Payment Method
-                    </label>
-                    <select
-                      value={formData.paymentMethod}
-                      onChange={(e: any) => setFormData({ ...formData, paymentMethod: e.target.value })}
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-                    >
-                      <option value="cash">Cash</option>
-                      <option value="upi">UPI</option>
-                      <option value="card">Card</option>
-                      <option value="bank_transfer">Bank Transfer</option>
-                      <option value="other">Other</option>
-                    </select>
-                  </div>
-                </div>
+                )
+              }
 
-                <div className="mt-4">
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Payment Notes
-                  </label>
-                  <input
-                    type="text"
-                    value={formData.paymentNotes}
-                    onChange={(e: any) => setFormData({ ...formData, paymentNotes: e.target.value })}
-                    placeholder="e.g., Transaction ID, Reference, etc."
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-                  />
-                </div>
-
-                <div className="mt-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Total Amount * (Auto-calculated: Meal Types + Transport + Stalls - Discount)
-                    </label>
-                    <input
-                      type="number"
-                      step="0.01"
-                      required
-                      value={formData.totalAmount}
-                      readOnly
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 bg-gray-50"
-                      placeholder="0.00"
-                    />
-                  </div>
-                </div>
+              <div className="flex justify-end gap-4 pt-4 border-t border-gray-200">
+                <FormError message={formError} className="mr-auto self-center" />
+                <button
+                  type="button"
+                  onClick={resetForm}
+                  className="px-6 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors"
+                >
+                  Clear Form
+                </button>
+                <button
+                  type="submit"
+                  disabled={formData.mealTypes.length === 0 || formData.mealTypes.some(mt => mt.selectedMenuItems.length === 0)}
+                  className="px-6 py-2 bg-primary-500 text-white rounded-lg hover:bg-primary-600 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed"
+                >
+                  {isEditMode ? 'Update Order' : 'Create Order'}
+                </button>
               </div>
-            )}
+            </div >
+          </form >
+        </div >
 
-            {isEditMode && (
-              <div className="border-t border-gray-200 pt-4">
-                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                  <p className="text-sm text-blue-700 font-medium">
-                    Financial updates (payments, discounts, transport, stalls) are handled in the Financial Tracking page.
-                  </p>
-                  <div className="mt-3">
-                    <Link
-                      href={financialLink}
-                      className="inline-flex items-center px-4 py-2 rounded-lg bg-blue-600 text-white text-sm font-medium hover:bg-blue-700 transition-colors"
-                    >
-                      Open Financial Tracking
-                    </Link>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            <div className="flex justify-end gap-4 pt-4 border-t border-gray-200">
-              <FormError message={formError} className="mr-auto self-center" />
-              <button
-                type="button"
-                onClick={resetForm}
-                className="px-6 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors"
-              >
-                Clear Form
-              </button>
-              <button
-                type="submit"
-                disabled={formData.mealTypes.length === 0 || formData.mealTypes.some(mt => mt.selectedMenuItems.length === 0)}
-                className="px-6 py-2 bg-primary-500 text-white rounded-lg hover:bg-primary-600 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed"
-              >
-                {isEditMode ? 'Update Order' : 'Create Order'}
-              </button>
-            </div>
-          </div>
-        </form>
-      </div>
-
-      {/* Link to Orders History */}
-      <div className="mt-8 text-center">
-        <Link
-          href="/orders/history"
-          className="inline-flex items-center px-6 py-3 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors"
-        >
-          View Orders History
-        </Link>
-      </div>
-    </div>
+        {/* Link to Orders History */}
+        < div className="mt-8 text-center" >
+          <Link
+            href="/orders/history"
+            className="inline-flex items-center px-6 py-3 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors"
+          >
+            View Orders History
+          </Link>
+        </div >
+      </DragDropContext >
+    </div >
   )
 }
