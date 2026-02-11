@@ -286,9 +286,9 @@ export default function OrderSummaryPage() {
                           <div className="flex flex-col items-end">
                             <span className="text-xl font-black text-primary-600">
                               {(() => {
-                                const storedAmount = parseFloat(detail?.amount || (typeof data === 'number' ? data : 0));
-                                const plates = parseFloat(detail?.numberOfPlates || detail?.numberOfMembers || 0);
-                                const price = parseFloat(detail?.platePrice || 0);
+                                const storedAmount = Number(detail?.amount || (typeof data === 'number' ? data : 0));
+                                const plates = Number(detail?.numberOfPlates || detail?.numberOfMembers || 0);
+                                const price = Number(detail?.platePrice || 0);
 
                                 // Auto-calculate if stored amount is 0 but we have valid plate-based data
                                 const finalAmount = (detail?.pricingMethod === 'plate-based' && storedAmount === 0 && plates > 0 && price > 0)
