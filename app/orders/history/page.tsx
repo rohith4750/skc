@@ -18,6 +18,17 @@ export default function OrdersHistoryPage() {
     isOpen: false,
     id: null,
   })
+  const [statusConfirm, setStatusConfirm] = useState<{
+    isOpen: boolean
+    id: string | null
+    newStatus: string
+    oldStatus: string
+  }>({
+    isOpen: false,
+    id: null,
+    newStatus: '',
+    oldStatus: '',
+  })
   const [showFilters, setShowFilters] = useState(false)
   const [statusFilter, setStatusFilter] = useState<string>('all')
   const [customerSearch, setCustomerSearch] = useState<string>('')
@@ -171,6 +182,13 @@ export default function OrdersHistoryPage() {
       console.error('Failed to update status:', error)
       toast.error(error.message || 'Failed to update order status. Please try again.')
     }
+  }
+
+  const confirmStatusChange = async () => {
+    if (!statusConfirm.id || !statusConfirm.newStatus) return
+
+    await handleStatusChange(statusConfirm.id, statusConfirm.newStatus)
+    setStatusConfirm({ isOpen: false, id: null, newStatus: '', oldStatus: '' })
   }
 
 
@@ -564,7 +582,15 @@ export default function OrdersHistoryPage() {
                       <td className="px-6 py-4 whitespace-nowrap">
                         <select
                           value={order.status}
-                          onChange={(e) => handleStatusChange(order.id, e.target.value)}
+                          onChange={(e) => {
+                            if (e.target.value === order.status) return
+                            setStatusConfirm({
+                              isOpen: true,
+                              id: order.id,
+                              newStatus: e.target.value,
+                              oldStatus: order.status
+                            })
+                          }}
                           className={`px-3 py-1.5 text-xs font-semibold rounded-full border-0 cursor-pointer focus:ring-2 focus:ring-primary-500 focus:outline-none ${order.status === 'completed' ? 'bg-green-100 text-green-800 hover:bg-green-200' :
                             order.status === 'in_progress' ? 'bg-yellow-100 text-yellow-800 hover:bg-yellow-200' :
                               order.status === 'cancelled' ? 'bg-red-100 text-red-800 hover:bg-red-200' :
@@ -686,6 +712,23 @@ export default function OrdersHistoryPage() {
         onConfirm={confirmDelete}
         onCancel={() => setDeleteConfirm({ isOpen: false, id: null })}
         variant="danger"
+      />
+
+      <ConfirmModal
+        isOpen={statusConfirm.isOpen}
+        title="Change Order Status"
+        message={
+          <div>
+            <p>Are you sure you want to change the status from <strong>{statusConfirm.oldStatus?.replace('_', ' ').toUpperCase()}</strong> to <strong>{statusConfirm.newStatus?.replace('_', ' ').toUpperCase()}</strong>?</p>
+            {statusConfirm.newStatus === 'in_progress' && <p className="mt-2 text-sm text-yellow-600 font-medium">This will generate a bill if one does not exist.</p>}
+            {statusConfirm.newStatus === 'completed' && <p className="mt-2 text-sm text-green-600 font-medium">This will mark the bill as fully PAID.</p>}
+          </div>
+        }
+        confirmText="Yes, Update Status"
+        cancelText="Cancel"
+        onConfirm={confirmStatusChange}
+        onCancel={() => setStatusConfirm({ isOpen: false, id: null, newStatus: '', oldStatus: '' })}
+        variant="info"
       />
     </div>
   )
