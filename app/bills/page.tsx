@@ -32,7 +32,7 @@ export default function BillsPage() {
       })
       if (!response.ok) throw new Error('Failed to fetch bills')
       const allBills = await response.json()
-      
+
       // Deduplicate bills by orderId (safety check - should not be needed due to unique constraint)
       const uniqueBillsMap = new Map<string, any>()
       allBills.forEach((bill: any) => {
@@ -46,9 +46,9 @@ export default function BillsPage() {
           uniqueBillsMap.set(bill.id, bill)
         }
       })
-      
+
       const uniqueBills = Array.from(uniqueBillsMap.values())
-      
+
       console.log(`[Bills Page] Received ${allBills.length} bills from API, Unique by orderId: ${uniqueBills.length}`)
       if (allBills.length !== uniqueBills.length) {
         console.warn(`[Bills Page] ⚠️ Found ${allBills.length - uniqueBills.length} duplicate bills!`)
@@ -61,7 +61,7 @@ export default function BillsPage() {
         const duplicates = Array.from(orderIdCounts.entries()).filter(([_, count]) => count > 1)
         console.warn('[Bills Page] Duplicate orderIds:', duplicates)
       }
-      
+
       setBills(uniqueBills)
       if (showToast) {
         toast.success('Bills refreshed')
@@ -120,16 +120,16 @@ export default function BillsPage() {
       }
 
       const updatedBill = await response.json()
-      
+
       // Update the specific bill in the list immediately with complete data
-      setBills(prevBills => 
-        prevBills.map((b: any) => 
-          b.id === billId 
+      setBills(prevBills =>
+        prevBills.map((b: any) =>
+          b.id === billId
             ? updatedBill  // Replace with complete updated bill (includes all relations)
             : b
         )
       )
-      
+
       toast.success('Bill marked as paid successfully!')
     } catch (error: any) {
       console.error('Failed to update bill:', error)
@@ -192,46 +192,46 @@ export default function BillsPage() {
   const handleGeneratePDF = async (bill: any) => {
     const order = bill.order
     const customer = order?.customer
-    
+
     // Extract meal type amounts and organize meal details
     const mealTypeAmounts = order?.mealTypeAmounts as Record<string, { amount: number; date: string; services?: string[]; numberOfMembers?: number } | number> | null
     const stalls = order?.stalls as Array<{ category: string; description: string; cost: number }> | null
     const transportCost = parseFloat(order?.transportCost || '0') || 0
-    
+
     // Extract meal details from mealTypeAmounts
     let tiffinsData: { persons?: number; rate?: number } = {}
     let lunchDinnerData: { type?: string; persons?: number; rate?: number } = {}
     let snacksData: { persons?: number; rate?: number } = {}
-    
+
     if (mealTypeAmounts) {
       Object.entries(mealTypeAmounts).forEach(([mealType, data]) => {
         const mealData = typeof data === 'object' && data !== null ? data : { amount: typeof data === 'number' ? data : 0 }
         const persons = (typeof mealData === 'object' && mealData !== null && 'numberOfMembers' in mealData) ? (mealData.numberOfMembers || 0) : 0
         const amount = typeof mealData === 'object' && mealData !== null && 'amount' in mealData ? mealData.amount : (typeof data === 'number' ? data : 0)
         const rate = persons > 0 ? amount / persons : 0
-        
+
         if (mealType.toLowerCase().includes('tiffin') || mealType.toLowerCase().includes('breakfast')) {
           tiffinsData = { persons, rate }
         } else if (mealType.toLowerCase().includes('lunch') || mealType.toLowerCase().includes('dinner')) {
-          lunchDinnerData = { 
+          lunchDinnerData = {
             type: mealType.toLowerCase().includes('lunch') ? 'Lunch' : 'Dinner',
-            persons, 
-            rate 
+            persons,
+            rate
           }
         } else if (mealType.toLowerCase().includes('snack')) {
           snacksData = { persons, rate }
         }
       })
     }
-    
+
     // Calculate extra amount from stalls
     const extraAmount = stalls?.reduce((sum, stall) => sum + (parseFloat(stall.cost?.toString() || '0') || 0), 0) || 0
-    
+
     // Get first event date from mealTypeAmounts
     let functionDate = ''
     let functionTime = ''
     if (mealTypeAmounts) {
-      const firstDate = Object.values(mealTypeAmounts).find(d => 
+      const firstDate = Object.values(mealTypeAmounts).find(d =>
         typeof d === 'object' && d !== null && d.date
       ) as { date?: string } | undefined
       if (firstDate?.date) {
@@ -243,7 +243,7 @@ export default function BillsPage() {
         }
       }
     }
-    
+
     // Prepare PDF template data
     const pdfData: PDFTemplateData = {
       type: 'bill',
@@ -285,10 +285,10 @@ export default function BillsPage() {
       orderId: order?.id,
       supervisor: order?.supervisor?.name,
     }
-    
+
     // Generate HTML using template
     const htmlContent = generatePDFTemplate(pdfData)
-    
+
     // Create a temporary HTML element to render properly
     const tempDiv = document.createElement('div')
     tempDiv.style.position = 'absolute'
@@ -297,10 +297,10 @@ export default function BillsPage() {
     tempDiv.style.padding = '0'
     tempDiv.style.background = 'white'
     tempDiv.style.color = '#000'
-    
+
     tempDiv.innerHTML = htmlContent
     document.body.appendChild(tempDiv)
-    
+
     try {
       // Convert HTML to canvas
       const canvas = await html2canvas(tempDiv, {
@@ -311,10 +311,10 @@ export default function BillsPage() {
         width: tempDiv.scrollWidth,
         height: tempDiv.scrollHeight,
       })
-      
+
       // Remove temporary element
       document.body.removeChild(tempDiv)
-      
+
       // Create PDF from canvas
       const imgData = canvas.toDataURL('image/png')
       const pdf = new jsPDF('p', 'mm', 'a4')
@@ -322,19 +322,19 @@ export default function BillsPage() {
       const pageHeight = 297 // A4 height in mm
       const imgHeight = (canvas.height * imgWidth) / canvas.width
       let heightLeft = imgHeight
-      
+
       let position = 0
-      
+
       pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight)
       heightLeft -= pageHeight
-      
+
       while (heightLeft >= 0) {
         position = heightLeft - imgHeight
         pdf.addPage()
         pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight)
         heightLeft -= pageHeight
       }
-      
+
       pdf.save(`bill-${bill.id.slice(0, 8)}.pdf`)
       toast.success('Bill PDF generated successfully!')
     } catch (error) {
@@ -349,22 +349,22 @@ export default function BillsPage() {
   // Filter bills
   const filteredBills = useMemo(() => {
     let filtered = bills
-    
+
     // Status filter
     if (statusFilter !== 'all') {
       filtered = filtered.filter(bill => bill.status === statusFilter)
     }
-    
+
     // Customer search filter
     if (customerSearch) {
       const searchLower = customerSearch.toLowerCase()
-      filtered = filtered.filter(bill => 
+      filtered = filtered.filter(bill =>
         bill.order?.customer?.name?.toLowerCase().includes(searchLower) ||
         bill.order?.customer?.phone?.includes(customerSearch) ||
         bill.order?.customer?.email?.toLowerCase().includes(searchLower)
       )
     }
-    
+
     // Date range filter
     if (dateRange.start) {
       filtered = filtered.filter(bill => {
@@ -381,14 +381,14 @@ export default function BillsPage() {
         return billDate <= endDate
       })
     }
-    
+
     return filtered.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
   }, [bills, statusFilter, customerSearch, dateRange])
 
   const billSummary = useMemo(() => {
-    const totalBilled = filteredBills.reduce((sum, bill) => sum + (bill.totalAmount || 0), 0)
-    const totalCollected = filteredBills.reduce((sum, bill) => sum + (bill.paidAmount || 0), 0)
-    const totalPending = filteredBills.reduce((sum, bill) => sum + (bill.remainingAmount || 0), 0)
+    const totalBilled = filteredBills.reduce((sum, bill) => sum + (parseFloat(bill.totalAmount?.toString() || '0') || 0), 0)
+    const totalCollected = filteredBills.reduce((sum, bill) => sum + (parseFloat(bill.paidAmount?.toString() || '0') || 0), 0)
+    const totalPending = filteredBills.reduce((sum, bill) => sum + (parseFloat(bill.remainingAmount?.toString() || '0') || 0), 0)
     const collectionRate = totalBilled > 0 ? (totalCollected / totalBilled) * 100 : 0
     const upcomingEvents = filteredBills.filter((bill) => {
       const mealTypeAmounts = bill.order?.mealTypeAmounts as
