@@ -208,6 +208,7 @@ model OrderItem {
 
 model Bill {
   id              String   @id @default(uuid())
+  serialNumber    Int      @unique @default(autoincrement())
   orderId         String   @unique
   order           Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
   totalAmount     Decimal   @db.Decimal(10, 2)

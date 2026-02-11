@@ -4,8 +4,8 @@
   - You are about to drop the `CustomerUser` table. If the table is not empty, all the data it contains will be lost.
 
 */
--- DropTable
-DROP TABLE "CustomerUser";
+-- DropTable (only if exists)
+DROP TABLE IF EXISTS "CustomerUser";
 
 -- CreateTable
 CREATE TABLE "customer_users" (

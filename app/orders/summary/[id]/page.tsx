@@ -121,7 +121,7 @@ export default function OrderSummaryPage() {
                 }`}>
                   {order.status}
                 </span>
-                <span className="text-xs font-bold text-slate-400">#{order.id.slice(0, 8).toUpperCase()}</span>
+                <span className="text-xs font-bold text-slate-400">#SKC-ORDER-{(order as any).serialNumber || order.id.slice(0, 8).toUpperCase()}</span>
               </div>
               <h1 className="text-4xl font-black text-slate-900 tracking-tight leading-none mb-2">
                 {order.eventName || 'Premium Catering Event'}

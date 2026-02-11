@@ -25,6 +25,7 @@ export interface OrderItem {
 
 export interface Order {
   id: string
+  serialNumber?: number
   customerId: string
   customer?: Customer
   items: OrderItem[]
@@ -86,6 +87,7 @@ export interface PaymentHistoryEntry {
 
 export interface Bill {
   id: string
+  serialNumber?: number
   orderId: string
   order?: Order
   totalAmount: number

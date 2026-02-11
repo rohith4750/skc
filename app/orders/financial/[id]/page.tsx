@@ -300,7 +300,7 @@ export default function FinancialTrackingPage() {
         <div className="flex items-center justify-between mb-8">
           <div>
             <h1 className="text-3xl font-black text-slate-900">Financial Management</h1>
-            <p className="text-slate-600 font-medium">Billing adjustments and payment tracking for <span className="text-primary-600">#{order.id.slice(0,8)}</span></p>
+            <p className="text-slate-600 font-medium">Billing adjustments and payment tracking for <span className="text-primary-600">#SKC-ORDER-{(order as any).serialNumber || order.id.slice(0,8)}</span></p>
           </div>
           <div className="text-right">
             <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest block mb-1">Current Balance</span>

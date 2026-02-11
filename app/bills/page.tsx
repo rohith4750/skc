@@ -247,7 +247,7 @@ export default function BillsPage() {
     // Prepare PDF template data
     const pdfData: PDFTemplateData = {
       type: 'bill',
-      billNumber: `BILL-${bill.id.slice(0, 8).toUpperCase()}`,
+      billNumber: `${(bill as any).serialNumber || bill.id.slice(0, 8).toUpperCase()}`,
       date: bill.createdAt,
       customer: {
         name: customer?.name,

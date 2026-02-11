@@ -42,23 +42,23 @@ export default function OrdersHistoryPage() {
   // Filter orders
   const filteredOrders = useMemo(() => {
     let filtered = orders
-    
+
     // Status filter
     if (statusFilter !== 'all') {
       filtered = filtered.filter(order => order.status === statusFilter)
     }
-    
+
     // Customer search filter
     if (customerSearch) {
       const searchLower = customerSearch.toLowerCase()
-      filtered = filtered.filter(order => 
+      filtered = filtered.filter(order =>
         order.customer?.name?.toLowerCase().includes(searchLower) ||
         order.customer?.phone?.includes(customerSearch) ||
         order.customer?.email?.toLowerCase().includes(searchLower) ||
         (order as any).eventName?.toLowerCase().includes(searchLower)
       )
     }
-    
+
     // Date range filter
     if (dateRange.start) {
       filtered = filtered.filter(order => {
@@ -75,7 +75,7 @@ export default function OrdersHistoryPage() {
         return orderDate <= endDate
       })
     }
-    
+
     return filtered.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
   }, [orders, statusFilter, customerSearch, dateRange])
 
@@ -104,12 +104,12 @@ export default function OrdersHistoryPage() {
       const response = await fetch(`/api/orders/${deleteConfirm.id}`, {
         method: 'DELETE',
       })
-      
+
       if (!response.ok) {
         const error = await response.json()
         throw new Error(error.error || error.details || 'Failed to delete order')
       }
-      
+
       await loadData()
       toast.success('Order deleted successfully!')
       setDeleteConfirm({ isOpen: false, id: null })
@@ -138,10 +138,10 @@ export default function OrdersHistoryPage() {
 
       const responseData = await response.json()
       console.log(`[Order History] Order status updated.`, responseData)
-      
+
       // Reload data to get the latest orders with updated status
       await loadData()
-      
+
       // If status changed to in_progress or completed, check if bill was created
       if (newStatus === 'in_progress' || newStatus === 'completed') {
         if (responseData._billCreated) {
@@ -178,6 +178,21 @@ export default function OrdersHistoryPage() {
     const customer = order.customer
     const supervisor = order.supervisor
 
+    // Extract event dates from meal types
+    const mealTypeAmounts = order.mealTypeAmounts as Record<string, { amount: number; date: string } | number> | null
+    const eventDates: string[] = []
+    if (mealTypeAmounts) {
+      Object.entries(mealTypeAmounts).forEach(([mealType, data]) => {
+        if (typeof data === 'object' && data !== null && data.date) {
+          const dateStr = formatDate(data.date)
+          if (!eventDates.includes(dateStr)) {
+            eventDates.push(dateStr)
+          }
+        }
+      })
+    }
+    const eventDateDisplay = eventDates.length > 0 ? eventDates.join(', ') : formatDate(order.createdAt)
+
     // Create a temporary HTML element to render Telugu text properly
     const tempDiv = document.createElement('div')
     tempDiv.style.position = 'absolute'
@@ -189,7 +204,7 @@ export default function OrdersHistoryPage() {
     tempDiv.style.lineHeight = '1.6'
     tempDiv.style.background = 'white'
     tempDiv.style.color = '#333'
-    
+
     let htmlContent = `
       <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
       <style>
@@ -235,9 +250,9 @@ export default function OrdersHistoryPage() {
         
         <div class="section">
           <div class="section-title">Order Information</div>
-          <div class="info-row"><span class="info-label">Date:</span> ${formatDateTime(order.createdAt)}</div>
+          <div class="info-row"><span class="info-label">Event Date:</span> ${eventDateDisplay}</div>
           <div class="info-row"><span class="info-label">Supervisor:</span> ${supervisor?.name || 'N/A'}</div>
-          <div class="info-row"><span class="info-label">Order ID:</span> ${order.id.slice(0, 8).toUpperCase()}</div>
+          <div class="info-row"><span class="info-label">Order ID:</span> SKC-ORDER-${(order as any).serialNumber || order.id.slice(0, 8).toUpperCase()}</div>
         </div>
       </div>
       
@@ -245,7 +260,7 @@ export default function OrdersHistoryPage() {
         <div class="section-title">Menu Items</div>
         <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; font-size: 9px;">
     `
-    
+
     // Group items by type
     const itemsByType: Record<string, any[]> = {}
     order.items.forEach((item: any) => {
@@ -255,7 +270,7 @@ export default function OrdersHistoryPage() {
       }
       itemsByType[type].push(item)
     })
-    
+
     // Display items grouped by type in compact grid
     Object.keys(itemsByType).forEach((type) => {
       // Add type section
@@ -264,7 +279,7 @@ export default function OrdersHistoryPage() {
           ${type}
         </div>
       `
-      
+
       // Add items for this type in grid
       itemsByType[type].forEach((item: any, index: number) => {
         // Use Telugu name if available, otherwise fall back to English name
@@ -276,12 +291,12 @@ export default function OrdersHistoryPage() {
         `
       })
     })
-    
+
     htmlContent += `
         </div>
       </div>
     `
-    
+
     // Add stalls if any
     if (order.stalls && Array.isArray(order.stalls) && order.stalls.length > 0) {
       htmlContent += `
@@ -297,10 +312,10 @@ export default function OrdersHistoryPage() {
         </div>
       `
     }
-    
+
     tempDiv.innerHTML = htmlContent
     document.body.appendChild(tempDiv)
-    
+
     try {
       // Convert HTML to canvas
       const canvas = await html2canvas(tempDiv, {
@@ -309,10 +324,10 @@ export default function OrdersHistoryPage() {
         logging: false,
         backgroundColor: '#ffffff'
       })
-      
+
       // Remove temporary element
       document.body.removeChild(tempDiv)
-      
+
       // Create PDF from canvas
       const imgData = canvas.toDataURL('image/png')
       const pdf = new jsPDF('p', 'mm', 'a4')
@@ -320,20 +335,20 @@ export default function OrdersHistoryPage() {
       const pageHeight = 297 // A4 height in mm
       const imgHeight = (canvas.height * imgWidth) / canvas.width
       let heightLeft = imgHeight
-      
+
       let position = 0
-      
+
       pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight)
       heightLeft -= pageHeight
-      
+
       while (heightLeft >= 0) {
         position = heightLeft - imgHeight
         pdf.addPage()
         pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight)
         heightLeft -= pageHeight
       }
-      
-      pdf.save(`order-${order.id.slice(0, 8)}.pdf`)
+
+      pdf.save(`order-SKC-ORDER-${(order as any).serialNumber || order.id.slice(0, 8)}.pdf`)
     } catch (error) {
       document.body.removeChild(tempDiv)
       console.error('Error generating PDF:', error)
@@ -493,7 +508,7 @@ export default function OrdersHistoryPage() {
                       }
                     })
                   }
-                  
+
                   return (
                     <tr key={order.id} className="hover:bg-gray-50">
                       <td className="px-6 py-4 whitespace-nowrap">
@@ -538,12 +553,11 @@ export default function OrdersHistoryPage() {
                         <select
                           value={order.status}
                           onChange={(e) => handleStatusChange(order.id, e.target.value)}
-                          className={`px-3 py-1.5 text-xs font-semibold rounded-full border-0 cursor-pointer focus:ring-2 focus:ring-primary-500 focus:outline-none ${
-                            order.status === 'completed' ? 'bg-green-100 text-green-800 hover:bg-green-200' :
-                            order.status === 'in_progress' ? 'bg-yellow-100 text-yellow-800 hover:bg-yellow-200' :
-                            order.status === 'cancelled' ? 'bg-red-100 text-red-800 hover:bg-red-200' :
-                            'bg-gray-100 text-gray-800 hover:bg-gray-200'
-                          }`}
+                          className={`px-3 py-1.5 text-xs font-semibold rounded-full border-0 cursor-pointer focus:ring-2 focus:ring-primary-500 focus:outline-none ${order.status === 'completed' ? 'bg-green-100 text-green-800 hover:bg-green-200' :
+                              order.status === 'in_progress' ? 'bg-yellow-100 text-yellow-800 hover:bg-yellow-200' :
+                                order.status === 'cancelled' ? 'bg-red-100 text-red-800 hover:bg-red-200' :
+                                  'bg-gray-100 text-gray-800 hover:bg-gray-200'
+                            }`}
                         >
                           <option value="pending">Pending</option>
                           <option value="in_progress">In Progress</option>
@@ -605,11 +619,10 @@ export default function OrdersHistoryPage() {
             <button
               onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
               disabled={currentPage === 1}
-              className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
-                currentPage === 1
+              className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${currentPage === 1
                   ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
                   : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-              }`}
+                }`}
             >
               <FaChevronLeft />
             </button>
@@ -624,11 +637,10 @@ export default function OrdersHistoryPage() {
                     <button
                       key={page}
                       onClick={() => setCurrentPage(page)}
-                      className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
-                        currentPage === page
+                      className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${currentPage === page
                           ? 'bg-blue-600 text-white'
                           : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-                      }`}
+                        }`}
                     >
                       {page}
                     </button>
@@ -642,11 +654,10 @@ export default function OrdersHistoryPage() {
             <button
               onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
               disabled={currentPage === totalPages}
-              className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
-                currentPage === totalPages
+              className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${currentPage === totalPages
                   ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
                   : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-              }`}
+                }`}
             >
               <FaChevronRight />
             </button>

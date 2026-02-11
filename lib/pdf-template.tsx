@@ -403,11 +403,8 @@ function generateBillContent(data: PDFTemplateData): string {
     <!-- Bill Info -->
     <div class="bill-info">
       <div>
-        <div class="bill-number">Bill No: ${data.billNumber || 'N/A'}</div>
+        <div class="bill-number">Bill No: SKC-${data.billNumber || 'N/A'}</div>
         <div style="font-size: 10px; margin-top: 3px;">Date: ${formatDate(data.date)}</div>
-      </div>
-      <div class="status-badge" style="background-color: #fff; color: #000; border: 2px solid #000;">
-        ${data.status ? data.status.toUpperCase() : 'PENDING'}
       </div>
     </div>
 
@@ -416,7 +413,7 @@ function generateBillContent(data: PDFTemplateData): string {
       <div class="section-title">CUSTOMER DETAILS</div>
       <div class="form-row">
         <span class="form-label">Bill No:</span>
-        <span class="form-value">${data.billNumber || ''}</span>
+        <span class="form-value">SKC-${data.billNumber || ''}</span>
       </div>
       <div class="form-row">
         <span class="form-label">Name:</span>
