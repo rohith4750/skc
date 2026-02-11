@@ -172,13 +172,11 @@ export function generatePDFTemplate(data: PDFTemplateData): string {
         }
         .form-value {
           flex: 1;
-          border-bottom: 1px dotted #000;
           padding-bottom: 2px;
           min-height: 16px;
         }
         .form-value-inline {
           display: inline-block;
-          border-bottom: 1px dotted #000;
           padding-bottom: 2px;
           min-width: 100px;
           margin-left: 5px;
@@ -197,7 +195,6 @@ export function generatePDFTemplate(data: PDFTemplateData): string {
         }
         .financial-value {
           font-weight: bold;
-          border-bottom: 1px dotted #000;
           min-width: 120px;
           text-align: right;
           padding-bottom: 2px;
@@ -333,7 +330,15 @@ function generateBillContent(data: PDFTemplateData): string {
       const dataObj = typeof mealData === 'object' && mealData !== null ? mealData : { amount: typeof mealData === 'number' ? mealData : 0 }
       const persons = (typeof dataObj === 'object' && 'numberOfMembers' in dataObj) ? (dataObj.numberOfMembers || 0) : 0
       const amount = (typeof dataObj === 'object' && 'amount' in dataObj) ? dataObj.amount : (typeof mealData === 'number' ? mealData : 0)
-      const rate = persons > 0 ? amount / persons : 0
+
+      const pricingMethod = (dataObj as any).pricingMethod || 'manual'
+      const platePrice = (dataObj as any).platePrice || 0
+
+      let rateDisplay = ''
+
+      if (pricingMethod === 'plate-based' && platePrice > 0) {
+        rateDisplay = formatCurrency(platePrice)
+      }
 
       // Format meal type name (capitalize first letter)
       const mealTypeName = mealType.charAt(0).toUpperCase() + mealType.slice(1).toLowerCase()
@@ -343,7 +348,7 @@ function generateBillContent(data: PDFTemplateData): string {
           <span class="form-label">${mealTypeName} No of Persons:</span>
           <span class="form-value-inline" style="width: 50px;">${persons || ''}</span>
           <span style="margin-left: 10px;">Rate:</span>
-          <span class="form-value-inline" style="width: 80px;">${rate > 0 ? formatCurrency(rate) : ''}</span>
+          <span class="form-value-inline" style="width: 80px;">${rateDisplay}</span>
           <span style="margin-left: 10px;">Total:</span>
           <span class="form-value-inline" style="width: 100px;">${amount > 0 ? formatCurrency(amount) : ''}</span>
         </div>
