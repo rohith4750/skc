@@ -389,7 +389,7 @@ export default function MenuPage() {
             <div class="header">
               <h1>SRIVATSASA & KOWNDINYA CATERERS</h1>
               <p>Pure Vegetarian • Complete Menu • Est. 1989</p>
-              <p>📞 9866652150, 9900119302, 9656501388 • 📧 pujaysri1989@gmail.com</p>
+              <p>📞 9866652150, 9900119302, 9656501388 • 📧 pujyasri1989cya@gmail.com</p>
             </div>
             
             <div class="menu-grid">

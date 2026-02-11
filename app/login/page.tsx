@@ -242,7 +242,7 @@ export default function LoginPage() {
                 </h3>
                 <div className="space-y-2 sm:space-y-2.5 md:space-y-3 text-xs sm:text-sm md:text-base text-gray-600">
                   <p className="flex items-center gap-2">📞 <span className="break-all">9866652150, 9900119302, 9656501388</span></p>
-                  <p className="flex items-center gap-2">✉️ <span className="break-all">pujaysri1989@gmail.com</span></p>
+                  <p className="flex items-center gap-2">✉️ <span className="break-all">pujyasri1989cya@gmail.com</span></p>
                   <p className="flex items-center gap-2">📍 Vanathalipuram, Hyderabad - 500070</p>
                 </div>
               </div>
@@ -383,7 +383,7 @@ export default function LoginPage() {
                   </div>
                   <div className="flex items-center gap-1 text-amber-100">
                     <FaEnvelope className="text-amber-400 flex-shrink-0 text-[10px] lg:text-xs" />
-                    <span className="break-all leading-tight">pujaysri1989@gmail.com</span>
+                    <span className="break-all leading-tight">pujyasri1989cya@gmail.com</span>
                   </div>
                   <div className="flex items-center gap-1 text-amber-100">
                     <FaMapMarkerAlt className="text-amber-400 flex-shrink-0 text-[10px] lg:text-xs" />

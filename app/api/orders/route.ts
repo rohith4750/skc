@@ -4,6 +4,7 @@ import { isNonNegativeNumber, isNonEmptyString } from '@/lib/validation'
 import { publishNotification } from '@/lib/notifications'
 import { requireAuth } from '@/lib/require-auth'
 import { transformDecimal } from '@/lib/decimal-utils'
+import { sendOrderCreatedAlert, sendPaymentReceivedAlert } from '@/lib/email-alerts'
 
 export async function GET(request: NextRequest) {
   const auth = await requireAuth(request)
@@ -109,6 +110,11 @@ export async function POST(request: NextRequest) {
       severity: 'success',
     })
 
+    // Send email alert to all internal users
+    sendOrderCreatedAlert(order.id).catch(error => {
+      console.error('Failed to send order created email alert:', error)
+    })
+
     if (advancePaid > 0) {
       publishNotification({
         type: 'payments',
@@ -116,6 +122,11 @@ export async function POST(request: NextRequest) {
         message: `${customerName} · Advance ${advancePaid.toFixed(2)}`,
         entityId: order.id,
         severity: 'info',
+      })
+      
+      // Send payment received email alert
+      sendPaymentReceivedAlert(order.id, advancePaid).catch(error => {
+        console.error('Failed to send payment received email alert:', error)
       })
     }
 

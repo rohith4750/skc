@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { isNonEmptyString, isPositiveNumber, isNonNegativeNumber, validateEnum } from '@/lib/validation'
 import { publishNotification } from '@/lib/notifications'
+import { sendLowStockAlert } from '@/lib/email-alerts'
 
 export async function GET(
   request: NextRequest,
@@ -107,6 +108,14 @@ export async function POST(
       entityId: transaction.id,
       severity: data.type === 'out' ? 'warning' : 'info',
     })
+
+    // Check if stock is now below minimum and send email alert
+    const minStock = Number(stock.minimumStock || stock.minStock || 0)
+    if (minStock > 0 && newStock <= minStock) {
+      sendLowStockAlert(params.id).catch(error => {
+        console.error('Failed to send low stock email alert:', error)
+      })
+    }
 
     return NextResponse.json(transaction, { status: 201 })
   } catch (error: any) {

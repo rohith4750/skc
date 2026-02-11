@@ -1,15 +1,8 @@
 {
-  "buildCommand": "npm run build",
-  "devCommand": "npm run dev",
-  "installCommand": "npm install",
-  "framework": "nextjs",
-  "regions": [
-    "iad1"
-  ],
-  "git": {
-    "deploymentEnabled": {
-      "main": true,
-      "*": false
+  "crons": [
+    {
+      "path": "/api/cron/tomorrow-orders",
+      "schedule": "0 18 * * *"
     }
-  }
+  ]
 }

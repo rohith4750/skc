@@ -219,7 +219,7 @@ export default function OrdersHistoryPage() {
         <div class="header-details">
           <div>Regd. No: 2361930100031</div>
           <div>Plot No. 115, Padmavathi Nagar, Bank Colony, Saheb Nag Vanathalipuram, Hyderabad - 500070.</div>
-          <div>Email: pujaysri1989@gmail.com, Cell: 98666521502, 9900119302, 9656501388</div>
+          <div>Email: pujyasri1989cya@gmail.com, Cell: 98666521502, 9900119302, 9656501388</div>
         </div>
       </div>
       

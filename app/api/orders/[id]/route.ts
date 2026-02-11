@@ -3,6 +3,7 @@ import { prisma } from '@/lib/prisma'
 import { isNonEmptyString, isNonNegativeNumber } from '@/lib/validation'
 import { publishNotification } from '@/lib/notifications'
 import { transformDecimal } from '@/lib/decimal-utils'
+import { sendPaymentReceivedAlert } from '@/lib/email-alerts'
 
 export async function GET(
   request: NextRequest,
@@ -330,6 +331,13 @@ export async function PUT(
         entityId: updatedOrder?.id,
         severity: 'success',
       })
+      
+      // Send payment received email alert to all users
+      if (updatedOrder?.id) {
+        sendPaymentReceivedAlert(updatedOrder.id, totalAdvanceDelta).catch(error => {
+          console.error('Failed to send payment received email alert:', error)
+        })
+      }
     }
 
     return NextResponse.json({ order: transformDecimal(updatedOrder), bill: transformDecimal(result.bill) })
