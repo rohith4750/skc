@@ -238,7 +238,7 @@ export async function checkTomorrowOrders(): Promise<void> {
     const orders = await prisma.order.findMany({
       where: {
         status: {
-          in: ['pending', 'in-progress'],
+          in: ['pending', 'in_progress'],
         },
       },
       include: {
