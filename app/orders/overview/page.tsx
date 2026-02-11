@@ -45,13 +45,25 @@ export default function OrdersOverviewPage() {
 
   // Calendar helper functions
   const getOrdersForDate = (date: Date) => {
-    const dateStr = date.toISOString().split('T')[0]
+    // Use local date string to avoid timezone issues
+    const year = date.getFullYear()
+    const month = String(date.getMonth() + 1).padStart(2, '0')
+    const day = String(date.getDate()).padStart(2, '0')
+    const dateStr = `${year}-${month}-${day}`
+    
     return filteredOrders.filter(order => {
       if (!order.mealTypeAmounts) return false
       const mealTypeAmounts = order.mealTypeAmounts as Record<string, any>
       return Object.values(mealTypeAmounts).some((mealData: any) => {
         if (!mealData || typeof mealData !== 'object' || !mealData.date) return false
-        const mealDateStr = new Date(mealData.date).toISOString().split('T')[0]
+        
+        // Extract date part from the stored date (ignore time)
+        const mealDate = new Date(mealData.date)
+        const mealYear = mealDate.getFullYear()
+        const mealMonth = String(mealDate.getMonth() + 1).padStart(2, '0')
+        const mealDay = String(mealDate.getDate()).padStart(2, '0')
+        const mealDateStr = `${mealYear}-${mealMonth}-${mealDay}`
+        
         return mealDateStr === dateStr
       })
     })
