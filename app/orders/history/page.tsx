@@ -270,13 +270,25 @@ export default function OrdersHistoryPage() {
       }
       itemsByType[type].push(item)
     })
-
+    
+    // Get member count for each meal type
+    const getMemberCount = (mealType: string): string => {
+      if (mealTypeAmounts) {
+        const mealData = mealTypeAmounts[mealType.toLowerCase()] as any
+        if (mealData && typeof mealData === 'object' && mealData.numberOfMembers) {
+          return ` (${mealData.numberOfMembers} Members)`
+        }
+      }
+      return ''
+    }
+    
     // Display items grouped by type in compact grid
     Object.keys(itemsByType).forEach((type) => {
-      // Add type section
+      // Add type section with member count
+      const memberInfo = getMemberCount(type)
       htmlContent += `
         <div style="grid-column: span 4; font-weight: 700; font-size: 10px; margin-top: 6px; margin-bottom: 3px; color: #222; text-transform: uppercase; padding-bottom: 2px; font-family: 'Poppins', sans-serif;">
-          ${type}
+          ${type}${memberInfo}
         </div>
       `
 

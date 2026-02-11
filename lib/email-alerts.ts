@@ -52,8 +52,10 @@ function generateAlertEmailHTML(data: AlertEmailData): string {
 
   const config = typeConfig[data.type] || { emoji: '🔔', color: '#6b7280', label: 'Notification' }
 
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://skc-tan.vercel.app'
   const logoUrl = `${appUrl}/images/logo.jpg`
+  
+  console.log('[Email Alert] Logo URL:', logoUrl)
 
   return `
     <!DOCTYPE html>
@@ -143,7 +145,13 @@ function generateAlertEmailHTML(data: AlertEmailData): string {
     <body>
       <div class="container">
         <div class="header">
-          <img src="${logoUrl}" alt="SKC Caterers Logo" class="logo" />
+          <table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-bottom: 10px;">
+            <tr>
+              <td align="center">
+                <img src="${logoUrl}" alt="SKC Caterers Logo" width="80" height="80" style="display: block; border-radius: 50%; border: 2px solid #000; max-width: 80px;" />
+              </td>
+            </tr>
+          </table>
           <h1>SRIVATSASA & KOWNDINYA CATERERS</h1>
           <p style="margin: 5px 0 0 0; font-size: 12px; color: #666;">Management System Alert</p>
         </div>
