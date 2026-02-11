@@ -129,13 +129,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     checkAuth()
   }, [checkAuth])
 
-  // Auto-refresh access token every 14 minutes (before 15-minute expiry)
+  // Auto-refresh access token every 55 minutes (before 1-hour expiry)
   useEffect(() => {
     if (!user) return
 
     const interval = setInterval(() => {
       refreshAuth()
-    }, 14 * 60 * 1000) // 14 minutes
+    }, 55 * 60 * 1000) // 55 minutes (5 minutes before 1-hour expiry)
 
     return () => clearInterval(interval)
   }, [user, refreshAuth])

@@ -177,12 +177,12 @@ export async function POST(request: NextRequest) {
       },
     })
 
-    // Set access token in httpOnly cookie (15 minutes)
+    // Set access token in httpOnly cookie (1 hour)
     response.cookies.set('accessToken', accessToken, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax',
-      maxAge: 15 * 60, // 15 minutes
+      maxAge: 60 * 60, // 1 hour (60 minutes)
       path: '/',
     })
 

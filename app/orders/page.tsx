@@ -4,7 +4,7 @@ import { useEffect, useState, useMemo, useRef } from 'react'
 import { Storage } from '@/lib/storage-api'
 import { generateId, formatCurrency, formatDateTime } from '@/lib/utils'
 import { Customer, MenuItem, OrderItem } from '@/types'
-import { FaSearch, FaPlus } from 'react-icons/fa'
+import { FaSearch, FaPlus, FaArrowUp, FaArrowDown, FaTimes } from 'react-icons/fa'
 import Link from 'next/link'
 import { useSearchParams, useRouter } from 'next/navigation'
 import toast from 'react-hot-toast'
@@ -332,6 +332,58 @@ export default function OrdersPage() {
         )
       }))
     }
+  }
+
+  // Move item up in the order
+  const handleMoveItemUp = (mealTypeId: string, itemIndex: number) => {
+    if (itemIndex === 0) return // Already at the top
+    
+    setFormData(prev => ({
+      ...prev,
+      mealTypes: prev.mealTypes.map(mealType => {
+        if (mealType.id === mealTypeId) {
+          const newItems = [...mealType.selectedMenuItems]
+          // Swap with the item above
+          ;[newItems[itemIndex - 1], newItems[itemIndex]] = [newItems[itemIndex], newItems[itemIndex - 1]]
+          return { ...mealType, selectedMenuItems: newItems }
+        }
+        return mealType
+      })
+    }))
+  }
+
+  // Move item down in the order
+  const handleMoveItemDown = (mealTypeId: string, itemIndex: number) => {
+    setFormData(prev => ({
+      ...prev,
+      mealTypes: prev.mealTypes.map(mealType => {
+        if (mealType.id === mealTypeId) {
+          if (itemIndex === mealType.selectedMenuItems.length - 1) return mealType // Already at the bottom
+          
+          const newItems = [...mealType.selectedMenuItems]
+          // Swap with the item below
+          ;[newItems[itemIndex], newItems[itemIndex + 1]] = [newItems[itemIndex + 1], newItems[itemIndex]]
+          return { ...mealType, selectedMenuItems: newItems }
+        }
+        return mealType
+      })
+    }))
+  }
+
+  // Remove item from selection
+  const handleRemoveItem = (mealTypeId: string, itemId: string) => {
+    setFormData(prev => ({
+      ...prev,
+      mealTypes: prev.mealTypes.map(mealType => {
+        if (mealType.id === mealTypeId) {
+          return {
+            ...mealType,
+            selectedMenuItems: mealType.selectedMenuItems.filter(id => id !== itemId)
+          }
+        }
+        return mealType
+      })
+    }))
   }
 
   const normalizeDate = (value: string | undefined | null) => {
@@ -976,15 +1028,50 @@ export default function OrdersPage() {
                                       Selected Items ({mealType.selectedMenuItems.length}):
                                     </p>
                                     <div className="flex flex-wrap gap-2">
-                                      {mealType.selectedMenuItems.map((itemId: string) => {
+                                      {mealType.selectedMenuItems.map((itemId: string, index: number) => {
                                         const item = menuItems.find((m: any) => m.id === itemId)
+                                        const isFirst = index === 0
+                                        const isLast = index === mealType.selectedMenuItems.length - 1
+                                        
                                         return item ? (
-                                          <span
-                                            key={itemId}
-                                            className="inline-flex items-center gap-1 px-2 py-1 bg-blue-100 text-blue-800 text-xs font-medium rounded-md"
+                                          <div
+                                            key={`${itemId}-${index}`}
+                                            className="inline-flex items-center gap-1 px-2 py-1 bg-blue-100 text-blue-800 text-xs font-medium rounded-md group"
                                           >
-                                            {item.name}
-                                          </span>
+                                            <span className="mr-1">{item.name}</span>
+                                            <div className="flex items-center gap-0.5 ml-1 border-l border-blue-300 pl-1">
+                                              <button
+                                                type="button"
+                                                onClick={() => handleMoveItemUp(mealType.id, index)}
+                                                disabled={isFirst}
+                                                className={`p-0.5 hover:bg-blue-200 rounded transition-colors ${
+                                                  isFirst ? 'opacity-30 cursor-not-allowed' : 'cursor-pointer'
+                                                }`}
+                                                title="Move up"
+                                              >
+                                                <FaArrowUp className="w-2.5 h-2.5" />
+                                              </button>
+                                              <button
+                                                type="button"
+                                                onClick={() => handleMoveItemDown(mealType.id, index)}
+                                                disabled={isLast}
+                                                className={`p-0.5 hover:bg-blue-200 rounded transition-colors ${
+                                                  isLast ? 'opacity-30 cursor-not-allowed' : 'cursor-pointer'
+                                                }`}
+                                                title="Move down"
+                                              >
+                                                <FaArrowDown className="w-2.5 h-2.5" />
+                                              </button>
+                                              <button
+                                                type="button"
+                                                onClick={() => handleRemoveItem(mealType.id, itemId)}
+                                                className="p-0.5 hover:bg-red-200 hover:text-red-700 rounded transition-colors"
+                                                title="Remove item"
+                                              >
+                                                <FaTimes className="w-2.5 h-2.5" />
+                                              </button>
+                                            </div>
+                                          </div>
                                         ) : null
                                       })}
                                     </div>

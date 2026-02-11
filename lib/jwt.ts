@@ -1,12 +1,12 @@
 /**
  * JWT: access token (short-lived), refresh token (long-lived).
- * Access: default 15m, signed with JWT_SECRET.
+ * Access: default 1h, signed with JWT_SECRET.
  * Refresh: default 7d (or 30d if remember me), signed with JWT_REFRESH_SECRET.
  */
 
 import * as jose from 'jose'
 
-const ACCESS_TOKEN_DEFAULT_MS = 15 * 60 * 1000 // 15 minutes
+const ACCESS_TOKEN_DEFAULT_MS = 60 * 60 * 1000 // 1 hour (60 minutes)
 const REFRESH_TOKEN_DAYS = 7
 const REFRESH_TOKEN_DAYS_REMEMBER = 30
 
@@ -40,7 +40,7 @@ export interface RefreshPayload {
   exp?: number
 }
 
-/** Create access token (default 15m). */
+/** Create access token (default 1h). */
 export async function createAccessToken(payload: {
   userId: string
   username: string
