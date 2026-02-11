@@ -115,8 +115,8 @@ export default function OrderSummaryPage() {
             <div>
               <div className="flex items-center gap-3 mb-3">
                 <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-[0.2em] border ${order.status === 'completed' ? 'bg-emerald-50 text-emerald-600 border-emerald-100' :
-                    order.status === 'cancelled' ? 'bg-rose-50 text-rose-600 border-rose-100' :
-                      'bg-primary-50 text-primary-600 border-primary-100'
+                  order.status === 'cancelled' ? 'bg-rose-50 text-rose-600 border-rose-100' :
+                    'bg-primary-50 text-primary-600 border-primary-100'
                   }`}>
                   {order.status}
                 </span>
@@ -242,14 +242,14 @@ export default function OrderSummaryPage() {
                   <div className="flex flex-col md:flex-row h-full">
                     {/* Left: Meal Category Header */}
                     <div className={`w-full md:w-64 p-6 flex flex-col justify-center items-center text-center ${mealType.toLowerCase() === 'breakfast' ? 'bg-orange-50/50' :
-                        mealType.toLowerCase() === 'lunch' ? 'bg-emerald-50/50' :
-                          mealType.toLowerCase() === 'dinner' ? 'bg-indigo-50/50' :
-                            'bg-slate-50/50'
+                      mealType.toLowerCase() === 'lunch' ? 'bg-emerald-50/50' :
+                        mealType.toLowerCase() === 'dinner' ? 'bg-indigo-50/50' :
+                          'bg-slate-50/50'
                       }`}>
                       <div className={`w-12 h-12 rounded-2xl flex items-center justify-center shadow-sm mb-3 ${mealType.toLowerCase() === 'breakfast' ? 'bg-orange-100 text-orange-600' :
-                          mealType.toLowerCase() === 'lunch' ? 'bg-emerald-100 text-emerald-600' :
-                            mealType.toLowerCase() === 'dinner' ? 'bg-indigo-100 text-indigo-600' :
-                              'bg-slate-100 text-slate-600'
+                        mealType.toLowerCase() === 'lunch' ? 'bg-emerald-100 text-emerald-600' :
+                          mealType.toLowerCase() === 'dinner' ? 'bg-indigo-100 text-indigo-600' :
+                            'bg-slate-100 text-slate-600'
                         }`}>
                         <FaUtensils className="text-xl" />
                       </div>
@@ -283,9 +283,16 @@ export default function OrderSummaryPage() {
                         </div>
                         <div className="bg-slate-50 px-6 py-3 rounded-2xl border border-slate-100 text-right">
                           <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-0.5">Amount</span>
-                          <span className="text-xl font-black text-primary-600">
-                            {formatCurrency(detail?.amount || (typeof data === 'number' ? data : 0))}
-                          </span>
+                          <div className="flex flex-col items-end">
+                            <span className="text-xl font-black text-primary-600">
+                              {formatCurrency(detail?.amount || (typeof data === 'number' ? data : 0))}
+                            </span>
+                            {detail?.pricingMethod === 'plate-based' && (
+                              <span className="text-[10px] font-bold text-slate-400 mt-1 bg-white px-2 py-0.5 rounded border border-slate-100">
+                                {detail.numberOfPlates || detail.numberOfMembers || 0} p × {formatCurrency(detail.platePrice || 0)}
+                              </span>
+                            )}
+                          </div>
                         </div>
                       </div>
 
@@ -361,8 +368,8 @@ export default function OrderSummaryPage() {
                           <td className="px-8 py-5 text-xs font-bold text-slate-500 whitespace-nowrap">{formatDateTime(payment.date)}</td>
                           <td className="px-8 py-5 whitespace-nowrap">
                             <span className={`px-2.5 py-1 rounded-lg text-[10px] font-black uppercase tracking-tighter ${isBooking ? 'bg-blue-100 text-blue-700' :
-                                isRevision ? 'bg-amber-100 text-amber-700' :
-                                  'bg-emerald-100 text-emerald-700'
+                              isRevision ? 'bg-amber-100 text-amber-700' :
+                                'bg-emerald-100 text-emerald-700'
                               }`}>
                               {isBooking ? 'Booking' : isRevision ? 'Revision' : 'Payment'}
                             </span>
