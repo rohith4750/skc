@@ -44,29 +44,56 @@ export default function OrdersOverviewPage() {
   }, [orders, search])
 
   // Calendar helper functions
-  const getOrdersForDate = (date: Date) => {
-    // Use local date string to avoid timezone issues
+  const getMealColor = (mealType: string) => {
+    switch (mealType.toLowerCase()) {
+      case 'breakfast':
+        return 'bg-amber-100 text-amber-800 hover:bg-amber-200'
+      case 'lunch':
+        return 'bg-orange-100 text-orange-800 hover:bg-orange-200'
+      case 'dinner':
+        return 'bg-blue-100 text-blue-800 hover:bg-blue-200'
+      default:
+        return 'bg-gray-100 text-gray-800 hover:bg-gray-200'
+    }
+  }
+
+  const getMealsForDate = (date: Date) => {
     const year = date.getFullYear()
     const month = String(date.getMonth() + 1).padStart(2, '0')
     const day = String(date.getDate()).padStart(2, '0')
     const dateStr = `${year}-${month}-${day}`
 
-    return filteredOrders.filter(order => {
-      if (!order.mealTypeAmounts) return false
-      const mealTypeAmounts = order.mealTypeAmounts as Record<string, any>
-      return Object.values(mealTypeAmounts).some((mealData: any) => {
-        if (!mealData || typeof mealData !== 'object' || !mealData.date) return false
+    const meals: Array<{
+      orderId: string
+      customerName: string
+      mealType: string
+    }> = []
 
-        // Extract date part from the stored date (ignore time)
-        const mealDate = new Date(mealData.date)
+    filteredOrders.forEach(order => {
+      if (!order.mealTypeAmounts) return
+      const mealTypeAmounts = order.mealTypeAmounts as Record<string, any>
+
+      Object.entries(mealTypeAmounts).forEach(([type, data]) => {
+        if (!data || typeof data !== 'object' || !data.date) return
+
+        // Extract date part from the stored date
+        const mealDate = new Date(data.date)
         const mealYear = mealDate.getFullYear()
         const mealMonth = String(mealDate.getMonth() + 1).padStart(2, '0')
         const mealDay = String(mealDate.getDate()).padStart(2, '0')
         const mealDateStr = `${mealYear}-${mealMonth}-${mealDay}`
 
-        return mealDateStr === dateStr
+        if (mealDateStr === dateStr) {
+          meals.push({
+            orderId: order.id,
+            customerName: order.customer?.name || 'Unknown',
+            mealType: type
+          })
+        }
       })
     })
+
+    return meals
   }
 
   const generateCalendarDays = () => {
@@ -138,8 +165,8 @@ export default function OrdersOverviewPage() {
             <button
               onClick={() => setViewMode('table')}
               className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-colors ${viewMode === 'table'
-                  ? 'bg-primary-500 text-white'
-                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                ? 'bg-primary-500 text-white'
+                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                 }`}
             >
               <FaTable /> Table
@@ -147,8 +174,8 @@ export default function OrdersOverviewPage() {
             <button
               onClick={() => setViewMode('calendar')}
               className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-colors ${viewMode === 'calendar'
-                  ? 'bg-primary-500 text-white'
-                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                ? 'bg-primary-500 text-white'
+                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                 }`}
             >
               <FaCalendarAlt /> Calendar
@@ -217,7 +244,7 @@ export default function OrdersOverviewPage() {
               {/* Calendar Days */}
               <div className="grid grid-cols-7 gap-2">
                 {generateCalendarDays().map((dayInfo, index) => {
-                  const ordersForDay = getOrdersForDate(dayInfo.date)
+                  const mealsForDay = getMealsForDate(dayInfo.date)
                   const isToday = dayInfo.date.toDateString() === new Date().toDateString()
 
                   return (
@@ -231,16 +258,16 @@ export default function OrdersOverviewPage() {
                         {dayInfo.date.getDate()}
                       </div>
 
-                      {ordersForDay.length > 0 && (
+                      {mealsForDay.length > 0 && (
                         <div className="space-y-1">
-                          {ordersForDay.map(order => (
+                          {mealsForDay.map((meal, idx) => (
                             <Link
-                              key={order.id}
-                              href={`/orders/summary/${order.id}`}
-                              className="block text-xs bg-primary-100 text-primary-800 px-2 py-1 rounded hover:bg-primary-200 transition-colors truncate"
-                              title={order.customer?.name || 'Unknown'}
+                              key={`${meal.orderId}-${meal.mealType}-${idx}`}
+                              href={`/orders/summary/${meal.orderId}`}
+                              className={`block text-xs px-2 py-1 rounded transition-colors truncate ${getMealColor(meal.mealType)}`}
+                              title={`${meal.mealType}: ${meal.customerName}`}
                             >
-                              {order.customer?.name || 'Unknown'}
+                              <span className="font-semibold capitalize">{meal.mealType}</span>: {meal.customerName}
                             </Link>
                           ))}
                         </div>
