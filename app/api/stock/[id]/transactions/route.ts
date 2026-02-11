@@ -64,14 +64,14 @@ export async function POST(
     }
 
     // Calculate new stock level
-    let newStock = stock.currentStock
+    let newStock = Number(stock.currentStock)
     if (data.type === 'in') {
-      newStock = stock.currentStock + quantity
+      newStock = Number(stock.currentStock) + quantity
     } else if (data.type === 'out') {
-      newStock = stock.currentStock - quantity
+      newStock = Number(stock.currentStock) - quantity
       if (newStock < 0) {
         return NextResponse.json(
-          { error: 'Insufficient stock. Available: ' + stock.currentStock },
+          { error: 'Insufficient stock. Available: ' + Number(stock.currentStock) },
           { status: 400 }
         )
       }

@@ -1,7 +1,6 @@
 'use client'
 
 import { useEffect, useMemo, useRef, useState } from 'react'
-import toast from 'react-hot-toast'
 import { isAuthenticated } from '@/lib/auth'
 import type { NotificationEvent } from '@/lib/notifications'
 
@@ -25,12 +24,7 @@ export function useNotifications(enabled: boolean) {
       try {
         const payload = JSON.parse(event.data) as NotificationEvent
         setNotifications((prev) => [payload, ...prev].slice(0, MAX_NOTIFICATIONS))
-
-        const toastMessage = payload.message ? `${payload.title} · ${payload.message}` : payload.title
-        if (payload.severity === 'error') toast.error(toastMessage)
-        else if (payload.severity === 'warning') toast(toastMessage)
-        else if (payload.severity === 'success') toast.success(toastMessage)
-        else toast(toastMessage)
+        // Notifications are stored but not shown as toast - view them in notification center
       } catch (err) {
         console.error('Failed to parse notification payload', err)
       }

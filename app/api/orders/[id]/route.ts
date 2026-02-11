@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { isNonEmptyString, isNonNegativeNumber } from '@/lib/validation'
 import { publishNotification } from '@/lib/notifications'
+import { transformDecimal } from '@/lib/decimal-utils'
 
 export async function GET(
   request: NextRequest,
@@ -25,7 +26,7 @@ export async function GET(
       return NextResponse.json({ error: 'Order not found' }, { status: 404 })
     }
 
-    return NextResponse.json(order)
+    return NextResponse.json(transformDecimal(order))
   } catch {
     return NextResponse.json({ error: 'Failed to fetch order' }, { status: 500 })
   }
@@ -40,9 +41,11 @@ export async function PUT(
 
     // -------- STATUS UPDATE (MOST IMPORTANT PART) --------
     if (data.status && Object.keys(data).length === 1) {
+      const status = data.status === 'in-progress' ? 'in_progress' : data.status
+
       const order = await prisma.order.update({
         where: { id: params.id },
-        data: { status: data.status },
+        data: { status: status },
       })
 
       let bill = await prisma.bill.findUnique({
@@ -50,14 +53,14 @@ export async function PUT(
       })
 
       // Create bill ONLY when order starts or completes
-      if (!bill && ['in-progress', 'completed'].includes(data.status)) {
-        const initialPaymentHistory = order.advancePaid > 0 ? [{
+      if (!bill && ['in_progress', 'completed'].includes(status)) {
+        const initialPaymentHistory = Number(order.advancePaid) > 0 ? [{
           amount: order.advancePaid,
           totalPaid: order.advancePaid,
           remainingAmount: order.remainingAmount,
           status:
-            order.remainingAmount > 0
-              ? order.advancePaid > 0
+            Number(order.remainingAmount) > 0
+              ? Number(order.advancePaid) > 0
                 ? 'partial'
                 : 'pending'
               : 'paid',
@@ -75,8 +78,8 @@ export async function PUT(
           paidAmount: order.advancePaid,
           paymentHistory: initialPaymentHistory,
           status:
-            order.remainingAmount > 0
-              ? order.advancePaid > 0
+            Number(order.remainingAmount) > 0
+              ? Number(order.advancePaid) > 0
                 ? 'partial'
                 : 'pending'
               : 'paid',
@@ -88,7 +91,7 @@ export async function PUT(
       }
 
       // If order completed → mark bill paid
-      if (bill && data.status === 'completed') {
+      if (bill && status === 'completed') {
         bill = await prisma.bill.update({
           where: { id: bill.id },
           data: {
@@ -110,12 +113,12 @@ export async function PUT(
       publishNotification({
         type: 'orders',
         title: 'Order status updated',
-        message: `Order ${params.id.slice(0, 8).toUpperCase()} · ${data.status}`,
+        message: `Order ${params.id.slice(0, 8).toUpperCase()} · ${status}`,
         entityId: params.id,
-        severity: data.status === 'completed' ? 'success' : 'info',
+        severity: status === 'completed' ? 'success' : 'info',
       })
 
-      return NextResponse.json({ order, bill })
+      return NextResponse.json({ order: transformDecimal(order), bill: transformDecimal(bill) })
     }
 
     if (!isNonEmptyString(data.customerId)) {
@@ -150,24 +153,24 @@ export async function PUT(
     const mealTypeChanges: string[] = []
     let totalMemberPriceDifference = 0
     let totalMembersChanged = 0
-    
+
     // Update new meal types with original values if they don't have them
     Object.keys(newMealTypeAmounts).forEach(type => {
       const oldType = oldMealTypeAmounts[type]
       const newType = newMealTypeAmounts[type]
-      
+
       const oldMemberCount = oldType?.numberOfMembers || 0
       const newMemberCount = newType?.numberOfMembers || 0
       const memberDiff = newMemberCount - oldMemberCount
-      
+
       const oldAmount = oldType?.amount || 0
       const newAmount = newType?.amount || 0
       const priceDiff = newAmount - oldAmount
-      
+
       // Keep track of the very first member count set for this meal type
       const originalMembers = oldType?.originalMembers || oldMemberCount || newMemberCount
       newType.originalMembers = originalMembers
-      
+
       if (memberDiff !== 0 && oldMemberCount !== 0) {
         const diffSign = memberDiff > 0 ? '+' : ''
         const priceSign = priceDiff > 0 ? '+' : ''
@@ -177,8 +180,8 @@ export async function PUT(
       }
     })
 
-    const mealTypeNotes = mealTypeChanges.length > 0 
-      ? `Changes: ${mealTypeChanges.join(' | ')}` 
+    const mealTypeNotes = mealTypeChanges.length > 0
+      ? `Changes: ${mealTypeChanges.join(' | ')}`
       : undefined
 
     const orderUpdateData: any = {
@@ -224,7 +227,7 @@ export async function PUT(
           ? (bill as any).paymentHistory
           : []
         const historyEntries: any[] = []
-        const totalAdvanceDelta = Math.max(0, advancePaid - (existingOrder.advancePaid || 0))
+        const totalAdvanceDelta = Math.max(0, advancePaid - Number(existingOrder.advancePaid || 0))
         const baseAdvanceDelta = Math.max(0, totalAdvanceDelta - additionalPayment)
         const statusLabel = remainingAmount <= 0 ? 'paid' : advancePaid > 0 ? 'partial' : 'pending'
 
@@ -235,7 +238,7 @@ export async function PUT(
             remainingAmount,
             status: statusLabel,
             date: new Date().toISOString(),
-            source: (existingOrder.advancePaid || 0) === 0 ? 'booking' : 'revision',
+            source: Number(existingOrder.advancePaid || 0) === 0 ? 'booking' : 'revision',
             method: paymentMethod,
             notes: paymentNotes || mealTypeNotes || 'Advance updated',
           })
@@ -248,7 +251,7 @@ export async function PUT(
             remainingAmount,
             status: statusLabel,
             date: new Date().toISOString(),
-            source: (existingOrder.advancePaid || 0) === 0 && baseAdvanceDelta === 0 ? 'booking' : 'payment',
+            source: Number(existingOrder.advancePaid || 0) === 0 && baseAdvanceDelta === 0 ? 'booking' : 'payment',
             method: paymentMethod,
             notes: paymentNotes || mealTypeNotes || 'Payment recorded',
           })
@@ -318,7 +321,7 @@ export async function PUT(
       severity: 'info',
     })
 
-    const totalAdvanceDelta = Math.max(0, advancePaid - (existingOrder.advancePaid || 0))
+    const totalAdvanceDelta = Math.max(0, advancePaid - Number(existingOrder.advancePaid || 0))
     if (totalAdvanceDelta > 0) {
       publishNotification({
         type: 'payments',
@@ -329,7 +332,7 @@ export async function PUT(
       })
     }
 
-    return NextResponse.json({ order: updatedOrder, bill: result.bill })
+    return NextResponse.json({ order: transformDecimal(updatedOrder), bill: transformDecimal(result.bill) })
   } catch (error: any) {
     return NextResponse.json(
       { error: 'Failed to update order', details: error.message },

@@ -31,7 +31,7 @@ export default function OrdersPage() {
   const [originalAdvancePaid, setOriginalAdvancePaid] = useState<number>(0)
   const [originalMealTypeAmounts, setOriginalMealTypeAmounts] = useState<Record<string, any>>({})
   const [formError, setFormError] = useState<string>('')
-  
+
   const [formData, setFormData] = useState({
     customerId: '',
     eventName: '',
@@ -115,23 +115,14 @@ export default function OrdersPage() {
     setLoadingOrder(true)
     try {
       const order = await Storage.getOrder(orderId)
-      
+
       if (!order) {
         toast.error('Order not found')
         router.push('/orders')
         return
       }
 
-      // Group items by meal type (using menuItem.type)
-      const groupedItems: Record<string, any[]> = {}
-      order.items.forEach((item: any) => {
-        const mealType = item.menuItem?.type?.toLowerCase() || 'other'
-        if (!groupedItems[mealType]) {
-          groupedItems[mealType] = []
-        }
-        groupedItems[mealType].push(item)
-      })
-
+      // Get meal types from mealTypeAmounts (this is where meal types are stored)
       const mealTypeAmounts = order.mealTypeAmounts as Record<string, {
         amount: number
         date: string
@@ -143,53 +134,68 @@ export default function OrdersPage() {
         manualAmount?: number
       } | number> | null
 
-      // Build mealTypes array from grouped items
-      const mealTypesArray = Object.entries(groupedItems).map(([menuType, items]) => {
-        const mealTypeData = mealTypeAmounts?.[menuType]
-        const amount = typeof mealTypeData === 'object' && mealTypeData !== null ? mealTypeData.amount : (typeof mealTypeData === 'number' ? mealTypeData : 0)
-        const date = typeof mealTypeData === 'object' && mealTypeData !== null ? mealTypeData.date : ''
-        const services = typeof mealTypeData === 'object' && mealTypeData !== null && mealTypeData.services ? mealTypeData.services : []
-        const numberOfMembers = typeof mealTypeData === 'object' && mealTypeData !== null && mealTypeData.numberOfMembers ? mealTypeData.numberOfMembers.toString() : ''
-
-        const pricingMethod: 'manual' | 'plate-based' =
-          typeof mealTypeData === 'object' && mealTypeData !== null && mealTypeData.pricingMethod
-            ? mealTypeData.pricingMethod
-            : 'manual'
-
-        const numberOfPlates =
-          typeof mealTypeData === 'object' && mealTypeData !== null && mealTypeData.numberOfPlates !== undefined
-            ? mealTypeData.numberOfPlates.toString()
-            : ''
-        const platePrice =
-          typeof mealTypeData === 'object' && mealTypeData !== null && mealTypeData.platePrice !== undefined
-            ? mealTypeData.platePrice.toString()
-            : ''
-        const manualAmount =
-          typeof mealTypeData === 'object' && mealTypeData !== null && mealTypeData.manualAmount !== undefined
-            ? mealTypeData.manualAmount.toString()
-            : amount.toString()
-        
-        return {
-          id: generateId(),
-          menuType: menuType,
-          selectedMenuItems: items.map((item: any) => item.menuItemId),
-          pricingMethod,
-          numberOfPlates,
-          platePrice,
-          manualAmount,
-          date: date || '',
-          services,
-          numberOfMembers
+      // Group order items by their stored mealType (not menuItem.type)
+      const itemsByType: Record<string, string[]> = {}
+      order.items.forEach((item: any) => {
+        // Use stored mealType if available, otherwise fall back to menuItem.type
+        const mealType = item.mealType || item.menuItem?.type?.toLowerCase() || 'other'
+        if (!itemsByType[mealType]) {
+          itemsByType[mealType] = []
         }
+        itemsByType[mealType].push(item.menuItemId)
       })
 
+      // Build mealTypes array from mealTypeAmounts, matching items by type
+      const mealTypesArray = mealTypeAmounts
+        ? Object.entries(mealTypeAmounts).map(([menuType, mealTypeData]) => {
+          const amount = typeof mealTypeData === 'object' && mealTypeData !== null ? mealTypeData.amount : (typeof mealTypeData === 'number' ? mealTypeData : 0)
+          const date = typeof mealTypeData === 'object' && mealTypeData !== null ? mealTypeData.date : ''
+          const services = typeof mealTypeData === 'object' && mealTypeData !== null && mealTypeData.services ? mealTypeData.services : []
+          const numberOfMembers = typeof mealTypeData === 'object' && mealTypeData !== null && mealTypeData.numberOfMembers ? mealTypeData.numberOfMembers.toString() : ''
+
+          const pricingMethod: 'manual' | 'plate-based' =
+            typeof mealTypeData === 'object' && mealTypeData !== null && mealTypeData.pricingMethod
+              ? mealTypeData.pricingMethod
+              : 'manual'
+
+          const numberOfPlates =
+            typeof mealTypeData === 'object' && mealTypeData !== null && mealTypeData.numberOfPlates !== undefined
+              ? mealTypeData.numberOfPlates.toString()
+              : ''
+          const platePrice =
+            typeof mealTypeData === 'object' && mealTypeData !== null && mealTypeData.platePrice !== undefined
+              ? mealTypeData.platePrice.toString()
+              : ''
+          const manualAmount =
+            typeof mealTypeData === 'object' && mealTypeData !== null && mealTypeData.manualAmount !== undefined
+              ? mealTypeData.manualAmount.toString()
+              : amount.toString()
+
+          // Assign items that match this meal type by their menuItem.type
+          const selectedMenuItems = itemsByType[menuType.toLowerCase()] || []
+
+          return {
+            id: generateId(),
+            menuType: menuType,
+            selectedMenuItems,
+            pricingMethod,
+            numberOfPlates,
+            platePrice,
+            manualAmount,
+            date: date || '',
+            services,
+            numberOfMembers
+          }
+        })
+        : []
+
       // Parse stalls
-      const stallsArray = order.stalls && Array.isArray(order.stalls) 
+      const stallsArray = order.stalls && Array.isArray(order.stalls)
         ? order.stalls.map((stall: any) => ({
-            category: stall.category || '',
-            description: stall.description || '',
-            cost: stall.cost?.toString() || ''
-          }))
+          category: stall.category || '',
+          description: stall.description || '',
+          cost: stall.cost?.toString() || ''
+        }))
         : []
 
       setFormData({
@@ -209,7 +215,7 @@ export default function OrdersPage() {
       setShowStalls(stallsArray.length > 0)
       setOriginalAdvancePaid(order.advancePaid || 0)
       setOriginalMealTypeAmounts(mealTypeAmounts || {})
-      
+
       toast.success('Order loaded successfully')
     } catch (error) {
       console.error('Failed to load order:', error)
@@ -226,11 +232,11 @@ export default function OrdersPage() {
       mealTypes: prev.mealTypes.map(mealType =>
         mealType.id === mealTypeId
           ? {
-              ...mealType,
-              selectedMenuItems: mealType.selectedMenuItems.includes(menuItemId)
-                ? mealType.selectedMenuItems.filter(id => id !== menuItemId)
-                : [...mealType.selectedMenuItems, menuItemId]
-            }
+            ...mealType,
+            selectedMenuItems: mealType.selectedMenuItems.includes(menuItemId)
+              ? mealType.selectedMenuItems.filter(id => id !== menuItemId)
+              : [...mealType.selectedMenuItems, menuItemId]
+          }
           : mealType
       )
     }))
@@ -314,7 +320,7 @@ export default function OrdersPage() {
         mealType.id === mealTypeId ? { ...mealType, [field]: value } : mealType
       )
     }))
-    
+
     // Reset filters when menu type changes
     if (field === 'menuType') {
       setSelectedSubFilter(prev => ({ ...prev, [mealTypeId]: 'all' }))
@@ -353,7 +359,7 @@ export default function OrdersPage() {
   const handleSubmit = async (e: any) => {
     e.preventDefault()
     setFormError('')
-    
+
     // Validate that at least one meal type is added
     if (formData.mealTypes.length === 0) {
       toast.error('Please add at least one meal type')
@@ -370,8 +376,8 @@ export default function OrdersPage() {
         toast.error(`Please select at least one menu item for ${mealType.menuType}`)
         return
       }
-      if (mealType.pricingMethod === 'plate-based' && (!mealType.numberOfPlates || !mealType.platePrice)) {
-        toast.error(`Please enter plates and price for ${mealType.menuType}`)
+      if (mealType.pricingMethod === 'plate-based' && (!mealType.numberOfMembers || !mealType.platePrice)) {
+        toast.error(`Please enter number of members and price for ${mealType.menuType}`)
         return
       }
       if (mealType.pricingMethod === 'manual' && !mealType.manualAmount) {
@@ -427,11 +433,12 @@ export default function OrdersPage() {
         }
       })
 
-      // Combine all menu items from all meal types
+      // Combine all menu items from all meal types with their mealType
       const orderItems: OrderItem[] = formData.mealTypes.flatMap(mealType =>
         mealType.selectedMenuItems.map(menuItemId => ({
           menuItemId,
           quantity: 1,
+          mealType: mealType.menuType, // Store which meal type this item was selected for
         }))
       )
 
@@ -512,7 +519,7 @@ export default function OrdersPage() {
     const stallsTotal = showStalls ? totalStallsCost : 0
     const discount = parseFloat(formData.discount) || 0
     const transportCost = parseFloat(formData.transportCost) || 0
-    
+
     // Calculate total from all meal types (without transport)
     let mealTypesTotal = 0
     formData.mealTypes.forEach(mealType => {
@@ -525,7 +532,7 @@ export default function OrdersPage() {
         mealTypesTotal += parseFloat(mealType.manualAmount) || 0
       }
     })
-    
+
     const finalTotal = Math.max(0, mealTypesTotal + transportCost + stallsTotal - discount)
     setFormData(prev => ({
       ...prev,
@@ -570,7 +577,7 @@ export default function OrdersPage() {
   const handleUpdateStall = (index: number, field: 'category' | 'description' | 'cost', value: string) => {
     setFormData(prev => ({
       ...prev,
-      stalls: prev.stalls.map((stall, i) => 
+      stalls: prev.stalls.map((stall, i) =>
         i === index ? { ...stall, [field]: value } : stall
       )
     }))
@@ -579,14 +586,18 @@ export default function OrdersPage() {
   // Filter menu items for a specific meal type
   const getFilteredMenuItems = (mealTypeId: string, menuType: string) => {
     if (!menuType) return []
-    
-    // When lunch or dinner is selected, also include sweets and show lunch items
+
+    // Match items by exact type
     let filtered = menuItems.filter((m: any) => {
       const itemType = m.type.toLowerCase()
-      if (menuType.toLowerCase() === 'lunch' || menuType.toLowerCase() === 'dinner') {
-        return itemType === 'lunch' || itemType === 'sweets'
+      const selectedType = menuType.toLowerCase()
+
+      // Allow sweets to show up for lunch and dinner
+      if (selectedType === 'lunch' || selectedType === 'dinner') {
+        return m.isActive !== false && (itemType === selectedType || itemType === 'sweets')
       }
-      return itemType === menuType.toLowerCase()
+
+      return m.isActive !== false && itemType === selectedType
     })
 
     // Filter by subcategory if selected
@@ -602,7 +613,7 @@ export default function OrdersPage() {
     const search = menuItemSearch[mealTypeId] || ''
     if (search.trim()) {
       const searchLower = search.toLowerCase().trim()
-      filtered = filtered.filter((item: any) => 
+      filtered = filtered.filter((item: any) =>
         item.name.toLowerCase().includes(searchLower) ||
         (item.description && item.description.toLowerCase().includes(searchLower))
       )
@@ -682,9 +693,8 @@ export default function OrdersPage() {
                           setCustomerSearchTerm('')
                           setShowCustomerDropdown(false)
                         }}
-                        className={`px-4 py-2 hover:bg-primary-50 cursor-pointer ${
-                          formData.customerId === customer.id ? 'bg-primary-100' : ''
-                        }`}
+                        className={`px-4 py-2 hover:bg-primary-50 cursor-pointer ${formData.customerId === customer.id ? 'bg-primary-100' : ''
+                          }`}
                       >
                         <div className="font-medium text-gray-900">{customer.name}</div>
                         <div className="text-sm text-gray-500">{customer.phone}</div>
@@ -786,262 +796,273 @@ export default function OrdersPage() {
                         </div>
 
                         {!isCollapsed && (
-                        <div className="p-6 space-y-4">
-                          {/* Menu Type Selector and Date */}
-                          <div className="grid grid-cols-2 gap-4">
-                            <div>
-                              <label className="block text-sm font-medium text-gray-700 mb-1">
-                                Menu Type *
-                              </label>
-                              <select
-                                required
-                                value={mealType.menuType}
-                                onChange={(e: any) => handleUpdateMealType(mealType.id, 'menuType', e.target.value)}
-                                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-                              >
-                                <option value="">Select Menu Type</option>
-                                <option value="breakfast">Breakfast</option>
-                                <option value="lunch">Lunch</option>
-                                <option value="dinner">Dinner</option>
-                                <option value="snacks">Snacks</option>
-                                <option value="sweets">Sweets</option>
-                                <option value="saree">Saree</option>
-                              </select>
-                            </div>
-                            <div>
-                              <label className="block text-sm font-medium text-gray-700 mb-1">
-                                Date *
-                              </label>
-                              <input
-                                type="date"
-                                required
-                                value={mealType.date}
-                                onChange={(e: any) => handleUpdateMealType(mealType.id, 'date', e.target.value)}
-                                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-                              />
-                            </div>
-                          </div>
-
-                          {/* Services and Number of Members */}
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            {/* Services */}
-                            <div>
-                              <label className="block text-sm font-medium text-gray-700 mb-2">
-                                Services
-                              </label>
-                              <div className="space-y-2">
-                                {['buffet', 'vaddana', 'handover'].map((service) => (
-                                  <label key={service} className="flex items-center p-2 border border-gray-200 rounded-lg hover:bg-gray-50 cursor-pointer">
-                                    <input
-                                      type="checkbox"
-                                      checked={mealType.services.includes(service)}
-                                      onChange={(e) => {
-                                        if (e.target.checked) {
-                                          handleUpdateMealType(mealType.id, 'services', [...mealType.services, service])
-                                        } else {
-                                          handleUpdateMealType(mealType.id, 'services', mealType.services.filter((s: string) => s !== service))
-                                        }
-                                      }}
-                                      className="w-4 h-4 text-primary-600 border-gray-300 rounded focus:ring-primary-500 mr-3"
-                                    />
-                                    <span className="text-sm font-medium text-gray-900 capitalize">
-                                      {service.charAt(0).toUpperCase() + service.slice(1)}
-                                    </span>
-                                  </label>
-                                ))}
+                          <div className="p-6 space-y-4">
+                            {/* Menu Type Selector and Date */}
+                            <div className="grid grid-cols-2 gap-4">
+                              <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">
+                                  Menu Type *
+                                </label>
+                                <select
+                                  required
+                                  value={mealType.menuType}
+                                  onChange={(e: any) => handleUpdateMealType(mealType.id, 'menuType', e.target.value)}
+                                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                                >
+                                  <option value="">Select Menu Type</option>
+                                  <option value="breakfast">Breakfast</option>
+                                  <option value="lunch">Lunch</option>
+                                  <option value="dinner">Dinner</option>
+                                  <option value="snacks">Snacks</option>
+                                  <option value="sweets">Sweets</option>
+                                  <option value="saree">Saree</option>
+                                </select>
+                              </div>
+                              <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">
+                                  Date *
+                                </label>
+                                <input
+                                  type="date"
+                                  required
+                                  value={mealType.date}
+                                  onChange={(e: any) => handleUpdateMealType(mealType.id, 'date', e.target.value)}
+                                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                                />
                               </div>
                             </div>
 
-                            {/* Number of Members */}
-                            <div>
-                              <label className="block text-sm font-medium text-gray-700 mb-1">
-                                Number of Members
-                              </label>
-                              <input
-                                type="number"
-                                min="1"
-                                step="1"
-                                value={mealType.numberOfMembers}
-                                onChange={(e: any) => handleUpdateMealType(mealType.id, 'numberOfMembers', e.target.value)}
-                                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-                                placeholder="Enter number of members/guests"
-                              />
-                              <p className="text-xs text-gray-500 mt-1">
-                                Number of guests for this meal type
-                              </p>
-                            </div>
-                          </div>
+                            {/* Services and Number of Members */}
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                              {/* Services */}
+                              <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-2">
+                                  Services
+                                </label>
+                                <div className="space-y-2">
+                                  {['buffet', 'vaddana', 'handover'].map((service) => (
+                                    <label key={service} className="flex items-center p-2 border border-gray-200 rounded-lg hover:bg-gray-50 cursor-pointer">
+                                      <input
+                                        type="checkbox"
+                                        checked={mealType.services.includes(service)}
+                                        onChange={(e) => {
+                                          if (e.target.checked) {
+                                            handleUpdateMealType(mealType.id, 'services', [...mealType.services, service])
+                                          } else {
+                                            handleUpdateMealType(mealType.id, 'services', mealType.services.filter((s: string) => s !== service))
+                                          }
+                                        }}
+                                        className="w-4 h-4 text-primary-600 border-gray-300 rounded focus:ring-primary-500 mr-3"
+                                      />
+                                      <span className="text-sm font-medium text-gray-900 capitalize">
+                                        {service.charAt(0).toUpperCase() + service.slice(1)}
+                                      </span>
+                                    </label>
+                                  ))}
+                                </div>
+                              </div>
 
-                          {/* Menu Items Selection */}
-                          {mealType.menuType && (
-                            <div>
-                              {/* Subcategory Filter Buttons */}
-                              {availableSubcategories.length > 0 && (
-                                <div className="mb-4">
-                                  <div className="mb-2">
-                                    <span className="text-sm font-medium text-gray-700">
-                                      {mealType.menuType.charAt(0).toUpperCase() + mealType.menuType.slice(1)} Categories:
-                                    </span>
-                                  </div>
-                                  <div className="flex flex-wrap gap-2">
-                                    <button
-                                      type="button"
-                                      onClick={() => setSelectedSubFilter(prev => ({ ...prev, [mealType.id]: 'all' }))}
-                                      className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-                                        subFilter === 'all'
+                              {/* Number of Members */}
+                              <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">
+                                  Number of Members
+                                </label>
+                                <input
+                                  type="number"
+                                  min="1"
+                                  step="1"
+                                  value={mealType.numberOfMembers}
+                                  onChange={(e: any) => handleUpdateMealType(mealType.id, 'numberOfMembers', e.target.value)}
+                                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                                  placeholder="Enter number of members/guests"
+                                />
+                                <p className="text-xs text-gray-500 mt-1">
+                                  Number of guests for this meal type
+                                </p>
+                              </div>
+                            </div>
+
+                            {/* Menu Items Selection */}
+                            {mealType.menuType && (
+                              <div>
+                                {/* Subcategory Filter Buttons */}
+                                {availableSubcategories.length > 0 && (
+                                  <div className="mb-4">
+                                    <div className="mb-2">
+                                      <span className="text-sm font-medium text-gray-700">
+                                        {mealType.menuType.charAt(0).toUpperCase() + mealType.menuType.slice(1)} Categories:
+                                      </span>
+                                    </div>
+                                    <div className="flex flex-wrap gap-2">
+                                      <button
+                                        type="button"
+                                        onClick={() => setSelectedSubFilter(prev => ({ ...prev, [mealType.id]: 'all' }))}
+                                        className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${subFilter === 'all'
                                           ? 'bg-primary-500 text-white'
                                           : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                                      }`}
-                                    >
-                                      All {mealType.menuType}
-                                    </button>
-                                    {availableSubcategories.map((subcategory: string) => (
-                                      <button
-                                        key={subcategory}
-                                        type="button"
-                                        onClick={() => setSelectedSubFilter(prev => ({ ...prev, [mealType.id]: subcategory }))}
-                                        className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-                                          subFilter === subcategory
+                                          }`}
+                                      >
+                                        All {mealType.menuType}
+                                      </button>
+                                      {availableSubcategories.map((subcategory: string) => (
+                                        <button
+                                          key={subcategory}
+                                          type="button"
+                                          onClick={() => setSelectedSubFilter(prev => ({ ...prev, [mealType.id]: subcategory }))}
+                                          className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${subFilter === subcategory
                                             ? 'bg-green-600 text-white'
                                             : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                                        }`}
-                                      >
-                                        {subcategory}
-                                      </button>
-                                    ))}
+                                            }`}
+                                        >
+                                          {subcategory}
+                                        </button>
+                                      ))}
+                                    </div>
+                                  </div>
+                                )}
+
+                                {/* Search Filter */}
+                                <div className="mb-3">
+                                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                                    Menu Items * (Select items by checking the boxes)
+                                  </label>
+                                  <div className="relative">
+                                    <FaSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
+                                    <input
+                                      type="text"
+                                      value={search}
+                                      onChange={(e: any) => setMenuItemSearch(prev => ({ ...prev, [mealType.id]: e.target.value }))}
+                                      placeholder="Search menu items by name or description..."
+                                      className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                                    />
                                   </div>
                                 </div>
-                              )}
 
-                              {/* Search Filter */}
-                              <div className="mb-3">
-                                <label className="block text-sm font-medium text-gray-700 mb-2">
-                                  Menu Items * (Select items by checking the boxes)
-                                </label>
-                                <div className="relative">
-                                  <FaSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
-                                  <input
-                                    type="text"
-                                    value={search}
-                                    onChange={(e: any) => setMenuItemSearch(prev => ({ ...prev, [mealType.id]: e.target.value }))}
-                                    placeholder="Search menu items by name or description..."
-                                    className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-                                  />
+                                {/* Menu Items List */}
+                                <div className="border border-gray-200 rounded-lg p-4 max-h-96 overflow-y-auto">
+                                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                                    {filteredMenuItems.length === 0 ? (
+                                      <p className="col-span-full text-gray-500 text-center py-8">
+                                        {search.trim()
+                                          ? `No menu items found matching "${search}"`
+                                          : 'No menu items found for this type'}
+                                      </p>
+                                    ) : (
+                                      filteredMenuItems.map((menuItem: any) => (
+                                        <label
+                                          key={menuItem.id}
+                                          className="flex items-center p-3 border border-gray-200 rounded-lg hover:bg-gray-50 cursor-pointer"
+                                        >
+                                          <input
+                                            type="checkbox"
+                                            checked={mealType.selectedMenuItems.includes(menuItem.id)}
+                                            onChange={() => handleMenuItemToggle(mealType.id, menuItem.id)}
+                                            className="w-4 h-4 text-primary-600 border-gray-300 rounded focus:ring-primary-500 mr-3"
+                                          />
+                                          <div className="flex-1">
+                                            <span className="text-sm font-medium text-gray-900">{menuItem.name}</span>
+                                            {menuItem.description && (
+                                              <p className="text-xs text-gray-500 mt-1">{menuItem.description}</p>
+                                            )}
+                                          </div>
+                                        </label>
+                                      ))
+                                    )}
+                                  </div>
                                 </div>
-                              </div>
-
-                              {/* Menu Items List */}
-                              <div className="border border-gray-200 rounded-lg p-4 max-h-96 overflow-y-auto">
-                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-                                  {filteredMenuItems.length === 0 ? (
-                                    <p className="col-span-full text-gray-500 text-center py-8">
-                                      {search.trim()
-                                        ? `No menu items found matching "${search}"`
-                                        : 'No menu items found for this type'}
+                                {mealType.selectedMenuItems.length > 0 && (
+                                  <div className="mt-3 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                                    <p className="text-sm font-semibold text-blue-800 mb-2">
+                                      Selected Items ({mealType.selectedMenuItems.length}):
                                     </p>
-                                  ) : (
-                                    filteredMenuItems.map((menuItem: any) => (
-                                      <label
-                                        key={menuItem.id}
-                                        className="flex items-center p-3 border border-gray-200 rounded-lg hover:bg-gray-50 cursor-pointer"
-                                      >
-                                        <input
-                                          type="checkbox"
-                                          checked={mealType.selectedMenuItems.includes(menuItem.id)}
-                                          onChange={() => handleMenuItemToggle(mealType.id, menuItem.id)}
-                                          className="w-4 h-4 text-primary-600 border-gray-300 rounded focus:ring-primary-500 mr-3"
-                                        />
-                                        <div className="flex-1">
-                                          <span className="text-sm font-medium text-gray-900">{menuItem.name}</span>
-                                          {menuItem.description && (
-                                            <p className="text-xs text-gray-500 mt-1">{menuItem.description}</p>
-                                          )}
-                                        </div>
-                                      </label>
-                                    ))
-                                  )}
-                                </div>
-                              </div>
-                              {mealType.selectedMenuItems.length > 0 && (
-                                <p className="text-sm text-gray-600 mt-2">
-                                  {mealType.selectedMenuItems.length} item(s) selected
-                                </p>
-                              )}
-                            </div>
-                          )}
-
-                          {/* Pricing Section for this Meal Type */}
-                          <div className="border-t border-gray-200 pt-4">
-                            <h4 className="text-sm font-semibold text-gray-700 mb-3">Pricing for {mealType.menuType || 'this meal type'}</h4>
-                            
-                            <div className="mb-4 flex items-center gap-3">
-                              <label className="text-sm font-medium text-gray-700">
-                                Use Plate-based Calculation
-                              </label>
-                              <button
-                                type="button"
-                                onClick={() => handleUpdateMealType(mealType.id, 'pricingMethod', mealType.pricingMethod === 'manual' ? 'plate-based' : 'manual')}
-                                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 ${
-                                  mealType.pricingMethod === 'plate-based' ? 'bg-primary-500' : 'bg-gray-300'
-                                }`}
-                              >
-                                <span className="sr-only">Toggle Plate-based Calculation</span>
-                                <span
-                                  className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                                    mealType.pricingMethod === 'plate-based' ? 'translate-x-6' : 'translate-x-1'
-                                  }`}
-                                />
-                              </button>
-                              <span className="text-sm text-gray-600">
-                                {mealType.pricingMethod === 'plate-based' ? 'Enabled' : 'Disabled'}
-                              </span>
-                            </div>
-
-                            {mealType.pricingMethod === 'plate-based' ? (
-                              <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">
-                                  Per Plate Amount *
-                                </label>
-                                <input
-                                  type="number"
-                                  step="0.01"
-                                  min="0"
-                                  required
-                                  value={mealType.platePrice}
-                                  onChange={(e: any) => handleUpdateMealType(mealType.id, 'platePrice', e.target.value)}
-                                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-                                  placeholder="0.00"
-                                />
-                                {mealType.numberOfMembers && parseFloat(mealType.platePrice) > 0 && (
-                                  <p className="text-sm text-green-600 mt-2 font-medium">
-                                    Total: {mealType.numberOfMembers} members × ₹{parseFloat(mealType.platePrice).toFixed(2)} = ₹{(parseFloat(mealType.numberOfMembers) * parseFloat(mealType.platePrice)).toFixed(2)}
-                                  </p>
+                                    <div className="flex flex-wrap gap-2">
+                                      {mealType.selectedMenuItems.map((itemId: string) => {
+                                        const item = menuItems.find((m: any) => m.id === itemId)
+                                        return item ? (
+                                          <span
+                                            key={itemId}
+                                            className="inline-flex items-center gap-1 px-2 py-1 bg-blue-100 text-blue-800 text-xs font-medium rounded-md"
+                                          >
+                                            {item.name}
+                                          </span>
+                                        ) : null
+                                      })}
+                                    </div>
+                                  </div>
                                 )}
-                                {!mealType.numberOfMembers && (
-                                  <p className="text-xs text-orange-500 mt-1">
-                                    ⚠ Enter Number of Members above to calculate total
-                                  </p>
-                                )}
-                              </div>
-                            ) : (
-                              <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">
-                                  Manual Amount *
-                                </label>
-                                <input
-                                  type="number"
-                                  step="0.01"
-                                  min="0"
-                                  required
-                                  value={mealType.manualAmount}
-                                  onChange={(e: any) => handleUpdateMealType(mealType.id, 'manualAmount', e.target.value)}
-                                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-                                  placeholder="0.00"
-                                />
                               </div>
                             )}
+
+                            {/* Pricing Section for this Meal Type */}
+                            <div className="border-t border-gray-200 pt-4">
+                              <h4 className="text-sm font-semibold text-gray-700 mb-3">Pricing for {mealType.menuType || 'this meal type'}</h4>
+
+                              <div className="mb-4 flex items-center gap-3">
+                                <label className="text-sm font-medium text-gray-700">
+                                  Use Plate-based Calculation
+                                </label>
+                                <button
+                                  type="button"
+                                  onClick={() => handleUpdateMealType(mealType.id, 'pricingMethod', mealType.pricingMethod === 'manual' ? 'plate-based' : 'manual')}
+                                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 ${mealType.pricingMethod === 'plate-based' ? 'bg-primary-500' : 'bg-gray-300'
+                                    }`}
+                                >
+                                  <span className="sr-only">Toggle Plate-based Calculation</span>
+                                  <span
+                                    className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${mealType.pricingMethod === 'plate-based' ? 'translate-x-6' : 'translate-x-1'
+                                      }`}
+                                  />
+                                </button>
+                                <span className="text-sm text-gray-600">
+                                  {mealType.pricingMethod === 'plate-based' ? 'Enabled' : 'Disabled'}
+                                </span>
+                              </div>
+
+                              {mealType.pricingMethod === 'plate-based' ? (
+                                <div>
+                                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                                    Per Plate Amount *
+                                  </label>
+                                  <input
+                                    type="number"
+                                    step="0.01"
+                                    min="0"
+                                    required
+                                    value={mealType.platePrice}
+                                    onChange={(e: any) => handleUpdateMealType(mealType.id, 'platePrice', e.target.value)}
+                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                                    placeholder="0.00"
+                                  />
+                                  {mealType.numberOfMembers && parseFloat(mealType.platePrice) > 0 && (
+                                    <p className="text-sm text-green-600 mt-2 font-medium">
+                                      Total: {mealType.numberOfMembers} members × ₹{parseFloat(mealType.platePrice).toFixed(2)} = ₹{(parseFloat(mealType.numberOfMembers) * parseFloat(mealType.platePrice)).toFixed(2)}
+                                    </p>
+                                  )}
+                                  {!mealType.numberOfMembers && (
+                                    <p className="text-xs text-orange-500 mt-1">
+                                      ⚠ Enter Number of Members above to calculate total
+                                    </p>
+                                  )}
+                                </div>
+                              ) : (
+                                <div>
+                                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                                    Manual Amount *
+                                  </label>
+                                  <input
+                                    type="number"
+                                    step="0.01"
+                                    min="0"
+                                    required
+                                    value={mealType.manualAmount}
+                                    onChange={(e: any) => handleUpdateMealType(mealType.id, 'manualAmount', e.target.value)}
+                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                                    placeholder="0.00"
+                                  />
+                                </div>
+                              )}
+                            </div>
                           </div>
-                        </div>
                         )}
                       </div>
                     )
@@ -1062,9 +1083,9 @@ export default function OrdersPage() {
                     const oldMembers = original?.numberOfMembers || 0
                     const newMembers = parseInt(mt.numberOfMembers) || 0
                     const diff = newMembers - oldMembers
-                    
+
                     if (diff === 0) return null
-                    
+
                     return (
                       <div key={mt.id} className="flex justify-between items-center text-sm">
                         <span className="text-gray-700 capitalize font-medium">{mt.menuType}:</span>
@@ -1085,228 +1106,226 @@ export default function OrdersPage() {
             )}
 
             {!isEditMode && (
-            <div className="border-t border-gray-200 pt-4">
-              <h3 className="text-lg font-semibold text-gray-800 mb-4">Additional Charges</h3>
+              <div className="border-t border-gray-200 pt-4">
+                <h3 className="text-lg font-semibold text-gray-800 mb-4">Additional Charges</h3>
 
-              <div className="mb-4 border-t border-gray-200 pt-4">
-                <div className="flex justify-between items-center mb-4">
-                  <div className="flex items-center gap-3">
-                    <label className="block text-sm font-medium text-gray-700">
-                      Stalls (Separate from plate calculation)
-                    </label>
-                    <button
-                      type="button"
-                      onClick={() => setShowStalls(!showStalls)}
-                      className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 ${
-                        showStalls ? 'bg-primary-500' : 'bg-gray-300'
-                      }`}
-                    >
-                      <span className="sr-only">Toggle Stalls</span>
-                      <span
-                        className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                          showStalls ? 'translate-x-6' : 'translate-x-1'
-                        }`}
-                      />
-                    </button>
-                    <span className="text-sm text-gray-500">
-                      {showStalls ? 'Enabled' : 'Disabled'}
-                    </span>
-                  </div>
-                  {showStalls && (
-                    <button
-                      type="button"
-                      onClick={handleAddStall}
-                      className="px-4 py-2 bg-primary-500 text-white rounded-lg hover:bg-primary-600 transition-colors text-sm"
-                    >
-                      + Add Stall
-                    </button>
-                  )}
-                </div>
-                
-                {!showStalls ? (
-                  <p className="text-gray-500 text-sm text-center py-4 bg-gray-50 rounded-lg">
-                    Stalls are disabled. Toggle above to enable.
-                  </p>
-                ) : formData.stalls.length === 0 ? (
-                  <p className="text-gray-500 text-sm text-center py-4 bg-gray-50 rounded-lg">
-                    No stalls added. Click "Add Stall" to add one.
-                  </p>
-                ) : (
-                  <div className="space-y-4">
-                    {formData.stalls.map((stall, index) => (
-                      <div key={index} className="border border-gray-200 rounded-lg p-4 bg-gray-50">
-                        <div className="flex justify-between items-center mb-3">
-                          <h4 className="text-sm font-semibold text-gray-700">Stall #{index + 1}</h4>
-                          <button
-                            type="button"
-                            onClick={() => handleRemoveStall(index)}
-                            className="text-red-600 hover:text-red-800 text-sm font-medium"
-                          >
-                            Remove
-                          </button>
-                        </div>
-                        
-                        <div className="space-y-3">
-                          <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">
-                              Stall Category *
-                            </label>
-                            <select
-                              value={stall.category}
-                              onChange={(e: any) => handleUpdateStall(index, 'category', e.target.value)}
-                              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-                            >
-                              <option value="">Select Stall Category</option>
-                              <option value="Sweet Stall">Sweet Stall</option>
-                              <option value="Pan Stall">Pan Stall</option>
-                              <option value="LED Counter">LED Counter</option>
-                              <option value="Tiffin Counter">Tiffin Counter</option>
-                              <option value="Chat Counter">Chat Counter</option>
-                            </select>
-                          </div>
-                          
-                          <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">
-                              Description/Tag
-                            </label>
-                            <textarea
-                              value={stall.description}
-                              onChange={(e: any) => handleUpdateStall(index, 'description', e.target.value)}
-                              rows={2}
-                              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-                              placeholder="Enter description or tag for this stall..."
-                            />
-                          </div>
-                          
-                          <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">
-                              Cost
-                            </label>
-                            <input
-                              type="number"
-                              step="0.01"
-                              min="0"
-                              value={stall.cost}
-                              onChange={(e: any) => handleUpdateStall(index, 'cost', e.target.value)}
-                              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-                              placeholder="0.00"
-                            />
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                    
-                    {formData.stalls.length > 0 && (
-                      <div className="mt-4 p-3 bg-blue-50 rounded-lg">
-                        <div className="flex justify-between items-center">
-                          <span className="text-sm font-medium text-gray-700">Total Stalls Cost:</span>
-                          <span className="text-lg font-bold text-blue-600">{formatCurrency(totalStallsCost)}</span>
-                        </div>
-                      </div>
+                <div className="mb-4 border-t border-gray-200 pt-4">
+                  <div className="flex justify-between items-center mb-4">
+                    <div className="flex items-center gap-3">
+                      <label className="block text-sm font-medium text-gray-700">
+                        Stalls (Separate from plate calculation)
+                      </label>
+                      <button
+                        type="button"
+                        onClick={() => setShowStalls(!showStalls)}
+                        className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 ${showStalls ? 'bg-primary-500' : 'bg-gray-300'
+                          }`}
+                      >
+                        <span className="sr-only">Toggle Stalls</span>
+                        <span
+                          className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${showStalls ? 'translate-x-6' : 'translate-x-1'
+                            }`}
+                        />
+                      </button>
+                      <span className="text-sm text-gray-500">
+                        {showStalls ? 'Enabled' : 'Disabled'}
+                      </span>
+                    </div>
+                    {showStalls && (
+                      <button
+                        type="button"
+                        onClick={handleAddStall}
+                        className="px-4 py-2 bg-primary-500 text-white rounded-lg hover:bg-primary-600 transition-colors text-sm"
+                      >
+                        + Add Stall
+                      </button>
                     )}
                   </div>
-                )}
-              </div>
 
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Transport Cost
-                  </label>
-                  <input
-                    type="number"
-                    step="0.01"
-                    min="0"
-                    value={formData.transportCost}
-                    onChange={(e: any) => setFormData({ ...formData, transportCost: e.target.value })}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-                    placeholder="0.00"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Discount
-                  </label>
-                  <input
-                    type="number"
-                    step="0.01"
-                    min="0"
-                    value={formData.discount}
-                    onChange={(e: any) => setFormData({ ...formData, discount: e.target.value })}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-                    placeholder="0.00"
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4 mt-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    {isEditMode ? 'Additional Advance Paid' : 'Advance Paid'}
-                  </label>
-                  <input
-                    type="number"
-                    step="0.01"
-                    min="0"
-                    value={formData.advancePaid}
-                    onChange={(e: any) => setFormData({ ...formData, advancePaid: e.target.value })}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-                    placeholder="0.00"
-                  />
-                  {isEditMode && (
-                    <p className="mt-1 text-xs text-gray-500">
-                      Current advance: {formatCurrency(originalAdvancePaid)} · New total: {formatCurrency(effectiveAdvancePaid)} · Remaining: {formatCurrency(effectiveRemainingAmount)}
+                  {!showStalls ? (
+                    <p className="text-gray-500 text-sm text-center py-4 bg-gray-50 rounded-lg">
+                      Stalls are disabled. Toggle above to enable.
                     </p>
+                  ) : formData.stalls.length === 0 ? (
+                    <p className="text-gray-500 text-sm text-center py-4 bg-gray-50 rounded-lg">
+                      No stalls added. Click "Add Stall" to add one.
+                    </p>
+                  ) : (
+                    <div className="space-y-4">
+                      {formData.stalls.map((stall, index) => (
+                        <div key={index} className="border border-gray-200 rounded-lg p-4 bg-gray-50">
+                          <div className="flex justify-between items-center mb-3">
+                            <h4 className="text-sm font-semibold text-gray-700">Stall #{index + 1}</h4>
+                            <button
+                              type="button"
+                              onClick={() => handleRemoveStall(index)}
+                              className="text-red-600 hover:text-red-800 text-sm font-medium"
+                            >
+                              Remove
+                            </button>
+                          </div>
+
+                          <div className="space-y-3">
+                            <div>
+                              <label className="block text-sm font-medium text-gray-700 mb-1">
+                                Stall Category *
+                              </label>
+                              <select
+                                value={stall.category}
+                                onChange={(e: any) => handleUpdateStall(index, 'category', e.target.value)}
+                                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                              >
+                                <option value="">Select Stall Category</option>
+                                <option value="Sweet Stall">Sweet Stall</option>
+                                <option value="Pan Stall">Pan Stall</option>
+                                <option value="LED Counter">LED Counter</option>
+                                <option value="Tiffin Counter">Tiffin Counter</option>
+                                <option value="Chat Counter">Chat Counter</option>
+                              </select>
+                            </div>
+
+                            <div>
+                              <label className="block text-sm font-medium text-gray-700 mb-1">
+                                Description/Tag
+                              </label>
+                              <textarea
+                                value={stall.description}
+                                onChange={(e: any) => handleUpdateStall(index, 'description', e.target.value)}
+                                rows={2}
+                                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                                placeholder="Enter description or tag for this stall..."
+                              />
+                            </div>
+
+                            <div>
+                              <label className="block text-sm font-medium text-gray-700 mb-1">
+                                Cost
+                              </label>
+                              <input
+                                type="number"
+                                step="0.01"
+                                min="0"
+                                value={stall.cost}
+                                onChange={(e: any) => handleUpdateStall(index, 'cost', e.target.value)}
+                                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                                placeholder="0.00"
+                              />
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+
+                      {formData.stalls.length > 0 && (
+                        <div className="mt-4 p-3 bg-blue-50 rounded-lg">
+                          <div className="flex justify-between items-center">
+                            <span className="text-sm font-medium text-gray-700">Total Stalls Cost:</span>
+                            <span className="text-lg font-bold text-blue-600">{formatCurrency(totalStallsCost)}</span>
+                          </div>
+                        </div>
+                      )}
+                    </div>
                   )}
                 </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Payment Method
-                  </label>
-                  <select
-                    value={formData.paymentMethod}
-                    onChange={(e: any) => setFormData({ ...formData, paymentMethod: e.target.value })}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-                  >
-                    <option value="cash">Cash</option>
-                    <option value="upi">UPI</option>
-                    <option value="card">Card</option>
-                    <option value="bank_transfer">Bank Transfer</option>
-                    <option value="other">Other</option>
-                  </select>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Transport Cost
+                    </label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      value={formData.transportCost}
+                      onChange={(e: any) => setFormData({ ...formData, transportCost: e.target.value })}
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                      placeholder="0.00"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Discount
+                    </label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      value={formData.discount}
+                      onChange={(e: any) => setFormData({ ...formData, discount: e.target.value })}
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                      placeholder="0.00"
+                    />
+                  </div>
                 </div>
-              </div>
 
-              <div className="mt-4">
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Payment Notes
-                </label>
-                <input
-                  type="text"
-                  value={formData.paymentNotes}
-                  onChange={(e: any) => setFormData({ ...formData, paymentNotes: e.target.value })}
-                  placeholder="e.g., Transaction ID, Reference, etc."
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-                />
-              </div>
+                <div className="grid grid-cols-2 gap-4 mt-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      {isEditMode ? 'Additional Advance Paid' : 'Advance Paid'}
+                    </label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      value={formData.advancePaid}
+                      onChange={(e: any) => setFormData({ ...formData, advancePaid: e.target.value })}
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                      placeholder="0.00"
+                    />
+                    {isEditMode && (
+                      <p className="mt-1 text-xs text-gray-500">
+                        Current advance: {formatCurrency(originalAdvancePaid)} · New total: {formatCurrency(effectiveAdvancePaid)} · Remaining: {formatCurrency(effectiveRemainingAmount)}
+                      </p>
+                    )}
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Payment Method
+                    </label>
+                    <select
+                      value={formData.paymentMethod}
+                      onChange={(e: any) => setFormData({ ...formData, paymentMethod: e.target.value })}
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                    >
+                      <option value="cash">Cash</option>
+                      <option value="upi">UPI</option>
+                      <option value="card">Card</option>
+                      <option value="bank_transfer">Bank Transfer</option>
+                      <option value="other">Other</option>
+                    </select>
+                  </div>
+                </div>
 
-              <div className="mt-4">
-                <div>
+                <div className="mt-4">
                   <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Total Amount * (Auto-calculated: Meal Types + Transport + Stalls - Discount)
+                    Payment Notes
                   </label>
                   <input
-                    type="number"
-                    step="0.01"
-                    required
-                    value={formData.totalAmount}
-                    readOnly
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 bg-gray-50"
-                    placeholder="0.00"
+                    type="text"
+                    value={formData.paymentNotes}
+                    onChange={(e: any) => setFormData({ ...formData, paymentNotes: e.target.value })}
+                    placeholder="e.g., Transaction ID, Reference, etc."
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
                   />
                 </div>
+
+                <div className="mt-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Total Amount * (Auto-calculated: Meal Types + Transport + Stalls - Discount)
+                    </label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      required
+                      value={formData.totalAmount}
+                      readOnly
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 bg-gray-50"
+                      placeholder="0.00"
+                    />
+                  </div>
+                </div>
               </div>
-            </div>
             )}
 
             {isEditMode && (

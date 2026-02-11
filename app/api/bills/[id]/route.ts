@@ -29,7 +29,7 @@ export async function PUT(
     if (!isNonNegativeNumber(paidAmount) || !isNonNegativeNumber(remainingAmount)) {
       return NextResponse.json({ error: 'Invalid amounts' }, { status: 400 })
     }
-    if (paidAmount > existingBill.totalAmount || remainingAmount > existingBill.totalAmount) {
+    if (paidAmount > Number(existingBill.totalAmount) || remainingAmount > Number(existingBill.totalAmount)) {
       return NextResponse.json({ error: 'Amounts exceed total bill' }, { status: 400 })
     }
     if (!validateEnum(paymentMethod, ['cash', 'upi', 'card', 'bank_transfer', 'other'])) {
@@ -37,21 +37,21 @@ export async function PUT(
     }
 
     const paymentHistory = Array.isArray(existingBill.paymentHistory) ? existingBill.paymentHistory : []
-    const deltaPaid = paidAmount - existingBill.paidAmount
+    const deltaPaid = paidAmount - Number(existingBill.paidAmount)
     const updatedPaymentHistory = deltaPaid > 0
       ? [
-          ...paymentHistory,
-          {
-            amount: deltaPaid,
-            totalPaid: paidAmount,
-            remainingAmount,
-            status,
-            date: new Date().toISOString(),
-            source: 'payment',
-            method: paymentMethod,
-            notes: paymentNotes,
-          },
-        ]
+        ...paymentHistory,
+        {
+          amount: deltaPaid,
+          totalPaid: paidAmount,
+          remainingAmount,
+          status,
+          date: new Date().toISOString(),
+          source: 'payment',
+          method: paymentMethod,
+          notes: paymentNotes,
+        },
+      ]
       : paymentHistory
 
     const bill = await prisma.bill.update({

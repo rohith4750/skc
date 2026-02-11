@@ -32,10 +32,10 @@ export async function GET(request: NextRequest) {
         // Match by recipient name (case-insensitive, exact or partial match)
         // This ensures expenses are matched to the specific person, not just by role
         if (!expense.recipient) return false
-        
+
         const recipientName = expense.recipient.toLowerCase().trim()
         const memberName = member.name.toLowerCase().trim()
-        
+
         // Exact match or name contains member name or member name contains recipient name
         return (
           recipientName === memberName ||
@@ -45,15 +45,15 @@ export async function GET(request: NextRequest) {
       })
 
       // Calculate totals and payment status
-      const totalAmount = matchingExpenses.reduce((sum: number, exp: any) => sum + (exp.amount || 0), 0)
-      const totalPaidAmount = matchingExpenses.reduce((sum: number, exp: any) => sum + (exp.paidAmount || 0), 0)
+      const totalAmount = matchingExpenses.reduce((sum: number, exp: any) => sum + Number(exp.amount || 0), 0)
+      const totalPaidAmount = matchingExpenses.reduce((sum: number, exp: any) => sum + Number(exp.paidAmount || 0), 0)
       const expenseCount = matchingExpenses.length
-      
+
       // Calculate payment status summary
       const pendingExpenses = matchingExpenses.filter((exp: any) => exp.paymentStatus === 'pending').length
       const partialExpenses = matchingExpenses.filter((exp: any) => exp.paymentStatus === 'partial').length
       const paidExpenses = matchingExpenses.filter((exp: any) => exp.paymentStatus === 'paid').length
-      
+
       // Overall payment status for this member
       let overallPaymentStatus = 'paid'
       if (totalPaidAmount === 0) {

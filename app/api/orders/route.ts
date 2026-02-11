@@ -3,6 +3,7 @@ import { prisma } from '@/lib/prisma'
 import { isNonNegativeNumber, isNonEmptyString } from '@/lib/validation'
 import { publishNotification } from '@/lib/notifications'
 import { requireAuth } from '@/lib/require-auth'
+import { transformDecimal } from '@/lib/decimal-utils'
 
 export async function GET(request: NextRequest) {
   const auth = await requireAuth(request)
@@ -21,7 +22,7 @@ export async function GET(request: NextRequest) {
       },
       orderBy: { createdAt: 'desc' }
     })
-    return NextResponse.json(orders)
+    return NextResponse.json(transformDecimal(orders))
   } catch (error) {
     return NextResponse.json({ error: 'Failed to fetch orders' }, { status: 500 })
   }
@@ -39,7 +40,17 @@ export async function POST(request: NextRequest) {
     if (!Array.isArray(data.items) || data.items.length === 0) {
       return NextResponse.json({ error: 'At least one menu item is required' }, { status: 400 })
     }
-    
+
+    // Verify customer exists
+    const customerExists = await prisma.customer.findUnique({
+      where: { id: data.customerId },
+      select: { id: true }
+    })
+
+    if (!customerExists) {
+      return NextResponse.json({ error: 'Customer not found' }, { status: 404 })
+    }
+
     // Convert amounts to numbers to ensure proper type
     const totalAmount = parseFloat(data.totalAmount) || 0
     const advancePaid = parseFloat(data.advancePaid) || 0
@@ -50,13 +61,13 @@ export async function POST(request: NextRequest) {
     }
     const discount = parseFloat(data.discount) || 0
     const transportCost = parseFloat(data.transportCost) || 0
-    
+
     const orderData: any = {
       customerId: data.customerId,
       totalAmount: totalAmount,
       advancePaid: advancePaid,
       remainingAmount: remainingAmount,
-      status: data.status || 'pending',
+      status: data.status === 'in-progress' ? 'in_progress' : (data.status || 'pending'),
       eventName: data.eventName || null,
       services: data.services && Array.isArray(data.services) && data.services.length > 0 ? data.services : null,
       numberOfMembers: data.numberOfMembers || null,
@@ -68,10 +79,11 @@ export async function POST(request: NextRequest) {
         create: data.items.map((item: any) => ({
           menuItemId: item.menuItemId,
           quantity: item.quantity || 1,
+          mealType: item.mealType || null, // Store which meal type this item was selected for
         }))
       }
     }
-    
+
     // Create order only - bills will be generated when status changes to in-progress or completed
     const order = await prisma.order.create({
       data: orderData,
@@ -107,7 +119,7 @@ export async function POST(request: NextRequest) {
       })
     }
 
-    return NextResponse.json({ order }, { status: 201 })
+    return NextResponse.json({ order: transformDecimal(order) }, { status: 201 })
   } catch (error: any) {
     console.error('Error creating order:', error)
     console.error('Error details:', {
@@ -116,8 +128,8 @@ export async function POST(request: NextRequest) {
       meta: error.meta,
       stack: error.stack
     })
-    return NextResponse.json({ 
-      error: 'Failed to create order', 
+    return NextResponse.json({
+      error: 'Failed to create order',
       details: error.message || 'Unknown error',
       code: error.code
     }, { status: 500 })
