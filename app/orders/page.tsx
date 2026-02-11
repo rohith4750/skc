@@ -308,28 +308,64 @@ export default function OrdersPage() {
   }
 
   const handleRemoveMealType = (mealTypeId: string) => {
-    if (!window.confirm("Are you sure you want to remove this meal type?")) return
+    toast.custom((t) => (
+      <div
+        className={`${t.visible ? 'animate-enter' : 'animate-leave'
+          } max-w-md w-full bg-white shadow-lg rounded-lg pointer-events-auto flex ring-1 ring-black ring-opacity-5`}
+      >
+        <div className="flex-1 w-0 p-4">
+          <div className="flex items-start">
+            <div className="ml-3 flex-1">
+              <p className="text-sm font-medium text-gray-900">
+                Are you sure you want to remove this meal type?
+              </p>
+              <p className="mt-1 text-sm text-gray-500">
+                This action cannot be undone.
+              </p>
+            </div>
+          </div>
+        </div>
+        <div className="flex border-l border-gray-200">
+          <button
+            onClick={() => {
+              toast.dismiss(t.id)
+              setFormData(prev => ({
+                ...prev,
+                mealTypes: prev.mealTypes.filter(mealType => mealType.id !== mealTypeId)
+              }))
+              // Clean up related filters and collapsed state
+              setSelectedSubFilter(prev => {
+                const newFilters = { ...prev }
+                delete newFilters[mealTypeId]
+                return newFilters
+              })
+              setMenuItemSearch(prev => {
+                const newSearches = { ...prev }
+                delete newSearches[mealTypeId]
+                return newSearches
+              })
+              setCollapsedMealTypes(prev => {
+                const newCollapsed = { ...prev }
+                delete newCollapsed[mealTypeId]
+                return newCollapsed
+              })
+            }}
+            className="w-full border border-transparent rounded-none rounded-r-lg p-4 flex items-center justify-center text-sm font-medium text-red-600 hover:text-red-500 focus:outline-none focus:ring-2 focus:ring-red-500"
+          >
+            Remove
+          </button>
+          <button
+            onClick={() => toast.dismiss(t.id)}
+            className="w-full border border-transparent rounded-none p-4 flex items-center justify-center text-sm font-medium text-gray-600 hover:text-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+          >
+            Cancel
+          </button>
+        </div>
+      </div>
+    ))
+    return
 
-    setFormData(prev => ({
-      ...prev,
-      mealTypes: prev.mealTypes.filter(mealType => mealType.id !== mealTypeId)
-    }))
-    // Clean up related filters and collapsed state
-    setSelectedSubFilter(prev => {
-      const newFilters = { ...prev }
-      delete newFilters[mealTypeId]
-      return newFilters
-    })
-    setMenuItemSearch(prev => {
-      const newSearches = { ...prev }
-      delete newSearches[mealTypeId]
-      return newSearches
-    })
-    setCollapsedMealTypes(prev => {
-      const newCollapsed = { ...prev }
-      delete newCollapsed[mealTypeId]
-      return newCollapsed
-    })
+
   }
 
   const handleUpdateMealType = (mealTypeId: string, field: string, value: any) => {
