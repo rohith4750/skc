@@ -91,6 +91,14 @@ export async function PUT(
         })
       }
 
+      // If order reverted to pending -> delete the bill (undo "In Progress" action)
+      if (bill && status === 'pending') {
+        await prisma.bill.delete({
+          where: { id: bill.id }
+        })
+        bill = null
+      }
+
       // If order completed → mark bill paid
       if (bill && status === 'completed') {
         bill = await prisma.bill.update({
