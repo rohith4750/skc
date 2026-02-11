@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import Image from 'next/image'
 import { 
   FaLock, FaUser, FaEye, FaEyeSlash, FaAward, FaUsers, FaCalendarCheck,
@@ -9,25 +9,36 @@ import {
   FaStar, FaHeart
 } from 'react-icons/fa'
 import toast from 'react-hot-toast'
-import { setAuth, isAuthenticated } from '@/lib/auth'
+import { setAuth, isLoggedIn, getToken } from '@/lib/auth-storage'
 import { isNonEmptyString } from '@/lib/validation'
 import FormError from '@/components/FormError'
 
 export default function LoginPage() {
   const router = useRouter()
+  const searchParams = useSearchParams()
   const [formData, setFormData] = useState({
     username: '',
     password: '',
+    rememberMe: false,
   })
   const [showPassword, setShowPassword] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const [formError, setFormError] = useState('')
 
   useEffect(() => {
-    if (isAuthenticated()) {
+    if (isLoggedIn() && getToken()) {
       router.push('/')
     }
   }, [router])
+
+  useEffect(() => {
+    const reason = searchParams?.get('reason')
+    if (reason === 'session_expired') {
+      toast.error('Your session expired. Please sign in again.')
+    } else if (reason === 'timeout') {
+      toast.error('You were signed out due to inactivity. Please sign in again.')
+    }
+  }, [searchParams])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -45,7 +56,11 @@ export default function LoginPage() {
       const response = await fetch('/api/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formData),
+        body: JSON.stringify({
+          username: formData.username,
+          password: formData.password,
+          rememberMe: formData.rememberMe,
+        }),
       })
 
       const data = await response.json()
@@ -54,7 +69,17 @@ export default function LoginPage() {
         throw new Error(data.error || 'Login failed')
       }
 
-      setAuth(data.user.username, data.user.role || 'admin')
+      setAuth(
+        data.accessToken,
+        {
+          id: data.user.id,
+          username: data.user.username,
+          email: data.user.email ?? null,
+          role: data.user.role || 'admin',
+        },
+        [],
+        formData.rememberMe
+      )
       toast.success('Login successful!')
       router.push('/')
     } catch (error: any) {
@@ -153,7 +178,12 @@ export default function LoginPage() {
                 {/* Remember Me & Forgot Password */}
                 <div className="flex items-center justify-between text-xs sm:text-sm">
                   <label className="flex items-center cursor-pointer">
-                    <input type="checkbox" className="rounded border-gray-300 text-primary-500 focus:ring-primary-500" />
+                    <input
+                      type="checkbox"
+                      checked={formData.rememberMe}
+                      onChange={(e) => setFormData({ ...formData, rememberMe: e.target.checked })}
+                      className="rounded border-gray-300 text-primary-500 focus:ring-primary-500"
+                    />
                     <span className="ml-2 text-gray-600">Remember me</span>
                   </label>
                   <button

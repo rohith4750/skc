@@ -2,8 +2,11 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { isNonNegativeNumber, isNonEmptyString } from '@/lib/validation'
 import { publishNotification } from '@/lib/notifications'
+import { requireAuth } from '@/lib/require-auth'
 
-export async function GET() {
+export async function GET(request: NextRequest) {
+  const auth = await requireAuth(request)
+  if (auth.response) return auth.response
   try {
     const orders = await prisma.order.findMany({
       include: {
@@ -25,6 +28,8 @@ export async function GET() {
 }
 
 export async function POST(request: NextRequest) {
+  const auth = await requireAuth(request)
+  if (auth.response) return auth.response
   try {
     const data = await request.json()
 

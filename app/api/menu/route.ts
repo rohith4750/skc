@@ -1,8 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { validateRequiredFields } from '@/lib/validation'
+import { requireAuth } from '@/lib/require-auth'
 
-export async function GET() {
+export async function GET(request: NextRequest) {
+  const auth = await requireAuth(request)
+  if (auth.response) return auth.response
   try {
     const menuItems = await prisma.menuItem.findMany({
       orderBy: { name: 'asc' }
@@ -14,6 +17,8 @@ export async function GET() {
 }
 
 export async function POST(request: NextRequest) {
+  const auth = await requireAuth(request)
+  if (auth.response) return auth.response
   try {
     const data = await request.json()
     const missingFields = validateRequiredFields(data, ['name', 'type'])
