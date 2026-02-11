@@ -110,15 +110,14 @@ export default function OrderSummaryPage() {
         {/* Hero Banner Section */}
         <div className="bg-white rounded-[2.5rem] p-8 shadow-xl shadow-slate-200/50 border border-slate-100 mb-8 overflow-hidden relative">
           <div className="absolute top-0 right-0 w-64 h-64 bg-primary-50/50 rounded-full -mr-32 -mt-32 blur-3xl -z-0"></div>
-          
+
           <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
             <div>
               <div className="flex items-center gap-3 mb-3">
-                <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-[0.2em] border ${
-                  order.status === 'completed' ? 'bg-emerald-50 text-emerald-600 border-emerald-100' :
-                  order.status === 'cancelled' ? 'bg-rose-50 text-rose-600 border-rose-100' :
-                  'bg-primary-50 text-primary-600 border-primary-100'
-                }`}>
+                <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-[0.2em] border ${order.status === 'completed' ? 'bg-emerald-50 text-emerald-600 border-emerald-100' :
+                    order.status === 'cancelled' ? 'bg-rose-50 text-rose-600 border-rose-100' :
+                      'bg-primary-50 text-primary-600 border-primary-100'
+                  }`}>
                   {order.status}
                 </span>
                 <span className="text-xs font-bold text-slate-400">#SKC-ORDER-{(order as any).serialNumber || order.id.slice(0, 8).toUpperCase()}</span>
@@ -208,7 +207,7 @@ export default function OrderSummaryPage() {
                         {percentPaid}%
                       </span>
                       <div className="w-32 h-2 bg-slate-800 rounded-full overflow-hidden">
-                        <div 
+                        <div
                           className="h-full bg-emerald-500 rounded-full shadow-[0_0_10px_rgba(16,185,129,0.5)] transition-all duration-1000"
                           style={{ width: `${percentPaid}%` }}
                         ></div>
@@ -232,28 +231,26 @@ export default function OrderSummaryPage() {
             <h2 className="text-sm font-black text-slate-900 uppercase tracking-widest">Catering Plans</h2>
             <div className="flex-grow h-px bg-slate-200"></div>
           </div>
-          
+
           <div className="grid grid-cols-1 gap-6">
             {Object.entries(order.mealTypeAmounts || {}).map(([mealType, data]) => {
               const detail = typeof data === 'object' && data !== null ? data : null;
               const items = itemsByMealType[mealType.toLowerCase()] || [];
-              
+
               return (
                 <div key={mealType} className="bg-white rounded-[2rem] border border-slate-100 shadow-sm hover:shadow-xl hover:border-primary-100 transition-all group overflow-hidden">
                   <div className="flex flex-col md:flex-row h-full">
                     {/* Left: Meal Category Header */}
-                    <div className={`w-full md:w-64 p-6 flex flex-col justify-center items-center text-center ${
-                      mealType.toLowerCase() === 'breakfast' ? 'bg-orange-50/50' :
-                      mealType.toLowerCase() === 'lunch' ? 'bg-emerald-50/50' :
-                      mealType.toLowerCase() === 'dinner' ? 'bg-indigo-50/50' :
-                      'bg-slate-50/50'
-                    }`}>
-                      <div className={`w-12 h-12 rounded-2xl flex items-center justify-center shadow-sm mb-3 ${
-                        mealType.toLowerCase() === 'breakfast' ? 'bg-orange-100 text-orange-600' :
-                        mealType.toLowerCase() === 'lunch' ? 'bg-emerald-100 text-emerald-600' :
-                        mealType.toLowerCase() === 'dinner' ? 'bg-indigo-100 text-indigo-600' :
-                        'bg-slate-100 text-slate-600'
+                    <div className={`w-full md:w-64 p-6 flex flex-col justify-center items-center text-center ${mealType.toLowerCase() === 'breakfast' ? 'bg-orange-50/50' :
+                        mealType.toLowerCase() === 'lunch' ? 'bg-emerald-50/50' :
+                          mealType.toLowerCase() === 'dinner' ? 'bg-indigo-50/50' :
+                            'bg-slate-50/50'
                       }`}>
+                      <div className={`w-12 h-12 rounded-2xl flex items-center justify-center shadow-sm mb-3 ${mealType.toLowerCase() === 'breakfast' ? 'bg-orange-100 text-orange-600' :
+                          mealType.toLowerCase() === 'lunch' ? 'bg-emerald-100 text-emerald-600' :
+                            mealType.toLowerCase() === 'dinner' ? 'bg-indigo-100 text-indigo-600' :
+                              'bg-slate-100 text-slate-600'
+                        }`}>
                         <FaUtensils className="text-xl" />
                       </div>
                       <h3 className="text-xl font-black capitalize text-slate-900 leading-none">{mealType}</h3>
@@ -271,9 +268,8 @@ export default function OrderSummaryPage() {
                             <div className="flex items-center gap-2">
                               <span className="text-lg font-black text-slate-900">{detail?.numberOfMembers || 'N/A'}</span>
                               {detail?.originalMembers !== undefined && detail?.numberOfMembers !== undefined && detail.originalMembers !== detail.numberOfMembers && (
-                                <span className={`px-2 py-0.5 rounded-lg text-[10px] font-black ${
-                                  (detail.numberOfMembers ?? 0) > (detail.originalMembers ?? 0) ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-700'
-                                }`}>
+                                <span className={`px-2 py-0.5 rounded-lg text-[10px] font-black ${(detail.numberOfMembers ?? 0) > (detail.originalMembers ?? 0) ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-700'
+                                  }`}>
                                   {(detail.numberOfMembers ?? 0) > (detail.originalMembers ?? 0) ? '↑' : '↓'}
                                   {Math.abs((detail.numberOfMembers ?? 0) - (detail.originalMembers ?? 0))}
                                 </span>
@@ -297,8 +293,13 @@ export default function OrderSummaryPage() {
                         <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-3">Selected Menu Items</span>
                         <div className="flex flex-wrap gap-2">
                           {items.length > 0 ? items.map((item) => (
-                            <span key={item.id} className="px-3 py-1.5 bg-white border border-slate-200 text-slate-700 rounded-xl text-xs font-bold shadow-sm hover:border-primary-300 transition-colors">
+                            <span key={item.id} className="px-3 py-1.5 bg-white border border-slate-200 text-slate-700 rounded-xl text-xs font-bold shadow-sm hover:border-primary-300 transition-colors flex items-center gap-1">
                               {item.menuItem?.name}
+                              {item.customization && (
+                                <span className="text-[10px] text-primary-500 font-medium bg-primary-50 px-1.5 py-0.5 rounded-md">
+                                  {item.customization}
+                                </span>
+                              )}
                             </span>
                           )) : <p className="text-xs text-slate-300 font-bold italic">No menu items added.</p>}
                         </div>
@@ -330,7 +331,7 @@ export default function OrderSummaryPage() {
               </span>
             </div>
           </div>
-          
+
           <div className="p-0">
             {paymentHistory.length === 0 ? (
               <div className="p-20 text-center">
@@ -359,11 +360,10 @@ export default function OrderSummaryPage() {
                         <tr key={index} className="hover:bg-slate-50/80 transition-colors group">
                           <td className="px-8 py-5 text-xs font-bold text-slate-500 whitespace-nowrap">{formatDateTime(payment.date)}</td>
                           <td className="px-8 py-5 whitespace-nowrap">
-                            <span className={`px-2.5 py-1 rounded-lg text-[10px] font-black uppercase tracking-tighter ${
-                              isBooking ? 'bg-blue-100 text-blue-700' :
-                              isRevision ? 'bg-amber-100 text-amber-700' :
-                              'bg-emerald-100 text-emerald-700'
-                            }`}>
+                            <span className={`px-2.5 py-1 rounded-lg text-[10px] font-black uppercase tracking-tighter ${isBooking ? 'bg-blue-100 text-blue-700' :
+                                isRevision ? 'bg-amber-100 text-amber-700' :
+                                  'bg-emerald-100 text-emerald-700'
+                              }`}>
                               {isBooking ? 'Booking' : isRevision ? 'Revision' : 'Payment'}
                             </span>
                           </td>

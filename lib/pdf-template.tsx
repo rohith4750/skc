@@ -147,7 +147,6 @@ export function generatePDFTemplate(data: PDFTemplateData): string {
           margin-bottom: 3px;
         }
         .divider {
-          border-top: 1px solid #000;
           margin: 15px 0;
         }
         .section-title {
