@@ -37,7 +37,7 @@ async function removeDuplicates() {
     // Find duplicates
     const duplicateGroups: Array<typeof allItems> = []
     
-    for (const [key, items] of itemMap.entries()) {
+    for (const [key, items] of Array.from(itemMap.entries())) {
       if (items.length > 1) {
         duplicateGroups.push(items)
       }
