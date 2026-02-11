@@ -4,11 +4,11 @@ import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
 import { usePathname } from 'next/navigation'
-import { 
-  FaHome, 
-  FaUsers, 
-  FaUtensils, 
-  FaShoppingCart, 
+import {
+  FaHome,
+  FaUsers,
+  FaUtensils,
+  FaShoppingCart,
   FaFileInvoiceDollar,
   FaUserTie,
   FaChevronLeft,
@@ -38,24 +38,24 @@ const menuItems = [
   { href: '/orders/history', icon: FaHistory, label: 'Order History', section: 'core' },
   { href: '/orders/overview', icon: FaChartLine, label: 'Order Center', section: 'core' },
   { href: '/bills', icon: FaFileInvoiceDollar, label: 'Bills', section: 'core' },
-  
+
   // 2. Financial Management
   { href: '/expenses', icon: FaMoneyBillWave, label: 'Expenses', requiredRole: 'super_admin', section: 'financial' },
   { href: '/workforce', icon: FaUserTie, label: 'Workforce', requiredRole: 'super_admin', section: 'financial' },
   { href: '/analytics', icon: FaChartLine, label: 'Analytics', requiredRole: 'super_admin', section: 'financial' },
-  
+
   // 3. Tax Management
   { href: '/tax', icon: FaFileInvoice, label: 'Income Tax Return', requiredRole: 'super_admin', section: 'tax' },
-  
+
   // 4. Inventory & Stock Management
   { href: '/stock', icon: FaBox, label: 'Stock', hideForRole: 'admin', section: 'inventory' },
   { href: '/inventory', icon: FaWarehouse, label: 'Inventory', hideForRole: 'admin', section: 'inventory' },
-  
+
   // 5. System Administration
   { href: '/users', icon: FaUserShield, label: 'User Management', requiredRole: 'super_admin', section: 'system' },
   { href: '/audit-logs', icon: FaClipboardList, label: 'Login Audit Logs', requiredRole: 'super_admin', section: 'system' },
   { href: '/enquiries', icon: FaEnvelope, label: 'Enquiries', requiredRole: 'super_admin', section: 'system' },
-  
+
   // 6. Profile
   { href: '/profile', icon: FaUserCircle, label: 'Profile', section: 'profile' },
 ]
@@ -125,22 +125,22 @@ export default function Sidebar() {
         {/* Brand Section - Fixed at top */}
         <div className="w-full border-b border-gray-800 flex-shrink-0 bg-gray-900 flex flex-col items-center justify-center py-2 px-2">
           <Link href="/" className="flex flex-col items-center">
-            <Image 
-              src="/images/logo-dark.png" 
-              alt="SKC Logo" 
-              width={80} 
+            <Image
+              src="/images/logo-dark.png"
+              alt="SKC Logo"
+              width={80}
               height={80}
-              className="drop-shadow-lg"
+              className="drop-shadow-lg w-20 h-20 lg:w-24 lg:h-24"
               priority
             />
             <div className="text-[8px] text-amber-400/80 mt-0.5 font-medium tracking-wide">
               Proprietor: Telidevara Rajendraprasad
             </div>
-          </Link>
-        </div>
-        
+          </Link >
+        </div >
+
         {/* Navigation Menu - Scrollable */}
-        <nav className="flex-1 overflow-y-auto overflow-x-hidden py-3 min-h-0">
+        < nav className="flex-1 overflow-y-auto overflow-x-hidden py-3 min-h-0" >
           <div className="space-y-0.5 px-2">
             {(() => {
               // Filter menu items based on role first
@@ -182,8 +182,8 @@ export default function Sidebar() {
                 return (
                   <div key={sectionKey}>
                     {/* Section Header */}
-                    <div className="px-3 py-1.5 mb-0.5">
-                      <span className="text-[10px] font-semibold text-gray-500 uppercase tracking-wider">
+                    <div className="px-3 py-1.5 mb-0.5 lg:px-4 lg:py-2 lg:mb-1">
+                      <span className="text-[10px] lg:text-sm font-semibold text-gray-500 uppercase tracking-wider">
                         {sectionTitles[sectionKey]}
                       </span>
                     </div>
@@ -191,18 +191,17 @@ export default function Sidebar() {
                     {items.map((item) => {
                       const Icon = item.icon
                       const isActive = pathname === item.href
-                      
+
                       return (
                         <Link
                           key={item.href}
                           href={item.href}
-                          className={`flex items-center px-3 py-2 rounded-lg text-gray-300 hover:bg-gray-800 hover:text-white transition-all duration-200 ${
-                            isActive ? 'bg-gray-800 text-white shadow-md border-l-4 border-primary-500 font-semibold' : ''
-                          }`}
+                          className={`flex items-center px-3 py-2 lg:px-4 lg:py-3 rounded-lg text-gray-300 hover:bg-gray-800 hover:text-white transition-all duration-200 ${isActive ? 'bg-gray-800 text-white shadow-md border-l-4 border-primary-500 font-semibold' : ''
+                            }`}
                           onClick={() => setIsOpen(false)}
                         >
-                          <Icon className="w-4 h-4 mr-2.5 flex-shrink-0" />
-                          <span className="font-medium text-xs">{item.label}</span>
+                          <Icon className="w-4 h-4 mr-2.5 lg:w-6 lg:h-6 lg:mr-3 flex-shrink-0" />
+                          <span className="font-medium text-xs lg:text-base">{item.label}</span>
                         </Link>
                       )
                     })}
@@ -215,8 +214,8 @@ export default function Sidebar() {
               })
             })()}
           </div>
-        </nav>
-      </div>
+        </nav >
+      </div >
     </>
   )
 }
