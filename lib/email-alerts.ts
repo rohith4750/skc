@@ -23,9 +23,6 @@ async function getInternalUserEmails(): Promise<string[]> {
     const users = await prisma.user.findMany({
       where: {
         isActive: true,
-        email: {
-          not: null,
-        },
       },
       select: {
         email: true,
