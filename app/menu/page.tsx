@@ -4,7 +4,7 @@ import { useEffect, useState, useMemo } from 'react'
 import { Storage } from '@/lib/storage-api'
 import { initializeMenuItems } from '@/lib/initMenu'
 import { MenuItem } from '@/types'
-import { FaPlus, FaEdit, FaTrash, FaDownload, FaPrint } from 'react-icons/fa'
+import { FaPlus, FaEdit, FaTrash, FaDownload, FaPrint, FaEnvelope } from 'react-icons/fa'
 import toast from 'react-hot-toast'
 import Table from '@/components/Table'
 import { getMenuItemTableConfig } from '@/components/table-configs'
@@ -26,6 +26,9 @@ export default function MenuPage() {
     id: null,
   })
   const [initializeConfirm, setInitializeConfirm] = useState(false)
+  const [showEmailModal, setShowEmailModal] = useState(false)
+  const [emailMenuData, setEmailMenuData] = useState({ email: '', customerName: '' })
+  const [emailMenuSending, setEmailMenuSending] = useState(false)
   const [formData, setFormData] = useState({
     name: '',
     type: '',
@@ -428,6 +431,35 @@ export default function MenuPage() {
     }, 250)
   }
 
+  const handleSendMenuEmail = async () => {
+    if (!emailMenuData.email || !emailMenuData.email.includes('@')) {
+      toast.error('Please enter a valid email address')
+      return
+    }
+    setEmailMenuSending(true)
+    try {
+      const response = await fetch('/api/menu/send', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: emailMenuData.email,
+          customerName: emailMenuData.customerName || undefined,
+        }),
+      })
+      if (!response.ok) {
+        const err = await response.json()
+        throw new Error(err.error || 'Failed to send menu email')
+      }
+      toast.success(`Menu PDF sent to ${emailMenuData.email}`)
+      setShowEmailModal(false)
+      setEmailMenuData({ email: '', customerName: '' })
+    } catch (error: any) {
+      toast.error(error.message || 'Failed to send menu email')
+    } finally {
+      setEmailMenuSending(false)
+    }
+  }
+
   return (
     <div className="p-4 sm:p-6 lg:p-8 pt-16 lg:pt-8">
       <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 mb-6 sm:mb-8">
@@ -441,6 +473,12 @@ export default function MenuPage() {
             className="bg-purple-600 text-white px-4 sm:px-6 py-2 sm:py-3 rounded-lg hover:bg-purple-700 transition-colors flex items-center justify-center gap-2 text-sm sm:text-base"
           >
             <FaPrint /> <span className="hidden sm:inline">Print Menu</span><span className="sm:hidden">Print</span>
+          </button>
+          <button
+            onClick={() => setShowEmailModal(true)}
+            className="bg-amber-600 text-white px-4 sm:px-6 py-2 sm:py-3 rounded-lg hover:bg-amber-700 transition-colors flex items-center justify-center gap-2 text-sm sm:text-base"
+          >
+            <FaEnvelope /> <span className="hidden sm:inline">Email Menu</span><span className="sm:hidden">Email</span>
           </button>
           <button
             onClick={handleInitialize}
@@ -708,6 +746,53 @@ export default function MenuPage() {
         onCancel={() => setInitializeConfirm(false)}
         variant="info"
       />
+
+      {/* Email Menu Modal */}
+      {showEmailModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+          <div className="bg-white rounded-xl shadow-xl p-6 max-w-md w-full mx-4">
+            <h3 className="text-lg font-semibold text-gray-800 mb-4">Email Menu PDF</h3>
+            <p className="text-sm text-gray-600 mb-4">Send the complete menu (PDF) to a customer&apos;s email.</p>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Email Address *</label>
+                <input
+                  type="email"
+                  value={emailMenuData.email}
+                  onChange={(e) => setEmailMenuData((p) => ({ ...p, email: e.target.value }))}
+                  placeholder="customer@example.com"
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-amber-500"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Customer Name (optional)</label>
+                <input
+                  type="text"
+                  value={emailMenuData.customerName}
+                  onChange={(e) => setEmailMenuData((p) => ({ ...p, customerName: e.target.value }))}
+                  placeholder="John Doe"
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-amber-500"
+                />
+              </div>
+            </div>
+            <div className="flex justify-end gap-3 mt-6">
+              <button
+                onClick={() => setShowEmailModal(false)}
+                className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleSendMenuEmail}
+                disabled={emailMenuSending}
+                className="px-4 py-2 bg-amber-600 text-white rounded-lg hover:bg-amber-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+              >
+                {emailMenuSending ? 'Sending...' : 'Send Menu'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

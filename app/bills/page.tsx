@@ -137,6 +137,105 @@ export default function BillsPage() {
     }
   }
 
+  const buildBillPdfData = (bill: any) => {
+    const order = bill.order
+    const customer = order?.customer
+    const mealTypeAmounts = order?.mealTypeAmounts as Record<string, { amount: number; date: string; services?: string[]; numberOfMembers?: number } | number> | null
+    const stalls = order?.stalls as Array<{ category: string; description: string; cost: number }> | null
+    const transportCost = parseFloat(order?.transportCost || '0') || 0
+
+    let tiffinsData: { persons?: number; rate?: number } = {}
+    let lunchDinnerData: { type?: string; persons?: number; rate?: number } = {}
+    let snacksData: { persons?: number; rate?: number } = {}
+
+    if (mealTypeAmounts) {
+      Object.entries(mealTypeAmounts).forEach(([mealType, data]) => {
+        const mealData = typeof data === 'object' && data !== null ? data : { amount: typeof data === 'number' ? data : 0 }
+        const persons = (typeof mealData === 'object' && mealData !== null && 'numberOfMembers' in mealData) ? (mealData.numberOfMembers || 0) : 0
+        const amount = typeof mealData === 'object' && mealData !== null && 'amount' in mealData ? mealData.amount : (typeof data === 'number' ? data : 0)
+        const rate = persons > 0 ? amount / persons : 0
+        if (mealType.toLowerCase().includes('tiffin') || mealType.toLowerCase().includes('breakfast')) tiffinsData = { persons, rate }
+        else if (mealType.toLowerCase().includes('lunch') || mealType.toLowerCase().includes('dinner')) lunchDinnerData = { type: mealType.toLowerCase().includes('lunch') ? 'Lunch' : 'Dinner', persons, rate }
+        else if (mealType.toLowerCase().includes('snack')) snacksData = { persons, rate }
+      })
+    }
+
+    const extraAmount = stalls?.reduce((sum, stall) => sum + (parseFloat(stall.cost?.toString() || '0') || 0), 0) || 0
+    let functionDate = ''
+    let functionTime = ''
+    if (mealTypeAmounts) {
+      const firstDate = Object.values(mealTypeAmounts).find(d => typeof d === 'object' && d !== null && d.date) as { date?: string } | undefined
+      if (firstDate?.date) {
+        functionDate = formatDate(firstDate.date)
+        const dateObj = new Date(firstDate.date)
+        if (!isNaN(dateObj.getTime())) functionTime = dateObj.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })
+      }
+    }
+
+    return {
+      pdfData: {
+        type: 'bill' as const,
+        billNumber: `${(bill as any).serialNumber || bill.id.slice(0, 8).toUpperCase()}`,
+        date: bill.createdAt,
+        customer: { name: customer?.name, phone: customer?.phone, email: customer?.email, address: customer?.address },
+        eventDetails: { eventName: order?.eventName || '', functionDate, functionTime, functionVenue: '' },
+        mealDetails: { tiffins: tiffinsData.persons ? tiffinsData : undefined, lunchDinner: lunchDinnerData.persons ? lunchDinnerData : undefined, snacks: snacksData.persons ? snacksData : undefined },
+        mealTypeAmounts: mealTypeAmounts || undefined,
+        stalls: stalls || undefined,
+        discount: order?.discount,
+        services: order?.services && Array.isArray(order.services) ? order.services : undefined,
+        numberOfMembers: order?.numberOfMembers,
+        financial: { transport: transportCost || undefined, extra: extraAmount > 0 ? extraAmount : undefined, totalAmount: bill.totalAmount, advancePaid: bill.advancePaid, balanceAmount: bill.remainingAmount, remainingAmount: bill.remainingAmount, paidAmount: bill.paidAmount, discount: order?.discount },
+        status: bill.status,
+        orderId: order?.id,
+        supervisor: order?.supervisor?.name,
+      },
+    }
+  }
+
+  const renderBillToPdf = async (bill: any): Promise<string | null> => {
+    const { pdfData } = buildBillPdfData(bill)
+    const htmlContent = generatePDFTemplate(pdfData)
+
+    const tempDiv = document.createElement('div')
+    tempDiv.style.position = 'absolute'
+    tempDiv.style.left = '-9999px'
+    tempDiv.style.width = '210mm'
+    tempDiv.style.padding = '0'
+    tempDiv.style.background = 'white'
+    tempDiv.style.color = '#000'
+    tempDiv.innerHTML = htmlContent
+    document.body.appendChild(tempDiv)
+
+    try {
+      const canvas = await html2canvas(tempDiv, { scale: 2, useCORS: true, logging: false, backgroundColor: '#ffffff', width: tempDiv.scrollWidth, height: tempDiv.scrollHeight })
+      document.body.removeChild(tempDiv)
+
+      const imgData = canvas.toDataURL('image/png')
+      const pdf = new jsPDF('p', 'mm', 'a4')
+      const imgWidth = 210
+      const pageHeight = 297
+      const imgHeight = (canvas.height * imgWidth) / canvas.width
+      let heightLeft = imgHeight
+      let position = 0
+
+      pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight)
+      heightLeft -= pageHeight
+      while (heightLeft >= 0) {
+        position = heightLeft - imgHeight
+        pdf.addPage()
+        pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight)
+        heightLeft -= pageHeight
+      }
+
+      const dataUrl = pdf.output('datauristring')
+      return dataUrl ? dataUrl.split(',')[1] : null
+    } catch {
+      if (document.body.contains(tempDiv)) document.body.removeChild(tempDiv)
+      return null
+    }
+  }
+
   const handleSendBillEmail = async (bill: any) => {
     const customerEmail = bill.order?.customer?.email
     if (!customerEmail) {
@@ -145,10 +244,11 @@ export default function BillsPage() {
     }
 
     try {
+      const pdfBase64 = await renderBillToPdf(bill)
       const response = await fetchWithLoader(`/api/bills/${bill.id}/send`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: customerEmail }),
+        body: JSON.stringify({ email: customerEmail, pdfBase64: pdfBase64 || undefined }),
       })
 
       if (!response.ok) {
@@ -156,7 +256,7 @@ export default function BillsPage() {
         throw new Error(error.error || 'Failed to send bill email')
       }
 
-      toast.success(`Bill sent to ${customerEmail}`)
+      toast.success(`Bill PDF sent to ${customerEmail}`)
     } catch (error: any) {
       console.error('Failed to send bill email:', error)
       toast.error(error.message || 'Failed to send bill email')
@@ -190,160 +290,24 @@ export default function BillsPage() {
   }
 
   const handleGeneratePDF = async (bill: any) => {
-    const order = bill.order
-    const customer = order?.customer
-
-    // Extract meal type amounts and organize meal details
-    const mealTypeAmounts = order?.mealTypeAmounts as Record<string, { amount: number; date: string; services?: string[]; numberOfMembers?: number } | number> | null
-    const stalls = order?.stalls as Array<{ category: string; description: string; cost: number }> | null
-    const transportCost = parseFloat(order?.transportCost || '0') || 0
-
-    // Extract meal details from mealTypeAmounts
-    let tiffinsData: { persons?: number; rate?: number } = {}
-    let lunchDinnerData: { type?: string; persons?: number; rate?: number } = {}
-    let snacksData: { persons?: number; rate?: number } = {}
-
-    if (mealTypeAmounts) {
-      Object.entries(mealTypeAmounts).forEach(([mealType, data]) => {
-        const mealData = typeof data === 'object' && data !== null ? data : { amount: typeof data === 'number' ? data : 0 }
-        const persons = (typeof mealData === 'object' && mealData !== null && 'numberOfMembers' in mealData) ? (mealData.numberOfMembers || 0) : 0
-        const amount = typeof mealData === 'object' && mealData !== null && 'amount' in mealData ? mealData.amount : (typeof data === 'number' ? data : 0)
-        const rate = persons > 0 ? amount / persons : 0
-
-        if (mealType.toLowerCase().includes('tiffin') || mealType.toLowerCase().includes('breakfast')) {
-          tiffinsData = { persons, rate }
-        } else if (mealType.toLowerCase().includes('lunch') || mealType.toLowerCase().includes('dinner')) {
-          lunchDinnerData = {
-            type: mealType.toLowerCase().includes('lunch') ? 'Lunch' : 'Dinner',
-            persons,
-            rate
-          }
-        } else if (mealType.toLowerCase().includes('snack')) {
-          snacksData = { persons, rate }
-        }
-      })
-    }
-
-    // Calculate extra amount from stalls
-    const extraAmount = stalls?.reduce((sum, stall) => sum + (parseFloat(stall.cost?.toString() || '0') || 0), 0) || 0
-
-    // Get first event date from mealTypeAmounts
-    let functionDate = ''
-    let functionTime = ''
-    if (mealTypeAmounts) {
-      const firstDate = Object.values(mealTypeAmounts).find(d =>
-        typeof d === 'object' && d !== null && d.date
-      ) as { date?: string } | undefined
-      if (firstDate?.date) {
-        functionDate = formatDate(firstDate.date)
-        // Extract time if available (assuming format includes time)
-        const dateObj = new Date(firstDate.date)
-        if (!isNaN(dateObj.getTime())) {
-          functionTime = dateObj.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })
-        }
-      }
-    }
-
-    // Prepare PDF template data
-    const pdfData: PDFTemplateData = {
-      type: 'bill',
-      billNumber: `${(bill as any).serialNumber || bill.id.slice(0, 8).toUpperCase()}`,
-      date: bill.createdAt,
-      customer: {
-        name: customer?.name,
-        phone: customer?.phone,
-        email: customer?.email,
-        address: customer?.address,
-      },
-      eventDetails: {
-        eventName: order?.eventName || '',
-        functionDate: functionDate,
-        functionTime: functionTime,
-        functionVenue: '', // Not stored in order, can be added later
-      },
-      mealDetails: {
-        tiffins: tiffinsData.persons ? tiffinsData : undefined,
-        lunchDinner: lunchDinnerData.persons ? lunchDinnerData : undefined,
-        snacks: snacksData.persons ? snacksData : undefined,
-      },
-      mealTypeAmounts: mealTypeAmounts || undefined,
-      stalls: stalls || undefined,
-      discount: order?.discount || undefined,
-      services: order?.services && Array.isArray(order.services) ? order.services : undefined,
-      numberOfMembers: order?.numberOfMembers || undefined,
-      financial: {
-        transport: transportCost || undefined,
-        extra: extraAmount > 0 ? extraAmount : undefined,
-        totalAmount: bill.totalAmount,
-        advancePaid: bill.advancePaid,
-        balanceAmount: bill.remainingAmount,
-        remainingAmount: bill.remainingAmount,
-        paidAmount: bill.paidAmount,
-        discount: order?.discount || undefined,
-      },
-      status: bill.status,
-      orderId: order?.id,
-      supervisor: order?.supervisor?.name,
-    }
-
-    // Generate HTML using template
-    const htmlContent = generatePDFTemplate(pdfData)
-
-    // Create a temporary HTML element to render properly
-    const tempDiv = document.createElement('div')
-    tempDiv.style.position = 'absolute'
-    tempDiv.style.left = '-9999px'
-    tempDiv.style.width = '210mm' // A4 width
-    tempDiv.style.padding = '0'
-    tempDiv.style.background = 'white'
-    tempDiv.style.color = '#000'
-
-    tempDiv.innerHTML = htmlContent
-    document.body.appendChild(tempDiv)
-
-    try {
-      // Convert HTML to canvas
-      const canvas = await html2canvas(tempDiv, {
-        scale: 2,
-        useCORS: true,
-        logging: false,
-        backgroundColor: '#ffffff',
-        width: tempDiv.scrollWidth,
-        height: tempDiv.scrollHeight,
-      })
-
-      // Remove temporary element
-      document.body.removeChild(tempDiv)
-
-      // Create PDF from canvas
-      const imgData = canvas.toDataURL('image/png')
-      const pdf = new jsPDF('p', 'mm', 'a4')
-      const imgWidth = 210 // A4 width in mm
-      const pageHeight = 297 // A4 height in mm
-      const imgHeight = (canvas.height * imgWidth) / canvas.width
-      let heightLeft = imgHeight
-
-      let position = 0
-
-      pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight)
-      heightLeft -= pageHeight
-
-      while (heightLeft >= 0) {
-        position = heightLeft - imgHeight
-        pdf.addPage()
-        pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight)
-        heightLeft -= pageHeight
-      }
-
-      pdf.save(`bill-${bill.id.slice(0, 8)}.pdf`)
-      toast.success('Bill PDF generated successfully!')
-    } catch (error) {
-      if (document.body.contains(tempDiv)) {
-        document.body.removeChild(tempDiv)
-      }
-      console.error('Error generating PDF:', error)
+    const pdfBase64 = await renderBillToPdf(bill)
+    if (!pdfBase64) {
       toast.error('Failed to generate PDF. Please try again.')
+      return
     }
+    const { pdfData } = buildBillPdfData(bill)
+    const billNumber = pdfData.billNumber || bill.id.slice(0, 8)
+    const byteChars = atob(pdfBase64)
+    const byteNumbers = new Array(byteChars.length)
+    for (let i = 0; i < byteChars.length; i++) byteNumbers[i] = byteChars.charCodeAt(i)
+    const blob = new Blob([new Uint8Array(byteNumbers)], { type: 'application/pdf' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `SKC-Bill-${billNumber}.pdf`
+    a.click()
+    URL.revokeObjectURL(url)
+    toast.success('Bill PDF generated successfully!')
   }
 
   // Filter bills
