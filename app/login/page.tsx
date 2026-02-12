@@ -339,7 +339,7 @@ export default function LoginPage() {
                 <h3 className="text-amber-300 font-semibold mb-1.5 lg:mb-1.5 xl:mb-2 text-[9px] lg:text-[10px] xl:text-xs uppercase tracking-wider flex items-center justify-center gap-1">
                   <FaLeaf className="text-[10px] lg:text-xs" /> Our Services
                 </h3>
-                <div className="grid grid-cols-1 gap-1 lg:gap-1 xl:gap-1.5 text-left">
+                <div className="flex flex-col items-center gap-1 lg:gap-1 xl:gap-1.5">
                   <div className="flex items-center gap-1 text-amber-100/90 text-[9px] lg:text-[10px] xl:text-xs">
                     <FaCheckCircle className="text-green-400 text-[8px] lg:text-[9px] xl:text-[10px] flex-shrink-0" />
                     <span>Weddings</span>
@@ -372,7 +372,7 @@ export default function LoginPage() {
                 <h3 className="text-amber-300 font-semibold mb-1.5 lg:mb-1.5 xl:mb-2 text-[9px] lg:text-[10px] xl:text-xs uppercase tracking-wider flex items-center justify-center gap-1">
                   <FaPhone className="text-[10px] lg:text-xs" /> Contact
                 </h3>
-                <div className="grid grid-cols-1 gap-1 lg:gap-1 xl:gap-1.5 text-[9px] lg:text-[10px] xl:text-xs">
+                <div className="flex flex-col items-center gap-1 lg:gap-1 xl:gap-1.5 text-[9px] lg:text-[10px] xl:text-xs">
                   <div className="flex items-center gap-1 text-amber-100">
                     <FaPhone className="text-amber-400 flex-shrink-0 text-[10px] lg:text-xs" />
                     <span className="break-all leading-tight">9866652150 9900119302</span>

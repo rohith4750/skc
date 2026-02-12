@@ -610,11 +610,14 @@ export default function OrdersPage() {
   // Get unique subcategories for a specific menu type
   const getAvailableSubcategories = (menuType: string) => {
     if (!menuType) return []
-    // When lunch or dinner is selected, also include sweets for subcategories
+    // When lunch, dinner or snacks is selected, also include sweets for subcategories
     const categoryItems = menuItems.filter(item => {
       const itemType = item.type.toLowerCase()
       if (menuType.toLowerCase() === 'lunch' || menuType.toLowerCase() === 'dinner') {
         return itemType === 'lunch' || itemType === 'sweets'
+      }
+      if (menuType.toLowerCase() === 'snacks') {
+        return itemType === 'snacks' || itemType === 'sweets'
       }
       return itemType === menuType.toLowerCase()
     })
@@ -713,9 +716,12 @@ export default function OrdersPage() {
       const itemType = m.type.toLowerCase()
       const selectedType = menuType.toLowerCase()
 
-      // Allow sweets to show up for lunch and dinner
+      // Allow sweets to show up for lunch, dinner and snacks
       if (selectedType === 'lunch' || selectedType === 'dinner') {
         return m.isActive !== false && (itemType === selectedType || itemType === 'sweets')
+      }
+      if (selectedType === 'snacks') {
+        return m.isActive !== false && (itemType === 'snacks' || itemType === 'sweets')
       }
 
       return m.isActive !== false && itemType === selectedType

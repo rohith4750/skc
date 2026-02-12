@@ -61,6 +61,14 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    // Convert date-only string (YYYY-MM-DD) to DateTime for Prisma
+    const purchaseDate = data.purchaseDate
+      ? (() => {
+          const d = new Date(data.purchaseDate)
+          return isNaN(d.getTime()) ? null : d
+        })()
+      : null
+
     // Create inventory item
     const inventory = await (prisma as any).inventory.create({
       data: {
@@ -72,7 +80,7 @@ export async function POST(request: NextRequest) {
         condition: data.condition || 'good',
         location: data.location || null,
         supplier: data.supplier || null,
-        purchaseDate: data.purchaseDate || null,
+        purchaseDate,
         purchasePrice: data.purchasePrice || null,
         description: data.description || null,
         isActive: data.isActive !== undefined ? data.isActive : true,

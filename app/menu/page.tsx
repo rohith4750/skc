@@ -44,7 +44,13 @@ export default function MenuPage() {
   // Get unique subcategories for the selected main category
   const availableSubcategories = useMemo(() => {
     if (selectedFilter === 'all') return []
-    const categoryItems = menuItems.filter(item => item.type.toLowerCase() === selectedFilter.toLowerCase())
+    const categoryItems = menuItems.filter(item => {
+      const itemType = item.type.toLowerCase()
+      if (selectedFilter.toLowerCase() === 'snacks') {
+        return itemType === 'snacks' || itemType === 'sweets'
+      }
+      return itemType === selectedFilter.toLowerCase()
+    })
     const subcategories = categoryItems
       .map(item => extractSubcategory(item.description))
       .filter(sub => sub !== '')
@@ -58,7 +64,13 @@ export default function MenuPage() {
 
     // Filter by main category
     if (selectedFilter !== 'all') {
-      filtered = filtered.filter(item => item.type.toLowerCase() === selectedFilter.toLowerCase())
+      filtered = filtered.filter(item => {
+        const itemType = item.type.toLowerCase()
+        if (selectedFilter.toLowerCase() === 'snacks') {
+          return itemType === 'snacks' || itemType === 'sweets'
+        }
+        return itemType === selectedFilter.toLowerCase()
+      })
     }
 
     // Filter by subcategory if selected
@@ -234,7 +246,7 @@ export default function MenuPage() {
     const breakfastItems = menuItems.filter(item => item.type === 'breakfast' && item.isActive)
     const lunchItems = menuItems.filter(item => item.type === 'lunch' && item.isActive)
     const dinnerItems = menuItems.filter(item => item.type === 'dinner' && item.isActive)
-    const snacksItems = menuItems.filter(item => item.type === 'snacks' && item.isActive)
+    const snacksItems = menuItems.filter(item => (item.type === 'snacks' || item.type === 'sweets') && item.isActive)
 
     // Group items by subcategory within each meal type
     const groupBySubcategory = (items: MenuItem[]) => {
