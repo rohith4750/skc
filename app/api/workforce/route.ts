@@ -24,6 +24,16 @@ export async function GET(request: NextRequest) {
       orderBy: { paymentDate: 'desc' }
     })
 
+    // Fetch all workforce payments (bulk payments against outstanding)
+    let workforcePayments: any[] = []
+    try {
+      workforcePayments = await (prisma as any).workforcePayment.findMany({
+        orderBy: { paymentDate: 'desc' }
+      })
+    } catch {
+      // Table may not exist if migration not run yet
+    }
+
     // Map expenses to workforce members
     const workforceWithPayments = workforce.map((member: any) => {
       // Match expenses ONLY by recipient name to ensure each workforce member
@@ -75,7 +85,11 @@ export async function GET(request: NextRequest) {
       }
     })
 
-    return NextResponse.json(workforceWithPayments)
+    return NextResponse.json({
+      workforce: workforceWithPayments,
+      workforcePayments,
+      totalWorkforcePayments: workforcePayments.reduce((sum: number, p: any) => sum + Number(p.amount || 0), 0),
+    })
   } catch (error: any) {
     console.error('Error fetching workforce:', error)
     return NextResponse.json(

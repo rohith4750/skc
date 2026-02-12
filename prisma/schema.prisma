@@ -295,6 +295,18 @@ model Workforce {
   @@map("workforce")
 }
 
+model WorkforcePayment {
+  id             String   @id @default(uuid())
+  amount         Decimal  @db.Decimal(10, 2)
+  paymentMethod  String   // "cash", "upi", "bank_transfer", "cheque", "other"
+  notes          String?
+  paymentDate    DateTime @default(now())
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@map("workforce_payments")
+}
+
 model Stock {
   id          String            @id @default(uuid())
   name        String

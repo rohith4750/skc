@@ -96,12 +96,18 @@ export default function WorkforcePage() {
     loadWorkforce()
   }, [])
 
+  const [workforcePayments, setWorkforcePayments] = useState<any[]>([])
+  const [showPaymentModal, setShowPaymentModal] = useState(false)
+  const [paymentForm, setPaymentForm] = useState({ amount: '', paymentMethod: 'cash', notes: '', paymentDate: new Date().toISOString().split('T')[0] })
+  const [paymentSubmitting, setPaymentSubmitting] = useState(false)
+
   const loadWorkforce = async () => {
     try {
       const response = await fetch('/api/workforce')
       if (!response.ok) throw new Error('Failed to fetch workforce')
       const data = await response.json()
-      setWorkforce(data)
+      setWorkforce(data.workforce || data)
+      setWorkforcePayments(data.workforcePayments || [])
     } catch (error: any) {
       console.error('Failed to load workforce:', error)
       toast.error('Failed to load workforce. Please try again.')
@@ -415,8 +421,51 @@ export default function WorkforcePage() {
   ]
 
   const totalPayments = filteredWorkforce.reduce((sum, m) => sum + (m.totalAmount || 0), 0)
-  const totalPaid = filteredWorkforce.reduce((sum, m) => sum + (m.totalPaidAmount || 0), 0)
-  const totalPending = totalPayments - totalPaid
+  const totalPaidFromExpenses = filteredWorkforce.reduce((sum, m) => sum + (m.totalPaidAmount || 0), 0)
+  const totalWorkforcePayments = workforcePayments.reduce((sum, p) => sum + (parseFloat(p.amount) || 0), 0)
+  const totalPaid = totalPaidFromExpenses + totalWorkforcePayments
+  const totalPending = Math.max(0, totalPayments - totalPaid)
+
+  const handleRecordPayment = async () => {
+    const amount = parseFloat(paymentForm.amount)
+    if (isNaN(amount) || amount <= 0) {
+      toast.error('Please enter a valid amount')
+      return
+    }
+    setPaymentSubmitting(true)
+    try {
+      const response = await fetch('/api/workforce/payments', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          amount,
+          paymentMethod: paymentForm.paymentMethod,
+          notes: paymentForm.notes || undefined,
+          paymentDate: paymentForm.paymentDate,
+        }),
+      })
+      if (!response.ok) {
+        const err = await response.json()
+        throw new Error(err.error || 'Failed to record payment')
+      }
+      toast.success(`Payment of ${formatCurrency(amount)} recorded successfully`)
+      setShowPaymentModal(false)
+      setPaymentForm({ amount: '', paymentMethod: 'cash', notes: '', paymentDate: new Date().toISOString().split('T')[0] })
+      await loadWorkforce()
+    } catch (error: any) {
+      toast.error(error.message || 'Failed to record payment')
+    } finally {
+      setPaymentSubmitting(false)
+    }
+  }
+
+  const PAYMENT_METHODS = [
+    { value: 'cash', label: 'Cash' },
+    { value: 'upi', label: 'UPI' },
+    { value: 'bank_transfer', label: 'Bank Transfer' },
+    { value: 'cheque', label: 'Cheque' },
+    { value: 'other', label: 'Other' },
+  ]
 
   return (
     <div className="p-3 sm:p-4 md:p-5 lg:p-6 xl:p-8">
@@ -435,6 +484,12 @@ export default function WorkforcePage() {
             }`}
           >
             <FaFilter className="w-4 h-4" /> <span className="hidden sm:inline">{showFilters ? 'Hide Filters' : 'Filters'}</span>
+          </button>
+          <button
+            onClick={() => setShowPaymentModal(true)}
+            className="flex items-center justify-center gap-2 bg-green-600 text-white px-3 sm:px-4 py-2 rounded-lg hover:bg-green-700 active:scale-95 transition-all touch-manipulation text-sm sm:text-base flex-1 sm:flex-initial"
+          >
+            <FaDollarSign className="w-4 h-4" /> Record Payment
           </button>
           <Link
             href="/workforce/create"
@@ -606,6 +661,19 @@ export default function WorkforcePage() {
         </div>
       )}
 
+      {/* Outstanding & Payment Summary */}
+      {(totalWorkforcePayments > 0 || totalPending > 0) && (
+        <div className="bg-white rounded-lg shadow-md p-4 mb-6 border border-gray-100">
+          <h3 className="text-sm font-semibold text-gray-700 mb-3">Payment Summary</h3>
+          <div className="flex flex-wrap gap-4 text-sm">
+            <span>Total Dues: <strong>{formatCurrency(totalPayments)}</strong></span>
+            <span>Paid (Expenses): <strong className="text-green-600">{formatCurrency(totalPaidFromExpenses)}</strong></span>
+            <span>Paid (Bulk): <strong className="text-green-600">{formatCurrency(totalWorkforcePayments)}</strong></span>
+            <span>Outstanding: <strong className="text-red-600">{formatCurrency(totalPending)}</strong></span>
+          </div>
+        </div>
+      )}
+
       {/* Summary Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4 md:gap-5 lg:gap-6 mb-4 sm:mb-5 md:mb-6">
         <div className="bg-white rounded-lg shadow-md p-4 sm:p-5 md:p-6 border-l-4 border-primary-500 relative overflow-hidden">
@@ -662,7 +730,7 @@ export default function WorkforcePage() {
           {/* Content */}
           <div className="relative pr-12 sm:pr-16">
             <p className="text-sm text-gray-600 mb-3">
-              {totalPending > 0 ? 'Amount to Pay' : 'Pending Balance'}
+              {totalPending > 0 ? 'Outstanding Amount' : 'Pending Balance'}
             </p>
             <p className={`text-lg sm:text-xl lg:text-2xl font-bold break-words leading-tight ${
               totalPending > 0 ? 'text-red-600' : 'text-green-600'
@@ -670,7 +738,15 @@ export default function WorkforcePage() {
               {totalPending > 0 ? formatCurrency(totalPending) : 'All Paid ✓'}
             </p>
             {totalPending > 0 && (
-              <p className="text-xs text-red-500 mt-2 font-medium">Needs to be paid</p>
+              <>
+                <p className="text-xs text-red-500 mt-2 font-medium">Needs to be paid</p>
+                <button
+                  onClick={() => setShowPaymentModal(true)}
+                  className="mt-3 px-3 py-1.5 bg-primary-500 text-white text-sm font-medium rounded-lg hover:bg-primary-600 transition-colors"
+                >
+                  Record Payment
+                </button>
+              </>
             )}
           </div>
         </div>
@@ -846,6 +922,51 @@ export default function WorkforcePage() {
         </div>
       </div>
 
+      {/* Workforce Payment History */}
+      {workforcePayments.length > 0 && (
+        <div className="mt-6 bg-white rounded-lg shadow-md overflow-hidden">
+          <div className="bg-gradient-to-r from-green-500 to-emerald-500 px-6 py-4">
+            <h2 className="text-lg font-bold text-white flex items-center gap-2">
+              <FaReceipt className="w-5 h-5" />
+              Payment Transactions
+            </h2>
+            <p className="text-green-100 text-sm mt-1">Recorded payments against workforce outstanding</p>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[500px]">
+              <thead className="bg-gray-50 border-b border-gray-200">
+                <tr>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Date</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Payment Method</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Notes</th>
+                  <th className="px-4 py-3 text-right text-xs font-semibold text-gray-600 uppercase">Amount</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-200">
+                {workforcePayments.map((payment) => (
+                  <tr key={payment.id} className="hover:bg-green-50">
+                    <td className="px-4 py-3 text-sm text-gray-700">{formatDate(payment.paymentDate)}</td>
+                    <td className="px-4 py-3">
+                      <span className="px-2 py-1 rounded text-xs font-medium bg-green-100 text-green-800 capitalize">
+                        {payment.paymentMethod.replace('_', ' ')}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3 text-sm text-gray-600">{payment.notes || '-'}</td>
+                    <td className="px-4 py-3 text-right font-bold text-green-600">{formatCurrency(parseFloat(payment.amount))}</td>
+                  </tr>
+                ))}
+              </tbody>
+              <tfoot className="bg-gray-50 border-t-2 border-gray-300">
+                <tr>
+                  <td colSpan={3} className="px-4 py-4 text-right font-semibold text-gray-700">Total Payments:</td>
+                  <td className="px-4 py-4 text-right text-xl font-bold text-green-600">{formatCurrency(totalWorkforcePayments)}</td>
+                </tr>
+              </tfoot>
+            </table>
+          </div>
+        </div>
+      )}
+
       {/* Audit Log - Paid Payments Table */}
       {filteredWorkforce.some(m => m.expenses && m.expenses.some((e: any) => e.paymentStatus === 'paid' || e.paidAmount > 0)) && (
         <div className="mt-6 bg-white rounded-lg shadow-md overflow-hidden">
@@ -939,6 +1060,76 @@ export default function WorkforcePage() {
                 </tr>
               </tfoot>
             </table>
+          </div>
+        </div>
+      )}
+
+      {/* Record Payment Modal */}
+      {showPaymentModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+          <div className="bg-white rounded-xl shadow-xl p-6 max-w-md w-full mx-4">
+            <h3 className="text-lg font-semibold text-gray-800 mb-4">Record Payment</h3>
+            <p className="text-sm text-gray-600 mb-4">Record a payment against workforce outstanding. Current outstanding: <strong className="text-red-600">{formatCurrency(totalPending)}</strong></p>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Amount *</label>
+                <input
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  value={paymentForm.amount}
+                  onChange={(e) => setPaymentForm((p) => ({ ...p, amount: e.target.value }))}
+                  placeholder="e.g. 5000"
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Payment Method</label>
+                <select
+                  value={paymentForm.paymentMethod}
+                  onChange={(e) => setPaymentForm((p) => ({ ...p, paymentMethod: e.target.value }))}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                >
+                  {PAYMENT_METHODS.map((pm) => (
+                    <option key={pm.value} value={pm.value}>{pm.label}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Payment Date</label>
+                <input
+                  type="date"
+                  value={paymentForm.paymentDate}
+                  onChange={(e) => setPaymentForm((p) => ({ ...p, paymentDate: e.target.value }))}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Notes (optional)</label>
+                <input
+                  type="text"
+                  value={paymentForm.notes}
+                  onChange={(e) => setPaymentForm((p) => ({ ...p, notes: e.target.value }))}
+                  placeholder="e.g. UPI ref, cheque no."
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                />
+              </div>
+            </div>
+            <div className="flex justify-end gap-3 mt-6">
+              <button
+                onClick={() => setShowPaymentModal(false)}
+                className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleRecordPayment}
+                disabled={paymentSubmitting}
+                className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {paymentSubmitting ? 'Recording...' : 'Record Payment'}
+              </button>
+            </div>
           </div>
         </div>
       )}
