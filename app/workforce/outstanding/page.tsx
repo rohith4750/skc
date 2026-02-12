@@ -1,7 +1,7 @@
 'use client'
 
-import { useEffect, useState } from 'react'
-import { FaDollarSign, FaUtensils, FaUserTie, FaTruck, FaUsers, FaUserFriends, FaGasPump, FaBox, FaStore, FaCircle, FaReceipt } from 'react-icons/fa'
+import { useEffect, useState, Fragment } from 'react'
+import { FaDollarSign, FaUtensils, FaUserTie, FaTruck, FaUsers, FaUserFriends, FaGasPump, FaBox, FaStore, FaCircle, FaReceipt, FaChevronDown, FaChevronUp, FaFileAlt } from 'react-icons/fa'
 import toast from 'react-hot-toast'
 import { formatCurrency, formatDate } from '@/lib/utils'
 import Link from 'next/link'
@@ -32,6 +32,13 @@ const roleColors: Record<string, string> = {
 }
 
 const WORKFORCE_ROLES = ['supervisor', 'chef', 'labours', 'boys', 'transport', 'gas', 'pan', 'store', 'other']
+const PAYMENT_METHOD_LABELS: Record<string, string> = {
+  cash: 'Cash',
+  upi: 'UPI',
+  bank_transfer: 'Bank Transfer',
+  cheque: 'Cheque',
+  other: 'Other',
+}
 const PAYMENT_METHODS = [
   { value: 'cash', label: 'Cash' },
   { value: 'upi', label: 'UPI' },
@@ -78,6 +85,35 @@ export default function OutstandingPage() {
     paymentDate: new Date().toISOString().split('T')[0],
   })
   const [paymentSubmitting, setPaymentSubmitting] = useState(false)
+  const [expandedStatement, setExpandedStatement] = useState<string | null>(null)
+
+  const buildStatement = (r: RoleSummary) => {
+    const lines: { date: string; desc: string; amount: number; method: string; type: 'workforce' | 'expense' }[] = []
+    r.payments?.forEach((p: any) => {
+      lines.push({
+        date: p.paymentDate,
+        desc: p.notes || 'Recorded payment',
+        amount: Number(p.amount || 0),
+        method: PAYMENT_METHOD_LABELS[String(p.paymentMethod || 'cash')] || String(p.paymentMethod || 'cash').replace('_', ' '),
+        type: 'workforce',
+      })
+    })
+    r.expenses?.forEach((e: any) => {
+      const paid = Number(e.paidAmount || 0)
+      if (paid > 0) {
+        const desc = e.recipient ? `Expense – ${e.recipient}` : (e.description || 'Expense payment')
+        lines.push({
+          date: e.paymentDate,
+          desc,
+          amount: paid,
+          method: 'Expense',
+          type: 'expense',
+        })
+      }
+    })
+    lines.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+    return lines
+  }
 
   const loadOutstanding = async () => {
     try {
@@ -239,27 +275,79 @@ export default function OutstandingPage() {
               <tbody>
                 {roleSummary.filter((r) => r.totalDues > 0 || r.payments?.length > 0).map((r) => {
                   const Icon = roleIcons[r.role]
+                  const statement = buildStatement(r)
+                  const isExpanded = expandedStatement === r.role
                   return (
-                    <tr key={r.role} className="border-t border-gray-100 hover:bg-gray-50">
-                      <td className="px-4 py-3">
-                        <span className={`inline-flex items-center gap-2 px-2 py-1 rounded-full text-xs font-medium ${roleColors[r.role]}`}>
-                          {Icon && <Icon className="w-4 h-4" />}
-                          {r.role.charAt(0).toUpperCase() + r.role.slice(1)}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3 text-right">{formatCurrency(r.totalDues)}</td>
-                      <td className="px-4 py-3 text-right text-green-600">{formatCurrency(r.totalPaid)}</td>
-                      <td className="px-4 py-3 text-right font-semibold text-amber-700">{formatCurrency(r.outstanding)}</td>
-                      <td className="px-4 py-3 text-right">
-                        <button
-                          onClick={() => openPaymentModal(r.role)}
-                          disabled={r.outstanding <= 0}
-                          className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-green-600 text-white text-sm font-medium hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
-                        >
-                          <FaReceipt className="w-4 h-4" /> Record Payment
-                        </button>
-                      </td>
-                    </tr>
+                    <Fragment key={r.role}>
+                      <tr className="border-t border-gray-100 hover:bg-gray-50">
+                        <td className="px-4 py-3">
+                          <span className={`inline-flex items-center gap-2 px-2 py-1 rounded-full text-xs font-medium ${roleColors[r.role]}`}>
+                            {Icon && <Icon className="w-4 h-4" />}
+                            {r.role.charAt(0).toUpperCase() + r.role.slice(1)}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3 text-right">{formatCurrency(r.totalDues)}</td>
+                        <td className="px-4 py-3 text-right text-green-600">{formatCurrency(r.totalPaid)}</td>
+                        <td className="px-4 py-3 text-right font-semibold text-amber-700">{formatCurrency(r.outstanding)}</td>
+                        <td className="px-4 py-3 text-right">
+                          <div className="flex items-center justify-end gap-2">
+                            <button
+                              onClick={() => setExpandedStatement(isExpanded ? null : r.role)}
+                              className="inline-flex items-center gap-1 px-2 py-1.5 rounded-lg border border-gray-300 text-gray-700 text-sm hover:bg-gray-50"
+                            >
+                              <FaFileAlt className="w-4 h-4" />
+                              {isExpanded ? <><FaChevronUp className="w-4 h-4" /> Hide</> : <><FaChevronDown className="w-4 h-4" /> Statement</>}
+                            </button>
+                            <button
+                              onClick={() => openPaymentModal(r.role)}
+                              disabled={r.outstanding <= 0}
+                              className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-green-600 text-white text-sm font-medium hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
+                              <FaReceipt className="w-4 h-4" /> Record Payment
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                      {isExpanded && statement.length > 0 && (
+                        <tr>
+                          <td colSpan={5} className="px-4 py-3 bg-gray-50">
+                            <div className="rounded-lg border border-gray-200 bg-white overflow-hidden">
+                              <div className="px-4 py-2 bg-gray-100">
+                                <h4 className="font-medium text-gray-800">Payment Statement – {r.role.charAt(0).toUpperCase() + r.role.slice(1)}</h4>
+                                <p className="text-xs text-gray-500">How the amount was transferred</p>
+                              </div>
+                              <table className="w-full text-sm">
+                                <thead>
+                                  <tr className="bg-gray-50 text-left text-gray-600">
+                                    <th className="px-4 py-2 font-medium">Date</th>
+                                    <th className="px-4 py-2 font-medium">Description</th>
+                                    <th className="px-4 py-2 font-medium">Method</th>
+                                    <th className="px-4 py-2 font-medium text-right">Amount</th>
+                                  </tr>
+                                </thead>
+                                <tbody>
+                                  {statement.map((line, i) => (
+                                    <tr key={i} className="border-t border-gray-100">
+                                      <td className="px-4 py-2 text-gray-700">{formatDate(line.date)}</td>
+                                      <td className="px-4 py-2 text-gray-700">{line.desc}</td>
+                                      <td className="px-4 py-2 text-gray-600 capitalize">{line.method}</td>
+                                      <td className="px-4 py-2 text-right font-medium text-green-600">{formatCurrency(line.amount)}</td>
+                                    </tr>
+                                  ))}
+                                </tbody>
+                              </table>
+                            </div>
+                          </td>
+                        </tr>
+                      )}
+                      {isExpanded && statement.length === 0 && (
+                        <tr>
+                          <td colSpan={5} className="px-4 py-3 bg-gray-50">
+                            <p className="text-sm text-gray-500 italic">No payments recorded yet.</p>
+                          </td>
+                        </tr>
+                      )}
+                    </Fragment>
                   )
                 })}
               </tbody>
