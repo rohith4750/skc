@@ -359,9 +359,9 @@ export default function OrdersHistoryPage() {
     document.body.appendChild(tempDiv)
 
     try {
-      // Convert HTML to canvas
+      // Convert HTML to canvas (scale 1.5 + JPEG to keep payload under 4.5MB limit)
       const canvas = await html2canvas(tempDiv, {
-        scale: 2,
+        scale: 1.5,
         useCORS: true,
         logging: false,
         backgroundColor: '#ffffff'
@@ -370,8 +370,8 @@ export default function OrdersHistoryPage() {
       // Remove temporary element
       document.body.removeChild(tempDiv)
 
-      // Create PDF from canvas
-      const imgData = canvas.toDataURL('image/png')
+      // Create PDF from canvas (JPEG for smaller size - avoids 413 on email send)
+      const imgData = canvas.toDataURL('image/jpeg', 0.85)
       const pdf = new jsPDF('p', 'mm', 'a4')
       const imgWidth = 210 // A4 width in mm
       const pageHeight = 297 // A4 height in mm
@@ -380,13 +380,13 @@ export default function OrdersHistoryPage() {
 
       let position = 0
 
-      pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight)
+      pdf.addImage(imgData, 'JPEG', 0, position, imgWidth, imgHeight)
       heightLeft -= pageHeight
 
       while (heightLeft >= 0) {
         position = heightLeft - imgHeight
         pdf.addPage()
-      pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight)
+      pdf.addImage(imgData, 'JPEG', 0, position, imgWidth, imgHeight)
       heightLeft -= pageHeight
       }
 

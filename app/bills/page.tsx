@@ -209,10 +209,10 @@ export default function BillsPage() {
     document.body.appendChild(tempDiv)
 
     try {
-      const canvas = await html2canvas(tempDiv, { scale: 2, useCORS: true, logging: false, backgroundColor: '#ffffff', width: tempDiv.scrollWidth, height: tempDiv.scrollHeight })
+      const canvas = await html2canvas(tempDiv, { scale: 1.5, useCORS: true, logging: false, backgroundColor: '#ffffff', width: tempDiv.scrollWidth, height: tempDiv.scrollHeight })
       document.body.removeChild(tempDiv)
 
-      const imgData = canvas.toDataURL('image/png')
+      const imgData = canvas.toDataURL('image/jpeg', 0.85)
       const pdf = new jsPDF('p', 'mm', 'a4')
       const imgWidth = 210
       const pageHeight = 297
@@ -220,12 +220,12 @@ export default function BillsPage() {
       let heightLeft = imgHeight
       let position = 0
 
-      pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight)
+      pdf.addImage(imgData, 'JPEG', 0, position, imgWidth, imgHeight)
       heightLeft -= pageHeight
       while (heightLeft >= 0) {
         position = heightLeft - imgHeight
         pdf.addPage()
-        pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight)
+        pdf.addImage(imgData, 'JPEG', 0, position, imgWidth, imgHeight)
         heightLeft -= pageHeight
       }
 
@@ -256,21 +256,21 @@ export default function BillsPage() {
     tempDiv.innerHTML = htmlContent
     document.body.appendChild(tempDiv)
     try {
-      const canvas = await html2canvas(tempDiv, { scale: 2, useCORS: true, logging: false, backgroundColor: '#ffffff' })
+      const canvas = await html2canvas(tempDiv, { scale: 1.5, useCORS: true, logging: false, backgroundColor: '#ffffff' })
       document.body.removeChild(tempDiv)
-      const imgData = canvas.toDataURL('image/png')
+      const imgData = canvas.toDataURL('image/jpeg', 0.85)
       const pdf = new jsPDF('p', 'mm', 'a4')
       const imgWidth = 210
       const pageHeight = 297
       const imgHeight = (canvas.height * imgWidth) / canvas.width
       let heightLeft = imgHeight
       let position = 0
-      pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight)
+      pdf.addImage(imgData, 'JPEG', 0, position, imgWidth, imgHeight)
       heightLeft -= pageHeight
       while (heightLeft >= 0) {
         position = heightLeft - imgHeight
         pdf.addPage()
-        pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight)
+        pdf.addImage(imgData, 'JPEG', 0, position, imgWidth, imgHeight)
         heightLeft -= pageHeight
       }
       const dataUrl = pdf.output('datauristring')
