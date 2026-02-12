@@ -145,7 +145,7 @@ export function generateCustomerEmailWrapper(params: {
     <div class="footer">
       ${footerNote ? `<p class="footer-note">${footerNote}</p>` : ''}
       <p class="footer-contact">
-        📞 9866652150, 9900119302, 9656501388 &nbsp;|&nbsp;
+        📞 9866525102, 9963691393, 9390015302 &nbsp;|&nbsp;
         📧 <a href="mailto:pujyasri1989cya@gmail.com">pujyasri1989cya@gmail.com</a>
       </p>
     </div>

@@ -98,7 +98,7 @@ export function buildOrderPdfHtml(
       <div class="header-details">
         <div>Regd. No: 2361930100031</div>
         <div>Plot No. 115, Padmavathi Nagar, Bank Colony, Saheb Nag Vanathalipuram, Hyderabad - 500070.</div>
-        <div>Email: pujyasri1989cya@gmail.com, Cell: 98666521502, 9900119302, 9656501388</div>
+        <div>Email: pujyasri1989cya@gmail.com, Cell: 9866525102, 9963691393, 9390015302</div>
       </div>
     </div>
     <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 25px;">

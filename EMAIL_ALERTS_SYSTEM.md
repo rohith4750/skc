@@ -115,7 +115,7 @@ Balance:          ₹40,000.00
 This is an automated notification from 
 SKC Caterers Management System
 
-📞 9866652150, 9900119302, 9656501388
+📞 9866525102, 9963691393, 9390015302
 📧 pujyasri1989cya@gmail.com
 ═══════════════════════════════════════
 ```
@@ -316,7 +316,7 @@ Possible improvements:
 
 For issues or questions:
 - Email: pujyasri1989cya@gmail.com
-- Phone: 9866652150, 9900119302, 9656501388
+- Phone: 9866525102, 9963691393, 9390015302
 
 ---
 

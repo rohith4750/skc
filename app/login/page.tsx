@@ -241,7 +241,7 @@ export default function LoginPage() {
                   <FaPhone className="text-red-600 text-base sm:text-lg" /> Contact Us
                 </h3>
                 <div className="space-y-2 sm:space-y-2.5 md:space-y-3 text-xs sm:text-sm md:text-base text-gray-600">
-                  <p className="flex items-center gap-2">📞 <span className="break-all">9866652150, 9900119302, 9656501388</span></p>
+                  <p className="flex items-center gap-2">📞 <span className="break-all">9866525102, 9963691393, 9390015302</span></p>
                   <p className="flex items-center gap-2">✉️ <span className="break-all">pujyasri1989cya@gmail.com</span></p>
                   <p className="flex items-center gap-2">📍 Vanathalipuram, Hyderabad - 500070</p>
                 </div>
@@ -375,11 +375,11 @@ export default function LoginPage() {
                 <div className="flex flex-col items-center gap-1 lg:gap-1 xl:gap-1.5 text-[9px] lg:text-[10px] xl:text-xs">
                   <div className="flex items-center gap-1 text-amber-100">
                     <FaPhone className="text-amber-400 flex-shrink-0 text-[10px] lg:text-xs" />
-                    <span className="break-all leading-tight">9866652150 9900119302</span>
+                    <span className="break-all leading-tight">9866525102 9963691393</span>
                   </div>
                   <div className="flex items-center gap-1 text-amber-100">
                     <FaPhone className="text-amber-400 flex-shrink-0 text-[10px] lg:text-xs opacity-0" />
-                    <span className="break-all leading-tight">9656501388</span>
+                    <span className="break-all leading-tight">9390015302</span>
                   </div>
                   <div className="flex items-center gap-1 text-amber-100">
                     <FaEnvelope className="text-amber-400 flex-shrink-0 text-[10px] lg:text-xs" />

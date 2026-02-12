@@ -185,7 +185,7 @@ function generateAlertEmailHTML(data: AlertEmailData): string {
 
         <div class="footer">
           <p>This is an automated notification from SKC Caterers Management System</p>
-          <p style="margin: 5px 0;">📞 9866652150, 9900119302, 9656501388</p>
+          <p style="margin: 5px 0;">📞 9866525102, 9963691393, 9390015302</p>
           <p style="margin: 5px 0;">📧 pujyasri1989cya@gmail.com</p>
         </div>
       </div>

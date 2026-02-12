@@ -71,7 +71,7 @@ export function generatePDFTemplate(data: PDFTemplateData): string {
   const subtitle = '(Pure Vegetarian)'
   const regdNo = 'Regd. No. 236190310003331'
   const address = 'Plot No. 115, Padmavathi Nagar, Bank Colony, Saheb Nagar. Varsthalipuram, Hyderabad - 500070.'
-  const contact = 'Email: pujayasri1989cya@gmail.com, Cell: 9866525102, 9396631933, 91933133'
+  const contact = 'Email: pujyasri1989cya@gmail.com, Cell: 9866525102, 9963691393, 9390015302'
   const topLeft = 'Telidevara Rajendraprasad'
   const topRight = 'ART FOOD ZONE'
 
