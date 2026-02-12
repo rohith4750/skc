@@ -97,9 +97,6 @@ export default function WorkforcePage() {
   }, [])
 
   const [workforcePayments, setWorkforcePayments] = useState<any[]>([])
-  const [showPaymentModal, setShowPaymentModal] = useState(false)
-  const [paymentForm, setPaymentForm] = useState({ amount: '', paymentMethod: 'cash', notes: '', paymentDate: new Date().toISOString().split('T')[0] })
-  const [paymentSubmitting, setPaymentSubmitting] = useState(false)
 
   const loadWorkforce = async () => {
     try {
@@ -424,48 +421,6 @@ export default function WorkforcePage() {
   const totalPaidFromExpenses = filteredWorkforce.reduce((sum, m) => sum + (m.totalPaidAmount || 0), 0)
   const totalWorkforcePayments = workforcePayments.reduce((sum, p) => sum + (parseFloat(p.amount) || 0), 0)
   const totalPaid = totalPaidFromExpenses + totalWorkforcePayments
-  const totalPending = Math.max(0, totalPayments - totalPaid)
-
-  const handleRecordPayment = async () => {
-    const amount = parseFloat(paymentForm.amount)
-    if (isNaN(amount) || amount <= 0) {
-      toast.error('Please enter a valid amount')
-      return
-    }
-    setPaymentSubmitting(true)
-    try {
-      const response = await fetch('/api/workforce/payments', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          amount,
-          paymentMethod: paymentForm.paymentMethod,
-          notes: paymentForm.notes || undefined,
-          paymentDate: paymentForm.paymentDate,
-        }),
-      })
-      if (!response.ok) {
-        const err = await response.json()
-        throw new Error(err.error || 'Failed to record payment')
-      }
-      toast.success(`Payment of ${formatCurrency(amount)} recorded successfully`)
-      setShowPaymentModal(false)
-      setPaymentForm({ amount: '', paymentMethod: 'cash', notes: '', paymentDate: new Date().toISOString().split('T')[0] })
-      await loadWorkforce()
-    } catch (error: any) {
-      toast.error(error.message || 'Failed to record payment')
-    } finally {
-      setPaymentSubmitting(false)
-    }
-  }
-
-  const PAYMENT_METHODS = [
-    { value: 'cash', label: 'Cash' },
-    { value: 'upi', label: 'UPI' },
-    { value: 'bank_transfer', label: 'Bank Transfer' },
-    { value: 'cheque', label: 'Cheque' },
-    { value: 'other', label: 'Other' },
-  ]
 
   return (
     <div className="p-3 sm:p-4 md:p-5 lg:p-6 xl:p-8">
@@ -474,28 +429,28 @@ export default function WorkforcePage() {
           <h1 className="text-xl sm:text-2xl md:text-3xl font-bold text-gray-800">Workforce Management</h1>
           <p className="text-gray-600 mt-1 sm:mt-1.5 md:mt-2 text-xs sm:text-sm md:text-base">Manage chefs, supervisors, and transport staff with payment tracking</p>
         </div>
-        <div className="flex items-center gap-2 w-full sm:w-auto">
+        <div className="flex items-center gap-2">
+          <Link
+            href="/workforce/outstanding"
+            className="text-sm text-amber-700 hover:text-amber-800 font-medium"
+          >
+            Outstanding →
+          </Link>
           <button
             onClick={() => setShowFilters(!showFilters)}
-            className={`flex items-center gap-2 px-3 sm:px-4 py-2 rounded-lg active:scale-95 transition-all touch-manipulation text-sm sm:text-base ${
+            className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-sm ${
               showFilters
                 ? 'bg-primary-500 text-white hover:bg-primary-600'
                 : 'bg-white border border-gray-300 text-gray-700 hover:bg-gray-50'
             }`}
           >
-            <FaFilter className="w-4 h-4" /> <span className="hidden sm:inline">{showFilters ? 'Hide Filters' : 'Filters'}</span>
-          </button>
-          <button
-            onClick={() => setShowPaymentModal(true)}
-            className="flex items-center justify-center gap-2 bg-green-600 text-white px-3 sm:px-4 py-2 rounded-lg hover:bg-green-700 active:scale-95 transition-all touch-manipulation text-sm sm:text-base flex-1 sm:flex-initial"
-          >
-            <FaDollarSign className="w-4 h-4" /> Record Payment
+            <FaFilter className="w-3.5 h-3.5" /> <span className="hidden sm:inline">{showFilters ? 'Hide' : 'Filters'}</span>
           </button>
           <Link
             href="/workforce/create"
-            className="flex items-center justify-center gap-2 bg-primary-500 text-white px-3 sm:px-4 py-2 rounded-lg hover:bg-primary-600 active:scale-95 transition-all touch-manipulation text-sm sm:text-base flex-1 sm:flex-initial"
+            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-md bg-primary-500 text-white text-sm hover:bg-primary-600"
           >
-            <FaPlus className="w-4 h-4" /> Add Member
+            <FaPlus className="w-3.5 h-3.5" /> Add Member
           </Link>
         </div>
       </div>
@@ -661,118 +616,57 @@ export default function WorkforcePage() {
         </div>
       )}
 
-      {/* Outstanding & Payment Summary */}
-      {(totalWorkforcePayments > 0 || totalPending > 0) && (
-        <div className="bg-white rounded-lg shadow-md p-4 mb-6 border border-gray-100">
-          <h3 className="text-sm font-semibold text-gray-700 mb-3">Payment Summary</h3>
-          <div className="flex flex-wrap gap-4 text-sm">
-            <span>Total Dues: <strong>{formatCurrency(totalPayments)}</strong></span>
-            <span>Paid (Expenses): <strong className="text-green-600">{formatCurrency(totalPaidFromExpenses)}</strong></span>
-            <span>Paid (Bulk): <strong className="text-green-600">{formatCurrency(totalWorkforcePayments)}</strong></span>
-            <span>Outstanding: <strong className="text-red-600">{formatCurrency(totalPending)}</strong></span>
-          </div>
-        </div>
-      )}
-
       {/* Summary Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4 md:gap-5 lg:gap-6 mb-4 sm:mb-5 md:mb-6">
-        <div className="bg-white rounded-lg shadow-md p-4 sm:p-5 md:p-6 border-l-4 border-primary-500 relative overflow-hidden">
-          {/* Icon at top right corner */}
-          <div className="bg-primary-500 absolute top-0 right-0 p-3 sm:p-4 rounded-bl-2xl">
-            <FaUserTie className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 mb-4 sm:mb-5 md:mb-6">
+        <div className="bg-white rounded-lg shadow border border-gray-100 p-4 sm:p-5 border-l-4 border-primary-500 relative overflow-hidden">
+          <div className="bg-primary-500 absolute top-0 right-0 p-2.5 rounded-bl-xl">
+            <FaUserTie className="w-5 h-5 text-white" />
           </div>
-          
-          {/* Content */}
-          <div className="relative pr-12 sm:pr-16">
-            <p className="text-sm text-gray-600 mb-3">Total Workforce</p>
-            <p className="text-lg sm:text-xl lg:text-2xl font-bold text-gray-800 break-words leading-tight">{filteredWorkforce.length}</p>
+          <div className="relative pr-12">
+            <p className="text-sm text-gray-600 mb-1">Total Workforce</p>
+            <p className="text-lg font-bold text-gray-800">{filteredWorkforce.length}</p>
             {workforce.length !== filteredWorkforce.length && (
-              <p className="text-xs text-gray-500 mt-2">of {workforce.length} total</p>
+              <p className="text-xs text-gray-500 mt-1">of {workforce.length} total</p>
             )}
           </div>
         </div>
-        <div className="bg-white rounded-lg shadow-md p-5 sm:p-6 border-l-4 border-blue-500 relative overflow-hidden">
-          {/* Icon at top right corner */}
-          <div className="bg-blue-500 absolute top-0 right-0 p-3 sm:p-4 rounded-bl-2xl">
-            <FaDollarSign className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
+        <div className="bg-white rounded-lg shadow border border-gray-100 p-4 sm:p-5 border-l-4 border-blue-500 relative overflow-hidden">
+          <div className="bg-blue-500 absolute top-0 right-0 p-2.5 rounded-bl-xl">
+            <FaDollarSign className="w-5 h-5 text-white" />
           </div>
-          
-          {/* Content */}
-          <div className="relative pr-12 sm:pr-16">
-            <p className="text-sm text-gray-600 mb-3">Total Amount</p>
-            <p className="text-lg sm:text-xl lg:text-2xl font-bold text-gray-800 break-words leading-tight">{formatCurrency(totalPayments)}</p>
+          <div className="relative pr-12">
+            <p className="text-sm text-gray-600 mb-1">Total Amount</p>
+            <p className="text-lg font-bold text-gray-800">{formatCurrency(totalPayments)}</p>
           </div>
         </div>
-        <div className="bg-white rounded-lg shadow-md p-5 sm:p-6 border-l-4 border-green-500 relative overflow-hidden">
-          {/* Icon at top right corner */}
-          <div className="bg-green-500 absolute top-0 right-0 p-3 sm:p-4 rounded-bl-2xl">
-            <FaCheckCircle className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
+        <div className="bg-white rounded-lg shadow border border-gray-100 p-4 sm:p-5 border-l-4 border-green-500 relative overflow-hidden">
+          <div className="bg-green-500 absolute top-0 right-0 p-2.5 rounded-bl-xl">
+            <FaCheckCircle className="w-5 h-5 text-white" />
           </div>
-          
-          {/* Content */}
-          <div className="relative pr-12 sm:pr-16">
-            <p className="text-sm text-gray-600 mb-3">Total Paid</p>
-            <p className="text-lg sm:text-xl lg:text-2xl font-bold text-green-600 break-words leading-tight">{formatCurrency(totalPaid)}</p>
-          </div>
-        </div>
-        <div className={`rounded-lg shadow-md p-5 sm:p-6 border-l-4 relative overflow-hidden ${
-          totalPending > 0 
-            ? 'bg-gradient-to-br from-red-50 to-orange-50 border-red-500' 
-            : 'bg-white border-green-500'
-        }`}>
-          {/* Icon at top right corner */}
-          <div className={`absolute top-0 right-0 p-3 sm:p-4 rounded-bl-2xl ${
-            totalPending > 0 ? 'bg-red-500' : 'bg-green-500'
-          }`}>
-            <FaExclamationCircle className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
-          </div>
-          
-          {/* Content */}
-          <div className="relative pr-12 sm:pr-16">
-            <p className="text-sm text-gray-600 mb-3">
-              {totalPending > 0 ? 'Outstanding Amount' : 'Pending Balance'}
-            </p>
-            <p className={`text-lg sm:text-xl lg:text-2xl font-bold break-words leading-tight ${
-              totalPending > 0 ? 'text-red-600' : 'text-green-600'
-            }`}>
-              {totalPending > 0 ? formatCurrency(totalPending) : 'All Paid ✓'}
-            </p>
-            {totalPending > 0 && (
-              <>
-                <p className="text-xs text-red-500 mt-2 font-medium">Needs to be paid</p>
-                <button
-                  onClick={() => setShowPaymentModal(true)}
-                  className="mt-3 px-3 py-1.5 bg-primary-500 text-white text-sm font-medium rounded-lg hover:bg-primary-600 transition-colors"
-                >
-                  Record Payment
-                </button>
-              </>
-            )}
+          <div className="relative pr-12">
+            <p className="text-sm text-gray-600 mb-1">Total Paid</p>
+            <p className="text-lg font-bold text-green-600">{formatCurrency(totalPaid)}</p>
           </div>
         </div>
       </div>
 
       {/* Role Summary Cards */}
       {Object.keys(roleTotals).length > 0 && (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 mb-6">
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 mb-6">
           {Object.entries(roleTotals).map(([role, totals]) => {
             const Icon = roleIcons[role]
             return (
-              <div key={role} className="bg-white rounded-lg shadow p-4 border border-gray-100">
-                <div className="flex items-center justify-between mb-2">
-                  <span className={`px-2 py-1 rounded-full text-xs font-medium ${roleColors[role] || 'bg-gray-100 text-gray-800'}`}>
+              <div key={role} className="bg-white rounded-lg shadow border border-gray-100 p-3">
+                <div className="flex items-center justify-between mb-1">
+                  <span className={`px-1.5 py-0.5 rounded text-xs font-medium ${roleColors[role] || 'bg-gray-100 text-gray-800'}`}>
                     {role.toUpperCase()}
                   </span>
-                  {Icon && (
-                    <div className={`${roleColors[role]} rounded-full p-2`}>
-                      <Icon className="text-sm" />
-                    </div>
-                  )}
+                  {Icon && <Icon className="w-4 h-4 text-gray-400" />}
                 </div>
-                <p className="text-xl font-bold text-gray-800">{totals.count}</p>
-                <p className="text-xs text-gray-500">Members</p>
+                <p className="text-base font-bold text-gray-800">{totals.count}</p>
+                <p className="text-xs text-gray-500">members</p>
                 {totals.totalAmount > 0 && (
-                  <p className="text-sm font-semibold text-green-600 mt-1">{formatCurrency(totals.totalAmount)}</p>
+                  <p className="text-xs font-medium text-green-600 mt-1">{formatCurrency(totals.totalAmount)}</p>
                 )}
               </div>
             )
@@ -1060,76 +954,6 @@ export default function WorkforcePage() {
                 </tr>
               </tfoot>
             </table>
-          </div>
-        </div>
-      )}
-
-      {/* Record Payment Modal */}
-      {showPaymentModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-          <div className="bg-white rounded-xl shadow-xl p-6 max-w-md w-full mx-4">
-            <h3 className="text-lg font-semibold text-gray-800 mb-4">Record Payment</h3>
-            <p className="text-sm text-gray-600 mb-4">Record a payment against workforce outstanding. Current outstanding: <strong className="text-red-600">{formatCurrency(totalPending)}</strong></p>
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Amount *</label>
-                <input
-                  type="number"
-                  step="0.01"
-                  min="0"
-                  value={paymentForm.amount}
-                  onChange={(e) => setPaymentForm((p) => ({ ...p, amount: e.target.value }))}
-                  placeholder="e.g. 5000"
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Payment Method</label>
-                <select
-                  value={paymentForm.paymentMethod}
-                  onChange={(e) => setPaymentForm((p) => ({ ...p, paymentMethod: e.target.value }))}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-                >
-                  {PAYMENT_METHODS.map((pm) => (
-                    <option key={pm.value} value={pm.value}>{pm.label}</option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Payment Date</label>
-                <input
-                  type="date"
-                  value={paymentForm.paymentDate}
-                  onChange={(e) => setPaymentForm((p) => ({ ...p, paymentDate: e.target.value }))}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Notes (optional)</label>
-                <input
-                  type="text"
-                  value={paymentForm.notes}
-                  onChange={(e) => setPaymentForm((p) => ({ ...p, notes: e.target.value }))}
-                  placeholder="e.g. UPI ref, cheque no."
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-                />
-              </div>
-            </div>
-            <div className="flex justify-end gap-3 mt-6">
-              <button
-                onClick={() => setShowPaymentModal(false)}
-                className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleRecordPayment}
-                disabled={paymentSubmitting}
-                className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {paymentSubmitting ? 'Recording...' : 'Record Payment'}
-              </button>
-            </div>
           </div>
         </div>
       )}
