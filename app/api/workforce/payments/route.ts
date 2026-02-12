@@ -40,9 +40,18 @@ export async function POST(request: NextRequest) {
         { status: 400 }
       )
     }
+    const role = data.role
+    const validRoles = ['supervisor', 'chef', 'labours', 'boys', 'transport', 'gas', 'pan', 'store', 'other']
+    if (role && !validRoles.includes(role)) {
+      return NextResponse.json(
+        { error: `Invalid role. Must be one of: ${validRoles.join(', ')}` },
+        { status: 400 }
+      )
+    }
     const payment = await (prisma as any).workforcePayment.create({
       data: {
         amount,
+        role: role || null,
         paymentMethod,
         notes: data.notes || null,
         paymentDate: data.paymentDate ? new Date(data.paymentDate) : new Date(),

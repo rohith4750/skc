@@ -14,6 +14,7 @@ import {
   FaChevronLeft,
   FaChevronRight,
   FaMoneyBillWave,
+  FaDollarSign,
   FaUserShield,
   FaBox,
   FaWarehouse,
@@ -41,6 +42,7 @@ const menuItems = [
 
   // 2. Financial Management
   { href: '/expenses', icon: FaMoneyBillWave, label: 'Expenses', requiredRole: 'super_admin', section: 'financial' },
+  { href: '/workforce/outstanding', icon: FaDollarSign, label: 'Outstanding', requiredRole: 'super_admin', section: 'financial' },
   { href: '/workforce', icon: FaUserTie, label: 'Workforce', requiredRole: 'super_admin', section: 'financial' },
   { href: '/analytics', icon: FaChartLine, label: 'Analytics', requiredRole: 'super_admin', section: 'financial' },
 

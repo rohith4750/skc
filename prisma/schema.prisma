@@ -298,6 +298,7 @@ model Workforce {
 model WorkforcePayment {
   id             String   @id @default(uuid())
   amount         Decimal  @db.Decimal(10, 2)
+  role           String?  // "chef", "supervisor", "transport" etc - payment against this role
   paymentMethod  String   // "cash", "upi", "bank_transfer", "cheque", "other"
   notes          String?
   paymentDate    DateTime @default(now())
