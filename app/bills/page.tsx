@@ -11,6 +11,7 @@ import { getBillTableConfig } from '@/components/table-configs'
 import jsPDF from 'jspdf'
 import html2canvas from 'html2canvas'
 import { generatePDFTemplate, PDFTemplateData } from '@/lib/pdf-template'
+import { buildOrderPdfHtml } from '@/lib/order-pdf-html'
 
 export default function BillsPage() {
   const [bills, setBills] = useState<Array<Bill & { order?: Order & { customer?: Customer } }>>([])
@@ -236,6 +237,50 @@ export default function BillsPage() {
     }
   }
 
+  const renderOrderToPdf = async (order: any, language: 'english' | 'telugu'): Promise<string | null> => {
+    if (!order?.items?.length) return null
+    const htmlContent = buildOrderPdfHtml(order, {
+      useEnglish: language === 'english',
+      formatDate,
+    })
+    const tempDiv = document.createElement('div')
+    tempDiv.style.position = 'absolute'
+    tempDiv.style.left = '-9999px'
+    tempDiv.style.width = '210mm'
+    tempDiv.style.padding = '15mm'
+    tempDiv.style.fontFamily = 'Poppins, sans-serif'
+    tempDiv.style.fontSize = '11px'
+    tempDiv.style.lineHeight = '1.6'
+    tempDiv.style.background = 'white'
+    tempDiv.style.color = '#333'
+    tempDiv.innerHTML = htmlContent
+    document.body.appendChild(tempDiv)
+    try {
+      const canvas = await html2canvas(tempDiv, { scale: 2, useCORS: true, logging: false, backgroundColor: '#ffffff' })
+      document.body.removeChild(tempDiv)
+      const imgData = canvas.toDataURL('image/png')
+      const pdf = new jsPDF('p', 'mm', 'a4')
+      const imgWidth = 210
+      const pageHeight = 297
+      const imgHeight = (canvas.height * imgWidth) / canvas.width
+      let heightLeft = imgHeight
+      let position = 0
+      pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight)
+      heightLeft -= pageHeight
+      while (heightLeft >= 0) {
+        position = heightLeft - imgHeight
+        pdf.addPage()
+        pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight)
+        heightLeft -= pageHeight
+      }
+      const dataUrl = pdf.output('datauristring')
+      return dataUrl ? dataUrl.split(',')[1] : null
+    } catch {
+      if (document.body.contains(tempDiv)) document.body.removeChild(tempDiv)
+      return null
+    }
+  }
+
   const handleSendBillEmail = async (bill: any) => {
     const customerEmail = bill.order?.customer?.email
     if (!customerEmail) {
@@ -244,11 +289,18 @@ export default function BillsPage() {
     }
 
     try {
-      const pdfBase64 = await renderBillToPdf(bill)
+      const [pdfBase64, orderPdfBase64] = await Promise.all([
+        renderBillToPdf(bill),
+        renderOrderToPdf(bill.order, 'english'),
+      ])
       const response = await fetchWithLoader(`/api/bills/${bill.id}/send`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: customerEmail, pdfBase64: pdfBase64 || undefined }),
+        body: JSON.stringify({
+          email: customerEmail,
+          pdfBase64: pdfBase64 || undefined,
+          orderPdfBase64: orderPdfBase64 || undefined,
+        }),
       })
 
       if (!response.ok) {

@@ -3,7 +3,7 @@
 import { useEffect, useState, useMemo } from 'react'
 import { formatDateTime, formatDate } from '@/lib/utils'
 import { Order } from '@/types'
-import { FaTrash, FaFilePdf, FaChevronLeft, FaChevronRight, FaEdit, FaFilter, FaChartLine, FaClock, FaCheckCircle, FaTimesCircle } from 'react-icons/fa'
+import { FaTrash, FaFilePdf, FaChevronLeft, FaChevronRight, FaEdit, FaFilter, FaChartLine, FaClock, FaCheckCircle, FaTimesCircle, FaEnvelope } from 'react-icons/fa'
 import Link from 'next/link'
 import jsPDF from 'jspdf'
 import html2canvas from 'html2canvas'
@@ -37,6 +37,11 @@ export default function OrdersHistoryPage() {
     isOpen: false,
     order: null,
   })
+  const [emailModal, setEmailModal] = useState<{ isOpen: boolean; order: any | null }>({
+    isOpen: false,
+    order: null,
+  })
+  const [emailSending, setEmailSending] = useState(false)
 
   useEffect(() => {
     loadData()
@@ -196,7 +201,7 @@ export default function OrdersHistoryPage() {
   }
 
 
-  const handleGeneratePDF = async (order: any, language: 'english' | 'telugu') => {
+  const renderOrderToPdf = async (order: any, language: 'english' | 'telugu'): Promise<string | null> => {
     const customer = order.customer
     const supervisor = order.supervisor
     const useEnglish = language === 'english'
@@ -381,16 +386,66 @@ export default function OrdersHistoryPage() {
       while (heightLeft >= 0) {
         position = heightLeft - imgHeight
         pdf.addPage()
-        pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight)
-        heightLeft -= pageHeight
+      pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight)
+      heightLeft -= pageHeight
       }
 
-      pdf.save(`order-SKC-ORDER-${(order as any).serialNumber || order.id.slice(0, 8)}.pdf`)
-      toast.success(`PDF downloaded (${language === 'english' ? 'English' : 'Telugu'})`)
+      const dataUrl = pdf.output('datauristring')
+      return dataUrl ? dataUrl.split(',')[1] : null
     } catch (error) {
       tempDiv.parentNode?.removeChild(tempDiv)
       console.error('Error generating PDF:', error)
+      return null
+    }
+  }
+
+  const handleGeneratePDF = async (order: any, language: 'english' | 'telugu') => {
+    const pdfBase64 = await renderOrderToPdf(order, language)
+    if (!pdfBase64) {
       toast.error('Failed to generate PDF. Please try again.')
+      return
+    }
+    const byteChars = atob(pdfBase64)
+    const byteNumbers = new Array(byteChars.length)
+    for (let i = 0; i < byteChars.length; i++) byteNumbers[i] = byteChars.charCodeAt(i)
+    const blob = new Blob([new Uint8Array(byteNumbers)], { type: 'application/pdf' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `order-SKC-ORDER-${(order as any).serialNumber || order.id.slice(0, 8)}.pdf`
+    a.click()
+    URL.revokeObjectURL(url)
+    toast.success(`PDF downloaded (${language === 'english' ? 'English' : 'Telugu'})`)
+  }
+
+  const handleSendOrderEmail = async (order: any, language: 'english' | 'telugu') => {
+    const customerEmail = order.customer?.email
+    if (!customerEmail) {
+      toast.error('Customer email not available')
+      return
+    }
+    setEmailSending(true)
+    try {
+      const pdfBase64 = await renderOrderToPdf(order, language)
+      if (!pdfBase64) {
+        toast.error('Failed to generate PDF. Please try again.')
+        return
+      }
+      const response = await fetch(`/api/orders/${order.id}/send-email`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: customerEmail, pdfBase64 }),
+      })
+      if (!response.ok) {
+        const err = await response.json()
+        throw new Error(err.error || 'Failed to send order email')
+      }
+      toast.success(`Order sent to ${customerEmail}`)
+      setEmailModal({ isOpen: false, order: null })
+    } catch (error: any) {
+      toast.error(error.message || 'Failed to send order email')
+    } finally {
+      setEmailSending(false)
     }
   }
 
@@ -638,6 +693,19 @@ export default function OrdersHistoryPage() {
                             <FaFilePdf />
                           </button>
                           <button
+                            onClick={() => {
+                              if (!order.customer?.email) {
+                                toast.error('Customer email not available')
+                                return
+                              }
+                              setEmailModal({ isOpen: true, order })
+                            }}
+                            className="text-green-600 hover:text-green-800 p-2 hover:bg-green-50 rounded"
+                            title="Email Order (Menu + Event Details)"
+                          >
+                            <FaEnvelope />
+                          </button>
+                          <button
                             onClick={() => handleDelete(order.id)}
                             className="text-secondary-500 hover:text-secondary-700 p-2 hover:bg-secondary-50 rounded"
                             title="Delete"
@@ -768,6 +836,43 @@ export default function OrdersHistoryPage() {
             <button
               onClick={() => setPdfLanguageModal({ isOpen: false, order: null })}
               className="mt-3 w-full px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-lg text-sm font-medium transition-colors"
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Email Order Modal */}
+      {emailModal.isOpen && emailModal.order && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-xl shadow-xl p-6 max-w-sm w-full mx-4">
+            <h3 className="text-lg font-semibold text-gray-800 mb-2">Email Order to Customer</h3>
+            <p className="text-sm text-gray-600 mb-4">
+              Send order (menu + event details) to{' '}
+              <span className="font-medium text-gray-800">{emailModal.order.customer?.email}</span>
+            </p>
+            <p className="text-xs text-gray-500 mb-4">Menu items in:</p>
+            <div className="flex gap-3">
+              <button
+                onClick={() => handleSendOrderEmail(emailModal.order, 'english')}
+                disabled={emailSending}
+                className="flex-1 px-4 py-2.5 bg-green-600 text-white rounded-lg font-medium hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              >
+                {emailSending ? 'Sending...' : 'English'}
+              </button>
+              <button
+                onClick={() => handleSendOrderEmail(emailModal.order, 'telugu')}
+                disabled={emailSending}
+                className="flex-1 px-4 py-2.5 bg-green-600 text-white rounded-lg font-medium hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              >
+                {emailSending ? 'Sending...' : 'తెలుగు'}
+              </button>
+            </div>
+            <button
+              onClick={() => setEmailModal({ isOpen: false, order: null })}
+              disabled={emailSending}
+              className="mt-3 w-full px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-lg text-sm font-medium transition-colors disabled:opacity-50"
             >
               Cancel
             </button>

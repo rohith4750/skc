@@ -163,8 +163,9 @@ export function generateBillEmailHTML(params: {
   remaining: string
   billNumber: string
   mealRows?: string
+  hasOrderMenu?: boolean
 }): string {
-  const { customerName, eventName, total, paid, remaining, billNumber, mealRows } = params
+  const { customerName, eventName, total, paid, remaining, billNumber, mealRows, hasOrderMenu } = params
 
   const content = `
     <p>Please find your bill details for <strong>${eventName}</strong>.</p>
@@ -185,6 +186,7 @@ export function generateBillEmailHTML(params: {
     ${mealRows || ''}
     <p style="font-size:12px; color:#6b7280;">Bill No: SKC-${billNumber}</p>
     <p style="margin-top:16px;">Your bill PDF is attached to this email. Please keep it for your records.</p>
+    ${hasOrderMenu ? '<p style="margin-top:8px;">The order menu PDF (with menu details and event information) is also attached for your reference.</p>' : ''}
   `
 
   return generateCustomerEmailWrapper({

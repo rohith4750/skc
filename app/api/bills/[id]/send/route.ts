@@ -72,6 +72,7 @@ export async function POST(
       remaining,
       billNumber,
       mealRows,
+      hasOrderMenu: !!data.orderPdfBase64,
     })
 
     const subject = `Your Bill from SKC Caterers · ${eventName}`
@@ -81,6 +82,13 @@ export async function POST(
       attachments.push({
         filename: `SKC-Bill-${billNumber}.pdf`,
         content: data.pdfBase64,
+      })
+    }
+    if (data.orderPdfBase64) {
+      const orderId = (order as any).serialNumber?.toString() || order.id.slice(0, 8).toUpperCase()
+      attachments.push({
+        filename: `SKC-Order-Menu-${orderId}.pdf`,
+        content: data.orderPdfBase64,
       })
     }
 
