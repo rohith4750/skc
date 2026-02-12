@@ -35,17 +35,22 @@ export async function PUT(
   try {
     const data = await request.json()
     
-    const missingFields = validateRequiredFields(data, ['name', 'phone', 'email', 'address'])
+    // Only name and address are required
+    const missingFields = validateRequiredFields(data, ['name', 'address'])
     if (missingFields) {
       return NextResponse.json(
         { error: 'Missing required fields', details: missingFields },
         { status: 400 }
       )
     }
-    if (!isPhone(data.phone)) {
+
+    // Validate phone only if provided
+    if (data.phone && !isPhone(data.phone)) {
       return NextResponse.json({ error: 'Invalid phone number' }, { status: 400 })
     }
-    if (!isEmail(data.email)) {
+
+    // Validate email only if provided
+    if (data.email && !isEmail(data.email)) {
       return NextResponse.json({ error: 'Invalid email address' }, { status: 400 })
     }
 
@@ -53,8 +58,8 @@ export async function PUT(
       where: { id: params.id },
       data: {
         name: data.name,
-        phone: data.phone,
-        email: data.email,
+        phone: data.phone || '',
+        email: data.email || '',
         address: data.address,
       }
     })

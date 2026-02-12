@@ -33,6 +33,10 @@ export default function OrdersHistoryPage() {
   const [statusFilter, setStatusFilter] = useState<string>('all')
   const [customerSearch, setCustomerSearch] = useState<string>('')
   const [dateRange, setDateRange] = useState({ start: '', end: '' })
+  const [pdfLanguageModal, setPdfLanguageModal] = useState<{ isOpen: boolean; order: any | null }>({
+    isOpen: false,
+    order: null,
+  })
 
   useEffect(() => {
     loadData()
@@ -192,9 +196,10 @@ export default function OrdersHistoryPage() {
   }
 
 
-  const handleGeneratePDF = async (order: any) => {
+  const handleGeneratePDF = async (order: any, language: 'english' | 'telugu') => {
     const customer = order.customer
     const supervisor = order.supervisor
+    const useEnglish = language === 'english'
 
     // Extract event dates from meal types
     const mealTypeAmounts = order.mealTypeAmounts as Record<string, { amount: number; date: string } | number> | null
@@ -312,8 +317,10 @@ export default function OrdersHistoryPage() {
 
       // Add items for this type in grid
       itemsByType[type].forEach((item: any, index: number) => {
-        // Use Telugu name if available, otherwise fall back to English name
-        const itemName = item.menuItem?.nameTelugu || item.menuItem?.name || 'Unknown Item'
+        // Use English or Telugu based on user selection
+        const itemName = useEnglish
+          ? (item.menuItem?.name || item.menuItem?.nameTelugu || 'Unknown Item')
+          : (item.menuItem?.nameTelugu || item.menuItem?.name || 'Unknown Item')
         htmlContent += `
           <div style="padding: 2px 4px; font-family: 'Poppins', sans-serif; line-height: 1.3; font-weight: 600;">
             ${index + 1}. ${itemName}${item.customization ? ` (${item.customization})` : ''}
@@ -379,8 +386,9 @@ export default function OrdersHistoryPage() {
       }
 
       pdf.save(`order-SKC-ORDER-${(order as any).serialNumber || order.id.slice(0, 8)}.pdf`)
+      toast.success(`PDF downloaded (${language === 'english' ? 'English' : 'Telugu'})`)
     } catch (error) {
-      document.body.removeChild(tempDiv)
+      tempDiv.parentNode?.removeChild(tempDiv)
       console.error('Error generating PDF:', error)
       toast.error('Failed to generate PDF. Please try again.')
     }
@@ -623,7 +631,7 @@ export default function OrdersHistoryPage() {
                             <FaEdit />
                           </Link>
                           <button
-                            onClick={() => handleGeneratePDF(order)}
+                            onClick={() => setPdfLanguageModal({ isOpen: true, order })}
                             className="text-secondary-500 hover:text-secondary-700 p-2 hover:bg-secondary-50 rounded"
                             title="Download PDF"
                           >
@@ -730,6 +738,42 @@ export default function OrdersHistoryPage() {
         onCancel={() => setStatusConfirm({ isOpen: false, id: null, newStatus: '', oldStatus: '' })}
         variant="info"
       />
+
+      {/* PDF Language Selection Modal */}
+      {pdfLanguageModal.isOpen && pdfLanguageModal.order && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-xl shadow-xl p-6 max-w-sm w-full mx-4">
+            <h3 className="text-lg font-semibold text-gray-800 mb-2">Download Order PDF</h3>
+            <p className="text-sm text-gray-600 mb-4">Do you want the menu items in English or Telugu?</p>
+            <div className="flex gap-3">
+              <button
+                onClick={() => {
+                  handleGeneratePDF(pdfLanguageModal.order, 'english')
+                  setPdfLanguageModal({ isOpen: false, order: null })
+                }}
+                className="flex-1 px-4 py-2.5 bg-primary-500 text-white rounded-lg font-medium hover:bg-primary-600 transition-colors"
+              >
+                English
+              </button>
+              <button
+                onClick={() => {
+                  handleGeneratePDF(pdfLanguageModal.order, 'telugu')
+                  setPdfLanguageModal({ isOpen: false, order: null })
+                }}
+                className="flex-1 px-4 py-2.5 bg-primary-500 text-white rounded-lg font-medium hover:bg-primary-600 transition-colors"
+              >
+                తెలుగు (Telugu)
+              </button>
+            </div>
+            <button
+              onClick={() => setPdfLanguageModal({ isOpen: false, order: null })}
+              className="mt-3 w-full px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-lg text-sm font-medium transition-colors"
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
