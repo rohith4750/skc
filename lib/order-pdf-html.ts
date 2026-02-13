@@ -10,7 +10,7 @@ export function buildOrderPdfHtml(
   const { useEnglish, formatDate } = options
   const customer = order.customer
   const supervisor = order.supervisor
-  const mealTypeAmounts = order.mealTypeAmounts as Record<string, { amount?: number; date?: string; numberOfMembers?: number } | number> | null
+  const mealTypeAmounts = order.mealTypeAmounts as Record<string, { amount?: number; date?: string; numberOfMembers?: number; services?: string[] } | number> | null
 
   const eventDates: string[] = []
   if (mealTypeAmounts) {
@@ -70,6 +70,18 @@ export function buildOrderPdfHtml(
         </div>
       `
       })
+
+      // Add Services if present for this meal type
+      if (mealTypeAmounts) {
+        const mealData = mealTypeAmounts[type.toLowerCase()] as any
+        if (mealData && Array.isArray(mealData.services) && mealData.services.length > 0) {
+          menuItemsHtml += `
+            <div style="grid-column: span 4; font-size: 9px; margin-top: 4px; padding-left: 4px; color: #555; font-style: italic; font-family: 'Poppins', sans-serif;">
+              <span style="font-weight: 600;">Services:</span> ${mealData.services.join(', ')}
+            </div>
+          `
+        }
+      }
     })
 
   let stallsHtml = ''
@@ -124,7 +136,6 @@ export function buildOrderPdfHtml(
       <div class="section">
         <div class="section-title">Order Information</div>
         <div class="info-row"><span class="info-label">Event Date:</span> ${eventDateDisplay}</div>
-        <div class="info-row"><span class="info-label">Supervisor:</span> ${supervisor?.name || 'N/A'}</div>
         <div class="info-row"><span class="info-label">Order ID:</span> SKC-ORDER-${(order as any).serialNumber || order.id.slice(0, 8).toUpperCase()}</div>
       </div>
     </div>
