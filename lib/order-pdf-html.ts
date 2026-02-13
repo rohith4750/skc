@@ -73,11 +73,18 @@ export function buildOrderPdfHtml(
 
       // Add Services if present for this meal type
       if (mealTypeAmounts) {
-        const mealData = mealTypeAmounts[type.toLowerCase()] as any
+        // Case-insensitive lookup for meal data
+        const mealKey = Object.keys(mealTypeAmounts).find(k => k.toLowerCase() === type.toLowerCase())
+        const mealData = mealKey ? (mealTypeAmounts[mealKey] as any) : null
+
         if (mealData && Array.isArray(mealData.services) && mealData.services.length > 0) {
+          const formattedServices = mealData.services.map((s: string) => {
+            return s.split('_').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ')
+          }).join(', ')
+
           menuItemsHtml += `
             <div style="grid-column: span 4; font-size: 9px; margin-top: 4px; padding-left: 4px; color: #555; font-style: italic; font-family: 'Poppins', sans-serif;">
-              <span style="font-weight: 600;">Services:</span> ${mealData.services.join(', ')}
+              <span style="font-weight: 600;">Services:</span> ${formattedServices}
             </div>
           `
         }

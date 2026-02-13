@@ -692,6 +692,8 @@ export default function OrdersPage() {
 
     // Calculate total from all meal types (without transport)
     let mealTypesTotal = 0
+    let calculatedWaterBottlesCost = 0
+
     formData.mealTypes.forEach(mealType => {
       let mealTypeTotal = 0
 
@@ -701,7 +703,14 @@ export default function OrdersPage() {
         if (item && item.price) {
           const quantity = parseFloat(mealType.itemQuantities?.[itemId] || '0')
           if (quantity > 0) {
-            mealTypeTotal += item.price * quantity
+            // Check if item is water bottle
+            const isWaterBottle = item.name.toLowerCase().includes('water') && item.name.toLowerCase().includes('bottle')
+
+            if (isWaterBottle) {
+              calculatedWaterBottlesCost += item.price * quantity
+            } else {
+              mealTypeTotal += item.price * quantity
+            }
           }
         }
       })
@@ -719,13 +728,23 @@ export default function OrdersPage() {
     })
 
 
-    const waterBottlesCost = parseFloat(formData.waterBottlesCost || '0')
+    const waterBottlesCost = calculatedWaterBottlesCost > 0 ? calculatedWaterBottlesCost : parseFloat(formData.waterBottlesCost || '0')
     const finalTotal = Math.max(0, mealTypesTotal + transportCost + waterBottlesCost + stallsTotal - discount)
-    setFormData(prev => ({
-      ...prev,
-      totalAmount: finalTotal.toFixed(2)
-    }))
-  }, [formData.mealTypes, formData.discount, formData.transportCost, formData.waterBottlesCost, totalStallsCost, showStalls])
+
+    // Update water bottles cost in form if calculated
+    if (calculatedWaterBottlesCost > 0 && parseFloat(formData.waterBottlesCost) !== calculatedWaterBottlesCost) {
+      setFormData(prev => ({
+        ...prev,
+        waterBottlesCost: calculatedWaterBottlesCost.toString(),
+        totalAmount: finalTotal.toFixed(2)
+      }))
+    } else {
+      setFormData(prev => ({
+        ...prev,
+        totalAmount: finalTotal.toFixed(2)
+      }))
+    }
+  }, [formData.mealTypes, formData.discount, formData.transportCost, formData.waterBottlesCost, totalStallsCost, showStalls, menuItems])
 
   const resetForm = () => {
     setFormData({
@@ -1035,7 +1054,7 @@ export default function OrdersPage() {
                                       Services
                                     </label>
                                     <div className="space-y-2">
-                                      {['buffet', 'vaddana', 'handover'].map((service) => (
+                                      {['buffet', 'vaddana', 'handover', 'water_bottles', 'cleaning'].map((service) => (
                                         <label key={service} className="flex items-center p-2 border border-gray-200 rounded-lg hover:bg-gray-50 cursor-pointer">
                                           <input
                                             type="checkbox"
