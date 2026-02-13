@@ -55,9 +55,23 @@ export function buildOrderPdfHtml(
     .sort((a, b) => getMealTypePriority(a) - getMealTypePriority(b))
     .forEach((type) => {
       const memberInfo = getMemberCount(type)
+
+      let servicesLabel = ''
+      if (mealTypeAmounts) {
+        const mealKey = Object.keys(mealTypeAmounts).find(k => k.toLowerCase() === type.toLowerCase())
+        const mealData = mealKey ? (mealTypeAmounts[mealKey] as any) : null
+
+        if (mealData && Array.isArray(mealData.services) && mealData.services.length > 0) {
+          const formattedServices = mealData.services.map((s: string) => {
+            return s.split('_').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ')
+          }).join(', ')
+          servicesLabel = ` - Services: ${formattedServices}`
+        }
+      }
+
       menuItemsHtml += `
       <div style="grid-column: span 4; font-weight: 700; font-size: 10px; margin-top: 6px; margin-bottom: 3px; color: #222; text-transform: uppercase; padding-bottom: 2px; font-family: 'Poppins', sans-serif;">
-        ${type}${memberInfo}
+        ${type}${memberInfo}${servicesLabel}
       </div>
     `
       itemsByType[type].forEach((item: any, index: number) => {
@@ -70,25 +84,6 @@ export function buildOrderPdfHtml(
         </div>
       `
       })
-
-      // Add Services if present for this meal type
-      if (mealTypeAmounts) {
-        // Case-insensitive lookup for meal data
-        const mealKey = Object.keys(mealTypeAmounts).find(k => k.toLowerCase() === type.toLowerCase())
-        const mealData = mealKey ? (mealTypeAmounts[mealKey] as any) : null
-
-        if (mealData && Array.isArray(mealData.services) && mealData.services.length > 0) {
-          const formattedServices = mealData.services.map((s: string) => {
-            return s.split('_').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ')
-          }).join(', ')
-
-          menuItemsHtml += `
-            <div style="grid-column: span 4; font-size: 9px; margin-top: 4px; padding-left: 4px; color: #555; font-style: italic; font-family: 'Poppins', sans-serif;">
-              <span style="font-weight: 600;">Services:</span> ${formattedServices}
-            </div>
-          `
-        }
-      }
     })
 
   let stallsHtml = ''

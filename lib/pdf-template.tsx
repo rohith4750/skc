@@ -456,11 +456,12 @@ function generateBillContent(data: PDFTemplateData): string {
     </div>
 
 
+
     <!-- Financial Summary -->
     <div class="financial-section">
       <div class="financial-row">
-        <span class="financial-label">Total Amount:</span>
-        <span class="financial-value">${formatCurrency(financial.totalAmount)}</span>
+        <span class="financial-label">Catering Amount:</span>
+        <span class="financial-value">${formatCurrency((financial.totalAmount || 0) - (financial.waterBottlesCost || 0))}</span>
       </div>
       ${financial.waterBottlesCost ? `
       <div class="financial-row">
@@ -468,6 +469,10 @@ function generateBillContent(data: PDFTemplateData): string {
         <span class="financial-value">${formatCurrency(financial.waterBottlesCost)}</span>
       </div>
       ` : ''}
+      <div class="financial-row" style="border-top: 2px solid #000; padding-top: 8px; margin-top: 8px;">
+        <span class="financial-label" style="font-weight: bold;">Grand Total:</span>
+        <span class="financial-value" style="font-weight: bold;">${formatCurrency(financial.totalAmount)}</span>
+      </div>
       <div class="financial-row">
         <span class="financial-label">Advance Paid:</span>
         <span class="financial-value">${financial.advancePaid ? formatCurrency(financial.advancePaid) : formatCurrency(0)}</span>
