@@ -150,11 +150,13 @@ export default function BillsPage() {
     let lunchDinnerData: { type?: string; persons?: number; rate?: number } = {}
     let snacksData: { persons?: number; rate?: number } = {}
 
+    let mealsTotal = 0
     if (mealTypeAmounts) {
       Object.entries(mealTypeAmounts).forEach(([mealType, data]) => {
         const mealData = typeof data === 'object' && data !== null ? data : { amount: typeof data === 'number' ? data : 0 }
         const persons = (typeof mealData === 'object' && mealData !== null && 'numberOfMembers' in mealData) ? (mealData.numberOfMembers || 0) : 0
         const amount = typeof mealData === 'object' && mealData !== null && 'amount' in mealData ? mealData.amount : (typeof data === 'number' ? data : 0)
+        mealsTotal += amount
         const rate = persons > 0 ? amount / persons : 0
         if (mealType.toLowerCase().includes('tiffin') || mealType.toLowerCase().includes('breakfast')) tiffinsData = { persons, rate }
         else if (mealType.toLowerCase().includes('lunch') || mealType.toLowerCase().includes('dinner')) lunchDinnerData = { type: mealType.toLowerCase().includes('lunch') ? 'Lunch' : 'Dinner', persons, rate }
@@ -163,6 +165,16 @@ export default function BillsPage() {
     }
 
     const extraAmount = stalls?.reduce((sum, stall) => sum + (parseFloat(stall.cost?.toString() || '0') || 0), 0) || 0
+
+    // Fallback: If waterBottlesCost is 0 but there is a difference in total, assume it is water bottles
+    let finalWaterBottlesCost = waterBottlesCost
+    if (finalWaterBottlesCost === 0) {
+      const calculatedTotal = mealsTotal + transportCost + extraAmount - (parseFloat(order?.discount || '0') || 0)
+      const diff = parseFloat(bill.totalAmount || '0') - calculatedTotal
+      if (diff > 0) {
+        finalWaterBottlesCost = diff
+      }
+    }
     let functionDate = ''
     let functionTime = ''
     if (mealTypeAmounts) {
@@ -187,7 +199,7 @@ export default function BillsPage() {
         discount: order?.discount,
         services: order?.services && Array.isArray(order.services) ? order.services : undefined,
         numberOfMembers: order?.numberOfMembers,
-        financial: { transport: transportCost || undefined, waterBottlesCost: waterBottlesCost || undefined, extra: extraAmount > 0 ? extraAmount : undefined, totalAmount: bill.totalAmount, advancePaid: bill.advancePaid, balanceAmount: bill.remainingAmount, remainingAmount: bill.remainingAmount, paidAmount: bill.paidAmount, discount: order?.discount },
+        financial: { transport: transportCost || undefined, waterBottlesCost: finalWaterBottlesCost || undefined, extra: extraAmount > 0 ? extraAmount : undefined, totalAmount: bill.totalAmount, advancePaid: bill.advancePaid, balanceAmount: bill.remainingAmount, remainingAmount: bill.remainingAmount, paidAmount: bill.paidAmount, discount: order?.discount },
         status: bill.status,
         orderId: order?.id,
         supervisor: order?.supervisor?.name,
