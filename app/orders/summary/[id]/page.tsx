@@ -171,6 +171,10 @@ export default function OrderSummaryPage() {
                   <span className="text-[10px] font-bold text-slate-400 uppercase block mb-1">Transport</span>
                   <span className="text-sm font-black text-slate-900">{formatCurrency(order.transportCost || 0)}</span>
                 </div>
+                <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100">
+                  <span className="text-[10px] font-bold text-slate-400 uppercase block mb-1">Water Bottles</span>
+                  <span className="text-sm font-black text-slate-900">{formatCurrency(order.waterBottlesCost || 0)}</span>
+                </div>
               </div>
               <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100">
                 <span className="text-[10px] font-bold text-slate-400 uppercase block mb-1">Contact Details</span>

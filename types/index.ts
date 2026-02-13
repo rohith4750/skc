@@ -68,6 +68,7 @@ export interface Order {
   stalls?: Array<{ category: string; description: string; cost: number | string }> | null
   numberOfMembers?: number | null
   transportCost?: number
+  waterBottlesCost?: number
   supervisorId?: string
   supervisor?: Supervisor
   createdAt: string
