@@ -449,37 +449,39 @@ function generateBillContent(data: PDFTemplateData): string {
       </div>
     </div>
 
-    <!-- Members / Guests Summary -->
+
+
+    <!-- Bill Summary -->
     <div class="form-section" style="border: 2px solid #000; padding: 12px; margin: 15px 0;">
-      <div style="font-weight: bold; font-size: 14px; margin-bottom: 10px; text-transform: uppercase; text-align: center;">MEMBERS / GUESTS SUMMARY</div>
+      <div style="font-weight: bold; font-size: 14px; margin-bottom: 10px; text-transform: uppercase; text-align: center;">BILL SUMMARY</div>
       ${mealTypeRows.length > 0 ? mealTypeRows.join('') : ''}
-    </div>
-
-
-
-    <!-- Financial Summary -->
-    <div class="financial-section">
-      <div class="financial-row">
-        <span class="financial-label">Catering Amount:</span>
-        <span class="financial-value">${formatCurrency((financial.totalAmount || 0) - (financial.waterBottlesCost || 0))}</span>
-      </div>
-      ${financial.waterBottlesCost ? `
-      <div class="financial-row">
-        <span class="financial-label">Water Bottles:</span>
-        <span class="financial-value">${formatCurrency(financial.waterBottlesCost)}</span>
-      </div>
-      ` : ''}
-      <div class="financial-row" style="border-top: 2px solid #000; padding-top: 8px; margin-top: 8px;">
-        <span class="financial-label" style="font-weight: bold;">Grand Total:</span>
-        <span class="financial-value" style="font-weight: bold;">${formatCurrency(financial.totalAmount)}</span>
-      </div>
-      <div class="financial-row">
-        <span class="financial-label">Advance Paid:</span>
-        <span class="financial-value">${financial.advancePaid ? formatCurrency(financial.advancePaid) : formatCurrency(0)}</span>
-      </div>
-      <div class="financial-row">
-        <span class="financial-label">Balance Amount:</span>
-        <span class="financial-value">${formatCurrency(financial.balanceAmount || financial.remainingAmount || 0)}</span>
+      
+      <!-- Financial Details inside Bill Summary -->
+      <div style="margin-top: 15px; border-top: 1px solid #ccc; padding-top: 10px;">
+        ${financial.waterBottlesCost ? `
+        <div class="financial-row">
+          <span class="financial-label">Water Bottles:</span>
+          <span class="financial-value">${formatCurrency(financial.waterBottlesCost)}</span>
+        </div>
+        ` : ''}
+        ${financial.transport ? `
+        <div class="financial-row">
+          <span class="financial-label">Transport:</span>
+          <span class="financial-value">${formatCurrency(financial.transport)}</span>
+        </div>
+        ` : ''}
+        <div class="financial-row" style="border-top: 2px solid #000; padding-top: 8px; margin-top: 8px;">
+          <span class="financial-label" style="font-weight: bold;">Grand Total:</span>
+          <span class="financial-value" style="font-weight: bold;">${formatCurrency(financial.totalAmount)}</span>
+        </div>
+        <div class="financial-row">
+          <span class="financial-label">Advance Paid:</span>
+          <span class="financial-value">${financial.advancePaid ? formatCurrency(financial.advancePaid) : formatCurrency(0)}</span>
+        </div>
+        <div class="financial-row">
+          <span class="financial-label">Balance Amount:</span>
+          <span class="financial-value">${formatCurrency(financial.balanceAmount || financial.remainingAmount || 0)}</span>
+        </div>
       </div>
     </div>
   `
