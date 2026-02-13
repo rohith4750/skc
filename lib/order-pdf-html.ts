@@ -24,11 +24,11 @@ export function buildOrderPdfHtml(
   const eventDateDisplay = eventDates.length > 0 ? eventDates.join(', ') : formatDate(order.createdAt)
 
   const itemsByType: Record<string, any[]> = {}
-  ;(order.items || []).forEach((item: any) => {
-    const type = item.menuItem?.type || 'OTHER'
-    if (!itemsByType[type]) itemsByType[type] = []
-    itemsByType[type].push(item)
-  })
+    ; (order.items || []).forEach((item: any) => {
+      const type = item.menuItem?.type || 'OTHER'
+      if (!itemsByType[type]) itemsByType[type] = []
+      itemsByType[type].push(item)
+    })
 
   const getMemberCount = (mealType: string): string => {
     if (mealTypeAmounts) {
@@ -40,25 +40,37 @@ export function buildOrderPdfHtml(
     return ''
   }
 
+  const getMealTypePriority = (type: string) => {
+    const priorities: Record<string, number> = {
+      'BREAKFAST': 1,
+      'LUNCH': 2,
+      'DINNER': 3,
+      'SNACKS': 4
+    }
+    return priorities[type.toUpperCase()] || 99
+  }
+
   let menuItemsHtml = ''
-  Object.keys(itemsByType).forEach((type) => {
-    const memberInfo = getMemberCount(type)
-    menuItemsHtml += `
+  Object.keys(itemsByType)
+    .sort((a, b) => getMealTypePriority(a) - getMealTypePriority(b))
+    .forEach((type) => {
+      const memberInfo = getMemberCount(type)
+      menuItemsHtml += `
       <div style="grid-column: span 4; font-weight: 700; font-size: 10px; margin-top: 6px; margin-bottom: 3px; color: #222; text-transform: uppercase; padding-bottom: 2px; font-family: 'Poppins', sans-serif;">
         ${type}${memberInfo}
       </div>
     `
-    itemsByType[type].forEach((item: any, index: number) => {
-      const itemName = useEnglish
-        ? (item.menuItem?.name || item.menuItem?.nameTelugu || 'Unknown Item')
-        : (item.menuItem?.nameTelugu || item.menuItem?.name || 'Unknown Item')
-      menuItemsHtml += `
+      itemsByType[type].forEach((item: any, index: number) => {
+        const itemName = useEnglish
+          ? (item.menuItem?.name || item.menuItem?.nameTelugu || 'Unknown Item')
+          : (item.menuItem?.nameTelugu || item.menuItem?.name || 'Unknown Item')
+        menuItemsHtml += `
         <div style="padding: 2px 4px; font-family: 'Poppins', sans-serif; line-height: 1.3; font-weight: 600;">
           ${index + 1}. ${itemName}${item.customization ? ` (${item.customization})` : ''}
         </div>
       `
+      })
     })
-  })
 
   let stallsHtml = ''
   if (order.stalls && Array.isArray(order.stalls) && order.stalls.length > 0) {
