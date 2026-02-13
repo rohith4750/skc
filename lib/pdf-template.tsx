@@ -29,6 +29,7 @@ export interface PDFTemplateData {
   financial?: {
     sariAmount?: number
     transport?: number
+    waterBottlesCost?: number
     extra?: number
     totalAmount: number
     advancePaid?: number
@@ -446,10 +447,6 @@ function generateBillContent(data: PDFTemplateData): string {
         <span class="form-label">Function Date:</span>
         <span class="form-value">${eventDetails.functionDate || ''}</span>
       </div>
-      <div class="form-row">
-        <span class="form-label">Function Time:</span>
-        <span class="form-value">${eventDetails.functionTime || ''}</span>
-      </div>
     </div>
 
     <!-- Members / Guests Summary -->
@@ -465,6 +462,12 @@ function generateBillContent(data: PDFTemplateData): string {
         <span class="financial-label">Total Amount:</span>
         <span class="financial-value">${formatCurrency(financial.totalAmount)}</span>
       </div>
+      ${financial.waterBottlesCost ? `
+      <div class="financial-row">
+        <span class="financial-label">Water Bottles:</span>
+        <span class="financial-value">${formatCurrency(financial.waterBottlesCost)}</span>
+      </div>
+      ` : ''}
       <div class="financial-row">
         <span class="financial-label">Advance Paid:</span>
         <span class="financial-value">${financial.advancePaid ? formatCurrency(financial.advancePaid) : formatCurrency(0)}</span>

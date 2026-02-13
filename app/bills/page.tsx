@@ -144,6 +144,7 @@ export default function BillsPage() {
     const mealTypeAmounts = order?.mealTypeAmounts as Record<string, { amount: number; date: string; services?: string[]; numberOfMembers?: number } | number> | null
     const stalls = order?.stalls as Array<{ category: string; description: string; cost: number }> | null
     const transportCost = parseFloat(order?.transportCost || '0') || 0
+    const waterBottlesCost = parseFloat((order as any)?.waterBottlesCost || '0') || 0
 
     let tiffinsData: { persons?: number; rate?: number } = {}
     let lunchDinnerData: { type?: string; persons?: number; rate?: number } = {}
@@ -186,7 +187,7 @@ export default function BillsPage() {
         discount: order?.discount,
         services: order?.services && Array.isArray(order.services) ? order.services : undefined,
         numberOfMembers: order?.numberOfMembers,
-        financial: { transport: transportCost || undefined, extra: extraAmount > 0 ? extraAmount : undefined, totalAmount: bill.totalAmount, advancePaid: bill.advancePaid, balanceAmount: bill.remainingAmount, remainingAmount: bill.remainingAmount, paidAmount: bill.paidAmount, discount: order?.discount },
+        financial: { transport: transportCost || undefined, waterBottlesCost: waterBottlesCost || undefined, extra: extraAmount > 0 ? extraAmount : undefined, totalAmount: bill.totalAmount, advancePaid: bill.advancePaid, balanceAmount: bill.remainingAmount, remainingAmount: bill.remainingAmount, paidAmount: bill.paidAmount, discount: order?.discount },
         status: bill.status,
         orderId: order?.id,
         supervisor: order?.supervisor?.name,
