@@ -11,12 +11,12 @@ export class Storage {
       },
       ...options,
     })
-    
+
     if (!response.ok) {
       const error = await response.json().catch(() => ({ error: response.statusText }))
       throw new Error(error.error || `API error: ${response.statusText}`)
     }
-    
+
     return response.json()
   }
 
@@ -146,6 +146,8 @@ export class Storage {
         numberOfMembers: order.numberOfMembers || null,
         mealTypeAmounts: order.mealTypeAmounts,
         stalls: order.stalls,
+        transportCost: order.transportCost,
+        waterBottlesCost: order.waterBottlesCost,
         discount: order.discount || 0,
       }),
     })

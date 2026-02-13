@@ -62,6 +62,7 @@ export async function POST(request: NextRequest) {
     }
     const discount = parseFloat(data.discount) || 0
     const transportCost = parseFloat(data.transportCost) || 0
+    const waterBottlesCost = parseFloat(data.waterBottlesCost) || 0
 
     const orderData: any = {
       customerId: data.customerId,
@@ -75,6 +76,7 @@ export async function POST(request: NextRequest) {
       mealTypeAmounts: data.mealTypeAmounts && Object.keys(data.mealTypeAmounts).length > 0 ? data.mealTypeAmounts : null,
       stalls: data.stalls && Array.isArray(data.stalls) && data.stalls.length > 0 ? data.stalls : null,
       transportCost: transportCost,
+      waterBottlesCost: waterBottlesCost,
       discount: discount,
       items: {
         create: data.items.map((item: any) => ({

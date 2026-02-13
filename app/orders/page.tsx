@@ -53,6 +53,7 @@ export default function OrdersPage() {
     stalls: [] as Array<{ category: string; description: string; cost: string }>,
     discount: '',
     transportCost: '',
+    waterBottlesCost: '',
     totalAmount: '',
     advancePaid: '',
     paymentMethod: 'cash' as 'cash' | 'upi' | 'card' | 'bank_transfer' | 'other',
@@ -228,6 +229,7 @@ export default function OrdersPage() {
         stalls: stallsArray,
         discount: order.discount?.toString() || '0',
         transportCost: (order as any).transportCost?.toString() || '0',
+        waterBottlesCost: (order as any).waterBottlesCost?.toString() || '0',
         totalAmount: order.totalAmount?.toString() || '0',
         advancePaid: '',
         paymentMethod: 'cash',
@@ -605,6 +607,7 @@ export default function OrdersPage() {
         mealTypeAmounts,
         stalls: showStalls ? formData.stalls : [],
         transportCost: parseFloat(formData.transportCost) || 0,
+        waterBottlesCost: parseFloat(formData.waterBottlesCost) || 0,
         discount: parseFloat(formData.discount) || 0,
         paymentMethod: formData.paymentMethod,
         paymentNotes: formData.paymentNotes,
@@ -703,12 +706,14 @@ export default function OrdersPage() {
       mealTypesTotal += mealTypeTotal
     })
 
-    const finalTotal = Math.max(0, mealTypesTotal + transportCost + stallsTotal - discount)
+
+    const waterBottlesCost = parseFloat(formData.waterBottlesCost || '0')
+    const finalTotal = Math.max(0, mealTypesTotal + transportCost + waterBottlesCost + stallsTotal - discount)
     setFormData(prev => ({
       ...prev,
       totalAmount: finalTotal.toFixed(2)
     }))
-  }, [formData.mealTypes, formData.discount, formData.transportCost, totalStallsCost, showStalls])
+  }, [formData.mealTypes, formData.discount, formData.transportCost, formData.waterBottlesCost, totalStallsCost, showStalls])
 
   const resetForm = () => {
     setFormData({
@@ -718,6 +723,7 @@ export default function OrdersPage() {
       stalls: [],
       discount: '',
       transportCost: '',
+      waterBottlesCost: '',
       totalAmount: '',
       advancePaid: '',
       paymentMethod: 'cash',
@@ -1492,6 +1498,20 @@ export default function OrdersPage() {
                           min="0"
                           value={formData.transportCost}
                           onChange={(e: any) => setFormData({ ...formData, transportCost: e.target.value })}
+                          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                          placeholder="0.00"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          Water Bottles Cost
+                        </label>
+                        <input
+                          type="number"
+                          step="0.01"
+                          min="0"
+                          value={formData.waterBottlesCost}
+                          onChange={(e: any) => setFormData({ ...formData, waterBottlesCost: e.target.value })}
                           className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
                           placeholder="0.00"
                         />

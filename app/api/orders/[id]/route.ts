@@ -225,6 +225,7 @@ export async function PUT(
       mealTypeAmounts: newMealTypeAmounts,
       stalls: data.stalls && Array.isArray(data.stalls) && data.stalls.length > 0 ? data.stalls : null,
       transportCost,
+      waterBottlesCost: parseFloat(data.waterBottlesCost) || 0,
       discount,
     }
 

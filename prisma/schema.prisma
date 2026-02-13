@@ -169,6 +169,7 @@ model Order {
   mealTypeAmounts Json?
   stalls          Json?
   transportCost   Decimal   @default(0) @db.Decimal(10, 2)
+  waterBottlesCost Decimal  @default(0) @db.Decimal(10, 2)
   discount        Decimal   @default(0) @db.Decimal(10, 2)
   eventName       String?
   eventType       String?
