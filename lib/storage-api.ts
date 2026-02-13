@@ -97,6 +97,8 @@ export class Storage {
           name: item.name,
           type: item.type,
           description: item.description,
+          price: item.price,
+          unit: item.unit,
           isActive: item.isActive,
         }),
       })
@@ -108,6 +110,8 @@ export class Storage {
           name: item.name,
           type: item.type,
           description: item.description,
+          price: item.price,
+          unit: item.unit,
           isActive: item.isActive !== undefined ? item.isActive : true,
         }),
       })
