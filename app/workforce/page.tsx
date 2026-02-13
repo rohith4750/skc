@@ -97,6 +97,7 @@ export default function WorkforcePage() {
   }, [])
 
   const [workforcePayments, setWorkforcePayments] = useState<any[]>([])
+  const [clearingPayments, setClearingPayments] = useState(false)
 
   const loadWorkforce = async () => {
     try {
@@ -214,6 +215,24 @@ export default function WorkforcePage() {
       }
       console.error('Error generating PDF:', error)
       toast.error('Failed to generate PDF. Please try again.')
+    }
+  }
+
+  const handleClearPayments = async () => {
+    if (workforce.length > 0) return
+    setClearingPayments(true)
+    try {
+      const res = await fetch('/api/workforce/payments', { method: 'DELETE' })
+      if (!res.ok) {
+        const err = await res.json()
+        throw new Error(err.error || 'Failed to clear')
+      }
+      toast.success('Payment history cleared')
+      await loadWorkforce()
+    } catch (e: any) {
+      toast.error(e.message || 'Failed to clear payments')
+    } finally {
+      setClearingPayments(false)
     }
   }
 
@@ -819,12 +838,23 @@ export default function WorkforcePage() {
       {/* Workforce Payment History */}
       {workforcePayments.length > 0 && (
         <div className="mt-6 bg-white rounded-lg shadow-md overflow-hidden">
-          <div className="bg-gradient-to-r from-green-500 to-emerald-500 px-6 py-4">
-            <h2 className="text-lg font-bold text-white flex items-center gap-2">
-              <FaReceipt className="w-5 h-5" />
-              Payment Transactions
-            </h2>
-            <p className="text-green-100 text-sm mt-1">Recorded payments against workforce outstanding</p>
+          <div className="bg-gradient-to-r from-green-500 to-emerald-500 px-6 py-4 flex flex-wrap items-center justify-between gap-2">
+            <div>
+              <h2 className="text-lg font-bold text-white flex items-center gap-2">
+                <FaReceipt className="w-5 h-5" />
+                Payment Transactions
+              </h2>
+              <p className="text-green-100 text-sm mt-1">Recorded payments against workforce outstanding</p>
+            </div>
+            {workforce.length === 0 && (
+              <button
+                onClick={handleClearPayments}
+                disabled={clearingPayments}
+                className="px-3 py-1.5 bg-white/20 hover:bg-white/30 text-white text-sm rounded-lg disabled:opacity-50"
+              >
+                {clearingPayments ? 'Clearing…' : 'Clear payment history'}
+              </button>
+            )}
           </div>
           <div className="overflow-x-auto">
             <table className="w-full min-w-[500px]">

@@ -98,9 +98,20 @@ export async function DELETE(
       )
     }
 
+    // Delete the member first
     await (prisma as any).workforce.delete({
       where: { id: params.id }
     })
+
+    // If this was the last member, clear workforce payments so analytics reset
+    const remaining = await (prisma as any).workforce.count()
+    if (remaining === 0) {
+      try {
+        await (prisma as any).workforcePayment.deleteMany({})
+      } catch {
+        // Table may not exist
+      }
+    }
 
     return NextResponse.json({ success: true })
   } catch (error: any) {

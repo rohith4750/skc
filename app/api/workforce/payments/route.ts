@@ -4,6 +4,28 @@ import { requireAuth } from '@/lib/require-auth'
 
 const PAYMENT_METHODS = ['cash', 'upi', 'bank_transfer', 'cheque', 'other']
 
+export async function DELETE(request: NextRequest) {
+  const auth = await requireAuth(request)
+  if (auth.response) return auth.response
+  try {
+    const workforceCount = await (prisma as any).workforce.count()
+    if (workforceCount > 0) {
+      return NextResponse.json(
+        { error: 'Cannot clear payments while workforce members exist. Delete all members first.' },
+        { status: 400 }
+      )
+    }
+    await (prisma as any).workforcePayment.deleteMany({})
+    return NextResponse.json({ success: true })
+  } catch (error: any) {
+    console.error('Failed to clear workforce payments:', error)
+    return NextResponse.json(
+      { error: 'Failed to clear payments', details: error.message },
+      { status: 500 }
+    )
+  }
+}
+
 export async function GET(request: NextRequest) {
   const auth = await requireAuth(request)
   if (auth.response) return auth.response
