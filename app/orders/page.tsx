@@ -48,6 +48,7 @@ export default function OrdersPage() {
       services: string[] // Array of selected services: 'buffet', 'vaddana', 'handover'
       numberOfMembers: string
       itemCustomizations: Record<string, string> // menuItemId -> customization text
+      itemQuantities: Record<string, string> // menuItemId -> quantity
     }>,
     stalls: [] as Array<{ category: string; description: string; cost: string }>,
     discount: '',
@@ -147,15 +148,21 @@ export default function OrdersPage() {
         itemsByType[mealType].push(item.menuItemId)
       })
 
-      // Extract item customizations
+      // Extract item customizations and quantities
       const customizationsByItemAndType: Record<string, Record<string, string>> = {}
+      const quantitiesByItemAndType: Record<string, Record<string, string>> = {}
+
       order.items.forEach((item: any) => {
         const mealType = item.mealType || item.menuItem?.type?.toLowerCase() || 'other'
         if (!customizationsByItemAndType[mealType]) {
           customizationsByItemAndType[mealType] = {}
+          quantitiesByItemAndType[mealType] = {}
         }
         if (item.customization) {
           customizationsByItemAndType[mealType][item.menuItemId] = item.customization
+        }
+        if (item.quantity) {
+          quantitiesByItemAndType[mealType][item.menuItemId] = item.quantity.toString()
         }
       })
 
@@ -193,6 +200,7 @@ export default function OrdersPage() {
             menuType: menuType,
             selectedMenuItems,
             itemCustomizations: customizationsByItemAndType[menuType] || {},
+            itemQuantities: quantitiesByItemAndType[menuType] || {},
             pricingMethod,
             numberOfPlates,
             platePrice,
@@ -273,6 +281,7 @@ export default function OrdersPage() {
         services: [],
         numberOfMembers: '',
         itemCustomizations: {},
+        itemQuantities: {},
       }]
     }))
     // New meal type starts expanded
@@ -297,6 +306,7 @@ export default function OrdersPage() {
         services: [],
         numberOfMembers: '',
         itemCustomizations: {},
+        itemQuantities: {},
       }]
     }))
     // New meal type starts expanded
@@ -399,10 +409,31 @@ export default function OrdersPage() {
         if (mealType.id === mealTypeId) {
           const newCustomizations = { ...mealType.itemCustomizations }
           delete newCustomizations[itemId]
+          const newQuantities = { ...mealType.itemQuantities }
+          delete newQuantities[itemId]
           return {
             ...mealType,
             selectedMenuItems: mealType.selectedMenuItems.filter(id => id !== itemId),
-            itemCustomizations: newCustomizations
+            itemCustomizations: newCustomizations,
+            itemQuantities: newQuantities
+          }
+        }
+        return mealType
+      })
+    }))
+  }
+
+  const handleUpdateItemQuantity = (mealTypeId: string, itemId: string, value: string) => {
+    setFormData(prev => ({
+      ...prev,
+      mealTypes: prev.mealTypes.map(mealType => {
+        if (mealType.id === mealTypeId) {
+          return {
+            ...mealType,
+            itemQuantities: {
+              ...mealType.itemQuantities,
+              [itemId]: value
+            }
           }
         }
         return mealType
@@ -557,7 +588,7 @@ export default function OrdersPage() {
       const orderItems: OrderItem[] = formData.mealTypes.flatMap(mealType =>
         mealType.selectedMenuItems.map(menuItemId => ({
           menuItemId,
-          quantity: 1,
+          quantity: parseFloat(mealType.itemQuantities?.[menuItemId] || '1'),
           mealType: mealType.menuType, // Store which meal type this item was selected for
           customization: mealType.itemCustomizations?.[menuItemId] || '',
         }))
@@ -647,14 +678,29 @@ export default function OrdersPage() {
     // Calculate total from all meal types (without transport)
     let mealTypesTotal = 0
     formData.mealTypes.forEach(mealType => {
+      let mealTypeTotal = 0
+
+      // Add price of specific items (e.g., Water Bottles)
+      mealType.selectedMenuItems.forEach(itemId => {
+        const item = menuItems.find(m => m.id === itemId)
+        if (item && item.price) {
+          const quantity = parseFloat(mealType.itemQuantities?.[itemId] || '0')
+          if (quantity > 0) {
+            mealTypeTotal += item.price * quantity
+          }
+        }
+      })
+
       if (mealType.pricingMethod === 'plate-based') {
         // Use numberOfMembers as the plate count for plate-based pricing
         const members = parseFloat(mealType.numberOfMembers) || 0
         const price = parseFloat(mealType.platePrice) || 0
-        mealTypesTotal += members * price
+        mealTypeTotal += members * price
       } else {
-        mealTypesTotal += parseFloat(mealType.manualAmount) || 0
+        mealTypeTotal += parseFloat(mealType.manualAmount) || 0
       }
+
+      mealTypesTotal += mealTypeTotal
     })
 
     const finalTotal = Math.max(0, mealTypesTotal + transportCost + stallsTotal - discount)
@@ -1144,6 +1190,28 @@ export default function OrdersPage() {
                                                       </div>
 
                                                       <div className="flex items-center w-full sm:w-auto gap-2">
+                                                        {item.price ? (
+                                                          <div className="flex items-center gap-2 mr-2">
+                                                            <div className="flex flex-col items-end">
+                                                              <div className="flex items-center gap-1">
+                                                                <input
+                                                                  type="number"
+                                                                  min="1"
+                                                                  placeholder="Qty"
+                                                                  value={mealType.itemQuantities?.[itemId] || '1'}
+                                                                  onChange={(e) => handleUpdateItemQuantity(mealType.id, itemId, e.target.value)}
+                                                                  className="text-xs border border-blue-300 rounded px-2 py-1 w-16 focus:ring-1 focus:ring-blue-500 outline-none text-right"
+                                                                  onClick={(e) => e.stopPropagation()}
+                                                                />
+                                                                <span className="text-xs text-gray-500">{item.unit || 'units'}</span>
+                                                              </div>
+                                                              <span className="text-xs text-blue-700 font-medium">
+                                                                ₹{((parseFloat(mealType.itemQuantities?.[itemId] || '1') || 0) * item.price).toFixed(2)}
+                                                              </span>
+                                                            </div>
+                                                          </div>
+                                                        ) : null}
+
                                                         <input
                                                           type="text"
                                                           placeholder="Customization (e.g. Spice Level)"

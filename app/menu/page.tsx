@@ -30,6 +30,8 @@ export default function MenuPage() {
     name: '',
     type: '',
     description: '',
+    price: '',
+    unit: '',
     isActive: true,
   })
 
@@ -90,7 +92,7 @@ export default function MenuPage() {
   }, [selectedFilter, selectedSubFilter])
 
   const tableConfig = getMenuItemTableConfig()
-  
+
   // Update status column to use toggleActive handler
   const statusColumnIndex = tableConfig.columns.findIndex((col) => col.key === 'status')
   if (statusColumnIndex !== -1) {
@@ -99,11 +101,10 @@ export default function MenuPage() {
       render: (item) => (
         <button
           onClick={() => toggleActive(item)}
-          className={`px-3 py-1 rounded-full text-xs font-medium ${
-            item.isActive 
-              ? 'bg-green-100 text-green-800' 
-              : 'bg-red-100 text-red-800'
-          }`}
+          className={`px-3 py-1 rounded-full text-xs font-medium ${item.isActive
+            ? 'bg-green-100 text-green-800'
+            : 'bg-red-100 text-red-800'
+            }`}
         >
           {item.isActive ? 'Active' : 'Inactive'}
         </button>
@@ -134,7 +135,7 @@ export default function MenuPage() {
   const handleSubmit = async (e: any) => {
     e.preventDefault()
     setFormError('')
-    
+
     try {
       if (!isNonEmptyString(formData.name) || !isNonEmptyString(formData.type)) {
         toast.error('Please enter name and select type')
@@ -148,9 +149,11 @@ export default function MenuPage() {
         name: formData.name,
         type: formData.type,
         description: formData.description,
+        price: formData.price ? parseFloat(formData.price) : null,
+        unit: formData.unit,
         isActive: formData.isActive,
       }
-      
+
       if (editingItem?.id) {
         menuItem.id = editingItem.id
       }
@@ -172,6 +175,8 @@ export default function MenuPage() {
       name: '',
       type: '',
       description: '',
+      price: '',
+      unit: '',
       isActive: true,
     })
     setEditingItem(null)
@@ -185,6 +190,8 @@ export default function MenuPage() {
       name: item.name,
       type: item.type,
       description: item.description || '',
+      price: item.price ? item.price.toString() : '',
+      unit: item.unit || '',
       isActive: item.isActive,
     })
     setShowModal(true)
@@ -276,7 +283,7 @@ export default function MenuPage() {
     // Generate HTML for printing
     const renderCategory = (title: string, grouped: Record<string, MenuItem[]>) => {
       if (Object.keys(grouped).length === 0) return ''
-      
+
       return `
         <div class="category">
           <h2 class="category-title">${title}</h2>
@@ -421,7 +428,7 @@ export default function MenuPage() {
     `)
 
     printWindow.document.close()
-    
+
     // Wait for content to load, then print
     setTimeout(() => {
       printWindow.print()
@@ -465,61 +472,55 @@ export default function MenuPage() {
         <div className="flex flex-wrap gap-2 sm:gap-3">
           <button
             onClick={() => handleMainCategoryChange('all')}
-            className={`px-4 sm:px-6 py-2 rounded-lg text-sm sm:text-base font-medium transition-colors ${
-              selectedFilter === 'all'
-                ? 'bg-primary-500 text-white'
-                : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-            }`}
+            className={`px-4 sm:px-6 py-2 rounded-lg text-sm sm:text-base font-medium transition-colors ${selectedFilter === 'all'
+              ? 'bg-primary-500 text-white'
+              : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+              }`}
           >
             All
           </button>
           <button
             onClick={() => handleMainCategoryChange('breakfast')}
-            className={`px-4 sm:px-6 py-2 rounded-lg text-sm sm:text-base font-medium transition-colors ${
-              selectedFilter === 'breakfast'
-                ? 'bg-primary-500 text-white'
-                : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-            }`}
+            className={`px-4 sm:px-6 py-2 rounded-lg text-sm sm:text-base font-medium transition-colors ${selectedFilter === 'breakfast'
+              ? 'bg-primary-500 text-white'
+              : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+              }`}
           >
             Breakfast
           </button>
           <button
             onClick={() => handleMainCategoryChange('lunch')}
-            className={`px-4 sm:px-6 py-2 rounded-lg text-sm sm:text-base font-medium transition-colors ${
-              selectedFilter === 'lunch'
-                ? 'bg-primary-500 text-white'
-                : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-            }`}
+            className={`px-4 sm:px-6 py-2 rounded-lg text-sm sm:text-base font-medium transition-colors ${selectedFilter === 'lunch'
+              ? 'bg-primary-500 text-white'
+              : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+              }`}
           >
             Lunch
           </button>
           <button
             onClick={() => handleMainCategoryChange('dinner')}
-            className={`px-4 sm:px-6 py-2 rounded-lg text-sm sm:text-base font-medium transition-colors ${
-              selectedFilter === 'dinner'
-                ? 'bg-primary-500 text-white'
-                : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-            }`}
+            className={`px-4 sm:px-6 py-2 rounded-lg text-sm sm:text-base font-medium transition-colors ${selectedFilter === 'dinner'
+              ? 'bg-primary-500 text-white'
+              : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+              }`}
           >
             Dinner
           </button>
           <button
             onClick={() => handleMainCategoryChange('snacks')}
-            className={`px-4 sm:px-6 py-2 rounded-lg text-sm sm:text-base font-medium transition-colors ${
-              selectedFilter === 'snacks'
-                ? 'bg-primary-500 text-white'
-                : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-            }`}
+            className={`px-4 sm:px-6 py-2 rounded-lg text-sm sm:text-base font-medium transition-colors ${selectedFilter === 'snacks'
+              ? 'bg-primary-500 text-white'
+              : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+              }`}
           >
             Snacks
           </button>
           <button
             onClick={() => handleMainCategoryChange('sweets')}
-            className={`px-4 sm:px-6 py-2 rounded-lg text-sm sm:text-base font-medium transition-colors ${
-              selectedFilter === 'sweets'
-                ? 'bg-primary-500 text-white'
-                : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-            }`}
+            className={`px-4 sm:px-6 py-2 rounded-lg text-sm sm:text-base font-medium transition-colors ${selectedFilter === 'sweets'
+              ? 'bg-primary-500 text-white'
+              : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+              }`}
           >
             Sweets
           </button>
@@ -537,11 +538,10 @@ export default function MenuPage() {
           <div className="flex flex-wrap gap-2">
             <button
               onClick={() => setSelectedSubFilter('all')}
-              className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-                selectedSubFilter === 'all'
-                  ? 'bg-primary-500 text-white'
-                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-              }`}
+              className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${selectedSubFilter === 'all'
+                ? 'bg-primary-500 text-white'
+                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                }`}
             >
               All {selectedFilter}
             </button>
@@ -549,11 +549,10 @@ export default function MenuPage() {
               <button
                 key={subcategory}
                 onClick={() => setSelectedSubFilter(subcategory)}
-                className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-                  selectedSubFilter === subcategory
-                    ? 'bg-green-600 text-white'
-                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                }`}
+                className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${selectedSubFilter === subcategory
+                  ? 'bg-green-600 text-white'
+                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                  }`}
               >
                 {subcategory}
               </button>
@@ -566,11 +565,11 @@ export default function MenuPage() {
         columns={tableConfig.columns}
         data={filteredMenuItems}
         emptyMessage={
-          menuItems.length === 0 
+          menuItems.length === 0
             ? tableConfig.emptyMessage
             : selectedSubFilter !== 'all'
-            ? `No menu items found in "${selectedFilter}" - "${selectedSubFilter}" category.`
-            : `No menu items found in "${selectedFilter}" category.`
+              ? `No menu items found in "${selectedFilter}" - "${selectedSubFilter}" category.`
+              : `No menu items found in "${selectedFilter}" category.`
         }
         itemsPerPage={itemsPerPage}
         currentPage={currentPage}
@@ -607,8 +606,8 @@ export default function MenuPage() {
                 {editingItem ? 'Edit Menu Item' : 'Add New Menu Item'}
               </h2>
             </div>
-        <form onSubmit={handleSubmit} className="p-4 sm:p-6">
-          <FormError message={formError} className="mb-4" />
+            <form onSubmit={handleSubmit} className="p-4 sm:p-6">
+              <FormError message={formError} className="mb-4" />
               <div className="space-y-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -640,6 +639,7 @@ export default function MenuPage() {
                     <option value="snacks">Snacks</option>
                     <option value="sweets">Sweets</option>
                     <option value="saree">Saree</option>
+                    <option value="water_bottles">Water Bottles</option>
                   </select>
                 </div>
                 <div>
@@ -653,6 +653,33 @@ export default function MenuPage() {
                     className="w-full px-3 sm:px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm sm:text-base"
                     placeholder="Enter menu item description..."
                   />
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Price (Optional)
+                    </label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      value={formData.price}
+                      onChange={(e) => setFormData({ ...formData, price: e.target.value })}
+                      className="w-full px-3 sm:px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm sm:text-base"
+                      placeholder="0.00"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Unit (Optional)
+                    </label>
+                    <input
+                      type="text"
+                      value={formData.unit}
+                      onChange={(e) => setFormData({ ...formData, unit: e.target.value })}
+                      className="w-full px-3 sm:px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm sm:text-base"
+                      placeholder="e.g. bottle, plate"
+                    />
+                  </div>
                 </div>
                 <div className="flex items-center">
                   <input

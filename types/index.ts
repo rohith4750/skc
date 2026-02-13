@@ -15,6 +15,8 @@ export interface MenuItem {
   type: string
   description?: string
   descriptionTelugu?: string
+  price?: number
+  unit?: string
   isActive: boolean
 }
 

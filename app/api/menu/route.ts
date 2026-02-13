@@ -35,6 +35,10 @@ export async function POST(request: NextRequest) {
         type: data.type,
         description: data.description,
         descriptionTelugu: data.descriptionTelugu,
+        // @ts-ignore
+        price: data.price,
+        // @ts-ignore
+        unit: data.unit,
         isActive: data.isActive !== undefined ? data.isActive : true,
       }
     })

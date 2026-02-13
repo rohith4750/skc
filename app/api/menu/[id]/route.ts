@@ -23,6 +23,10 @@ export async function PUT(
         type: data.type,
         description: data.description,
         descriptionTelugu: data.descriptionTelugu,
+        // @ts-ignore
+        price: data.price,
+        // @ts-ignore
+        unit: data.unit,
         isActive: data.isActive,
       }
     })

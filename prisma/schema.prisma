@@ -132,6 +132,8 @@ model MenuItem {
   type            String
   description     String?
   descriptionTelugu String?
+  price           Decimal? @db.Decimal(10, 2)
+  unit            String? // e.g., "bottle", "plate", "box"
   isActive        Boolean @default(true)
   orders          OrderItem[]
 

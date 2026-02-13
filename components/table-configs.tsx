@@ -88,8 +88,8 @@ export function getSupervisorTableConfig(): TableConfig<Supervisor> {
               e.stopPropagation()
             }}
             className={`px-3 py-1 rounded-full text-xs font-medium ${supervisor.isActive
-                ? 'bg-green-100 text-green-800'
-                : 'bg-red-100 text-red-800'
+              ? 'bg-green-100 text-green-800'
+              : 'bg-red-100 text-red-800'
               }`}
           >
             {supervisor.isActive ? 'Active' : 'Inactive'}
@@ -124,6 +124,16 @@ export function getMenuItemTableConfig(): TableConfig<MenuItem> {
         className: '',
       },
       {
+        key: 'price',
+        header: 'Price',
+        render: (item) => <div className="text-sm text-gray-900">{item.price ? formatCurrency(item.price) : '-'}</div>,
+      },
+      {
+        key: 'unit',
+        header: 'Unit',
+        render: (item) => <div className="text-sm text-gray-900">{item.unit || '-'}</div>,
+      },
+      {
         key: 'status',
         header: 'Status',
         render: (item) => (
@@ -132,8 +142,8 @@ export function getMenuItemTableConfig(): TableConfig<MenuItem> {
               e.stopPropagation()
             }}
             className={`px-3 py-1 rounded-full text-xs font-medium ${item.isActive
-                ? 'bg-green-100 text-green-800'
-                : 'bg-red-100 text-red-800'
+              ? 'bg-green-100 text-green-800'
+              : 'bg-red-100 text-red-800'
               }`}
           >
             {item.isActive ? 'Active' : 'Inactive'}
@@ -268,8 +278,8 @@ export function getBillTableConfig(): TableConfig<BillWithOrder> {
         header: 'Status',
         render: (bill) => (
           <span className={`px-3 py-1 rounded-full text-xs font-medium ${bill.status === 'paid' ? 'bg-green-100 text-green-800' :
-              bill.status === 'partial' ? 'bg-yellow-100 text-yellow-800' :
-                'bg-red-100 text-red-800'
+            bill.status === 'partial' ? 'bg-yellow-100 text-yellow-800' :
+              'bg-red-100 text-red-800'
             }`}>
             {bill.status.charAt(0).toUpperCase() + bill.status.slice(1)}
           </span>
