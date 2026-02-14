@@ -36,6 +36,22 @@ export async function POST(request: Request) {
             const stalls: any[] = Array.isArray(primaryOrder.stalls) ? primaryOrder.stalls : []
             const services: any[] = Array.isArray(primaryOrder.services) ? primaryOrder.services : []
 
+            // Consolidate Bill Paid Amounts & History
+            let totalPaidAmount = new Decimal(primaryOrder.bill?.paidAmount || 0)
+            let combinedPaymentHistory = Array.isArray(primaryOrder.bill?.paymentHistory) ? [...primaryOrder.bill.paymentHistory] : []
+
+            // If the primary order didn't have a bill but had an advance, treat it as a payment
+            if (!primaryOrder.bill && advancePaid.gt(0)) {
+                totalPaidAmount = advancePaid
+                combinedPaymentHistory.push({
+                    amount: advancePaid.toNumber(),
+                    date: primaryOrder.createdAt,
+                    source: 'advance',
+                    method: 'cash',
+                    notes: 'Initial advance'
+                })
+            }
+
             for (const order of secondaryOrders) {
                 totalAmount = totalAmount.plus(new Decimal(order.totalAmount))
                 advancePaid = advancePaid.plus(new Decimal(order.advancePaid))
@@ -91,6 +107,29 @@ export async function POST(request: Request) {
                 if (Array.isArray(order.services)) {
                     services.push(...order.services)
                 }
+
+                // Consolidate Payments from Secondary Orders
+                const secondaryPaid = new Decimal(order.bill?.paidAmount || 0)
+                const secondaryAdvance = new Decimal(order.advancePaid || 0)
+
+                // Use bill's paidAmount if available, otherwise fallback to order's advancePaid
+                const paymentToTransfer = secondaryPaid.gt(0) ? secondaryPaid : secondaryAdvance
+
+                if (paymentToTransfer.gt(0)) {
+                    totalPaidAmount = totalPaidAmount.plus(paymentToTransfer)
+
+                    if (order.bill?.paymentHistory && Array.isArray(order.bill.paymentHistory)) {
+                        combinedPaymentHistory.push(...order.bill.paymentHistory)
+                    } else if (secondaryAdvance.gt(0)) {
+                        combinedPaymentHistory.push({
+                            amount: secondaryAdvance.toNumber(),
+                            date: order.createdAt,
+                            source: 'advance_transfer',
+                            method: 'other',
+                            notes: `Transferred from merged Order #${order.serialNumber}`
+                        })
+                    }
+                }
             }
 
             // 4. Update Primary Order (remaining logic stays similar)
@@ -111,14 +150,28 @@ export async function POST(request: Request) {
 
             // 5. Update/Create Bill for Primary Order
             if (primaryOrder.bill) {
-                const paidAmount = new Decimal(primaryOrder.bill.paidAmount)
                 await tx.bill.update({
                     where: { id: primaryOrder.bill.id },
                     data: {
                         totalAmount: updatedPrimary.totalAmount,
                         advancePaid: updatedPrimary.advancePaid,
                         remainingAmount: updatedPrimary.remainingAmount,
-                        paidAmount: paidAmount // Preserve existing paid amount
+                        paidAmount: totalPaidAmount,
+                        paymentHistory: combinedPaymentHistory,
+                        status: updatedPrimary.remainingAmount.equals(0) ? 'paid' : totalPaidAmount.gt(0) ? 'partial' : 'pending'
+                    }
+                })
+            } else if (updatedPrimary.status !== 'pending' || totalPaidAmount.gt(0)) {
+                // Create bill if none existed but we have payments or status changed
+                await tx.bill.create({
+                    data: {
+                        orderId: primaryOrderId,
+                        totalAmount: updatedPrimary.totalAmount,
+                        advancePaid: updatedPrimary.advancePaid,
+                        remainingAmount: updatedPrimary.remainingAmount,
+                        paidAmount: totalPaidAmount,
+                        paymentHistory: combinedPaymentHistory,
+                        status: updatedPrimary.remainingAmount.equals(0) ? 'paid' : totalPaidAmount.gt(0) ? 'partial' : 'pending'
                     }
                 })
             }

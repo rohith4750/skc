@@ -806,6 +806,7 @@ export default function OrdersHistoryPage() {
                       <td className="px-6 py-4">
                         <div className="text-sm text-gray-900 space-y-3">
                           {(() => {
+                            const isCombinedOrder = eventDates.some(ed => ed.key.startsWith('session_') || ed.key.includes('_merged_'))
                             const groupedByDate: Record<string, typeof eventDates> = {}
                             eventDates.forEach(ed => {
                               if (!groupedByDate[ed.date]) groupedByDate[ed.date] = []
@@ -821,7 +822,7 @@ export default function OrdersHistoryPage() {
                                     <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none">
                                       {formatDate(date)}
                                     </span>
-                                    {eventDates.length > 1 && (
+                                    {isCombinedOrder && sortedDates.length > 1 && (
                                       <button
                                         onClick={(e) => {
                                           e.stopPropagation();
@@ -838,7 +839,7 @@ export default function OrdersHistoryPage() {
                                     {groupedByDate[date].map(({ mealType, key }) => (
                                       <div key={key} className="flex items-center gap-1.5 bg-slate-50 px-2 py-0.5 rounded-md border border-slate-100 group/session">
                                         <span className="capitalize text-[11px] font-bold text-slate-600">{sanitizeMealLabel(mealType)}</span>
-                                        {eventDates.length > 1 && (
+                                        {isCombinedOrder && eventDates.length > 1 && (
                                           <button
                                             onClick={(e) => {
                                               e.stopPropagation();
