@@ -2,6 +2,7 @@
  * Builds order PDF HTML (menu + event details) for html2canvas rendering
  * Shared between Order History and Bill page
  */
+import { sanitizeMealLabel } from './utils'
 
 export function buildOrderPdfHtml(
   order: any,
@@ -71,7 +72,7 @@ export function buildOrderPdfHtml(
 
       menuItemsHtml += `
       <div style="grid-column: span 4; font-weight: 700; font-size: 14px; margin-top: 6px; margin-bottom: 3px; color: #222; text-transform: uppercase; padding-bottom: 2px; font-family: 'Poppins', sans-serif;">
-        ${type}${memberInfo}${servicesLabel}
+        ${sanitizeMealLabel(type)}${memberInfo}${servicesLabel}
       </div>
     `
       itemsByType[type].forEach((item: any, index: number) => {

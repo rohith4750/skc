@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useMemo } from 'react'
 import { useParams, useRouter } from 'next/navigation'
-import { formatCurrency, formatDate, formatDateTime } from '@/lib/utils'
+import { formatCurrency, formatDate, formatDateTime, sanitizeMealLabel } from '@/lib/utils'
 import { Order, Bill, PaymentHistoryEntry } from '@/types'
 import { FaArrowLeft, FaMoneyBillWave, FaSave, FaPlus, FaTrash, FaHistory, FaPercentage, FaTruck, FaStore, FaCalendarAlt } from 'react-icons/fa'
 import { FaBottleWater } from 'react-icons/fa6'
@@ -58,7 +58,7 @@ export default function FinancialTrackingPage() {
       const mealTypes = Object.entries(data.mealTypeAmounts || {}).map(([key, detail]: any) => {
         const normalized = typeof detail === 'object' && detail !== null ? detail : { amount: detail || 0 }
         return {
-          id: key.length > 20 ? key : undefined, // If key is a UUID, use it as ID
+          id: key,
           menuType: normalized.menuType || key,
           pricingMethod: normalized.pricingMethod || 'manual',
           numberOfPlates: normalized.numberOfPlates?.toString() || (normalized.pricingMethod === 'plate-based' && normalized.numberOfMembers ? normalized.numberOfMembers.toString() : ''),
@@ -408,7 +408,7 @@ export default function FinancialTrackingPage() {
                                         <option value="">Select Menu Type</option>
                                         {mealTypeOptions.map(option => (
                                           <option key={option} value={option}>
-                                            {option.charAt(0).toUpperCase() + option.slice(1)}
+                                            {sanitizeMealLabel(option)}
                                           </option>
                                         ))}
                                       </select>

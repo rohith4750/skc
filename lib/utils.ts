@@ -39,25 +39,25 @@ export function sendEmail(email: string, subject: string, message: string) {
 export function sendWhatsAppMessage(phone: string, message: string) {
   // Format phone number for WhatsApp (handles Indian numbers)
   let cleanPhone = phone.replace(/[^0-9]/g, '')
-  
+
   // If it's a 10-digit Indian number, add country code +91
   if (cleanPhone.length === 10 && !cleanPhone.startsWith('91')) {
     cleanPhone = '91' + cleanPhone
   }
-  
+
   // Remove leading 0 if present (e.g., 091 -> 91)
   if (cleanPhone.startsWith('0')) {
     cleanPhone = cleanPhone.substring(1)
   }
-  
+
   // Create WhatsApp link - works with both WhatsApp and WhatsApp Business
   // On mobile: Opens WhatsApp/WhatsApp Business app directly with message pre-filled
   // On desktop: Opens WhatsApp Web
   const whatsappLink = `https://wa.me/${cleanPhone}?text=${encodeURIComponent(message)}`
-  
+
   // Detect mobile device
   const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)
-  
+
   if (isMobile) {
     // On mobile: Open directly (will open WhatsApp Business app if installed, otherwise regular WhatsApp)
     // User just needs to tap "Send" button
@@ -73,4 +73,13 @@ export function sendSMS(phone: string, message: string) {
   // For now, use sms: protocol
   const smsLink = `sms:${phone}?body=${encodeURIComponent(message)}`
   window.location.href = smsLink
+}
+
+export function sanitizeMealLabel(label: string): string {
+  if (!label) return ''
+  // Strip tracking suffixes like _merged_X or session_X
+  // We look for common patterns used in our merge/multi-session logic
+  const cleanLabel = label.split('_')[0]
+  // Capitalize for consistent display
+  return cleanLabel.charAt(0).toUpperCase() + cleanLabel.slice(1).toLowerCase()
 }

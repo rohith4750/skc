@@ -1,9 +1,9 @@
 'use client'
 
 import { useEffect, useState, useMemo } from 'react'
-import { formatDateTime, formatDate } from '@/lib/utils'
+import { formatDateTime, formatDate, formatCurrency, sanitizeMealLabel } from '@/lib/utils'
 import { Order } from '@/types'
-import { FaTrash, FaFilePdf, FaImage, FaChevronLeft, FaChevronRight, FaEdit, FaFilter, FaChartLine, FaClock, FaCheckCircle, FaTimesCircle, FaEnvelope, FaPrint } from 'react-icons/fa'
+import { FaTrash, FaFilePdf, FaImage, FaChevronLeft, FaChevronRight, FaEdit, FaFilter, FaChartLine, FaClock, FaCheckCircle, FaTimesCircle, FaEnvelope, FaPrint, FaCalendarAlt } from 'react-icons/fa'
 import Link from 'next/link'
 import jsPDF from 'jspdf'
 import html2canvas from 'html2canvas'
@@ -96,19 +96,35 @@ export default function OrdersHistoryPage() {
     }
 
     // Date range filter
-    if (dateRange.start) {
+    if (dateRange.start || dateRange.end) {
       filtered = filtered.filter(order => {
-        const orderDate = new Date(order.createdAt)
-        const startDate = new Date(dateRange.start)
-        return orderDate >= startDate
-      })
-    }
-    if (dateRange.end) {
-      filtered = filtered.filter(order => {
-        const orderDate = new Date(order.createdAt)
-        const endDate = new Date(dateRange.end)
-        endDate.setHours(23, 59, 59, 999)
-        return orderDate <= endDate
+        const mealTypeAmounts = (order.mealTypeAmounts as Record<string, any>) || {}
+        const eventDates = new Set<string>()
+
+        Object.values(mealTypeAmounts).forEach((d: any) => {
+          if (d && typeof d === 'object' && d.date) {
+            eventDates.add(d.date)
+          }
+        })
+
+        if (eventDates.size === 0) {
+          eventDates.add(new Date(order.createdAt).toISOString().split('T')[0])
+        }
+
+        const datesArray = Array.from(eventDates)
+        return datesArray.some(dateStr => {
+          const eventDate = new Date(dateStr)
+          if (dateRange.start) {
+            const start = new Date(dateRange.start)
+            if (eventDate < start) return false
+          }
+          if (dateRange.end) {
+            const end = new Date(dateRange.end)
+            end.setHours(23, 59, 59, 999)
+            if (eventDate > end) return false
+          }
+          return true
+        })
       })
     }
 
@@ -349,6 +365,54 @@ export default function OrdersHistoryPage() {
     setStatusConfirm({ isOpen: false, id: null, newStatus: '', oldStatus: '' })
   }
 
+  const handleBulkDiscardDate = async (date: string, orderIds: string[]) => {
+    if (!window.confirm(`Are you sure you want to discard ALL catering sessions and records for ${formatDate(date)}? This action is PERMANENT.`)) return
+
+    try {
+      const response = await fetch('/api/orders/bulk-discard-date', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ date, orderIds })
+      })
+
+      if (!response.ok) throw new Error('Failed to bulk discard date')
+
+      toast.success(`Successfully discarded records for ${formatDate(date)}`)
+      loadData()
+    } catch (error) {
+      console.error('Bulk discard error:', error)
+      toast.error('Failed to discard records')
+    }
+  }
+
+  const groupedOrders = useMemo(() => {
+    const groups: Record<string, Order[]> = {}
+
+    // We group paginated orders by date to keep consistent UI
+    paginatedOrders.forEach(order => {
+      const dates = new Set<string>()
+      const mealTypeAmounts = (order.mealTypeAmounts as Record<string, any>) || {}
+
+      Object.values(mealTypeAmounts).forEach((d: any) => {
+        if (d && typeof d === 'object' && d.date) {
+          dates.add(d.date)
+        }
+      })
+
+      // If no sessions with dates, use createdAt
+      if (dates.size === 0) {
+        dates.add(new Date(order.createdAt).toISOString().split('T')[0])
+      }
+
+      dates.forEach(date => {
+        if (!groups[date]) groups[date] = []
+        groups[date].push(order)
+      })
+    })
+
+    return Object.entries(groups).sort((a, b) => b[0].localeCompare(a[0]))
+  }, [paginatedOrders])
+
 
   const renderOrderToPdf = async (order: any, language: 'english' | 'telugu'): Promise<string | null> => {
     const customer = order.customer
@@ -483,7 +547,7 @@ export default function OrdersHistoryPage() {
       })
 
       sessions.forEach(session => {
-        const menuType = session.data?.menuType || session.key
+        const menuType = sanitizeMealLabel(session.data?.menuType || session.key)
         const memberInfo = (session.data?.numberOfMembers) ? ` (${session.data.numberOfMembers} Members)` : ''
 
         htmlContent += `
@@ -851,639 +915,556 @@ export default function OrdersHistoryPage() {
   }
 
   return (
-    <div className="p-6">
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="text-3xl font-bold text-gray-800">Orders History</h1>
-        <button
-          onClick={() => setShowFilters(!showFilters)}
-          className="flex items-center gap-2 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors"
-        >
-          <FaFilter />
-          {showFilters ? 'Hide Filters' : 'Show Filters'}
-        </button>
-      </div>
-
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 mb-6">
-        <div className="bg-white rounded-lg shadow-md p-4 border border-gray-100">
-          <div className="flex items-center justify-between mb-1">
-            <p className="text-xs font-medium text-gray-500 uppercase">Total</p>
-            <FaChartLine className="text-primary-500" />
-          </div>
-          <p className="text-2xl font-bold text-gray-800">{statusSummary.totalOrders}</p>
-        </div>
-        <div className="bg-white rounded-lg shadow-md p-4 border border-gray-100">
-          <div className="flex items-center justify-between mb-1">
-            <p className="text-xs font-medium text-gray-500 uppercase">Pending</p>
-            <FaClock className="text-yellow-500" />
-          </div>
-          <p className="text-2xl font-bold text-yellow-600">{statusSummary.pending}</p>
-        </div>
-        <div className="bg-white rounded-lg shadow-md p-4 border border-gray-100">
-          <div className="flex items-center justify-between mb-1">
-            <p className="text-xs font-medium text-gray-500 uppercase">In Progress</p>
-            <FaClock className="text-blue-500" />
-          </div>
-          <p className="text-2xl font-bold text-blue-600">{statusSummary.inProgress}</p>
-        </div>
-        <div className="bg-white rounded-lg shadow-md p-4 border border-gray-100">
-          <div className="flex items-center justify-between mb-1">
-            <p className="text-xs font-medium text-gray-500 uppercase">Completed</p>
-            <FaCheckCircle className="text-green-500" />
-          </div>
-          <p className="text-2xl font-bold text-green-600">{statusSummary.completed}</p>
-        </div>
-        <div className="bg-white rounded-lg shadow-md p-4 border border-gray-100">
-          <div className="flex items-center justify-between mb-1">
-            <p className="text-xs font-medium text-gray-500 uppercase">Cancelled</p>
-            <FaTimesCircle className="text-red-500" />
-          </div>
-          <p className="text-2xl font-bold text-red-600">{statusSummary.cancelled}</p>
-        </div>
-      </div>
-
-      {/* Filters */}
-      {showFilters && (
-        <div className="bg-white rounded-lg shadow-md p-6 mb-6">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            {/* Status Filter */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Status</label>
-              <select
-                value={statusFilter}
-                onChange={(e) => setStatusFilter(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-              >
-                <option value="all">All Status</option>
-                <option value="pending">Pending</option>
-                <option value="in_progress">In Progress</option>
-                <option value="completed">Completed</option>
-                <option value="cancelled">Cancelled</option>
-              </select>
-            </div>
-
-            {/* Customer Search */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Customer/Event Search</label>
-              <input
-                type="text"
-                value={customerSearch}
-                onChange={(e) => setCustomerSearch(e.target.value)}
-                placeholder="Search by customer name, phone, email, or event name"
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-              />
-            </div>
-
-            {/* Date Range */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Date Range</label>
-              <div className="flex gap-2">
-                <input
-                  type="date"
-                  value={dateRange.start}
-                  onChange={(e) => setDateRange({ ...dateRange, start: e.target.value })}
-                  className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-                />
-                <input
-                  type="date"
-                  value={dateRange.end}
-                  onChange={(e) => setDateRange({ ...dateRange, end: e.target.value })}
-                  className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-                />
-              </div>
-            </div>
-          </div>
-          <div className="mt-4 flex justify-end">
-            <button
-              onClick={() => {
-                setStatusFilter('all')
-                setCustomerSearch('')
-                setDateRange({ start: '', end: '' })
-                setCurrentPage(1)
-              }}
-              className="px-4 py-2 text-sm text-gray-600 hover:text-gray-800 underline"
-            >
-              Clear Filters
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* Orders Table */}
-      {filteredOrders.length === 0 ? (
-        <div className="bg-white rounded-lg shadow-md p-8 text-center text-gray-500">
-          No orders found.
-        </div>
-      ) : (
-        <div className="bg-white rounded-lg shadow-md overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50">
-                <tr>
-                  <th className="px-6 py-3 text-left">
-                    <input
-                      type="checkbox"
-                      checked={selectedOrderIds.length === paginatedOrders.length && paginatedOrders.length > 0}
-                      onChange={() => {
-                        if (selectedOrderIds.length === paginatedOrders.length) {
-                          setSelectedOrderIds([])
-                        } else {
-                          setSelectedOrderIds(paginatedOrders.map((o: any) => o.id))
-                        }
-                      }}
-                      className="w-4 h-4 text-primary-600 border-gray-300 rounded focus:ring-primary-500"
-                    />
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Customer</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Event Name</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Event Type</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Venue</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Guests</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Event Dates</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Created</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
-                {paginatedOrders.map((order: any) => {
-                  // Extract all event dates from meal types
-                  const mealTypeAmounts = order.mealTypeAmounts as Record<string, any> | null
-                  const eventDates: Array<{ label: string; date: string; key: string }> = []
-                  if (mealTypeAmounts) {
-                    Object.entries(mealTypeAmounts).forEach(([key, data]) => {
-                      if (typeof data === 'object' && data !== null && data.date) {
-                        eventDates.push({
-                          label: data.menuType || key,
-                          date: data.date,
-                          key
-                        })
-                      }
-                    })
-                  }
-
-                  return (
-                    <tr key={order.id} className={`hover:bg-gray-50 ${selectedOrderIds.includes(order.id) ? 'bg-primary-50/50' : ''}`}>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <input
-                          type="checkbox"
-                          checked={selectedOrderIds.includes(order.id)}
-                          onChange={() => {
-                            setSelectedOrderIds(prev =>
-                              prev.includes(order.id) ? prev.filter(i => i !== order.id) : [...prev, order.id]
-                            )
-                          }}
-                          className="w-4 h-4 text-primary-600 border-gray-300 rounded focus:ring-primary-500"
-                        />
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm font-medium text-gray-900">{order.customer?.name || 'Unknown'}</div>
-                        <div className="text-sm text-gray-500">{order.customer?.phone || ''}</div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm font-medium text-gray-900">
-                          {(order as any).eventName || <span className="text-gray-400">-</span>}
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm text-gray-900">
-                          {(order as any).eventType || <span className="text-gray-400">-</span>}
-                        </div>
-                      </td>
-                      <td className="px-6 py-4">
-                        <div className="text-sm text-gray-900 max-w-[200px] truncate" title={(order as any).venue || ''}>
-                          {(order as any).venue || <span className="text-gray-400">-</span>}
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm font-medium text-gray-900">
-                          {(order as any).numberOfMembers || <span className="text-gray-400">-</span>}
-                        </div>
-                      </td>
-                      <td className="px-6 py-4">
-                        <div className="text-sm text-gray-900 space-y-1.5">
-                          {eventDates.length > 0 ? (
-                            eventDates.map(({ label, date, key }) => (
-                              <div key={key} className="flex items-center justify-between gap-4 min-w-[200px]">
-                                <span className="capitalize text-sm font-semibold text-gray-700">{label}:</span>
-                                <span className="text-sm text-gray-900 font-medium">{formatDate(date)}</span>
-                              </div>
-                            ))
-                          ) : (
-                            <span className="text-sm text-gray-400">-</span>
-                          )}
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <select
-                          value={order.status}
-                          onChange={(e) => {
-                            if (e.target.value === order.status) return
-                            setStatusConfirm({
-                              isOpen: true,
-                              id: order.id,
-                              newStatus: e.target.value,
-                              oldStatus: order.status
-                            })
-                          }}
-                          className={`px-3 py-1.5 text-xs font-semibold rounded-full border-0 cursor-pointer focus:ring-2 focus:ring-primary-500 focus:outline-none ${order.status === 'completed' ? 'bg-green-100 text-green-800 hover:bg-green-200' :
-                            order.status === 'in_progress' ? 'bg-yellow-100 text-yellow-800 hover:bg-yellow-200' :
-                              order.status === 'cancelled' ? 'bg-red-100 text-red-800 hover:bg-red-200' :
-                                'bg-gray-100 text-gray-800 hover:bg-gray-200'
-                            }`}
-                        >
-                          <option value="pending">Pending</option>
-                          <option value="in_progress">In Progress</option>
-                          <option value="completed">Completed</option>
-                          <option value="cancelled">Cancelled</option>
-                        </select>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {formatDateTime(order.createdAt)}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                        <div className="flex gap-2">
-                          <Link
-                            href={`/orders/summary/${order.id}`}
-                            className="text-blue-600 hover:text-blue-900 p-2 hover:bg-blue-50 rounded transition-colors"
-                            title="Order Summary"
-                          >
-                            <FaChartLine />
-                          </Link>
-                          <Link
-                            href={`/orders?edit=${order.id}`}
-                            className="text-yellow-600 hover:text-yellow-900 p-2 hover:bg-yellow-50 rounded transition-colors"
-                            title="Edit Order"
-                          >
-                            <FaEdit />
-                          </Link>
-                          <button
-                            onClick={() => checkAndOpenDocModal(order, 'menu-pdf')}
-                            className="text-secondary-500 hover:text-secondary-700 p-2 hover:bg-secondary-50 rounded"
-                            title="Download Menu PDF"
-                          >
-                            <FaFilePdf />
-                          </button>
-                          <button
-                            onClick={() => checkAndOpenDocModal(order, 'menu-image')}
-                            className="text-purple-600 hover:text-purple-800 p-2 hover:bg-purple-50 rounded"
-                            title="Download Menu Image"
-                          >
-                            <FaImage />
-                          </button>
-                          {(order.status === 'in_progress' || order.status === 'completed') && (
-                            <button
-                              onClick={() => checkAndOpenDocModal(order, 'bill-pdf')}
-                              className="text-primary-600 hover:text-primary-900 p-2 hover:bg-primary-50 rounded"
-                              title="Download Financial Bill"
-                            >
-                              <FaPrint />
-                            </button>
-                          )}
-                          <button
-                            onClick={() => {
-                              if (!order.customer?.email) {
-                                toast.error('Customer email not available')
-                                return
-                              }
-                              setEmailModal({ isOpen: true, order })
-                            }}
-                            className="text-green-600 hover:text-green-800 p-2 hover:bg-green-50 rounded"
-                            title="Email Order (Menu + Event Details)"
-                          >
-                            <FaEnvelope />
-                          </button>
-                          <button
-                            onClick={() => handleDelete(order.id)}
-                            className="text-secondary-500 hover:text-secondary-700 p-2 hover:bg-secondary-50 rounded"
-                            title="Delete"
-                          >
-                            <FaTrash />
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  )
-                })}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      )}
-
-      {/* Pagination Controls */}
-      {orders.length > itemsPerPage && (
-        <div className="mt-4 flex items-center justify-between bg-white px-4 py-3 rounded-lg shadow-md">
-          <div className="text-sm text-gray-700">
-            Showing {startIndex + 1} to {Math.min(endIndex, orders.length)} of {orders.length} orders
-          </div>
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
-              disabled={currentPage === 1}
-              className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${currentPage === 1
-                ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
-                : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-                }`}
-            >
-              <FaChevronLeft />
-            </button>
-            <div className="flex gap-1">
-              {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => {
-                if (
-                  page === 1 ||
-                  page === totalPages ||
-                  (page >= currentPage - 1 && page <= currentPage + 1)
-                ) {
-                  return (
-                    <button
-                      key={page}
-                      onClick={() => setCurrentPage(page)}
-                      className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${currentPage === page
-                        ? 'bg-blue-600 text-white'
-                        : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-                        }`}
-                    >
-                      {page}
-                    </button>
-                  )
-                } else if (page === currentPage - 2 || page === currentPage + 2) {
-                  return <span key={page} className="px-2 text-gray-400">...</span>
-                }
-                return null
-              })}
-            </div>
-            <button
-              onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
-              disabled={currentPage === totalPages}
-              className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${currentPage === totalPages
-                ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
-                : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-                }`}
-            >
-              <FaChevronRight />
-            </button>
-          </div>
-        </div>
-      )}
-
-      <ConfirmModal
-        isOpen={deleteConfirm.isOpen}
-        title="Delete Order"
-        message="Are you sure you want to delete this order? This action cannot be undone."
-        confirmText="Delete"
-        cancelText="Cancel"
-        onConfirm={confirmDelete}
-        onCancel={() => setDeleteConfirm({ isOpen: false, id: null })}
-        variant="danger"
-      />
-
-      <ConfirmModal
-        isOpen={statusConfirm.isOpen}
-        title="Change Order Status"
-        message={
+    <div className="p-8 bg-slate-50/50 min-h-screen">
+      <div className="max-w-[1600px] mx-auto">
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
           <div>
-            <p>Are you sure you want to change the status from <strong>{statusConfirm.oldStatus?.replace('_', ' ').toUpperCase()}</strong> to <strong>{statusConfirm.newStatus?.replace('_', ' ').toUpperCase()}</strong>?</p>
-            {statusConfirm.newStatus === 'in_progress' && <p className="mt-2 text-sm text-yellow-600 font-medium">This will generate a bill if one does not exist.</p>}
-            {statusConfirm.newStatus === 'completed' && <p className="mt-2 text-sm text-green-600 font-medium">This will mark the bill as fully PAID.</p>}
+            <h1 className="text-4xl font-black text-slate-900 leading-tight">Order History</h1>
+            <p className="text-slate-500 font-bold text-sm mt-1 uppercase tracking-widest">Manage and track all catering events</p>
           </div>
-        }
-        confirmText="Yes, Update Status"
-        cancelText="Cancel"
-        onConfirm={confirmStatusChange}
-        onCancel={() => setStatusConfirm({ isOpen: false, id: null, newStatus: '', oldStatus: '' })}
-        variant="info"
-      />
 
-      {/* PDF Language Selection Modal */}
-      {pdfLanguageModal.isOpen && pdfLanguageModal.order && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-xl shadow-xl p-6 max-w-sm w-full mx-4">
-            <h3 className="text-lg font-semibold text-gray-800 mb-2">Download Order PDF</h3>
-            <p className="text-sm text-gray-600 mb-4">Do you want the menu items in English or Telugu?</p>
-            <div className="flex gap-3">
-              <button
-                onClick={() => {
-                  handleGeneratePDF(pdfLanguageModal.order, 'english')
-                  setPdfLanguageModal({ isOpen: false, order: null })
-                }}
-                className="flex-1 px-4 py-2.5 bg-primary-500 text-white rounded-lg font-medium hover:bg-primary-600 transition-colors"
-              >
-                English
-              </button>
-              <button
-                onClick={() => {
-                  handleGeneratePDF(pdfLanguageModal.order, 'telugu')
-                  setPdfLanguageModal({ isOpen: false, order: null })
-                }}
-                className="flex-1 px-4 py-2.5 bg-primary-500 text-white rounded-lg font-medium hover:bg-primary-600 transition-colors"
-              >
-                తెలుగు (Telugu)
-              </button>
-            </div>
+          <div className="flex items-center gap-3">
             <button
-              onClick={() => setPdfLanguageModal({ isOpen: false, order: null })}
-              className="mt-3 w-full px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-lg text-sm font-medium transition-colors"
+              onClick={() => setShowFilters(!showFilters)}
+              className="flex items-center gap-2 px-6 py-3 bg-white border border-slate-200 text-slate-700 rounded-2xl hover:bg-slate-50 transition-all shadow-sm font-black text-xs uppercase tracking-widest"
             >
-              Cancel
+              <FaFilter className={showFilters ? 'text-primary-500' : ''} />
+              {showFilters ? 'Hide Filters' : 'Filters'}
             </button>
+            <Link
+              href="/orders"
+              className="flex items-center gap-2 px-6 py-3 bg-primary-600 text-white rounded-2xl hover:bg-primary-700 transition-all shadow-lg shadow-primary-200 font-black text-xs uppercase tracking-widest"
+            >
+              + Create Order
+            </Link>
           </div>
         </div>
-      )}
 
-      {/* Image Language Selection Modal */}
-      {imageLanguageModal.isOpen && imageLanguageModal.order && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-xl shadow-xl p-6 max-w-sm w-full mx-4">
-            <h3 className="text-lg font-semibold text-gray-800 mb-2">Download Order Image</h3>
-            <p className="text-sm text-gray-600 mb-4">Do you want the menu items in English or Telugu?</p>
-            <div className="flex gap-3">
-              <button
-                onClick={() => {
-                  handleGenerateImage(imageLanguageModal.order, 'english')
-                  setImageLanguageModal({ isOpen: false, order: null })
-                }}
-                className="flex-1 px-4 py-2.5 bg-purple-500 text-white rounded-lg font-medium hover:bg-purple-600 transition-colors"
-              >
-                English
-              </button>
-              <button
-                onClick={() => {
-                  handleGenerateImage(imageLanguageModal.order, 'telugu')
-                  setImageLanguageModal({ isOpen: false, order: null })
-                }}
-                className="flex-1 px-4 py-2.5 bg-purple-500 text-white rounded-lg font-medium hover:bg-purple-600 transition-colors"
-              >
-                తెలుగు (Telugu)
-              </button>
+        {/* Stats Grid */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-6 mb-8">
+          {[
+            { label: 'Total', value: statusSummary.totalOrders, icon: FaChartLine, color: 'text-primary-500', bg: 'bg-primary-50' },
+            { label: 'Pending', value: statusSummary.pending, icon: FaClock, color: 'text-amber-500', bg: 'bg-amber-50' },
+            { label: 'Confirmed', value: statusSummary.inProgress, icon: FaCheckCircle, color: 'text-blue-500', bg: 'bg-blue-50' },
+            { label: 'Completed', value: statusSummary.completed, icon: FaCheckCircle, color: 'text-emerald-500', bg: 'bg-emerald-50' },
+            { label: 'Cancelled', value: statusSummary.cancelled, icon: FaTimesCircle, color: 'text-rose-500', bg: 'bg-rose-50' },
+          ].map((stat, i) => (
+            <div key={i} className="bg-white rounded-3xl p-6 border border-slate-100 shadow-sm">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{stat.label}</span>
+                <div className={`p-2 ${stat.bg} ${stat.color} rounded-xl`}>
+                  <stat.icon size={14} />
+                </div>
+              </div>
+              <p className="text-3xl font-black text-slate-900">{stat.value}</p>
             </div>
-            <button
-              onClick={() => setImageLanguageModal({ isOpen: false, order: null })}
-              className="mt-3 w-full px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-lg text-sm font-medium transition-colors"
-            >
-              Cancel
-            </button>
-          </div>
+          ))}
         </div>
-      )}
 
-      {/* Email Order Modal */}
-      {emailModal.isOpen && emailModal.order && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-xl shadow-xl p-6 max-w-sm w-full mx-4">
-            <h3 className="text-lg font-semibold text-gray-800 mb-2">Email Order to Customer</h3>
-            <p className="text-sm text-gray-600 mb-4">
-              Send order (menu + event details) to{' '}
-              <span className="font-medium text-gray-800">{emailModal.order.customer?.email}</span>
-            </p>
-            <p className="text-xs text-gray-500 mb-4">Menu items in:</p>
-            <div className="flex gap-3">
-              <button
-                onClick={() => handleSendOrderEmail(emailModal.order, 'english')}
-                disabled={emailSending}
-                className="flex-1 px-4 py-2.5 bg-green-600 text-white rounded-lg font-medium hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-              >
-                {emailSending ? 'Sending...' : 'English'}
-              </button>
-              <button
-                onClick={() => handleSendOrderEmail(emailModal.order, 'telugu')}
-                disabled={emailSending}
-                className="flex-1 px-4 py-2.5 bg-green-600 text-white rounded-lg font-medium hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-              >
-                {emailSending ? 'Sending...' : 'తెలుగు'}
-              </button>
-            </div>
-            <button
-              onClick={() => setEmailModal({ isOpen: false, order: null })}
-              disabled={emailSending}
-              className="mt-3 w-full px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-lg text-sm font-medium transition-colors disabled:opacity-50"
-            >
-              Cancel
-            </button>
-          </div>
-        </div>
-      )}
-      {/* Group/Separate Doc Choice Modal */}
-      {docModal.isOpen && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 z-[60] flex items-center justify-center p-4">
-          <div className="bg-white rounded-xl shadow-2xl max-w-md w-full p-6 animate-in fade-in zoom-in duration-200">
-            <h3 className="text-xl font-bold text-gray-900 mb-2">Multiple Dates Detected</h3>
-            <p className="text-gray-600 mb-6">How would you like to generate this document? This order spans multiple event dates.</p>
-
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-              <button
-                onClick={() => {
-                  if (docModal.type === 'menu-pdf') setPdfLanguageModal({ isOpen: true, order: docModal.order })
-                  else if (docModal.type === 'menu-image') setImageLanguageModal({ isOpen: true, order: docModal.order })
-                  else if (docModal.type === 'bill-pdf') handleDownloadBill(docModal.order, { splitByDate: false, type: 'pdf' })
-                  else if (docModal.type === 'bill-image') handleDownloadBill(docModal.order, { splitByDate: false, type: 'image' })
-                  setDocModal({ ...docModal, isOpen: false })
-                }}
-                className="flex flex-col items-center justify-center p-4 border-2 border-primary-100 rounded-xl hover:border-primary-500 hover:bg-primary-50 transition-all group"
-              >
-                <span className="text-primary-600 font-bold mb-1">Grouped</span>
-                <span className="text-xs text-gray-500 group-hover:text-primary-600">All dates consolidated</span>
-              </button>
-
-              <button
-                onClick={() => {
-                  if (docModal.type === 'menu-pdf') setPdfLanguageModal({ isOpen: true, order: docModal.order })
-                  else if (docModal.type === 'menu-image') setImageLanguageModal({ isOpen: true, order: docModal.order })
-                  else if (docModal.type === 'bill-pdf') handleDownloadBill(docModal.order, { splitByDate: true, type: 'pdf' })
-                  else if (docModal.type === 'bill-image') handleDownloadBill(docModal.order, { splitByDate: true, type: 'image' })
-                  setDocModal({ ...docModal, isOpen: false })
-                }}
-                className="flex flex-col items-center justify-center p-4 border-2 border-purple-100 rounded-xl hover:border-purple-500 hover:bg-purple-50 transition-all group"
-              >
-                <span className="text-purple-600 font-bold mb-1">Separate</span>
-                <span className="text-xs text-gray-500 group-hover:text-purple-600">Each date starts new page</span>
-              </button>
-            </div>
-
-            <button
-              onClick={() => setDocModal({ isOpen: false, order: null, type: 'menu-pdf' })}
-              className="mt-6 w-full py-2 text-gray-500 hover:text-gray-700 font-medium"
-            >
-              Cancel
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* Merge Orders Modal */}
-      {mergeModal.isOpen && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[70] p-4">
-          <div className="bg-white rounded-xl shadow-2xl max-w-md w-full p-6 animate-in fade-in zoom-in duration-200">
-            <h3 className="text-xl font-bold text-gray-900 mb-4 text-center">Merge {selectedOrderIds.length} Orders</h3>
-
-            <div className="space-y-4 mb-6">
-              <p className="text-sm text-gray-600 bg-amber-50 border border-amber-100 p-3 rounded-lg">
-                <strong>Attention:</strong> This will combine all dates, sessions, and payments into one record. This action is Permanent.
-              </p>
+        {/* Filters Panel */}
+        {showFilters && (
+          <div className="bg-white rounded-3xl shadow-sm border border-slate-200 p-8 mb-8 animate-in fade-in slide-in-from-top-4 duration-300">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+              <div>
+                <label className="block text-[10px] font-black text-slate-500 uppercase tracking-widest mb-3">Status Filter</label>
+                <select
+                  value={statusFilter}
+                  onChange={(e) => {
+                    setStatusFilter(e.target.value)
+                    setCurrentPage(1)
+                  }}
+                  className="w-full px-5 py-4 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-bold text-slate-700 outline-none focus:ring-2 focus:ring-primary-500 transition-all"
+                >
+                  <option value="all">All Statuses</option>
+                  <option value="pending">Pending</option>
+                  <option value="in_progress">Confirmed</option>
+                  <option value="completed">Completed</option>
+                  <option value="cancelled">Cancelled</option>
+                </select>
+              </div>
 
               <div>
-                <label className="block text-sm font-bold text-gray-700 mb-2">Select Primary Order (Destination)</label>
-                <div className="space-y-2 max-h-48 overflow-y-auto border rounded-lg p-2 bg-gray-50">
-                  {orders.filter(o => selectedOrderIds.includes(o.id)).map(o => (
-                    <label key={o.id} className={`flex items-center gap-3 p-3 rounded-lg border-2 cursor-pointer transition-all ${mergeModal.primaryId === o.id ? 'border-primary-500 bg-primary-50' : 'border-gray-200 bg-white hover:border-primary-200'}`}>
-                      <input
-                        type="radio"
-                        name="primaryOrder"
-                        checked={mergeModal.primaryId === o.id}
-                        onChange={() => setMergeModal(prev => ({ ...prev, primaryId: o.id }))}
-                        className="w-4 h-4 text-primary-600"
-                      />
-                      <div className="flex-1">
-                        <div className="text-sm font-black text-gray-900">#{o.serialNumber} - {o.customer?.name}</div>
-                        <div className="text-xs text-gray-500">{o.eventName} • {formatDate(o.createdAt)}</div>
-                      </div>
-                    </label>
-                  ))}
+                <label className="block text-[10px] font-black text-slate-500 uppercase tracking-widest mb-3">Search Customer / Event</label>
+                <input
+                  type="text"
+                  value={customerSearch}
+                  onChange={(e) => {
+                    setCustomerSearch(e.target.value)
+                    setCurrentPage(1)
+                  }}
+                  placeholder="Name, Phone, Email or Event..."
+                  className="w-full px-5 py-4 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-bold text-slate-700 outline-none focus:ring-2 focus:ring-primary-500 transition-all"
+                />
+              </div>
+
+              <div>
+                <label className="block text-[10px] font-black text-slate-500 uppercase tracking-widest mb-3">Date Range</label>
+                <div className="flex gap-3">
+                  <input
+                    type="date"
+                    value={dateRange.start}
+                    onChange={(e) => { setDateRange({ ...dateRange, start: e.target.value }); setCurrentPage(1); }}
+                    className="flex-1 px-4 py-4 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-bold text-slate-700 outline-none focus:ring-2 focus:ring-primary-500 transition-all"
+                  />
+                  <input
+                    type="date"
+                    value={dateRange.end}
+                    onChange={(e) => { setDateRange({ ...dateRange, end: e.target.value }); setCurrentPage(1); }}
+                    className="flex-1 px-4 py-4 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-bold text-slate-700 outline-none focus:ring-2 focus:ring-primary-500 transition-all"
+                  />
                 </div>
               </div>
             </div>
-
-            <div className="flex gap-3">
+            <div className="mt-8 pt-6 border-t border-slate-100 flex justify-end">
               <button
-                onClick={() => setMergeModal({ isOpen: false, primaryId: null, loading: false })}
-                className="flex-1 py-3 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl font-bold transition-all"
-                disabled={mergeModal.loading}
+                onClick={() => {
+                  setStatusFilter('all')
+                  setCustomerSearch('')
+                  setDateRange({ start: '', end: '' })
+                  setCurrentPage(1)
+                }}
+                className="text-xs font-black text-slate-400 hover:text-slate-600 uppercase tracking-widest transition-all"
               >
-                Cancel
-              </button>
-              <button
-                onClick={handleMergeOrders}
-                disabled={!mergeModal.primaryId || mergeModal.loading}
-                className="flex-1 py-3 bg-primary-600 hover:bg-primary-700 text-white rounded-xl font-bold shadow-lg shadow-primary-200 transition-all flex items-center justify-center gap-2 disabled:opacity-50"
-              >
-                {mergeModal.loading ? 'Merging...' : 'Confirm Merge'}
+                Clear All Filters
               </button>
             </div>
           </div>
-        </div>
-      )}
+        )}
 
-      {/* Floating Action Bar */}
-      {selectedOrderIds.length >= 2 && (
-        <div className="fixed bottom-8 left-1/2 -translate-x-1/2 bg-white rounded-full shadow-2xl border border-primary-100 px-6 py-4 flex items-center gap-6 z-40 animate-in slide-in-from-bottom-8 duration-300">
-          <div className="flex flex-col">
-            <span className="text-xs font-bold text-slate-500 uppercase">Selection</span>
-            <span className="text-sm font-black text-primary-600">{selectedOrderIds.length} Orders</span>
+        {/* Grouped Content */}
+        {filteredOrders.length === 0 ? (
+          <div className="bg-white rounded-[40px] border-2 border-dashed border-slate-200 p-20 text-center">
+            <div className="w-24 h-24 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-6">
+              <FaClock className="text-4xl text-slate-300" />
+            </div>
+            <h3 className="text-2xl font-black text-slate-900 mb-2">No results found</h3>
+            <p className="text-slate-500 font-bold max-w-xs mx-auto text-sm">
+              We couldn't find any orders matching your current filters. Try relaxing them.
+            </p>
           </div>
-          <div className="h-8 w-px bg-slate-200"></div>
-          <button
-            onClick={() => setMergeModal({ isOpen: true, primaryId: null, loading: false })}
-            className="bg-primary-600 text-white px-6 py-2 rounded-full font-bold shadow-lg shadow-primary-200 hover:bg-primary-700 transition-all flex items-center gap-2 active:scale-95"
-          >
-            Merge Selection
-          </button>
-          <button
-            onClick={() => setSelectedOrderIds([])}
-            className="text-slate-400 hover:text-slate-600 p-1"
-          >
-            Clear
-          </button>
-        </div>
-      )}
+        ) : (
+          <div className="space-y-12 pb-20 mt-8">
+            {groupedOrders.map(([date, groupOrders]) => (
+              <div key={date} className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-6 gap-4 px-4">
+                  <div className="flex items-center gap-4">
+                    <div className="w-12 h-12 bg-white rounded-2xl shadow-sm border border-slate-200 flex items-center justify-center text-primary-500">
+                      <FaCalendarAlt size={20} />
+                    </div>
+                    <div>
+                      <h2 className="text-2xl font-black text-slate-900 leading-none mb-1">{formatDate(date)}</h2>
+                      <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">{groupOrders.length} {groupOrders.length === 1 ? 'Event' : 'Events'} Scheduled</p>
+                    </div>
+                  </div>
+
+                  <button
+                    onClick={() => handleBulkDiscardDate(date, groupOrders.map(o => o.id))}
+                    className="flex items-center gap-2 px-6 py-3 bg-rose-50 text-rose-600 rounded-2xl text-xs font-black hover:bg-rose-100 transition-all border border-rose-100 uppercase tracking-widest"
+                  >
+                    <FaTrash size={12} /> Discard Date
+                  </button>
+                </div>
+
+                <div className="grid grid-cols-1 lg:grid-cols-2 2xl:grid-cols-3 gap-6">
+                  {groupOrders.map((order) => {
+                    const mealTypeAmounts = order.mealTypeAmounts as Record<string, any> | null
+                    const eventDates: Array<{ label: string; date: string; key: string }> = []
+                    if (mealTypeAmounts) {
+                      Object.entries(mealTypeAmounts).forEach(([key, data]) => {
+                        if (typeof data === 'object' && data !== null && data.date === date) {
+                          eventDates.push({
+                            label: data.menuType || key,
+                            date: data.date,
+                            key
+                          })
+                        }
+                      })
+                    }
+
+                    return (
+                      <div key={order.id} className="bg-white rounded-[32px] p-8 border border-slate-200 shadow-sm hover:shadow-xl hover:border-primary-200 transition-all group relative overflow-hidden">
+                        <div className="absolute top-0 right-0 w-32 h-32 bg-primary-50/50 rounded-full blur-3xl -mr-16 -mt-16 group-hover:bg-primary-100/50 transition-all"></div>
+
+                        <div className="relative">
+                          <div className="flex justify-between items-start mb-6">
+                            <div>
+                              <span className="inline-block px-3 py-1 bg-slate-100 rounded-full text-[10px] font-black text-slate-500 uppercase tracking-widest mb-3">
+                                Order #{order.serialNumber}
+                              </span>
+                              <h3 className="text-xl font-black text-slate-900 group-hover:text-primary-600 transition-colors">
+                                {order.customer?.name || 'Unknown Customer'}
+                              </h3>
+                              <p className="text-slate-500 font-bold text-sm">{(order as any).eventName || 'Catering Event'}</p>
+                            </div>
+                            <div className={`px-4 py-2 rounded-2xl text-[10px] font-black uppercase tracking-widest shrink-0 ${order.status === 'completed' ? 'bg-emerald-50 text-emerald-600' :
+                              order.status === 'in_progress' ? 'bg-blue-50 text-blue-600' :
+                                order.status === 'cancelled' ? 'bg-rose-50 text-rose-600' :
+                                  'bg-amber-50 text-amber-600'
+                              }`}>
+                              {order.status === 'in_progress' ? 'Confirmed' : order.status}
+                            </div>
+                          </div>
+
+                          <div className="space-y-4 mb-8">
+                            <div className="flex items-center justify-between py-3 border-b border-slate-50">
+                              <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Sessions ({formatDate(date)})</span>
+                              <div className="flex flex-wrap gap-2 justify-end">
+                                {eventDates.map(ed => (
+                                  <span key={ed.key} className="px-2 py-1 bg-primary-50 text-primary-600 rounded-lg text-[10px] font-black uppercase">
+                                    {ed.label}
+                                  </span>
+                                ))}
+                              </div>
+                            </div>
+
+                            <div className="flex items-center justify-between py-1">
+                              <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Total Amount</span>
+                              <span className="text-lg font-black text-slate-900">{formatCurrency(order.totalAmount)}</span>
+                            </div>
+                          </div>
+
+                          <div className="flex items-center gap-2 pt-4 border-t border-slate-50 overflow-x-auto no-scrollbar">
+                            <Link href={`/orders/summary/${order.id}`} className="p-3 bg-slate-50 text-slate-400 rounded-2xl hover:bg-primary-50 hover:text-primary-600 transition-all shrink-0" title="Summary">
+                              <FaChartLine size={16} />
+                            </Link>
+                            <Link href={`/orders?edit=${order.id}`} className="p-3 bg-slate-50 text-slate-400 rounded-2xl hover:bg-amber-50 hover:text-amber-600 transition-all shrink-0" title="Edit">
+                              <FaEdit size={16} />
+                            </Link>
+                            <button onClick={() => checkAndOpenDocModal(order, 'menu-pdf')} className="p-3 bg-slate-50 text-slate-400 rounded-2xl hover:bg-indigo-50 hover:text-indigo-600 transition-all shrink-0" title="Menu PDF">
+                              <FaFilePdf size={16} />
+                            </button>
+                            <button onClick={() => checkAndOpenDocModal(order, 'bill-pdf')} className="p-3 bg-slate-50 text-slate-400 rounded-2xl hover:bg-emerald-50 hover:text-emerald-600 transition-all shrink-0" title="Print Bill">
+                              <FaPrint size={16} />
+                            </button>
+                            <button onClick={() => handleDelete(order.id)} className="p-3 bg-slate-50 text-slate-400 rounded-2xl hover:bg-rose-50 hover:text-rose-600 transition-all shrink-0" title="Delete">
+                              <FaTrash size={16} />
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* Pagination Controls */}
+        {orders.length > itemsPerPage && (
+          <div className="mt-4 flex items-center justify-between bg-white px-4 py-3 rounded-lg shadow-md">
+            <div className="text-sm text-gray-700">
+              Showing {startIndex + 1} to {Math.min(endIndex, orders.length)} of {orders.length} orders
+            </div>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                disabled={currentPage === 1}
+                className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${currentPage === 1
+                  ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                  : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                  }`}
+              >
+                <FaChevronLeft />
+              </button>
+              <div className="flex gap-1">
+                {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => {
+                  if (
+                    page === 1 ||
+                    page === totalPages ||
+                    (page >= currentPage - 1 && page <= currentPage + 1)
+                  ) {
+                    return (
+                      <button
+                        key={page}
+                        onClick={() => setCurrentPage(page)}
+                        className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${currentPage === page
+                          ? 'bg-blue-600 text-white'
+                          : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                          }`}
+                      >
+                        {page}
+                      </button>
+                    )
+                  } else if (page === currentPage - 2 || page === currentPage + 2) {
+                    return <span key={page} className="px-2 text-gray-400">...</span>
+                  }
+                  return null
+                })}
+              </div>
+              <button
+                onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                disabled={currentPage === totalPages}
+                className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${currentPage === totalPages
+                  ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                  : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                  }`}
+              >
+                <FaChevronRight />
+              </button>
+            </div>
+          </div>
+        )}
+
+        <ConfirmModal
+          isOpen={deleteConfirm.isOpen}
+          title="Delete Order"
+          message="Are you sure you want to delete this order? This action cannot be undone."
+          confirmText="Delete"
+          cancelText="Cancel"
+          onConfirm={confirmDelete}
+          onCancel={() => setDeleteConfirm({ isOpen: false, id: null })}
+          variant="danger"
+        />
+
+        <ConfirmModal
+          isOpen={statusConfirm.isOpen}
+          title="Change Order Status"
+          message={
+            <div>
+              <p>Are you sure you want to change the status from <strong>{statusConfirm.oldStatus?.replace('_', ' ').toUpperCase()}</strong> to <strong>{statusConfirm.newStatus?.replace('_', ' ').toUpperCase()}</strong>?</p>
+              {statusConfirm.newStatus === 'in_progress' && <p className="mt-2 text-sm text-yellow-600 font-medium">This will generate a bill if one does not exist.</p>}
+              {statusConfirm.newStatus === 'completed' && <p className="mt-2 text-sm text-green-600 font-medium">This will mark the bill as fully PAID.</p>}
+            </div>
+          }
+          confirmText="Yes, Update Status"
+          cancelText="Cancel"
+          onConfirm={confirmStatusChange}
+          onCancel={() => setStatusConfirm({ isOpen: false, id: null, newStatus: '', oldStatus: '' })}
+          variant="info"
+        />
+
+        {/* PDF Language Selection Modal */}
+        {pdfLanguageModal.isOpen && pdfLanguageModal.order && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+            <div className="bg-white rounded-xl shadow-xl p-6 max-w-sm w-full mx-4">
+              <h3 className="text-lg font-semibold text-gray-800 mb-2">Download Order PDF</h3>
+              <p className="text-sm text-gray-600 mb-4">Do you want the menu items in English or Telugu?</p>
+              <div className="flex gap-3">
+                <button
+                  onClick={() => {
+                    handleGeneratePDF(pdfLanguageModal.order, 'english')
+                    setPdfLanguageModal({ isOpen: false, order: null })
+                  }}
+                  className="flex-1 px-4 py-2.5 bg-primary-500 text-white rounded-lg font-medium hover:bg-primary-600 transition-colors"
+                >
+                  English
+                </button>
+                <button
+                  onClick={() => {
+                    handleGeneratePDF(pdfLanguageModal.order, 'telugu')
+                    setPdfLanguageModal({ isOpen: false, order: null })
+                  }}
+                  className="flex-1 px-4 py-2.5 bg-primary-500 text-white rounded-lg font-medium hover:bg-primary-600 transition-colors"
+                >
+                  తెలుగు (Telugu)
+                </button>
+              </div>
+              <button
+                onClick={() => setPdfLanguageModal({ isOpen: false, order: null })}
+                className="mt-3 w-full px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-lg text-sm font-medium transition-colors"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Image Language Selection Modal */}
+        {imageLanguageModal.isOpen && imageLanguageModal.order && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+            <div className="bg-white rounded-xl shadow-xl p-6 max-w-sm w-full mx-4">
+              <h3 className="text-lg font-semibold text-gray-800 mb-2">Download Order Image</h3>
+              <p className="text-sm text-gray-600 mb-4">Do you want the menu items in English or Telugu?</p>
+              <div className="flex gap-3">
+                <button
+                  onClick={() => {
+                    handleGenerateImage(imageLanguageModal.order, 'english')
+                    setImageLanguageModal({ isOpen: false, order: null })
+                  }}
+                  className="flex-1 px-4 py-2.5 bg-purple-500 text-white rounded-lg font-medium hover:bg-purple-600 transition-colors"
+                >
+                  English
+                </button>
+                <button
+                  onClick={() => {
+                    handleGenerateImage(imageLanguageModal.order, 'telugu')
+                    setImageLanguageModal({ isOpen: false, order: null })
+                  }}
+                  className="flex-1 px-4 py-2.5 bg-purple-500 text-white rounded-lg font-medium hover:bg-purple-600 transition-colors"
+                >
+                  తెలుగు (Telugu)
+                </button>
+              </div>
+              <button
+                onClick={() => setImageLanguageModal({ isOpen: false, order: null })}
+                className="mt-3 w-full px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-lg text-sm font-medium transition-colors"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Email Order Modal */}
+        {emailModal.isOpen && emailModal.order && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+            <div className="bg-white rounded-xl shadow-xl p-6 max-w-sm w-full mx-4">
+              <h3 className="text-lg font-semibold text-gray-800 mb-2">Email Order to Customer</h3>
+              <p className="text-sm text-gray-600 mb-4">
+                Send order (menu + event details) to{' '}
+                <span className="font-medium text-gray-800">{emailModal.order.customer?.email}</span>
+              </p>
+              <p className="text-xs text-gray-500 mb-4">Menu items in:</p>
+              <div className="flex gap-3">
+                <button
+                  onClick={() => handleSendOrderEmail(emailModal.order, 'english')}
+                  disabled={emailSending}
+                  className="flex-1 px-4 py-2.5 bg-green-600 text-white rounded-lg font-medium hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                >
+                  {emailSending ? 'Sending...' : 'English'}
+                </button>
+                <button
+                  onClick={() => handleSendOrderEmail(emailModal.order, 'telugu')}
+                  disabled={emailSending}
+                  className="flex-1 px-4 py-2.5 bg-green-600 text-white rounded-lg font-medium hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                >
+                  {emailSending ? 'Sending...' : 'తెలుగు'}
+                </button>
+              </div>
+              <button
+                onClick={() => setEmailModal({ isOpen: false, order: null })}
+                disabled={emailSending}
+                className="mt-3 w-full px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-lg text-sm font-medium transition-colors disabled:opacity-50"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        )}
+        {/* Group/Separate Doc Choice Modal */}
+        {docModal.isOpen && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 z-[60] flex items-center justify-center p-4">
+            <div className="bg-white rounded-xl shadow-2xl max-w-md w-full p-6 animate-in fade-in zoom-in duration-200">
+              <h3 className="text-xl font-bold text-gray-900 mb-2">Multiple Dates Detected</h3>
+              <p className="text-gray-600 mb-6">How would you like to generate this document? This order spans multiple event dates.</p>
+
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                <button
+                  onClick={() => {
+                    if (docModal.type === 'menu-pdf') setPdfLanguageModal({ isOpen: true, order: docModal.order })
+                    else if (docModal.type === 'menu-image') setImageLanguageModal({ isOpen: true, order: docModal.order })
+                    else if (docModal.type === 'bill-pdf') handleDownloadBill(docModal.order, { splitByDate: false, type: 'pdf' })
+                    else if (docModal.type === 'bill-image') handleDownloadBill(docModal.order, { splitByDate: false, type: 'image' })
+                    setDocModal({ ...docModal, isOpen: false })
+                  }}
+                  className="flex flex-col items-center justify-center p-4 border-2 border-primary-100 rounded-xl hover:border-primary-500 hover:bg-primary-50 transition-all group"
+                >
+                  <span className="text-primary-600 font-bold mb-1">Grouped</span>
+                  <span className="text-xs text-gray-500 group-hover:text-primary-600">All dates consolidated</span>
+                </button>
+
+                <button
+                  onClick={() => {
+                    if (docModal.type === 'menu-pdf') setPdfLanguageModal({ isOpen: true, order: docModal.order })
+                    else if (docModal.type === 'menu-image') setImageLanguageModal({ isOpen: true, order: docModal.order })
+                    else if (docModal.type === 'bill-pdf') handleDownloadBill(docModal.order, { splitByDate: true, type: 'pdf' })
+                    else if (docModal.type === 'bill-image') handleDownloadBill(docModal.order, { splitByDate: true, type: 'image' })
+                    setDocModal({ ...docModal, isOpen: false })
+                  }}
+                  className="flex flex-col items-center justify-center p-4 border-2 border-purple-100 rounded-xl hover:border-purple-500 hover:bg-purple-50 transition-all group"
+                >
+                  <span className="text-purple-600 font-bold mb-1">Separate</span>
+                  <span className="text-xs text-gray-500 group-hover:text-purple-600">Each date starts new page</span>
+                </button>
+              </div>
+
+              <button
+                onClick={() => setDocModal({ isOpen: false, order: null, type: 'menu-pdf' })}
+                className="mt-6 w-full py-2 text-gray-500 hover:text-gray-700 font-medium"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Merge Orders Modal */}
+        {mergeModal.isOpen && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[70] p-4">
+            <div className="bg-white rounded-xl shadow-2xl max-w-md w-full p-6 animate-in fade-in zoom-in duration-200">
+              <h3 className="text-xl font-bold text-gray-900 mb-4 text-center">Merge {selectedOrderIds.length} Orders</h3>
+
+              <div className="space-y-4 mb-6">
+                <p className="text-sm text-gray-600 bg-amber-50 border border-amber-100 p-3 rounded-lg">
+                  <strong>Attention:</strong> This will combine all dates, sessions, and payments into one record. This action is Permanent.
+                </p>
+
+                <div>
+                  <label className="block text-sm font-bold text-gray-700 mb-2">Select Primary Order (Destination)</label>
+                  <div className="space-y-2 max-h-48 overflow-y-auto border rounded-lg p-2 bg-gray-50">
+                    {orders.filter(o => selectedOrderIds.includes(o.id)).map(o => (
+                      <label key={o.id} className={`flex items-center gap-3 p-3 rounded-lg border-2 cursor-pointer transition-all ${mergeModal.primaryId === o.id ? 'border-primary-500 bg-primary-50' : 'border-gray-200 bg-white hover:border-primary-200'}`}>
+                        <input
+                          type="radio"
+                          name="primaryOrder"
+                          checked={mergeModal.primaryId === o.id}
+                          onChange={() => setMergeModal(prev => ({ ...prev, primaryId: o.id }))}
+                          className="w-4 h-4 text-primary-600"
+                        />
+                        <div className="flex-1">
+                          <div className="text-sm font-black text-gray-900">#{o.serialNumber} - {o.customer?.name}</div>
+                          <div className="text-xs text-gray-500">{o.eventName} • {formatDate(o.createdAt)}</div>
+                        </div>
+                      </label>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setMergeModal({ isOpen: false, primaryId: null, loading: false })}
+                  className="flex-1 py-3 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl font-bold transition-all"
+                  disabled={mergeModal.loading}
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleMergeOrders}
+                  disabled={!mergeModal.primaryId || mergeModal.loading}
+                  className="flex-1 py-3 bg-primary-600 hover:bg-primary-700 text-white rounded-xl font-bold shadow-lg shadow-primary-200 transition-all flex items-center justify-center gap-2 disabled:opacity-50"
+                >
+                  {mergeModal.loading ? 'Merging...' : 'Confirm Merge'}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Floating Action Bar */}
+        {selectedOrderIds.length >= 2 && (
+          <div className="fixed bottom-8 left-1/2 -translate-x-1/2 bg-white rounded-full shadow-2xl border border-primary-100 px-6 py-4 flex items-center gap-6 z-40 animate-in slide-in-from-bottom-8 duration-300">
+            <div className="flex flex-col">
+              <span className="text-xs font-bold text-slate-500 uppercase">Selection</span>
+              <span className="text-sm font-black text-primary-600">{selectedOrderIds.length} Orders</span>
+            </div>
+            <div className="h-8 w-px bg-slate-200"></div>
+            <button
+              onClick={() => setMergeModal({ isOpen: true, primaryId: null, loading: false })}
+              className="bg-primary-600 text-white px-6 py-2 rounded-full font-bold shadow-lg shadow-primary-200 hover:bg-primary-700 transition-all flex items-center gap-2 active:scale-95"
+            >
+              Merge Selection
+            </button>
+            <button
+              onClick={() => setSelectedOrderIds([])}
+              className="text-slate-400 hover:text-slate-600 p-1"
+            >
+              Clear
+            </button>
+          </div>
+        )}
+      </div>
     </div>
   )
 }

@@ -1,4 +1,4 @@
-import { formatCurrency, formatDate, formatDateTime } from './utils'
+import { formatCurrency, formatDate, formatDateTime, sanitizeMealLabel } from './utils'
 
 export interface PDFTemplateData {
   type: 'bill' | 'expense' | 'workforce' | 'statement'
@@ -405,7 +405,7 @@ function generateBillContent(data: PDFTemplateData): string {
         }
 
         const menuType = session.menuType || session.key
-        const mealTypeName = menuType.charAt(0).toUpperCase() + menuType.slice(1).toLowerCase()
+        const mealTypeName = sanitizeMealLabel(menuType)
 
         mealTypeRows.push(`
           <div class="form-row">

@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import toast from 'react-hot-toast'
-import { formatCurrency, formatDate, formatDateTime } from '@/lib/utils'
+import { formatCurrency, formatDate, formatDateTime, sanitizeMealLabel } from '@/lib/utils'
 import { Bill, Order, PaymentHistoryEntry } from '@/types'
 import { FaUser, FaCalendarAlt, FaMoneyBillWave, FaHistory, FaUtensils, FaTruck, FaTag, FaArrowLeft, FaEdit, FaCheckCircle, FaExclamationCircle } from 'react-icons/fa'
 
@@ -64,7 +64,7 @@ export default function OrderSummaryPage() {
   // Group order items by their menu item type
   const itemsByMealType: Record<string, any[]> = {}
   order.items?.forEach((item: any) => {
-    const type = item.menuItem?.type?.toLowerCase() || 'other'
+    const type = item.mealType?.toLowerCase() || 'other'
     if (!itemsByMealType[type]) {
       itemsByMealType[type] = []
     }
@@ -245,19 +245,19 @@ export default function OrderSummaryPage() {
                 <div key={mealType} className="bg-white rounded-[2rem] border border-slate-100 shadow-sm hover:shadow-xl hover:border-primary-100 transition-all group overflow-hidden">
                   <div className="flex flex-col md:flex-row h-full">
                     {/* Left: Meal Category Header */}
-                    <div className={`w-full md:w-64 p-6 flex flex-col justify-center items-center text-center ${mealType.toLowerCase() === 'breakfast' ? 'bg-orange-50/50' :
-                      mealType.toLowerCase() === 'lunch' ? 'bg-emerald-50/50' :
-                        mealType.toLowerCase() === 'dinner' ? 'bg-indigo-50/50' :
-                          'bg-slate-50/50'
+                    <div className={`w-full md:w-64 p-6 flex flex-col justify-center items-center text-center ${(detail?.menuType?.toLowerCase() || mealType.toLowerCase()) === 'breakfast' ? 'bg-orange-50/50' :
+                        (detail?.menuType?.toLowerCase() || mealType.toLowerCase()) === 'lunch' ? 'bg-emerald-50/50' :
+                          (detail?.menuType?.toLowerCase() || mealType.toLowerCase()) === 'dinner' ? 'bg-indigo-50/50' :
+                            'bg-slate-50/50'
                       }`}>
-                      <div className={`w-12 h-12 rounded-2xl flex items-center justify-center shadow-sm mb-3 ${mealType.toLowerCase() === 'breakfast' ? 'bg-orange-100 text-orange-600' :
-                        mealType.toLowerCase() === 'lunch' ? 'bg-emerald-100 text-emerald-600' :
-                          mealType.toLowerCase() === 'dinner' ? 'bg-indigo-100 text-indigo-600' :
-                            'bg-slate-100 text-slate-600'
+                      <div className={`w-12 h-12 rounded-2xl flex items-center justify-center shadow-sm mb-3 ${(detail?.menuType?.toLowerCase() || mealType.toLowerCase()) === 'breakfast' ? 'bg-orange-100 text-orange-600' :
+                          (detail?.menuType?.toLowerCase() || mealType.toLowerCase()) === 'lunch' ? 'bg-emerald-100 text-emerald-600' :
+                            (detail?.menuType?.toLowerCase() || mealType.toLowerCase()) === 'dinner' ? 'bg-indigo-100 text-indigo-600' :
+                              'bg-slate-100 text-slate-600'
                         }`}>
                         <FaUtensils className="text-xl" />
                       </div>
-                      <h3 className="text-xl font-black capitalize text-slate-900 leading-none">{detail?.menuType || mealType}</h3>
+                      <h3 className="text-xl font-black capitalize text-slate-900 leading-none">{sanitizeMealLabel(detail?.menuType || mealType)}</h3>
                       <p className="text-[10px] font-bold text-slate-400 uppercase mt-2 tracking-widest">
                         {detail?.date ? formatDate(detail.date) : 'Date Pending'}
                       </p>
