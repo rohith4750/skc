@@ -257,7 +257,7 @@ export default function OrderSummaryPage() {
                         }`}>
                         <FaUtensils className="text-xl" />
                       </div>
-                      <h3 className="text-xl font-black capitalize text-slate-900 leading-none">{mealType}</h3>
+                      <h3 className="text-xl font-black capitalize text-slate-900 leading-none">{detail?.menuType || mealType}</h3>
                       <p className="text-[10px] font-bold text-slate-400 uppercase mt-2 tracking-widest">
                         {detail?.date ? formatDate(detail.date) : 'Date Pending'}
                       </p>

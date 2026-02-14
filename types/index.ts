@@ -55,6 +55,7 @@ export interface Order {
   discount?: number
   services?: string[] | null
   mealTypeAmounts?: Record<string, {
+    menuType?: string
     amount?: number
     date?: string
     services?: string[]

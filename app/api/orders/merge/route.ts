@@ -43,14 +43,44 @@ export async function POST(request: Request) {
                 waterBottlesCost = waterBottlesCost.plus(new Decimal(order.waterBottlesCost))
                 discount = discount.plus(new Decimal(order.discount))
 
-                // Merge mealTypeAmounts (handle potential date-based keys)
+                // Merge mealTypeAmounts with unique keys
                 if (order.mealTypeAmounts && typeof order.mealTypeAmounts === 'object') {
-                    Object.entries(order.mealTypeAmounts as Record<string, any>).forEach(([key, value]) => {
-                        // If it's a conflict (e.g., both have "Lunch"), we keep them separate by appending a suffix or if they have dates, they should naturally be unique keys if using our new multi-date system
-                        const finalKey = mealTypeAmounts[key] ? `${key}_merged_${order.serialNumber}` : key
-                        mealTypeAmounts[finalKey] = value
-                    })
+                    for (const [oldKey, value] of Object.entries(order.mealTypeAmounts as Record<string, any>)) {
+                        // Create a unique key for the merged session
+                        const uniqueSessionId = `session_${Math.random().toString(36).slice(2, 9)}_${order.serialNumber}`;
+
+                        // Ensure the display meal type is preserved
+                        const sessionData = { ...value };
+                        if (!sessionData.menuType) {
+                            sessionData.menuType = oldKey; // Preserve e.g. "Lunch"
+                        }
+
+                        mealTypeAmounts[uniqueSessionId] = sessionData;
+
+                        // 3. Re-link Order Items for THIS specific session
+                        await tx.orderItem.updateMany({
+                            where: {
+                                orderId: order.id,
+                                mealType: oldKey
+                            },
+                            data: {
+                                orderId: primaryOrderId,
+                                mealType: uniqueSessionId
+                            }
+                        })
+                    }
                 }
+
+                // Also handle items that might not have a mealType set (fallback)
+                await tx.orderItem.updateMany({
+                    where: {
+                        orderId: order.id,
+                        mealType: null
+                    },
+                    data: {
+                        orderId: primaryOrderId
+                    }
+                })
 
                 // Merge stalls
                 if (Array.isArray(order.stalls)) {
@@ -63,13 +93,7 @@ export async function POST(request: Request) {
                 }
             }
 
-            // 3. Re-link Order Items
-            await tx.orderItem.updateMany({
-                where: { orderId: { in: secondaryOrderIds } },
-                data: { orderId: primaryOrderId }
-            })
-
-            // 4. Update Primary Order
+            // 4. Update Primary Order (remaining logic stays similar)
             const updatedPrimary = await tx.order.update({
                 where: { id: primaryOrderId },
                 data: {
