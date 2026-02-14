@@ -2,11 +2,11 @@
 
 import { useEffect, useState, useMemo } from 'react'
 import { formatCurrency, formatDateTime, formatDate } from '@/lib/utils'
-import { 
-  FaChartLine, 
-  FaChartBar, 
-  FaChartPie, 
-  FaMoneyBillWave, 
+import {
+  FaChartLine,
+  FaChartBar,
+  FaChartPie,
+  FaMoneyBillWave,
   FaShoppingCart,
   FaFileInvoiceDollar,
   FaUsers,
@@ -146,18 +146,18 @@ export default function AnalyticsPage() {
       const monthDate = new Date(selectedMonth + '-01')
       const prevMonth = new Date(monthDate.getFullYear(), monthDate.getMonth() - 1, 1)
       const prevMonthEnd = new Date(prevMonth.getFullYear(), prevMonth.getMonth() + 1, 0, 23, 59, 59)
-      
+
       return {
         orders: data.orders.filter((o: any) => {
-          const date = new Date(o.createdAt)
+          const date = new Date(o.eventDate || o.createdAt)
           return date >= prevMonth && date <= prevMonthEnd
         }),
         bills: data.bills.filter((b: any) => {
-          const date = new Date(b.createdAt)
+          const date = new Date(b.order?.eventDate || b.createdAt)
           return date >= prevMonth && date <= prevMonthEnd
         }),
         expenses: data.expenses.filter((e: any) => {
-          const date = new Date(e.createdAt)
+          const date = new Date(e.paymentDate || e.createdAt)
           return date >= prevMonth && date <= prevMonthEnd
         })
       }
@@ -165,18 +165,18 @@ export default function AnalyticsPage() {
       const prevYear = parseInt(selectedYear) - 1
       const prevYearStart = new Date(prevYear, 0, 1)
       const prevYearEnd = new Date(prevYear, 11, 31, 23, 59, 59)
-      
+
       return {
         orders: data.orders.filter((o: any) => {
-          const date = new Date(o.createdAt)
+          const date = new Date(o.eventDate || o.createdAt)
           return date >= prevYearStart && date <= prevYearEnd
         }),
         bills: data.bills.filter((b: any) => {
-          const date = new Date(b.createdAt)
+          const date = new Date(b.order?.eventDate || b.createdAt)
           return date >= prevYearStart && date <= prevYearEnd
         }),
         expenses: data.expenses.filter((e: any) => {
-          const date = new Date(e.createdAt)
+          const date = new Date(e.paymentDate || e.createdAt)
           return date >= prevYearStart && date <= prevYearEnd
         })
       }
@@ -187,45 +187,45 @@ export default function AnalyticsPage() {
   // Filter data based on date filter
   const filteredData = useMemo(() => {
     let filtered = { ...data }
-    
+
     if (dateFilter === 'month') {
       const monthStart = new Date(selectedMonth + '-01')
       const monthEnd = new Date(monthStart.getFullYear(), monthStart.getMonth() + 1, 0, 23, 59, 59)
-      
+
       filtered.orders = data.orders.filter((o: any) => {
-        const date = new Date(o.createdAt)
+        const date = new Date(o.eventDate || o.createdAt)
         return date >= monthStart && date <= monthEnd
       })
-      
+
       filtered.bills = data.bills.filter((b: any) => {
-        const date = new Date(b.createdAt)
+        const date = new Date(b.order?.eventDate || b.createdAt)
         return date >= monthStart && date <= monthEnd
       })
-      
+
       filtered.expenses = data.expenses.filter((e: any) => {
-        const date = new Date(e.createdAt)
+        const date = new Date(e.paymentDate || e.createdAt)
         return date >= monthStart && date <= monthEnd
       })
     } else if (dateFilter === 'year') {
       const yearStart = new Date(parseInt(selectedYear), 0, 1)
       const yearEnd = new Date(parseInt(selectedYear), 11, 31, 23, 59, 59)
-      
+
       filtered.orders = data.orders.filter((o: any) => {
-        const date = new Date(o.createdAt)
+        const date = new Date(o.eventDate || o.createdAt)
         return date >= yearStart && date <= yearEnd
       })
-      
+
       filtered.bills = data.bills.filter((b: any) => {
-        const date = new Date(b.createdAt)
+        const date = new Date(b.order?.eventDate || b.createdAt)
         return date >= yearStart && date <= yearEnd
       })
-      
+
       filtered.expenses = data.expenses.filter((e: any) => {
-        const date = new Date(e.createdAt)
+        const date = new Date(e.paymentDate || e.createdAt)
         return date >= yearStart && date <= yearEnd
       })
     }
-    
+
     return filtered
   }, [data, dateFilter, selectedMonth, selectedYear])
 
@@ -237,29 +237,43 @@ export default function AnalyticsPage() {
 
   // Financial Overview with comparison
   const financialMetrics = useMemo(() => {
-    const totalRevenue = filteredData.bills.reduce((sum: number, b: any) => sum + (b.paidAmount || 0), 0)
-    const totalBilled = filteredData.bills.reduce((sum: number, b: any) => sum + (b.totalAmount || 0), 0)
-    const pendingRevenue = filteredData.bills.reduce((sum: number, b: any) => sum + (b.remainingAmount || 0), 0)
-    const totalExpenses = filteredData.expenses.reduce((sum: number, e: any) => sum + (e.amount || 0), 0)
-    const paidExpenses = filteredData.expenses.reduce((sum: number, e: any) => sum + (e.paidAmount || 0), 0)
-    const profit = totalRevenue - totalExpenses
-    const profitMargin = totalRevenue > 0 ? ((profit / totalRevenue) * 100) : 0
+    // Collect all billed amounts (Total potential revenue)
+    const totalBilled = filteredData.bills.reduce((sum: number, b: any) => sum + (Number(b.totalAmount) || 0), 0)
 
-    // Previous period
-    const prevRevenue = getPreviousPeriodData.bills.reduce((sum: number, b: any) => sum + (b.paidAmount || 0), 0)
-    const prevExpenses = getPreviousPeriodData.expenses.reduce((sum: number, e: any) => sum + (e.amount || 0), 0)
-    const prevProfit = prevRevenue - prevExpenses
+    // Collect all paid amounts (Actual cash received)
+    const totalCollected = filteredData.bills.reduce((sum: number, b: any) => sum + (Number(b.paidAmount) || 0), 0)
+
+    // Calculate pending revenue
+    const pendingRevenue = totalBilled - totalCollected
+
+    // Total expenses (Total liability)
+    const totalExpenses = filteredData.expenses.reduce((sum: number, e: any) => sum + (Number(e.amount) || 0), 0)
+
+    // Paid expenses (Actual cash out)
+    const paidExpenses = filteredData.expenses.reduce((sum: number, e: any) => sum + (Number(e.paidAmount) || 0), 0)
+
+    // Profit (Cash Basis): Actual Cash In - Actual Cash Out
+    const profit = totalCollected - paidExpenses
+
+    // Profit Margin (on collected revenue)
+    const profitMargin = totalCollected > 0 ? ((profit / totalCollected) * 100) : 0
+
+    // Previous period for comparison
+    const prevBilled = getPreviousPeriodData.bills.reduce((sum: number, b: any) => sum + (Number(b.totalAmount) || 0), 0)
+    const prevCollected = getPreviousPeriodData.bills.reduce((sum: number, b: any) => sum + (Number(b.paidAmount) || 0), 0)
+    const prevPaidExpenses = getPreviousPeriodData.expenses.reduce((sum: number, e: any) => sum + (Number(e.paidAmount) || 0), 0)
+    const prevProfit = prevCollected - prevPaidExpenses
 
     return {
-      totalRevenue,
+      totalCollected,
       totalBilled,
       pendingRevenue,
       totalExpenses,
       paidExpenses,
       profit,
       profitMargin,
-      revenueChange: calculateChange(totalRevenue, prevRevenue),
-      expensesChange: calculateChange(totalExpenses, prevExpenses),
+      revenueChange: calculateChange(totalCollected, prevCollected),
+      expensesChange: calculateChange(paidExpenses, prevPaidExpenses),
       profitChange: calculateChange(profit, prevProfit)
     }
   }, [filteredData, getPreviousPeriodData])
@@ -297,8 +311,8 @@ export default function AnalyticsPage() {
     const partialBills = filteredData.bills.filter((b: any) => b.status === 'partial').length
     const pendingBills = filteredData.bills.filter((b: any) => b.status === 'pending').length
     const avgBillAmount = totalBills > 0 ? financialMetrics.totalBilled / totalBills : 0
-    const collectionRate = financialMetrics.totalBilled > 0 
-      ? (financialMetrics.totalRevenue / financialMetrics.totalBilled) * 100 
+    const collectionRate = financialMetrics.totalBilled > 0
+      ? (financialMetrics.totalCollected / financialMetrics.totalBilled) * 100
       : 0
 
     return {
@@ -314,7 +328,7 @@ export default function AnalyticsPage() {
   // Expenses Breakdown
   const expensesBreakdown = useMemo(() => {
     const categories: Record<string, number> = {}
-    
+
     filteredData.expenses.forEach((expense: any) => {
       const category = expense.category || 'other'
       categories[category] = (categories[category] || 0) + (expense.amount || 0)
@@ -328,7 +342,7 @@ export default function AnalyticsPage() {
   // Monthly Trends (last 12 months)
   const monthlyTrends = useMemo(() => {
     const months: Record<string, { revenue: number; expenses: number; orders: number }> = {}
-    
+
     const now = new Date()
     for (let i = 11; i >= 0; i--) {
       const date = new Date(now.getFullYear(), now.getMonth() - i, 1)
@@ -337,21 +351,21 @@ export default function AnalyticsPage() {
     }
 
     data.bills.forEach((bill: any) => {
-      const monthKey = new Date(bill.createdAt).toISOString().slice(0, 7)
+      const monthKey = new Date(bill.order?.eventDate || bill.createdAt).toISOString().slice(0, 7)
       if (months[monthKey]) {
         months[monthKey].revenue += bill.paidAmount || 0
       }
     })
 
     data.expenses.forEach((expense: any) => {
-      const monthKey = new Date(expense.createdAt).toISOString().slice(0, 7)
+      const monthKey = new Date(expense.paymentDate || expense.createdAt).toISOString().slice(0, 7)
       if (months[monthKey]) {
         months[monthKey].expenses += expense.amount || 0
       }
     })
 
     data.orders.forEach((order: any) => {
-      const monthKey = new Date(order.createdAt).toISOString().slice(0, 7)
+      const monthKey = new Date(order.eventDate || order.createdAt).toISOString().slice(0, 7)
       if (months[monthKey]) {
         months[monthKey].orders += 1
       }
@@ -370,7 +384,7 @@ export default function AnalyticsPage() {
   // Top Customers
   const topCustomers = useMemo(() => {
     const customerSpending: Record<string, { customer: any; totalSpent: number; orderCount: number }> = {}
-    
+
     filteredData.orders.forEach((order: any) => {
       if (order.customer) {
         const customerId = order.customer.id
@@ -394,7 +408,7 @@ export default function AnalyticsPage() {
   // Revenue by meal type
   const revenueByMealType = useMemo(() => {
     const mealTypes: Record<string, number> = {}
-    
+
     filteredData.orders.forEach((order: any) => {
       if (order.mealTypeAmounts && typeof order.mealTypeAmounts === 'object') {
         Object.entries(order.mealTypeAmounts).forEach(([mealType, data]: [string, any]) => {
@@ -463,23 +477,22 @@ export default function AnalyticsPage() {
   const TrendChart = ({ data, field }: { data: any[], field: 'revenue' | 'expenses' | 'profit' | 'orders' }) => {
     const maxValue = Math.max(...data.map(d => d[field]), 1)
     const chartData = data.slice(-6) // Last 6 months
-    
+
     return (
       <div className="flex items-end justify-between h-48 gap-1">
         {chartData.map((item, index) => {
           const percentage = maxValue > 0 ? (item[field] / maxValue) * 100 : 0
           const label = new Date(item.month + '-01').toLocaleDateString('en-US', { month: 'short' })
-          
+
           return (
             <div key={index} className="flex-1 flex flex-col items-center gap-2">
               <div className="w-full bg-gray-100 rounded-t-lg relative" style={{ height: '180px' }}>
                 <div
-                  className={`absolute bottom-0 w-full rounded-t-lg transition-all ${
-                    field === 'revenue' ? 'bg-green-500' :
+                  className={`absolute bottom-0 w-full rounded-t-lg transition-all ${field === 'revenue' ? 'bg-green-500' :
                     field === 'expenses' ? 'bg-red-500' :
-                    field === 'profit' ? (item.profit >= 0 ? 'bg-blue-500' : 'bg-orange-500') :
-                    'bg-primary-500'
-                  }`}
+                      field === 'profit' ? (item.profit >= 0 ? 'bg-blue-500' : 'bg-orange-500') :
+                        'bg-primary-500'
+                    }`}
                   style={{ height: `${percentage}%` }}
                 ></div>
               </div>
@@ -514,31 +527,28 @@ export default function AnalyticsPage() {
           <div className="flex flex-wrap gap-3">
             <button
               onClick={() => setDateFilter('all')}
-              className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-                dateFilter === 'all'
-                  ? 'bg-primary-500 text-white'
-                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-              }`}
+              className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${dateFilter === 'all'
+                ? 'bg-primary-500 text-white'
+                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                }`}
             >
               All Time
             </button>
             <button
               onClick={() => setDateFilter('month')}
-              className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-                dateFilter === 'month'
-                  ? 'bg-primary-500 text-white'
-                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-              }`}
+              className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${dateFilter === 'month'
+                ? 'bg-primary-500 text-white'
+                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                }`}
             >
               Month
             </button>
             <button
               onClick={() => setDateFilter('year')}
-              className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-                dateFilter === 'year'
-                  ? 'bg-primary-500 text-white'
-                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-              }`}
+              className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${dateFilter === 'year'
+                ? 'bg-primary-500 text-white'
+                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                }`}
             >
               Year
             </button>
@@ -577,11 +587,10 @@ export default function AnalyticsPage() {
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id as any)}
-              className={`flex items-center gap-2 px-6 py-4 font-medium transition-colors border-b-2 ${
-                activeTab === tab.id
-                  ? 'border-primary-500 text-primary-600 bg-primary-50'
-                  : 'border-transparent text-gray-600 hover:text-gray-800 hover:bg-gray-50'
-              }`}
+              className={`flex items-center gap-2 px-6 py-4 font-medium transition-colors border-b-2 ${activeTab === tab.id
+                ? 'border-primary-500 text-primary-600 bg-primary-50'
+                : 'border-transparent text-gray-600 hover:text-gray-800 hover:bg-gray-50'
+                }`}
             >
               <tab.icon />
               {tab.label}
@@ -597,25 +606,31 @@ export default function AnalyticsPage() {
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
             <div className="bg-white rounded-lg shadow-md p-4 sm:p-6 border-l-4 border-green-500 min-w-0">
               <div className="flex items-center justify-between mb-2">
-                <h3 className="text-sm font-medium text-gray-600 truncate pr-2">Total Revenue</h3>
+                <h3 className="text-sm font-medium text-gray-600 truncate pr-2">Total Collected</h3>
                 <FaDollarSign className="text-green-500 text-xl flex-shrink-0" />
               </div>
-              <p className="text-xl sm:text-2xl font-bold text-gray-800 mb-1 break-words">{formatCurrency(financialMetrics.totalRevenue)}</p>
-              {dateFilter !== 'all' && renderTrend(financialMetrics.revenueChange)}
+              <p className="text-xl sm:text-2xl font-bold text-gray-800 mb-1 break-words">{formatCurrency(financialMetrics.totalCollected)}</p>
+              <div className="flex items-center justify-between flex-wrap gap-1">
+                {dateFilter !== 'all' && renderTrend(financialMetrics.revenueChange)}
+                <span className="text-xs text-gray-500 whitespace-nowrap">Billed: {formatCurrency(financialMetrics.totalBilled)}</span>
+              </div>
             </div>
 
             <div className="bg-white rounded-lg shadow-md p-4 sm:p-6 border-l-4 border-red-500 min-w-0">
               <div className="flex items-center justify-between mb-2">
-                <h3 className="text-sm font-medium text-gray-600 truncate pr-2">Total Expenses</h3>
+                <h3 className="text-sm font-medium text-gray-600 truncate pr-2">Paid Expenses</h3>
                 <FaMoneyBillWave className="text-red-500 text-xl flex-shrink-0" />
               </div>
-              <p className="text-xl sm:text-2xl font-bold text-gray-800 mb-1 break-words">{formatCurrency(financialMetrics.totalExpenses)}</p>
-              {dateFilter !== 'all' && renderTrend(financialMetrics.expensesChange)}
+              <p className="text-xl sm:text-2xl font-bold text-gray-800 mb-1 break-words">{formatCurrency(financialMetrics.paidExpenses)}</p>
+              <div className="flex items-center justify-between flex-wrap gap-1">
+                {dateFilter !== 'all' && renderTrend(financialMetrics.expensesChange)}
+                <span className="text-xs text-gray-500 whitespace-nowrap">Total: {formatCurrency(financialMetrics.totalExpenses)}</span>
+              </div>
             </div>
 
             <div className={`bg-white rounded-lg shadow-md p-4 sm:p-6 border-l-4 min-w-0 ${financialMetrics.profit >= 0 ? 'border-blue-500' : 'border-orange-500'}`}>
               <div className="flex items-center justify-between mb-2">
-                <h3 className="text-sm font-medium text-gray-600 truncate pr-2">Net Profit</h3>
+                <h3 className="text-sm font-medium text-gray-600 truncate pr-2">Net Profit (Cash)</h3>
                 <FaChartLine className={financialMetrics.profit >= 0 ? 'text-blue-500' : 'text-orange-500'} />
               </div>
               <p className={`text-xl sm:text-2xl font-bold mb-1 break-words ${financialMetrics.profit >= 0 ? 'text-blue-600' : 'text-orange-600'}`}>
@@ -716,8 +731,8 @@ export default function AnalyticsPage() {
                   <div className="text-right">
                     <span className="font-bold text-green-600">{billsMetrics.paidBills}</span>
                     <p className="text-xs text-gray-500">
-                      {financialMetrics.totalBilled > 0 
-                        ? ((billsMetrics.paidBills / billsMetrics.totalBills) * 100).toFixed(1) 
+                      {financialMetrics.totalBilled > 0
+                        ? ((billsMetrics.paidBills / billsMetrics.totalBills) * 100).toFixed(1)
                         : 0}%
                     </p>
                   </div>
@@ -730,8 +745,8 @@ export default function AnalyticsPage() {
                   <div className="text-right">
                     <span className="font-bold text-yellow-600">{billsMetrics.partialBills}</span>
                     <p className="text-xs text-gray-500">
-                      {financialMetrics.totalBilled > 0 
-                        ? ((billsMetrics.partialBills / billsMetrics.totalBills) * 100).toFixed(1) 
+                      {financialMetrics.totalBilled > 0
+                        ? ((billsMetrics.partialBills / billsMetrics.totalBills) * 100).toFixed(1)
                         : 0}%
                     </p>
                   </div>
@@ -744,8 +759,8 @@ export default function AnalyticsPage() {
                   <div className="text-right">
                     <span className="font-bold text-red-600">{billsMetrics.pendingBills}</span>
                     <p className="text-xs text-gray-500">
-                      {financialMetrics.totalBilled > 0 
-                        ? ((billsMetrics.pendingBills / billsMetrics.totalBills) * 100).toFixed(1) 
+                      {financialMetrics.totalBilled > 0
+                        ? ((billsMetrics.pendingBills / billsMetrics.totalBills) * 100).toFixed(1)
                         : 0}%
                     </p>
                   </div>
@@ -765,7 +780,7 @@ export default function AnalyticsPage() {
                 Expenses by Category
               </h2>
               {expensesBreakdown.length > 0 ? (
-                <BarChart 
+                <BarChart
                   data={expensesBreakdown.map(e => ({ label: e.category.charAt(0).toUpperCase() + e.category.slice(1), value: e.amount }))}
                   maxValue={Math.max(...expensesBreakdown.map(e => e.amount))}
                   color="bg-red-500"
@@ -868,7 +883,7 @@ export default function AnalyticsPage() {
                 Revenue by Meal Type
               </h2>
               {revenueByMealType.length > 0 ? (
-                <BarChart 
+                <BarChart
                   data={revenueByMealType.map(r => ({ label: r.mealType.charAt(0).toUpperCase() + r.mealType.slice(1), value: r.amount }))}
                   maxValue={Math.max(...revenueByMealType.map(r => r.amount))}
                   color="bg-primary-500"
@@ -905,12 +920,11 @@ export default function AnalyticsPage() {
                   {topCustomers.map((item, index) => (
                     <tr key={index} className="border-b border-gray-100 hover:bg-gray-50">
                       <td className="py-3 px-4">
-                        <span className={`inline-flex items-center justify-center w-8 h-8 rounded-full font-bold ${
-                          index === 0 ? 'bg-yellow-100 text-yellow-800' :
+                        <span className={`inline-flex items-center justify-center w-8 h-8 rounded-full font-bold ${index === 0 ? 'bg-yellow-100 text-yellow-800' :
                           index === 1 ? 'bg-gray-100 text-gray-800' :
-                          index === 2 ? 'bg-orange-100 text-orange-800' :
-                          'bg-gray-50 text-gray-600'
-                        }`}>
+                            index === 2 ? 'bg-orange-100 text-orange-800' :
+                              'bg-gray-50 text-gray-600'
+                          }`}>
                           {index + 1}
                         </span>
                       </td>

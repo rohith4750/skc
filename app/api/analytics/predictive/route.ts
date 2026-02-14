@@ -48,22 +48,36 @@ export async function GET(request: NextRequest) {
 
     let [expenses, orders] = await Promise.all([
       prisma.expense.findMany({
-        where: { createdAt: { gte: startDate } },
-        select: { createdAt: true, amount: true },
+        where: { paymentDate: { gte: startDate } },
+        select: { paymentDate: true, createdAt: true, amount: true, paidAmount: true },
       }),
       prisma.order.findMany({
-        where: { createdAt: { gte: startDate } },
-        select: { createdAt: true, totalAmount: true },
+        where: { eventDate: { gte: startDate } },
+        select: {
+          eventDate: true,
+          createdAt: true,
+          totalAmount: true,
+          bill: {
+            select: { paidAmount: true }
+          }
+        },
       }),
     ])
 
     if (expenses.length === 0 && orders.length === 0) {
       ;[expenses, orders] = await Promise.all([
         prisma.expense.findMany({
-          select: { createdAt: true, amount: true },
+          select: { paymentDate: true, createdAt: true, amount: true, paidAmount: true },
         }),
         prisma.order.findMany({
-          select: { createdAt: true, totalAmount: true },
+          select: {
+            eventDate: true,
+            createdAt: true,
+            totalAmount: true,
+            bill: {
+              select: { paidAmount: true }
+            }
+          },
         }),
       ])
 
@@ -110,15 +124,17 @@ export async function GET(request: NextRequest) {
     }
 
     expenses.forEach((expense) => {
-      const key = getMonthKey(new Date(expense.createdAt))
+      const key = getMonthKey(new Date(expense.paymentDate || expense.createdAt))
       if (monthsMap[key]) {
         monthsMap[key].expenses += Number(expense.amount) || 0
       }
     })
 
-    orders.forEach((order) => {
-      const key = getMonthKey(new Date(order.createdAt))
+    orders.forEach((order: any) => {
+      const key = getMonthKey(new Date(order.eventDate || order.createdAt))
       if (monthsMap[key]) {
+        // We calculate trend revenue based on billed amount (totalAmount) 
+        // as this represents the "business generated" in that month
         monthsMap[key].revenue += Number(order.totalAmount) || 0
         monthsMap[key].orders += 1
       }
