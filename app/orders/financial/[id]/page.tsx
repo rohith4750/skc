@@ -4,7 +4,7 @@ import { useEffect, useState, useMemo } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { formatCurrency, formatDate, formatDateTime } from '@/lib/utils'
 import { Order, Bill, PaymentHistoryEntry } from '@/types'
-import { FaArrowLeft, FaMoneyBillWave, FaSave, FaPlus, FaTrash, FaHistory, FaPercentage, FaTruck, FaStore } from 'react-icons/fa'
+import { FaArrowLeft, FaMoneyBillWave, FaSave, FaPlus, FaTrash, FaHistory, FaPercentage, FaTruck, FaStore, FaCalendarAlt } from 'react-icons/fa'
 import { FaBottleWater } from 'react-icons/fa6'
 import { fetchWithLoader } from '@/lib/fetch-with-loader'
 import toast from 'react-hot-toast'
@@ -143,6 +143,32 @@ export default function FinancialTrackingPage() {
       stalls: prev.stalls.map((s, i) => i === index ? { ...s, [field]: value } : s)
     }))
   }
+
+  const handleDiscardByDate = (date: string) => {
+    if (!window.confirm(`Are you sure you want to discard all sessions for ${date || 'Pending Date'}?`)) return
+    setFormData(prev => ({
+      ...prev,
+      mealTypes: prev.mealTypes.filter(mt => mt.date !== date)
+    }))
+    toast.success(`Discarded all sessions for ${date || 'Pending'}!`)
+  }
+
+  const groupedMealTypes = useMemo(() => {
+    const groups: Record<string, { date: string; items: any[] }> = {}
+    formData.mealTypes.forEach((mt, index) => {
+      const dateKey = mt.date || 'Pending'
+      if (!groups[dateKey]) {
+        groups[dateKey] = { date: mt.date, items: [] }
+      }
+      groups[dateKey].items.push({ mt, index })
+    })
+
+    return Object.values(groups).sort((a, b) => {
+      if (!a.date) return 1
+      if (!b.date) return -1
+      return a.date.localeCompare(b.date)
+    })
+  }, [formData.mealTypes])
 
   const getMealTypeAmount = (mealType: any) => {
     if (mealType.pricingMethod === 'plate-based') {
@@ -338,164 +364,188 @@ export default function FinancialTrackingPage() {
                   </h2>
                   <span className="text-xs font-bold text-slate-500">Update members and pricing here</span>
                 </div>
-                <div className="space-y-4">
-                  {formData.mealTypes.length === 0 ? (
+                <div className="space-y-8">
+                  {groupedMealTypes.length === 0 ? (
                     <div className="text-center py-8 border-2 border-dashed border-slate-100 rounded-2xl">
                       <p className="text-slate-400 text-xs font-bold">No meal types found for this order.</p>
                     </div>
                   ) : (
-                    formData.mealTypes.map((mealType, index) => {
-                      const calculatedAmount = getMealTypeAmount(mealType)
-                      const newMembers = calculateMembers(mealType)
-                      return (
-                        <div key={`${mealType.menuType}-${index}`} className="p-5 bg-slate-50 rounded-2xl border border-slate-200">
-                          <div className="flex flex-col gap-4 mb-4">
-                            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-                              <div className="flex-1">
-                                <label className="block text-[10px] font-black text-slate-600 uppercase tracking-widest mb-2">Menu Type</label>
-                                <select
-                                  value={mealType.menuType}
-                                  onChange={(e) => {
-                                    const updated = [...formData.mealTypes]
-                                    updated[index] = { ...mealType, menuType: e.target.value }
-                                    setFormData({ ...formData, mealTypes: updated })
-                                  }}
-                                  className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl text-sm font-bold text-slate-700 outline-none focus:ring-2 focus:ring-primary-500"
-                                >
-                                  <option value="">Select Menu Type</option>
-                                  {mealTypeOptions.map(option => (
-                                    <option key={option} value={option}>
-                                      {option.charAt(0).toUpperCase() + option.slice(1)}
-                                    </option>
-                                  ))}
-                                </select>
-                              </div>
-                              <div className="w-full md:w-52">
-                                <label className="block text-[10px] font-black text-slate-600 uppercase tracking-widest mb-2">Event Date</label>
-                                <input
-                                  type="date"
-                                  value={mealType.date}
-                                  onChange={(e) => {
-                                    const updated = [...formData.mealTypes]
-                                    updated[index] = { ...mealType, date: e.target.value }
-                                    setFormData({ ...formData, mealTypes: updated })
-                                  }}
-                                  className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl text-sm font-bold text-slate-700 outline-none focus:ring-2 focus:ring-primary-500"
-                                />
-                              </div>
-                            </div>
-                            <div className="bg-white px-4 py-2 rounded-xl border border-slate-100 text-right">
-                              <div className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Amount</div>
-                              <div className="text-lg font-black text-primary-600">{formatCurrency(calculatedAmount)}</div>
-                            </div>
-                            <button
-                              type="button"
-                              onClick={() => handleRemoveMealType(index)}
-                              className="self-start inline-flex items-center gap-2 text-rose-600 text-xs font-black hover:text-rose-700"
-                            >
-                              <FaTrash /> Remove
-                            </button>
-                          </div>
-
-                          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                            <div>
-                              <label className="block text-[10px] font-black text-slate-600 uppercase tracking-widest mb-2">Current Members</label>
-                              <input
-                                type="number"
-                                min="0"
-                                value={mealType.numberOfMembers}
-                                onChange={(e) => {
-                                  const updated = [...formData.mealTypes]
-                                  updated[index] = syncPlateBasedMembers(mealType, { numberOfMembers: e.target.value })
-                                  setFormData({ ...formData, mealTypes: updated })
-                                }}
-                                className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl text-sm font-bold text-slate-700 outline-none focus:ring-2 focus:ring-primary-500"
-                              />
-                            </div>
-                            <div>
-                              <label className="block text-[10px] font-black text-slate-600 uppercase tracking-widest mb-2">Add Members</label>
-                              <input
-                                type="number"
-                                min="0"
-                                value={mealType.addMembers}
-                                onChange={(e) => {
-                                  const updated = [...formData.mealTypes]
-                                  updated[index] = syncPlateBasedMembers(mealType, { addMembers: e.target.value })
-                                  setFormData({ ...formData, mealTypes: updated })
-                                }}
-                                className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl text-sm font-bold text-slate-700 outline-none focus:ring-2 focus:ring-primary-500"
-                                placeholder="0"
-                              />
-                              <p className="mt-1 text-[10px] font-bold text-slate-500">New total: {newMembers}</p>
-                            </div>
-                            <div>
-                              <label className="block text-[10px] font-black text-slate-600 uppercase tracking-widest mb-2">Pricing Method</label>
-                              <select
-                                value={mealType.pricingMethod}
-                                onChange={(e) => {
-                                  const updated = [...formData.mealTypes]
-                                  updated[index] = syncPlateBasedMembers(mealType, { pricingMethod: e.target.value })
-                                  setFormData({ ...formData, mealTypes: updated })
-                                }}
-                                className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl text-sm font-bold text-slate-700 outline-none focus:ring-2 focus:ring-primary-500"
-                              >
-                                <option value="manual">Manual</option>
-                                <option value="plate-based">Plate-based</option>
-                              </select>
-                            </div>
-                          </div>
-
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
-                            {mealType.pricingMethod === 'plate-based' ? (
-                              <>
-                                <div>
-                                  <label className="block text-[10px] font-black text-slate-600 uppercase tracking-widest mb-2">Plates</label>
-                                  <input
-                                    type="number"
-                                    min="0"
-                                    value={mealType.numberOfPlates}
-                                    readOnly={mealType.pricingMethod === 'plate-based'}
-                                    className={`w-full px-4 py-3 rounded-xl text-sm font-bold outline-none ${mealType.pricingMethod === 'plate-based'
-                                      ? 'bg-slate-100 border border-slate-200 text-slate-600'
-                                      : 'bg-white border border-slate-200 text-slate-700 focus:ring-2 focus:ring-primary-500'
-                                      }`}
-                                  />
-                                </div>
-                                <div>
-                                  <label className="block text-[10px] font-black text-slate-600 uppercase tracking-widest mb-2">Price per Plate</label>
-                                  <input
-                                    type="number"
-                                    min="0"
-                                    value={mealType.platePrice}
-                                    onChange={(e) => {
-                                      const updated = [...formData.mealTypes]
-                                      updated[index] = { ...mealType, platePrice: e.target.value }
-                                      setFormData({ ...formData, mealTypes: updated })
-                                    }}
-                                    className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl text-sm font-bold text-slate-700 outline-none focus:ring-2 focus:ring-primary-500"
-                                  />
-                                </div>
-                              </>
-                            ) : (
-                              <div>
-                                <label className="block text-[10px] font-black text-slate-600 uppercase tracking-widest mb-2">Manual Amount</label>
-                                <input
-                                  type="number"
-                                  min="0"
-                                  value={mealType.manualAmount}
-                                  onChange={(e) => {
-                                    const updated = [...formData.mealTypes]
-                                    updated[index] = { ...mealType, manualAmount: e.target.value }
-                                    setFormData({ ...formData, mealTypes: updated })
-                                  }}
-                                  className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl text-sm font-bold text-slate-700 outline-none focus:ring-2 focus:ring-primary-500"
-                                />
-                              </div>
-                            )}
-                          </div>
+                    groupedMealTypes.map((group) => (
+                      <div key={group.date || 'pending'} className="space-y-4">
+                        <div className="flex items-center justify-between px-2 bg-slate-50/50 py-2 rounded-xl">
+                          <h3 className="text-xs font-black text-slate-500 uppercase tracking-widest flex items-center gap-2">
+                            <FaCalendarAlt className="text-primary-400" />
+                            {group.date ? formatDate(group.date) : 'Date Pending'}
+                          </h3>
+                          <button
+                            type="button"
+                            onClick={() => handleDiscardByDate(group.date)}
+                            className="flex items-center gap-1.5 px-3 py-1.5 bg-rose-50 text-rose-600 rounded-lg text-[10px] font-black hover:bg-rose-100 transition-all uppercase tracking-tight"
+                          >
+                            <FaTrash className="text-[10px]" /> Discard Date
+                          </button>
                         </div>
-                      )
-                    })
+
+                        <div className="space-y-4">
+                          {group.items.map(({ mt: mealType, index }) => {
+                            const calculatedAmount = getMealTypeAmount(mealType)
+                            const newMembers = calculateMembers(mealType)
+                            return (
+                              <div key={`${mealType.menuType}-${index}`} className="p-5 bg-white rounded-2xl border border-slate-200 shadow-sm">
+                                <div className="flex flex-col gap-4 mb-4">
+                                  <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+                                    <div className="flex-1">
+                                      <label className="block text-[10px] font-black text-slate-600 uppercase tracking-widest mb-2">Menu Type</label>
+                                      <select
+                                        value={mealType.menuType}
+                                        onChange={(e) => {
+                                          const updated = [...formData.mealTypes]
+                                          updated[index] = { ...mealType, menuType: e.target.value }
+                                          setFormData({ ...formData, mealTypes: updated })
+                                        }}
+                                        className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold text-slate-700 outline-none focus:ring-2 focus:ring-primary-500"
+                                      >
+                                        <option value="">Select Menu Type</option>
+                                        {mealTypeOptions.map(option => (
+                                          <option key={option} value={option}>
+                                            {option.charAt(0).toUpperCase() + option.slice(1)}
+                                          </option>
+                                        ))}
+                                      </select>
+                                    </div>
+                                    <div className="w-full md:w-52">
+                                      <label className="block text-[10px] font-black text-slate-600 uppercase tracking-widest mb-2">Change Date</label>
+                                      <input
+                                        type="date"
+                                        value={mealType.date}
+                                        onChange={(e) => {
+                                          const updated = [...formData.mealTypes]
+                                          updated[index] = { ...mealType, date: e.target.value }
+                                          setFormData({ ...formData, mealTypes: updated })
+                                        }}
+                                        className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold text-slate-700 outline-none focus:ring-2 focus:ring-primary-500"
+                                      />
+                                    </div>
+                                  </div>
+                                  <div className="bg-slate-50 px-4 py-2 rounded-xl border border-slate-100 flex items-center justify-between">
+                                    <div className="flex items-center gap-4">
+                                      <button
+                                        type="button"
+                                        onClick={() => handleRemoveMealType(index)}
+                                        className="inline-flex items-center gap-2 text-rose-500 text-[10px] font-black hover:text-rose-600 uppercase tracking-widest bg-white px-3 py-1.5 rounded-lg border border-rose-100"
+                                      >
+                                        <FaTrash /> Remove Session
+                                      </button>
+                                    </div>
+                                    <div className="text-right">
+                                      <div className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Amount</div>
+                                      <div className="text-lg font-black text-primary-600">{formatCurrency(calculatedAmount)}</div>
+                                    </div>
+                                  </div>
+                                </div>
+
+                                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                  <div>
+                                    <label className="block text-[10px] font-black text-slate-600 uppercase tracking-widest mb-2">Current Members</label>
+                                    <input
+                                      type="number"
+                                      min="0"
+                                      value={mealType.numberOfMembers}
+                                      onChange={(e) => {
+                                        const updated = [...formData.mealTypes]
+                                        updated[index] = syncPlateBasedMembers(mealType, { numberOfMembers: e.target.value })
+                                        setFormData({ ...formData, mealTypes: updated })
+                                      }}
+                                      className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold text-slate-700 outline-none focus:ring-2 focus:ring-primary-500"
+                                    />
+                                  </div>
+                                  <div>
+                                    <label className="block text-[10px] font-black text-slate-600 uppercase tracking-widest mb-2">Add Members</label>
+                                    <input
+                                      type="number"
+                                      min="0"
+                                      value={mealType.addMembers}
+                                      onChange={(e) => {
+                                        const updated = [...formData.mealTypes]
+                                        updated[index] = syncPlateBasedMembers(mealType, { addMembers: e.target.value })
+                                        setFormData({ ...formData, mealTypes: updated })
+                                      }}
+                                      className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold text-slate-700 outline-none focus:ring-2 focus:ring-primary-500"
+                                      placeholder="0"
+                                    />
+                                    <p className="mt-1 text-[10px] font-bold text-slate-500">New total: {newMembers}</p>
+                                  </div>
+                                  <div>
+                                    <label className="block text-[10px] font-black text-slate-600 uppercase tracking-widest mb-2">Pricing Method</label>
+                                    <select
+                                      value={mealType.pricingMethod}
+                                      onChange={(e) => {
+                                        const updated = [...formData.mealTypes]
+                                        updated[index] = syncPlateBasedMembers(mealType, { pricingMethod: e.target.value })
+                                        setFormData({ ...formData, mealTypes: updated })
+                                      }}
+                                      className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold text-slate-700 outline-none focus:ring-2 focus:ring-primary-500"
+                                    >
+                                      <option value="manual">Manual</option>
+                                      <option value="plate-based">Plate-based</option>
+                                    </select>
+                                  </div>
+                                </div>
+
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+                                  {mealType.pricingMethod === 'plate-based' ? (
+                                    <>
+                                      <div>
+                                        <label className="block text-[10px] font-black text-slate-600 uppercase tracking-widest mb-2">Plates</label>
+                                        <input
+                                          type="number"
+                                          min="0"
+                                          value={mealType.numberOfPlates}
+                                          readOnly={mealType.pricingMethod === 'plate-based'}
+                                          className={`w-full px-4 py-3 rounded-xl text-sm font-bold outline-none ${mealType.pricingMethod === 'plate-based'
+                                            ? 'bg-slate-100 border border-slate-100 text-slate-500'
+                                            : 'bg-white border border-slate-200 text-slate-700 focus:ring-2 focus:ring-primary-500'
+                                            }`}
+                                        />
+                                      </div>
+                                      <div>
+                                        <label className="block text-[10px] font-black text-slate-600 uppercase tracking-widest mb-2">Price per Plate</label>
+                                        <input
+                                          type="number"
+                                          min="0"
+                                          value={mealType.platePrice}
+                                          onChange={(e) => {
+                                            const updated = [...formData.mealTypes]
+                                            updated[index] = { ...mealType, platePrice: e.target.value }
+                                            setFormData({ ...formData, mealTypes: updated })
+                                          }}
+                                          className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold text-slate-700 outline-none focus:ring-2 focus:ring-primary-500"
+                                        />
+                                      </div>
+                                    </>
+                                  ) : (
+                                    <div>
+                                      <label className="block text-[10px] font-black text-slate-600 uppercase tracking-widest mb-2">Manual Amount</label>
+                                      <input
+                                        type="number"
+                                        min="0"
+                                        value={mealType.manualAmount}
+                                        onChange={(e) => {
+                                          const updated = [...formData.mealTypes]
+                                          updated[index] = { ...mealType, manualAmount: e.target.value }
+                                          setFormData({ ...formData, mealTypes: updated })
+                                        }}
+                                        className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold text-slate-700 outline-none focus:ring-2 focus:ring-primary-500"
+                                      />
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                            )
+                          })}
+                        </div>
+                      </div>
+                    ))
                   )}
                 </div>
               </div>
