@@ -58,7 +58,7 @@ export async function PUT(
       where: { id: params.id },
       data: {
         paidAmount: paidAmount,
-        advancePaid: paidAmount,
+        advancePaid: Number(existingBill.advancePaid) > 0 ? existingBill.advancePaid : paidAmount,
         remainingAmount: remainingAmount,
         status: status,
         paymentHistory: updatedPaymentHistory,

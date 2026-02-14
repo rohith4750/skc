@@ -103,6 +103,7 @@ export async function PUT(
         bill = await prisma.bill.update({
           where: { id: bill.id },
           data: {
+            advancePaid: order.advancePaid, // Preserve original advance
             paidAmount: bill.totalAmount,
             remainingAmount: 0,
             status: 'paid',
