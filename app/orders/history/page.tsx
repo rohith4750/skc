@@ -730,8 +730,7 @@ export default function OrdersHistoryPage() {
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Event Name</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Event Type</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Venue</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Guests</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Event Dates</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Event Dates / Guests</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Created</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
@@ -740,8 +739,8 @@ export default function OrdersHistoryPage() {
               <tbody className="bg-white divide-y divide-gray-200">
                 {paginatedOrders.map((order: any) => {
                   // Extract all event dates from meal types
-                  const mealTypeAmounts = order.mealTypeAmounts as Record<string, { amount: number; date: string } | number> | null
-                  const eventDates: Array<{ mealType: string; date: string; key: string }> = []
+                  const mealTypeAmounts = order.mealTypeAmounts as Record<string, { amount: number; date: string; numberOfMembers?: number } | number> | null
+                  const eventDates: Array<{ mealType: string; date: string; key: string; members?: number }> = []
                   if (mealTypeAmounts) {
                     Object.entries(mealTypeAmounts).forEach(([key, data]) => {
                       if (typeof data === 'object' && data !== null && data.date) {
@@ -764,7 +763,12 @@ export default function OrdersHistoryPage() {
                             displayLabel = key
                           }
                         }
-                        eventDates.push({ mealType: displayLabel, date: data.date, key })
+                        eventDates.push({
+                          mealType: displayLabel,
+                          date: data.date,
+                          key,
+                          members: (data as any).numberOfMembers
+                        })
                       }
                     })
                   }
@@ -796,11 +800,6 @@ export default function OrdersHistoryPage() {
                       <td className="px-6 py-4">
                         <div className="text-sm text-gray-900 max-w-[200px] truncate" title={(order as any).venue || ''}>
                           {(order as any).venue || <span className="text-gray-400">-</span>}
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm font-medium text-gray-900">
-                          {(order as any).numberOfMembers || <span className="text-gray-400">-</span>}
                         </div>
                       </td>
                       <td className="px-6 py-4">
@@ -843,9 +842,16 @@ export default function OrdersHistoryPage() {
 
                                   {/* Sessions List */}
                                   <div className="flex flex-wrap gap-1.5 pl-1 border-l-2 border-slate-100 ml-1">
-                                    {groupedByDate[date].map(({ mealType, key }) => (
+                                    {groupedByDate[date].map(({ mealType, key, members }) => (
                                       <div key={key} className="flex items-center gap-1.5 bg-white px-2.5 py-1 rounded-lg border border-slate-200 shadow-sm group/session hover:border-primary-300 transition-colors">
-                                        <span className="capitalize text-[11px] font-bold text-slate-700">{sanitizeMealLabel(mealType)}</span>
+                                        <span className="capitalize text-[11px] font-bold text-slate-700">
+                                          {sanitizeMealLabel(mealType)}
+                                          {members ? (
+                                            <span className="ml-1 text-primary-600 font-black">({members})</span>
+                                          ) : order.numberOfMembers ? (
+                                            <span className="ml-1 text-slate-400 font-medium">({order.numberOfMembers})</span>
+                                          ) : null}
+                                        </span>
                                         {isCombinedOrder && eventDates.length > 1 && (
                                           <button
                                             onClick={(e) => {
