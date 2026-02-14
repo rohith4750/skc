@@ -213,11 +213,23 @@ export async function PUT(
       ? `Changes: ${mealTypeChanges.join(' | ')}`
       : undefined
 
+    // --- RECALCULATE TOTAL AMOUNT AS SAFETY CHECK ---
+    let recalculatedMealTypesTotal = 0
+    Object.values(newMealTypeAmounts).forEach((mt: any) => {
+      recalculatedMealTypesTotal += mt.amount || 0
+    })
+    const recalculatedTotal = Math.max(0, recalculatedMealTypesTotal + transportCost + (parseFloat(data.waterBottlesCost) || 0) +
+      ((data.stalls || []).reduce((sum: number, s: any) => sum + (parseFloat(s.cost) || 0), 0)) - discount)
+
+    // Use recalculated total if the provided total is 0 but we have amounts elsewhere
+    const finalTotalAmount = (totalAmount === 0 && recalculatedTotal > 0) ? recalculatedTotal : totalAmount
+    const finalRemainingAmount = (totalAmount === 0 && recalculatedTotal > 0) ? Math.max(0, recalculatedTotal - advancePaid) : remainingAmount
+
     const orderUpdateData: any = {
       customerId: data.customerId,
-      totalAmount,
+      totalAmount: finalTotalAmount,
       advancePaid,
-      remainingAmount,
+      remainingAmount: finalRemainingAmount,
       status: data.status,
       eventName: data.eventName || null,
       services: data.services && Array.isArray(data.services) && data.services.length > 0 ? data.services : null,

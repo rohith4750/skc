@@ -403,9 +403,21 @@ export default function OrdersPage() {
   const handleUpdateMealType = (mealTypeId: string, field: string, value: any) => {
     setFormData(prev => ({
       ...prev,
-      mealTypes: prev.mealTypes.map(mealType =>
-        mealType.id === mealTypeId ? { ...mealType, [field]: value } : mealType
-      )
+      mealTypes: prev.mealTypes.map(mealType => {
+        if (mealType.id === mealTypeId) {
+          const updated = { ...mealType, [field]: value }
+          // Synchronize numberOfPlates with numberOfMembers if pricing is plate-based
+          if (field === 'numberOfMembers' && mealType.pricingMethod === 'plate-based') {
+            updated.numberOfPlates = value
+          }
+          // Also sync if price method changed TO plate-based
+          if (field === 'pricingMethod' && value === 'plate-based') {
+            updated.numberOfPlates = mealType.numberOfMembers
+          }
+          return updated
+        }
+        return mealType
+      })
     }))
 
     // Reset filters when menu type changes
@@ -579,7 +591,8 @@ export default function OrdersPage() {
       formData.mealTypes.forEach(mealType => {
         let amount = 0
         if (mealType.pricingMethod === 'plate-based') {
-          const plates = parseFloat(mealType.numberOfPlates) || 0
+          // Use numberOfPlates if present, otherwise fallback to numberOfMembers
+          const plates = parseFloat(mealType.numberOfPlates) || parseFloat(mealType.numberOfMembers) || 0
           const price = parseFloat(mealType.platePrice) || 0
           amount = plates * price
         } else {

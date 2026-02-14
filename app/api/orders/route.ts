@@ -55,20 +55,33 @@ export async function POST(request: NextRequest) {
     // Convert amounts to numbers to ensure proper type
     const totalAmount = parseFloat(data.totalAmount) || 0
     const advancePaid = parseFloat(data.advancePaid) || 0
-    const remainingAmount = parseFloat(data.remainingAmount) || (totalAmount - advancePaid)
-
-    if (!isNonNegativeNumber(totalAmount) || !isNonNegativeNumber(advancePaid) || !isNonNegativeNumber(remainingAmount)) {
-      return NextResponse.json({ error: 'Invalid amounts' }, { status: 400 })
-    }
     const discount = parseFloat(data.discount) || 0
     const transportCost = parseFloat(data.transportCost) || 0
     const waterBottlesCost = parseFloat(data.waterBottlesCost) || 0
 
+    // --- RECALCULATE TOTAL AMOUNT AS SAFETY CHECK ---
+    let recalculatedMealTypesTotal = 0
+    if (data.mealTypeAmounts) {
+      Object.values(data.mealTypeAmounts).forEach((mt: any) => {
+        recalculatedMealTypesTotal += (typeof mt === 'object' ? mt.amount : mt) || 0
+      })
+    }
+    const recalculatedTotal = Math.max(0, recalculatedMealTypesTotal + transportCost + waterBottlesCost +
+      ((data.stalls || []).reduce((sum: number, s: any) => sum + (parseFloat(s.cost) || 0), 0)) - discount)
+
+    // Use recalculated total if the provided total is 0 but we have amounts elsewhere
+    const finalTotalAmount = (totalAmount === 0 && recalculatedTotal > 0) ? recalculatedTotal : totalAmount
+    const finalRemainingAmount = (totalAmount === 0 && recalculatedTotal > 0) ? Math.max(0, recalculatedTotal - advancePaid) : (parseFloat(data.remainingAmount) || (totalAmount - advancePaid))
+
+    if (!isNonNegativeNumber(finalTotalAmount) || !isNonNegativeNumber(advancePaid) || !isNonNegativeNumber(finalRemainingAmount)) {
+      return NextResponse.json({ error: 'Invalid amounts' }, { status: 400 })
+    }
+
     const orderData: any = {
       customerId: data.customerId,
-      totalAmount: totalAmount,
+      totalAmount: finalTotalAmount,
       advancePaid: advancePaid,
-      remainingAmount: remainingAmount,
+      remainingAmount: finalRemainingAmount,
       status: data.status || 'pending',
       eventName: data.eventName || null,
       services: data.services && Array.isArray(data.services) && data.services.length > 0 ? data.services : null,
