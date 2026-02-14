@@ -42,41 +42,7 @@ export async function GET(request: NextRequest) {
       console.log('Could not fetch stock alerts:', e)
     }
 
-    // Also check Inventory items
-    try {
-      // Get all inventory and filter by minQuantity threshold
-      const allInventory = await prisma.inventory.findMany({
-        where: { isActive: true }
-      })
-      const lowInventory = allInventory.filter((item: any) => {
-        const minQty = item.minQuantity ?? 10 // Default threshold: 10 if not set
-        return item.quantity <= minQty
-      })
-
-      lowInventory.forEach((item: any) => {
-        const minQty = item.minQuantity ?? 10 // Default threshold: 10 if not set
-        const severity = item.quantity === 0 ? 'critical' : item.quantity <= 5 ? 'high' : 'medium'
-        alerts.push({
-          id: `inventory-${item.id}`,
-          type: 'low_stock',
-          title: item.quantity === 0 ? 'Out of Stock!' : 'Low Inventory Warning',
-          message: `${item.name}: ${item.quantity} ${item.unit} remaining (Min: ${minQty})`,
-          severity,
-          entityId: item.id,
-          entityType: 'inventory',
-          createdAt: now.toISOString(),
-          data: {
-            itemName: item.name,
-            currentQty: item.quantity,
-            minQty: minQty,
-            unit: item.unit,
-            category: item.category
-          }
-        })
-      })
-    } catch (e) {
-      console.log('Could not fetch inventory alerts:', e)
-    }
+    // Inventory low stock alerts removed as minQuantity tracking was disabled
 
     // 2. PAYMENT REMINDERS (Unpaid/Partial Bills)
     try {

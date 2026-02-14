@@ -66,9 +66,6 @@ export async function PUT(
     if (data.quantity !== undefined && !isNonNegativeNumber(parseFloat(data.quantity))) {
       return NextResponse.json({ error: 'Quantity must be a valid number' }, { status: 400 })
     }
-    if (data.minQuantity !== undefined && data.minQuantity !== null && !isNonNegativeNumber(parseFloat(data.minQuantity))) {
-      return NextResponse.json({ error: 'Min quantity must be a valid number' }, { status: 400 })
-    }
     if (data.purchasePrice !== undefined && data.purchasePrice !== null && !isNonNegativeNumber(parseFloat(data.purchasePrice))) {
       return NextResponse.json({ error: 'Purchase price must be a valid number' }, { status: 400 })
     }
@@ -78,9 +75,9 @@ export async function PUT(
       data.purchaseDate !== undefined
         ? data.purchaseDate
           ? (() => {
-              const d = new Date(data.purchaseDate)
-              return isNaN(d.getTime()) ? null : d
-            })()
+            const d = new Date(data.purchaseDate)
+            return isNaN(d.getTime()) ? null : d
+          })()
           : null
         : undefined
 
@@ -89,7 +86,6 @@ export async function PUT(
     if (data.name !== undefined) updateData.name = data.name
     if (data.category !== undefined) updateData.category = data.category
     if (data.quantity !== undefined) updateData.quantity = data.quantity
-    if (data.minQuantity !== undefined) updateData.minQuantity = data.minQuantity
     if (data.unit !== undefined) updateData.unit = data.unit
     if (data.condition !== undefined) updateData.condition = data.condition
     if (data.location !== undefined) updateData.location = data.location
