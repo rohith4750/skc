@@ -55,10 +55,11 @@ export default function FinancialTrackingPage() {
       const data = await response.json()
       setOrder(data)
 
-      const mealTypes = Object.entries(data.mealTypeAmounts || {}).map(([menuType, detail]: any) => {
+      const mealTypes = Object.entries(data.mealTypeAmounts || {}).map(([key, detail]: any) => {
         const normalized = typeof detail === 'object' && detail !== null ? detail : { amount: detail || 0 }
         return {
-          menuType,
+          id: key.length > 20 ? key : undefined, // If key is a UUID, use it as ID
+          menuType: normalized.menuType || key,
           pricingMethod: normalized.pricingMethod || 'manual',
           numberOfPlates: normalized.numberOfPlates?.toString() || (normalized.pricingMethod === 'plate-based' && normalized.numberOfMembers ? normalized.numberOfMembers.toString() : ''),
           platePrice: normalized.platePrice?.toString() || '',
@@ -176,11 +177,14 @@ export default function FinancialTrackingPage() {
 
   const buildMealTypeAmounts = () => {
     const mealTypeAmounts: Record<string, any> = {}
-    formData.mealTypes.forEach(mealType => {
+    formData.mealTypes.forEach((mealType, index) => {
       if (!mealType.menuType) {
         return
       }
-      mealTypeAmounts[mealType.menuType] = {
+      // Use existing ID or generate one if missing (to ensure unique keys)
+      const sessionKey = (mealType as any).id || `session-${index}-${Date.now()}`
+      mealTypeAmounts[sessionKey] = {
+        menuType: mealType.menuType,
         amount: getMealTypeAmount(mealType),
         date: mealType.date,
         services: mealType.services,

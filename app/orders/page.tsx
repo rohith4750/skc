@@ -170,13 +170,18 @@ export default function OrdersPage() {
         }
       })
 
-      // Build mealTypes array from mealTypeAmounts, matching items by type
+      // Build mealTypes array from mealTypeAmounts
       const mealTypesArray = mealTypeAmounts
-        ? Object.entries(mealTypeAmounts).map(([menuType, mealTypeData]) => {
+        ? Object.entries(mealTypeAmounts).map(([key, mealTypeData]) => {
           const amount = typeof mealTypeData === 'object' && mealTypeData !== null ? mealTypeData.amount : (typeof mealTypeData === 'number' ? mealTypeData : 0)
           const date = typeof mealTypeData === 'object' && mealTypeData !== null ? mealTypeData.date : ''
           const services = typeof mealTypeData === 'object' && mealTypeData !== null && mealTypeData.services ? mealTypeData.services : []
           const numberOfMembers = typeof mealTypeData === 'object' && mealTypeData !== null && mealTypeData.numberOfMembers ? mealTypeData.numberOfMembers.toString() : ''
+
+          // If key is a menuType name (legacy), use it. If it's an ID-keyed object, use stored menuType.
+          const menuTypeName = (typeof mealTypeData === 'object' && mealTypeData !== null && (mealTypeData as any).menuType)
+            ? (mealTypeData as any).menuType
+            : key;
 
           const pricingMethod: 'manual' | 'plate-based' =
             typeof mealTypeData === 'object' && mealTypeData !== null && mealTypeData.pricingMethod
@@ -196,15 +201,15 @@ export default function OrdersPage() {
               ? mealTypeData.manualAmount.toString()
               : amount.toString()
 
-          // Assign items that match this meal type by their menuItem.type
-          const selectedMenuItems = itemsByType[menuType.toLowerCase()] || []
+          // Assign items that match this session key or legacy menuType
+          const selectedMenuItems = itemsByType[key.toLowerCase()] || itemsByType[menuTypeName.toLowerCase()] || []
 
           return {
-            id: generateId(),
-            menuType: menuType,
+            id: key.length > 20 ? key : generateId(), // If key looks like a UUID, use it as ID
+            menuType: menuTypeName,
             selectedMenuItems,
-            itemCustomizations: customizationsByItemAndType[menuType] || {},
-            itemQuantities: quantitiesByItemAndType[menuType] || {},
+            itemCustomizations: customizationsByItemAndType[key] || customizationsByItemAndType[menuTypeName] || {},
+            itemQuantities: quantitiesByItemAndType[key] || quantitiesByItemAndType[menuTypeName] || {},
             pricingMethod,
             numberOfPlates,
             platePrice,
@@ -569,17 +574,8 @@ export default function OrdersPage() {
       const effectiveAdvancePaid = isEditMode ? originalAdvancePaid + inputAdvancePaid : inputAdvancePaid
       const remainingAmount = Math.max(0, totalAmount - effectiveAdvancePaid)
 
-      // Calculate amount and store date for each meal type
-      const mealTypeAmounts: Record<string, {
-        amount: number
-        date: string
-        services?: string[]
-        numberOfMembers?: number
-        pricingMethod?: 'manual' | 'plate-based'
-        numberOfPlates?: number
-        platePrice?: number
-        manualAmount?: number
-      }> = {}
+      // Calculate amount and store date for each meal type session
+      const mealTypeAmounts: Record<string, any> = {}
       formData.mealTypes.forEach(mealType => {
         let amount = 0
         if (mealType.pricingMethod === 'plate-based') {
@@ -589,7 +585,9 @@ export default function OrdersPage() {
         } else {
           amount = parseFloat(mealType.manualAmount) || 0
         }
-        mealTypeAmounts[mealType.menuType] = {
+        // Use unique ID as key to allow multiple sessions of same type
+        mealTypeAmounts[mealType.id] = {
+          menuType: mealType.menuType, // Store name inside
           amount,
           date: mealType.date || '',
           services: mealType.services,
@@ -601,12 +599,12 @@ export default function OrdersPage() {
         }
       })
 
-      // Combine all menu items from all meal types with their mealType
+      // Combine all menu items from all meal types with their session ID
       const orderItems: OrderItem[] = formData.mealTypes.flatMap(mealType =>
         mealType.selectedMenuItems.map(menuItemId => ({
           menuItemId,
           quantity: parseFloat(mealType.itemQuantities?.[menuItemId] || '1'),
-          mealType: mealType.menuType, // Store which meal type this item was selected for
+          mealType: mealType.id, // Store unique session ID instead of name
           customization: mealType.itemCustomizations?.[menuItemId] || '',
         }))
       )

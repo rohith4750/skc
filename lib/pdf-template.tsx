@@ -328,31 +328,46 @@ function generateBillContent(data: PDFTemplateData): string {
   if (Object.keys(mealTypeAmounts).length > 0) {
     const priorityOrder = ['breakfast', 'tiffins', 'lunch', 'snacks', 'dinner', 'supper'];
 
-    Object.entries(mealTypeAmounts)
-      .sort(([a], [b]) => {
-        const indexA = priorityOrder.indexOf(a.toLowerCase());
-        const indexB = priorityOrder.indexOf(b.toLowerCase());
+    // Group sessions by date
+    const groupedByDate: Record<string, any[]> = {}
+    Object.entries(mealTypeAmounts).forEach(([key, mealData]) => {
+      const dataObj = typeof mealData === 'object' && mealData !== null ? mealData : { amount: typeof mealData === 'number' ? mealData : 0 } as any
+      const date = dataObj.date || 'Other'
+      if (!groupedByDate[date]) groupedByDate[date] = []
+      groupedByDate[date].push({ key, ...dataObj })
+    })
 
-        // If both are in the priority list, sort by index
+    // Sort dates
+    const sortedDates = Object.keys(groupedByDate).sort((a, b) => new Date(a).getTime() - new Date(b).getTime())
+
+    sortedDates.forEach(date => {
+      // Add date header if there's more than one date
+      if (sortedDates.length > 1) {
+        mealTypeRows.push(`
+          <div class="form-row" style="background: #f9f9f9; padding: 4px; font-weight: bold; font-size: 11px; margin-top: 10px; border-bottom: 1px solid #eee;">
+            Event Date: ${formatDate(date)}
+          </div>
+        `)
+      }
+
+      // Sort sessions within date by priority
+      const sessions = groupedByDate[date].sort((a, b) => {
+        const typeA = (a.menuType || a.key).toLowerCase()
+        const typeB = (b.menuType || b.key).toLowerCase()
+        const indexA = priorityOrder.indexOf(typeA);
+        const indexB = priorityOrder.indexOf(typeB);
         if (indexA !== -1 && indexB !== -1) return indexA - indexB;
-
-        // If only A is in the list, it comes first
         if (indexA !== -1) return -1;
-
-        // If only B is in the list, it comes first
         if (indexB !== -1) return 1;
-
-        // Otherwise sort alphabetically
-        return a.localeCompare(b);
+        return typeA.localeCompare(typeB);
       })
-      .forEach(([mealType, mealData]) => {
-        const dataObj = typeof mealData === 'object' && mealData !== null ? mealData : { amount: typeof mealData === 'number' ? mealData : 0 }
-        const persons = (typeof dataObj === 'object' && 'numberOfMembers' in dataObj) ? (dataObj.numberOfMembers || 0) : 0
-        const amount = (typeof dataObj === 'object' && 'amount' in dataObj) ? dataObj.amount : (typeof mealData === 'number' ? mealData : 0)
 
-        const pricingMethod = (dataObj as any).pricingMethod || 'manual'
-        const platePrice = (dataObj as any).platePrice || 0
-        const manualAmount = (dataObj as any).manualAmount || 0
+      sessions.forEach(session => {
+        const persons = session.numberOfMembers || 0
+        const amount = session.amount || 0
+        const pricingMethod = session.pricingMethod || 'manual'
+        const platePrice = session.platePrice || 0
+        const manualAmount = session.manualAmount || 0
 
         let displayAmount = amount
         if (pricingMethod === 'manual' && manualAmount > 0) {
@@ -360,7 +375,6 @@ function generateBillContent(data: PDFTemplateData): string {
         }
 
         let rateDisplay = ''
-
         if (pricingMethod === 'plate-based' && platePrice > 0) {
           rateDisplay = formatCurrency(platePrice)
           if (!displayAmount || displayAmount === 0) {
@@ -368,20 +382,22 @@ function generateBillContent(data: PDFTemplateData): string {
           }
         }
 
-        // Format meal type name (capitalize first letter)
-        const mealTypeName = mealType.charAt(0).toUpperCase() + mealType.slice(1).toLowerCase()
+        // Format meal type name
+        const menuType = session.menuType || session.key
+        const mealTypeName = menuType.charAt(0).toUpperCase() + menuType.slice(1).toLowerCase()
 
         mealTypeRows.push(`
-        <div class="form-row">
-          <span class="form-label">${mealTypeName} No of Persons:</span>
-          <span class="form-value-inline" style="width: 50px;">${persons || ''}</span>
-          <span style="margin-left: 10px;">Rate:</span>
-          <span class="form-value-inline" style="width: 80px;">${rateDisplay}</span>
-          <span style="margin-left: 10px;">Total:</span>
-          <span class="form-value-inline" style="width: 100px;">${displayAmount > 0 ? formatCurrency(displayAmount) : ''}</span>
-        </div>
-      `)
+          <div class="form-row">
+            <span class="form-label">${mealTypeName} No of Persons:${sortedDates.length > 1 ? `<br><small style="color:#666;font-weight:normal">${formatDate(date)}</small>` : ''}</span>
+            <span class="form-value-inline" style="width: 50px;">${persons || ''}</span>
+            <span style="font-size: 10px; margin-left: 10px;">Rate:</span>
+            <span class="form-value-inline" style="width: 80px;">${rateDisplay}</span>
+            <span style="font-size: 10px; margin-left: 10px;">Total:</span>
+            <span class="form-value-inline" style="width: 100px;">${displayAmount > 0 ? formatCurrency(displayAmount) : ''}</span>
+          </div>
+        `)
       })
+    })
   } else {
     // Fallback to mealDetails if mealTypeAmounts is not provided
     if (mealDetails.tiffins?.persons) {

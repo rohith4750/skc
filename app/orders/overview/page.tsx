@@ -94,7 +94,7 @@ export default function OrdersOverviewPage() {
           meals.push({
             orderId: order.id,
             customerName: order.customer?.name || 'Unknown',
-            mealType: type
+            mealType: data.menuType || type // Use stored menuType if it's an ID-keyed object
           })
         }
       })

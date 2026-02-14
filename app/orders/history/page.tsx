@@ -293,48 +293,70 @@ export default function OrdersHistoryPage() {
         <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; font-size: 14px;">
     `
 
-    // Group items by type
-    const itemsByType: Record<string, any[]> = {}
+    const priorityOrder = ['breakfast', 'tiffins', 'lunch', 'snacks', 'dinner', 'supper'];
+
+    // Group items by session (using the ID stored in item.mealType)
+    const itemsBySession: Record<string, any[]> = {}
     order.items.forEach((item: any) => {
-      const type = item.menuItem?.type || 'OTHER'
-      if (!itemsByType[type]) {
-        itemsByType[type] = []
-      }
-      itemsByType[type].push(item)
+      const sessionKey = item.mealType || 'Legacy'
+      if (!itemsBySession[sessionKey]) itemsBySession[sessionKey] = []
+      itemsBySession[sessionKey].push(item)
     })
 
-    // Get member count for each meal type
-    const getMemberCount = (mealType: string): string => {
-      if (mealTypeAmounts) {
-        const mealData = mealTypeAmounts[mealType.toLowerCase()] as any
-        if (mealData && typeof mealData === 'object' && mealData.numberOfMembers) {
-          return ` (${mealData.numberOfMembers} Members)`
-        }
-      }
-      return ''
-    }
+    // Group sessions by date
+    const sessionsByDate: Record<string, any[]> = {}
+    Object.keys(itemsBySession).forEach(sessionKey => {
+      const sessionData = mealTypeAmounts?.[sessionKey] as any
+      const sessionDate = (sessionData && typeof sessionData === 'object' && sessionData.date) ? sessionData.date : 'Other'
+      if (!sessionsByDate[sessionDate]) sessionsByDate[sessionDate] = []
+      sessionsByDate[sessionDate].push({ key: sessionKey, data: sessionData, items: itemsBySession[sessionKey] })
+    })
 
-    // Display items grouped by type in compact grid
-    Object.keys(itemsByType).forEach((type) => {
-      // Add type section with member count
-      const memberInfo = getMemberCount(type)
-      htmlContent += `
-        <div style="grid-column: span 4; font-weight: 700; font-size: 14px; margin-top: 6px; margin-bottom: 3px; color: #222; text-transform: uppercase; padding-bottom: 2px; font-family: 'Poppins', sans-serif;">
-          ${type}${memberInfo}
-        </div>
-      `
+    // Sort dates
+    const sortedDates = Object.keys(sessionsByDate).sort((a, b) => new Date(a).getTime() - new Date(b).getTime())
 
-      // Add items for this type in grid
-      itemsByType[type].forEach((item: any, index: number) => {
-        // Use English or Telugu based on user selection
-        const itemName = useEnglish
-          ? (item.menuItem?.name || item.menuItem?.nameTelugu || 'Unknown Item')
-          : (item.menuItem?.nameTelugu || item.menuItem?.name || 'Unknown Item')
+    sortedDates.forEach(date => {
+      // Add date header if there's more than one date
+      if (sortedDates.length > 1) {
         htmlContent += `
-          <div style="padding: 2px 4px; font-family: 'Poppins', sans-serif; line-height: 1.3; font-weight: 600; font-size: 14px;">
-            ${index + 1}. ${itemName}${item.customization ? ` (${item.customization})` : ''}
+          <div style="grid-column: span 4; background: #f3f4f6; padding: 8px; font-weight: bold; font-size: 16px; margin-top: 15px; margin-bottom: 10px; border-radius: 4px; color: #111; font-family: 'Poppins', sans-serif; text-align: center;">
+            Menu for ${formatDate(date)}
           </div>
         `
+      }
+
+      // Sort sessions within date by priority
+      const sessions = sessionsByDate[date].sort((a, b) => {
+        const typeA = (a.data?.menuType || a.key).toLowerCase()
+        const typeB = (b.data?.menuType || b.key).toLowerCase()
+        const indexA = priorityOrder.indexOf(typeA);
+        const indexB = priorityOrder.indexOf(typeB);
+        if (indexA !== -1 && indexB !== -1) return indexA - indexB;
+        if (indexA !== -1) return -1;
+        if (indexB !== -1) return 1;
+        return typeA.localeCompare(typeB);
+      })
+
+      sessions.forEach(session => {
+        const menuType = session.data?.menuType || session.key
+        const memberInfo = (session.data?.numberOfMembers) ? ` (${session.data.numberOfMembers} Members)` : ''
+
+        htmlContent += `
+          <div style="grid-column: span 4; font-weight: 700; font-size: 15px; margin-top: 12px; margin-bottom: 6px; color: #222; text-transform: uppercase; border-bottom: 2px solid #eee; padding-bottom: 4px; font-family: 'Poppins', sans-serif;">
+            ${menuType}${memberInfo}
+          </div>
+        `
+
+        session.items.forEach((item: any, index: number) => {
+          const itemName = useEnglish
+            ? (item.menuItem?.name || item.menuItem?.nameTelugu || 'Unknown Item')
+            : (item.menuItem?.nameTelugu || item.menuItem?.name || 'Unknown Item')
+          htmlContent += `
+            <div style="padding: 4px; font-family: 'Poppins', sans-serif; line-height: 1.4; font-weight: 500; font-size: 14px;">
+              ${index + 1}. ${itemName}${item.customization ? ` <span style="font-size: 12px; color: #666;">(${item.customization})</span>` : ''}
+            </div>
+          `
+        })
       })
     })
 
@@ -539,41 +561,70 @@ export default function OrdersHistoryPage() {
         <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; font-size: 14px;">
     `
 
-    const itemsByType: Record<string, any[]> = {}
+    const priorityOrder = ['breakfast', 'tiffins', 'lunch', 'snacks', 'dinner', 'supper'];
+
+    // Group items by session (using the ID stored in item.mealType)
+    const itemsBySession: Record<string, any[]> = {}
     order.items.forEach((item: any) => {
-      const type = item.menuItem?.type || 'OTHER'
-      if (!itemsByType[type]) {
-        itemsByType[type] = []
-      }
-      itemsByType[type].push(item)
+      const sessionKey = item.mealType || 'Legacy'
+      if (!itemsBySession[sessionKey]) itemsBySession[sessionKey] = []
+      itemsBySession[sessionKey].push(item)
     })
 
-    const getMemberCount = (mealType: string): string => {
-      if (mealTypeAmounts) {
-        const mealData = mealTypeAmounts[mealType.toLowerCase()] as any
-        if (mealData && typeof mealData === 'object' && mealData.numberOfMembers) {
-          return ` (${mealData.numberOfMembers} Members)`
-        }
-      }
-      return ''
-    }
+    // Group sessions by date
+    const sessionsByDate: Record<string, any[]> = {}
+    Object.keys(itemsBySession).forEach(sessionKey => {
+      const sessionData = mealTypeAmounts?.[sessionKey] as any
+      const sessionDate = (sessionData && typeof sessionData === 'object' && sessionData.date) ? sessionData.date : 'Other'
+      if (!sessionsByDate[sessionDate]) sessionsByDate[sessionDate] = []
+      sessionsByDate[sessionDate].push({ key: sessionKey, data: sessionData, items: itemsBySession[sessionKey] })
+    })
 
-    Object.keys(itemsByType).forEach((type) => {
-      const memberInfo = getMemberCount(type)
-      htmlContent += `
-        <div style="grid-column: span 4; font-weight: 700; font-size: 14px; margin-top: 6px; margin-bottom: 3px; color: #222; text-transform: uppercase; padding-bottom: 2px; font-family: 'Poppins', sans-serif;">
-          ${type}${memberInfo}
-        </div>
-      `
-      itemsByType[type].forEach((item: any, index: number) => {
-        const itemName = useEnglish
-          ? (item.menuItem?.name || item.menuItem?.nameTelugu || 'Unknown Item')
-          : (item.menuItem?.nameTelugu || item.menuItem?.name || 'Unknown Item')
+    // Sort dates
+    const sortedDates = Object.keys(sessionsByDate).sort((a, b) => new Date(a).getTime() - new Date(b).getTime())
+
+    sortedDates.forEach(date => {
+      // Add date header if there's more than one date
+      if (sortedDates.length > 1) {
         htmlContent += `
-          <div style="padding: 2px 4px; font-family: 'Poppins', sans-serif; line-height: 1.3; font-weight: 600; font-size: 14px;">
-            ${index + 1}. ${itemName}${item.customization ? ` (${item.customization})` : ''}
+          <div style="grid-column: span 4; background: #f3f4f6; padding: 10px; font-weight: bold; font-size: 18px; margin-top: 20px; margin-bottom: 12px; border-radius: 6px; color: #111; font-family: 'Poppins', sans-serif; text-align: center; border: 1px solid #e5e7eb;">
+            Menu for ${formatDate(date)}
           </div>
         `
+      }
+
+      // Sort sessions within date by priority
+      const sessions = sessionsByDate[date].sort((a, b) => {
+        const typeA = (a.data?.menuType || a.key).toLowerCase()
+        const typeB = (b.data?.menuType || b.key).toLowerCase()
+        const indexA = priorityOrder.indexOf(typeA);
+        const indexB = priorityOrder.indexOf(typeB);
+        if (indexA !== -1 && indexB !== -1) return indexA - indexB;
+        if (indexA !== -1) return -1;
+        if (indexB !== -1) return 1;
+        return typeA.localeCompare(typeB);
+      })
+
+      sessions.forEach(session => {
+        const menuType = session.data?.menuType || session.key
+        const memberInfo = (session.data?.numberOfMembers) ? ` (${session.data.numberOfMembers} Members)` : ''
+
+        htmlContent += `
+          <div style="grid-column: span 4; font-weight: 700; font-size: 16px; margin-top: 15px; margin-bottom: 8px; color: #222; text-transform: uppercase; border-bottom: 2px solid #ddd; padding-bottom: 5px; font-family: 'Poppins', sans-serif;">
+            ${menuType}${memberInfo}
+          </div>
+        `
+
+        session.items.forEach((item: any, index: number) => {
+          const itemName = useEnglish
+            ? (item.menuItem?.name || item.menuItem?.nameTelugu || 'Unknown Item')
+            : (item.menuItem?.nameTelugu || item.menuItem?.name || 'Unknown Item')
+          htmlContent += `
+            <div style="padding: 5px; font-family: 'Poppins', sans-serif; line-height: 1.5; font-weight: 500; font-size: 15px;">
+              ${index + 1}. ${itemName}${item.customization ? ` <span style="font-size: 13px; color: #555;">(${item.customization})</span>` : ''}
+            </div>
+          `
+        })
       })
     })
 
