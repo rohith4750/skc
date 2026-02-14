@@ -326,33 +326,52 @@ function generateBillContent(data: PDFTemplateData): string {
   // Process all meal types dynamically from mealTypeAmounts
   const mealTypeRows: string[] = []
   if (Object.keys(mealTypeAmounts).length > 0) {
-    Object.entries(mealTypeAmounts).forEach(([mealType, mealData]) => {
-      const dataObj = typeof mealData === 'object' && mealData !== null ? mealData : { amount: typeof mealData === 'number' ? mealData : 0 }
-      const persons = (typeof dataObj === 'object' && 'numberOfMembers' in dataObj) ? (dataObj.numberOfMembers || 0) : 0
-      const amount = (typeof dataObj === 'object' && 'amount' in dataObj) ? dataObj.amount : (typeof mealData === 'number' ? mealData : 0)
+    const priorityOrder = ['breakfast', 'tiffins', 'lunch', 'snacks', 'dinner', 'supper'];
 
-      const pricingMethod = (dataObj as any).pricingMethod || 'manual'
-      const platePrice = (dataObj as any).platePrice || 0
-      const manualAmount = (dataObj as any).manualAmount || 0
+    Object.entries(mealTypeAmounts)
+      .sort(([a], [b]) => {
+        const indexA = priorityOrder.indexOf(a.toLowerCase());
+        const indexB = priorityOrder.indexOf(b.toLowerCase());
 
-      let displayAmount = amount
-      if (pricingMethod === 'manual' && manualAmount > 0) {
-        displayAmount = manualAmount
-      }
+        // If both are in the priority list, sort by index
+        if (indexA !== -1 && indexB !== -1) return indexA - indexB;
 
-      let rateDisplay = ''
+        // If only A is in the list, it comes first
+        if (indexA !== -1) return -1;
 
-      if (pricingMethod === 'plate-based' && platePrice > 0) {
-        rateDisplay = formatCurrency(platePrice)
-        if (!displayAmount || displayAmount === 0) {
-          displayAmount = persons * platePrice
+        // If only B is in the list, it comes first
+        if (indexB !== -1) return 1;
+
+        // Otherwise sort alphabetically
+        return a.localeCompare(b);
+      })
+      .forEach(([mealType, mealData]) => {
+        const dataObj = typeof mealData === 'object' && mealData !== null ? mealData : { amount: typeof mealData === 'number' ? mealData : 0 }
+        const persons = (typeof dataObj === 'object' && 'numberOfMembers' in dataObj) ? (dataObj.numberOfMembers || 0) : 0
+        const amount = (typeof dataObj === 'object' && 'amount' in dataObj) ? dataObj.amount : (typeof mealData === 'number' ? mealData : 0)
+
+        const pricingMethod = (dataObj as any).pricingMethod || 'manual'
+        const platePrice = (dataObj as any).platePrice || 0
+        const manualAmount = (dataObj as any).manualAmount || 0
+
+        let displayAmount = amount
+        if (pricingMethod === 'manual' && manualAmount > 0) {
+          displayAmount = manualAmount
         }
-      }
 
-      // Format meal type name (capitalize first letter)
-      const mealTypeName = mealType.charAt(0).toUpperCase() + mealType.slice(1).toLowerCase()
+        let rateDisplay = ''
 
-      mealTypeRows.push(`
+        if (pricingMethod === 'plate-based' && platePrice > 0) {
+          rateDisplay = formatCurrency(platePrice)
+          if (!displayAmount || displayAmount === 0) {
+            displayAmount = persons * platePrice
+          }
+        }
+
+        // Format meal type name (capitalize first letter)
+        const mealTypeName = mealType.charAt(0).toUpperCase() + mealType.slice(1).toLowerCase()
+
+        mealTypeRows.push(`
         <div class="form-row">
           <span class="form-label">${mealTypeName} No of Persons:</span>
           <span class="form-value-inline" style="width: 50px;">${persons || ''}</span>
@@ -362,7 +381,7 @@ function generateBillContent(data: PDFTemplateData): string {
           <span class="form-value-inline" style="width: 100px;">${displayAmount > 0 ? formatCurrency(displayAmount) : ''}</span>
         </div>
       `)
-    })
+      })
   } else {
     // Fallback to mealDetails if mealTypeAmounts is not provided
     if (mealDetails.tiffins?.persons) {
@@ -454,7 +473,17 @@ function generateBillContent(data: PDFTemplateData): string {
     <!-- Bill Summary -->
     <div class="form-section" style="border: 2px solid #000; padding: 12px; margin: 15px 0;">
       <div style="font-weight: bold; font-size: 14px; margin-bottom: 10px; text-transform: uppercase; text-align: center;">BILL SUMMARY</div>
+      
+      <!-- Meal Types -->
       ${mealTypeRows.length > 0 ? mealTypeRows.join('') : ''}
+      
+      <!-- Stalls -->
+      ${stallsRows.length > 0 ? `
+        <div style="margin-top: 10px; border-top: 1px dashed #ccc; padding-top: 5px;">
+          <div style="font-weight: 600; font-size: 11px; margin-bottom: 5px;">STALLS</div>
+          ${stallsRows.join('')}
+        </div>
+      ` : ''}
       
       <!-- Financial Details inside Bill Summary -->
       <div style="margin-top: 15px; border-top: 1px solid #ccc; padding-top: 10px;">
@@ -470,6 +499,14 @@ function generateBillContent(data: PDFTemplateData): string {
           <span class="financial-value">${formatCurrency(financial.transport)}</span>
         </div>
         ` : ''}
+        
+        ${financial.extra && !stallsRows.length ? `
+        <div class="financial-row">
+          <span class="financial-label">Waiters / Others:</span>
+          <span class="financial-value">${formatCurrency(financial.extra)}</span>
+        </div>
+        ` : ''}
+
         <div class="financial-row" style="border-top: 2px solid #000; padding-top: 8px; margin-top: 8px;">
           <span class="financial-label" style="font-weight: bold;">Grand Total:</span>
           <span class="financial-value" style="font-weight: bold;">${formatCurrency(financial.totalAmount)}</span>

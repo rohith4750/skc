@@ -5,6 +5,7 @@ import { useParams, useRouter } from 'next/navigation'
 import { formatCurrency, formatDate, formatDateTime } from '@/lib/utils'
 import { Order, Bill, PaymentHistoryEntry } from '@/types'
 import { FaArrowLeft, FaMoneyBillWave, FaSave, FaPlus, FaTrash, FaHistory, FaPercentage, FaTruck, FaStore } from 'react-icons/fa'
+import { FaBottleWater } from 'react-icons/fa6'
 import { fetchWithLoader } from '@/lib/fetch-with-loader'
 import toast from 'react-hot-toast'
 import Link from 'next/link'
@@ -22,6 +23,7 @@ export default function FinancialTrackingPage() {
 
   const [formData, setFormData] = useState({
     transportCost: '0',
+    waterBottlesCost: '0',
     discount: '0',
     stalls: [] as Array<{ category: string; description: string; cost: string }>,
     baseAdvancePaid: '0',
@@ -72,6 +74,7 @@ export default function FinancialTrackingPage() {
       // Initialize form with existing values
       setFormData({
         transportCost: data.transportCost?.toString() || '0',
+        waterBottlesCost: data.waterBottlesCost?.toString() || '0',
         discount: data.discount?.toString() || '0',
         stalls: (data.stalls || []).map((s: any) => ({
           category: s.category || '',
@@ -204,10 +207,11 @@ export default function FinancialTrackingPage() {
 
     // 2. Add current adjustments from form
     const transport = parseFloat(formData.transportCost) || 0
+    const waterBottles = parseFloat(formData.waterBottlesCost) || 0
     const discount = parseFloat(formData.discount) || 0
     const stallsTotal = formData.stalls.reduce((sum, s) => sum + (parseFloat(s.cost) || 0), 0)
 
-    const newTotal = Math.max(0, mealTypesTotal + transport + stallsTotal - discount)
+    const newTotal = Math.max(0, mealTypesTotal + transport + waterBottles + stallsTotal - discount)
 
     // 3. Payments
     const basePaid = parseFloat(formData.baseAdvancePaid) || 0
@@ -259,6 +263,7 @@ export default function FinancialTrackingPage() {
       const payload = {
         ...order, // Keep everything else (logistics) same
         transportCost: parseFloat(formData.transportCost) || 0,
+        waterBottlesCost: parseFloat(formData.waterBottlesCost) || 0,
         discount: parseFloat(formData.discount) || 0,
         stalls: formData.stalls,
         mealTypeAmounts: buildMealTypeAmounts(),
@@ -496,7 +501,7 @@ export default function FinancialTrackingPage() {
                   <div className="w-1.5 h-4 bg-primary-500 rounded-full"></div>
                   Core Adjustments
                 </h2>
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <div>
                     <label className="block text-xs font-black text-slate-600 uppercase tracking-widest mb-2">Transport Cost</label>
                     <div className="relative">
