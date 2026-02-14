@@ -8,7 +8,7 @@ import { prisma } from './prisma'
 import { formatCurrency, formatDateTime } from './utils'
 
 interface AlertEmailData {
-  type: 'order_created' | 'order_tomorrow' | 'payment_received' | 'low_stock' | 'expense_created'
+  type: 'order_created' | 'order_tomorrow' | 'payment_received' | 'low_stock' | 'expense_created' | 'order_updated'
   title: string
   message: string
   details?: Record<string, any>
@@ -48,13 +48,14 @@ function generateAlertEmailHTML(data: AlertEmailData): string {
     payment_received: { emoji: '💰', color: '#10b981', label: 'Payment Received' },
     low_stock: { emoji: '⚠️', color: '#f59e0b', label: 'Low Stock Alert' },
     expense_created: { emoji: '💸', color: '#ef4444', label: 'New Expense' },
+    order_updated: { emoji: '📝', color: '#3b82f6', label: 'Order Updated' },
   }
 
   const config = typeConfig[data.type] || { emoji: '🔔', color: '#6b7280', label: 'Notification' }
 
   const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://skc-tan.vercel.app'
   const logoUrl = `${appUrl}/images/logo.jpg`
-  
+
   console.log('[Email Alert] Logo URL:', logoUrl)
 
   return `
@@ -257,15 +258,15 @@ export async function checkTomorrowOrders(): Promise<void> {
     // Filter orders that have meal dates for tomorrow
     const tomorrowOrders = orders.filter(order => {
       if (!order.mealTypeAmounts) return false
-      
+
       const mealTypeAmounts = order.mealTypeAmounts as Record<string, any>
-      
+
       return Object.values(mealTypeAmounts).some((mealData: any) => {
         if (!mealData || typeof mealData !== 'object' || !mealData.date) return false
-        
+
         const mealDate = new Date(mealData.date)
         mealDate.setHours(0, 0, 0, 0)
-        
+
         return mealDate.getTime() === tomorrow.getTime()
       })
     })
@@ -279,10 +280,10 @@ export async function checkTomorrowOrders(): Promise<void> {
     const orderDetails: Record<string, string> = {}
     tomorrowOrders.forEach((order, index) => {
       const customerName = order.customer?.name || 'Unknown'
-      const mealTypes = order.mealTypeAmounts 
+      const mealTypes = order.mealTypeAmounts
         ? Object.keys(order.mealTypeAmounts as Record<string, any>).join(', ')
         : 'N/A'
-      
+
       orderDetails[`Order ${index + 1}`] = `${customerName} - ${mealTypes}`
     })
 
@@ -314,12 +315,12 @@ export async function sendOrderCreatedAlert(orderId: string): Promise<void> {
 
     const customerName = order.customer?.name || 'Customer'
     const totalAmount = Number(order.totalAmount || 0)
-    
+
     // Get meal types and dates
     const mealTypeAmounts = order.mealTypeAmounts as Record<string, any> | null
     const mealTypes: string[] = []
     const eventDates: string[] = []
-    
+
     if (mealTypeAmounts) {
       Object.entries(mealTypeAmounts).forEach(([type, data]) => {
         mealTypes.push(type)
@@ -435,5 +436,85 @@ export async function sendExpenseCreatedAlert(expenseId: string): Promise<void> 
     })
   } catch (error) {
     console.error('Failed to send expense created alert:', error)
+  }
+}
+
+/**
+ * Send order updated alert to internal users
+ */
+export async function sendOrderUpdatedAlert(orderId: string, changes: string[]): Promise<void> {
+  try {
+    const order = await prisma.order.findUnique({
+      where: { id: orderId },
+      include: { customer: true }
+    })
+
+    if (!order) return
+
+    const customerName = order.customer?.name || 'Customer'
+
+    await sendAlertToUsers({
+      type: 'order_tomorrow', // Reuse blue calendar/update style
+      title: 'Order Updated',
+      message: `Order for ${customerName} has been updated with significant changes.`,
+      details: {
+        'Customer': customerName,
+        'Event Name': (order as any).eventName || 'N/A',
+        'Changes': changes.join('<br>'),
+        'New Total': formatCurrency(Number(order.totalAmount || 0)),
+      },
+      link: `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/orders/history`,
+    })
+  } catch (error) {
+    console.error('Failed to send order updated alert:', error)
+  }
+}
+
+/**
+ * Send order update notification to customer
+ */
+export async function sendOrderUpdateToCustomer(orderId: string, changes: string[]): Promise<void> {
+  try {
+    const order = await prisma.order.findUnique({
+      where: { id: orderId },
+      include: { customer: true }
+    })
+
+    if (!order || !order.customer?.email) return
+
+    const customerEmail = order.customer.email
+    const customerName = order.customer.name
+
+    // Simple friendly email for customer
+    const html = `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e5e7eb; border-radius: 8px;">
+        <h2 style="color: #1f2937; text-align: center;">Order Update</h2>
+        <p>Dear ${customerName},</p>
+        <p>Your order details have been updated as requested.</p>
+        
+        <div style="background-color: #f3f4f6; padding: 15px; border-radius: 6px; margin: 20px 0;">
+          <h3 style="margin-top: 0; color: #374151;">Summary of Changes:</h3>
+          <ul style="padding-left: 20px;">
+            ${changes.map(change => `<li style="margin-bottom: 5px;">${change}</li>`).join('')}
+          </ul>
+        </div>
+        
+        <p><strong>Updated Total Amount:</strong> ${formatCurrency(Number(order.totalAmount || 0))}</p>
+        
+        <div style="text-align: center; margin-top: 30px;">
+          <p style="color: #6b7280; font-size: 12px;">Thank you for choosing SKC Caterers.</p>
+        </div>
+      </div>
+    `
+
+    await sendEmail({
+      to: customerEmail,
+      subject: `Order Update - SKC Caterers`,
+      html: html,
+    })
+
+    console.log(`Order update email sent to customer: ${customerEmail}`)
+  } catch (error) {
+    console.error('Failed to send order update email to customer:', error)
   }
 }

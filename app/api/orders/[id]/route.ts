@@ -4,6 +4,7 @@ import { isNonEmptyString, isNonNegativeNumber } from '@/lib/validation'
 import { publishNotification } from '@/lib/notifications'
 import { transformDecimal } from '@/lib/decimal-utils'
 import { sendPaymentReceivedAlert } from '@/lib/email-alerts'
+import { formatCurrency } from '@/lib/utils'
 
 export async function GET(
   request: NextRequest,
@@ -169,7 +170,7 @@ export async function PUT(
 
     const existingOrder = await prisma.order.findUnique({
       where: { id: params.id },
-      include: { bill: true }
+      include: { bill: true, items: true }
     })
 
     if (!existingOrder) {
@@ -352,6 +353,60 @@ export async function PUT(
       entityId: updatedOrder?.id,
       severity: 'info',
     })
+
+    // --- CHECK FOR SIGNIFICANT CHANGES AND SEND EMAIL ALERTS ---
+    const emailChanges: string[] = []
+
+    // 1. Check for Total Amount Increase
+    const oldTotalAmount = Number(existingOrder.totalAmount || 0)
+    if (totalAmount > oldTotalAmount) {
+      emailChanges.push(`Total amount increased from ${formatCurrency(oldTotalAmount)} to ${formatCurrency(totalAmount)}`)
+    }
+
+    // 2. Check for Member Count Increase (already calculated above)
+    if (totalMembersChanged > 0) {
+      // We can iterate through mealTypeChanges to find specifically what increased
+      mealTypeChanges.forEach(change => {
+        if (change.includes('members')) {
+          emailChanges.push(change)
+        }
+      })
+    }
+
+    // 3. Check for Items Changed (Added/Removed)
+    // We compare the number of items. Ideally we should do a deeper diff, but length change is a good indicator of addition/removal
+    const oldItemCount = existingOrder.items.length
+    const newItemCount = data.items && Array.isArray(data.items) ? data.items.length : oldItemCount
+
+    if (newItemCount !== oldItemCount) {
+      const diff = newItemCount - oldItemCount
+      const action = diff > 0 ? 'added' : 'removed'
+      emailChanges.push(`${Math.abs(diff)} item(s) ${action}`)
+    } else if (data.items && Array.isArray(data.items)) {
+      // If count is same but items might have changed - this is harder to detect without full diff
+      // But we can check if any item IDs are new or different
+      // For now, let's assume if items are provided, something might have touched items
+      // Let's rely on explicit length change or just say "Menu items updated" if we are unsure
+      // A simple check: if existingOrder.items has IDs not in data.items (if data.items has IDs)
+      // But often data.items comes with just menuItemIds.
+      // Let's stick to simple count change for now or explicit "Menu items updated" if strictly needed.
+      // The user requested "if any items... increase". So addition is key.
+    }
+
+    // If there are significant changes, send emails
+    if (emailChanges.length > 0 && updatedOrder?.id) {
+      const { sendOrderUpdatedAlert, sendOrderUpdateToCustomer } = await import('@/lib/email-alerts')
+
+      // Send to Internal Users
+      sendOrderUpdatedAlert(updatedOrder.id, emailChanges).catch(error => {
+        console.error('Failed to send order updated alert to internal users:', error)
+      })
+
+      // Send to Customer
+      sendOrderUpdateToCustomer(updatedOrder.id, emailChanges).catch(error => {
+        console.error('Failed to send order update email to customer:', error)
+      })
+    }
 
     const totalAdvanceDelta = Math.max(0, advancePaid - Number(existingOrder.advancePaid || 0))
     if (totalAdvanceDelta > 0) {
