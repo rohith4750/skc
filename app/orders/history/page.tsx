@@ -1007,12 +1007,16 @@ export default function OrdersHistoryPage() {
               <tbody className="bg-white divide-y divide-gray-200">
                 {paginatedOrders.map((order: any) => {
                   // Extract all event dates from meal types
-                  const mealTypeAmounts = order.mealTypeAmounts as Record<string, { amount: number; date: string } | number> | null
-                  const eventDates: Array<{ mealType: string; date: string }> = []
+                  const mealTypeAmounts = order.mealTypeAmounts as Record<string, any> | null
+                  const eventDates: Array<{ label: string; date: string; key: string }> = []
                   if (mealTypeAmounts) {
-                    Object.entries(mealTypeAmounts).forEach(([mealType, data]) => {
+                    Object.entries(mealTypeAmounts).forEach(([key, data]) => {
                       if (typeof data === 'object' && data !== null && data.date) {
-                        eventDates.push({ mealType, date: data.date })
+                        eventDates.push({
+                          label: data.menuType || key,
+                          date: data.date,
+                          key
+                        })
                       }
                     })
                   }
@@ -1058,9 +1062,9 @@ export default function OrdersHistoryPage() {
                       <td className="px-6 py-4">
                         <div className="text-sm text-gray-900 space-y-1.5">
                           {eventDates.length > 0 ? (
-                            eventDates.map(({ mealType, date }) => (
-                              <div key={mealType} className="flex items-center justify-between gap-4 min-w-[200px]">
-                                <span className="capitalize text-sm font-semibold text-gray-700">{mealType}:</span>
+                            eventDates.map(({ label, date, key }) => (
+                              <div key={key} className="flex items-center justify-between gap-4 min-w-[200px]">
+                                <span className="capitalize text-sm font-semibold text-gray-700">{label}:</span>
                                 <span className="text-sm text-gray-900 font-medium">{formatDate(date)}</span>
                               </div>
                             ))
