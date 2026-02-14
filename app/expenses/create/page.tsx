@@ -48,14 +48,14 @@ export default function CreateExpensePage() {
   const [formError, setFormError] = useState('')
   const [existingExpenses, setExistingExpenses] = useState<any[]>([])
   const [customCategoryInputType, setCustomCategoryInputType] = useState<'select' | 'input'>('select')
-  
+
   // Bulk allocation state
   const [isBulkExpense, setIsBulkExpense] = useState(false)
   const [selectedOrderIds, setSelectedOrderIds] = useState<string[]>([])
   const [allocationMethod, setAllocationMethod] = useState<'equal' | 'manual' | 'by-plates' | 'by-percentage'>('equal')
   const [bulkAllocations, setBulkAllocations] = useState<BulkAllocation[]>([])
   const [showAllocationDetails, setShowAllocationDetails] = useState(true)
-  
+
   const [formData, setFormData] = useState({
     orderId: '',
     category: 'supervisor',
@@ -83,65 +83,84 @@ export default function CreateExpensePage() {
   const loadData = async () => {
     try {
       setLoading(true)
-      const [ordersRes, workforceRes, expensesRes, expenseRes] = await Promise.all([
+
+      const results = await Promise.allSettled([
         fetch('/api/orders'),
         fetch('/api/workforce'),
         fetch('/api/expenses'),
         expenseId ? fetch(`/api/expenses/${expenseId}`) : Promise.resolve(null),
       ])
-      
-      if (!ordersRes.ok) throw new Error('Failed to fetch orders')
-      
-      const [allOrders, allWorkforce, allExpenses, expenseData] = await Promise.all([
-        ordersRes.json(),
-        workforceRes.ok ? workforceRes.json() : Promise.resolve([]),
-        expensesRes.ok ? expensesRes.json() : Promise.resolve([]),
-        expenseRes ? expenseRes.json() : Promise.resolve(null),
-      ])
-      
-      setOrders(allOrders)
-      setWorkforce((allWorkforce || []).filter((member: WorkforceMember) => member.isActive))
-      setExistingExpenses(allExpenses || [])
 
-      // If editing, populate form
-      if (expenseData && expenseId) {
-        const details = expenseData.calculationDetails as any || {}
-        const isCustomCategory = !EXPENSE_CATEGORIES.includes(expenseData.category)
-        setFormData({
-          orderId: expenseData.orderId || '',
-          category: isCustomCategory ? 'other' : expenseData.category,
-          customCategoryName: isCustomCategory ? expenseData.category : '',
-          calculationMethod: details.method || 'total',
-          amount: details.perPlateAmount ? details.perPlateAmount.toString() : expenseData.amount.toString(),
-          plates: details.plates ? details.plates.toString() : '',
-          numberOfLabours: details.numberOfLabours ? details.numberOfLabours.toString() : '',
-          labourAmount: details.perUnitAmount && expenseData.category === 'labours' ? details.perUnitAmount.toString() : '',
-          numberOfBoys: details.numberOfBoys ? details.numberOfBoys.toString() : '',
-          boyAmount: details.perUnitAmount && expenseData.category === 'boys' ? details.perUnitAmount.toString() : '',
-          description: expenseData.description || '',
-          recipient: expenseData.recipient || '',
-          paymentDate: expenseData.paymentDate ? expenseData.paymentDate.split('T')[0] : new Date().toISOString().split('T')[0],
-          eventDate: expenseData.eventDate ? expenseData.eventDate.split('T')[0] : '',
-          notes: expenseData.notes || '',
-          paidAmount: expenseData.paidAmount?.toString() || '0',
-          paymentStatus: expenseData.paymentStatus || 'pending',
-        })
-        if (isCustomCategory) {
-          setCustomCategoryInputType('input')
-        }
-        
-        // Load bulk allocation data if it's a bulk expense
-        if (expenseData.isBulkExpense && expenseData.bulkAllocations) {
-          setIsBulkExpense(true)
-          setAllocationMethod(expenseData.allocationMethod || 'manual')
-          const allocations = expenseData.bulkAllocations as BulkAllocation[]
-          setBulkAllocations(allocations)
-          setSelectedOrderIds(allocations.map((a: BulkAllocation) => a.orderId))
+      const ordersResult = results[0]
+      const workforceResult = results[1]
+      const expensesResult = results[2]
+      const expenseResult = results[3]
+
+      // Handle Orders
+      if (ordersResult.status === 'fulfilled' && ordersResult.value.ok) {
+        setOrders(await ordersResult.value.json())
+      } else {
+        console.error('Failed to fetch orders:', ordersResult.status === 'fulfilled' ? ordersResult.value.statusText : ordersResult.reason)
+        toast.error('Failed to load orders')
+      }
+
+      // Handle Workforce
+      if (workforceResult.status === 'fulfilled' && workforceResult.value.ok) {
+        const wf = await workforceResult.value.json()
+        setWorkforce((wf.workforce || []).filter((member: any) => member.isActive))
+      } else {
+        console.error('Failed to fetch workforce:', workforceResult.status === 'fulfilled' ? workforceResult.value.statusText : (workforceResult as any).reason)
+        // Don't fail completely if workforce fails
+      }
+
+      // Handle Expenses
+      if (expensesResult.status === 'fulfilled' && expensesResult.value.ok) {
+        setExistingExpenses(await expensesResult.value.json())
+      } else {
+        console.error('Failed to fetch expenses:', expensesResult.status === 'fulfilled' ? expensesResult.value.statusText : (expensesResult as any).reason)
+      }
+
+      // Handle Single Expense (Edit Mode)
+      if (expenseId && expenseResult.status === 'fulfilled' && (expenseResult.value as any)?.ok) {
+        const expenseData = await (expenseResult.value as any).json()
+        if (expenseData) {
+          const details = expenseData.calculationDetails as any || {}
+          const isCustomCategory = !EXPENSE_CATEGORIES.includes(expenseData.category)
+          setFormData({
+            orderId: expenseData.orderId || '',
+            category: isCustomCategory ? 'other' : expenseData.category,
+            customCategoryName: isCustomCategory ? expenseData.category : '',
+            calculationMethod: details.method || 'total',
+            amount: details.perPlateAmount ? details.perPlateAmount.toString() : expenseData.amount.toString(),
+            plates: details.plates ? details.plates.toString() : '',
+            numberOfLabours: details.numberOfLabours ? details.numberOfLabours.toString() : '',
+            labourAmount: details.perUnitAmount && expenseData.category === 'labours' ? details.perUnitAmount.toString() : '',
+            numberOfBoys: details.numberOfBoys ? details.numberOfBoys.toString() : '',
+            boyAmount: details.perUnitAmount && expenseData.category === 'boys' ? details.perUnitAmount.toString() : '',
+            description: expenseData.description || '',
+            recipient: expenseData.recipient || '',
+            paymentDate: expenseData.paymentDate ? expenseData.paymentDate.split('T')[0] : new Date().toISOString().split('T')[0],
+            eventDate: expenseData.eventDate ? expenseData.eventDate.split('T')[0] : '',
+            notes: expenseData.notes || '',
+            paidAmount: expenseData.paidAmount?.toString() || '0',
+            paymentStatus: expenseData.paymentStatus || 'pending',
+          })
+          if (isCustomCategory) {
+            setCustomCategoryInputType('input')
+          }
+
+          if (expenseData.isBulkExpense && expenseData.bulkAllocations) {
+            setIsBulkExpense(true)
+            setAllocationMethod(expenseData.allocationMethod || 'manual')
+            const allocations = expenseData.bulkAllocations as BulkAllocation[]
+            setBulkAllocations(allocations)
+            setSelectedOrderIds(allocations.map((a: BulkAllocation) => a.orderId))
+          }
         }
       }
     } catch (error) {
       console.error('Failed to load data:', error)
-      toast.error('Failed to load data. Please try again.')
+      toast.error('Failed to load data. Please refresh.')
     } finally {
       setLoading(false)
     }
@@ -186,7 +205,7 @@ export default function CreateExpensePage() {
       return parseFloat(formData.amount) || 0
     }
   }, [formData])
-  
+
   // Get order name for display
   const getOrderDisplayName = (order: Order) => {
     const customerName = order.customer?.name || 'Unknown'
@@ -194,7 +213,7 @@ export default function CreateExpensePage() {
     const date = new Date(order.createdAt).toLocaleDateString()
     return `${customerName} - ${eventName} (${date})`
   }
-  
+
   // Get plates/members count for an order (for by-plates allocation)
   const getOrderPlates = (order: Order): number => {
     if (order.numberOfMembers) return order.numberOfMembers
@@ -212,16 +231,16 @@ export default function CreateExpensePage() {
     }
     return 100 // Default if not found
   }
-  
+
   // Recalculate allocations when method or selected orders change
   const recalculateAllocations = (method: string, orderIds: string[], totalAmount: number) => {
     if (orderIds.length === 0) {
       setBulkAllocations([])
       return
     }
-    
+
     const selectedOrders = orders.filter(o => orderIds.includes(o.id))
-    
+
     if (method === 'equal') {
       const perOrderAmount = totalAmount / orderIds.length
       const newAllocations: BulkAllocation[] = selectedOrders.map(order => ({
@@ -242,7 +261,7 @@ export default function CreateExpensePage() {
         plates: getOrderPlates(order)
       }))
       const totalPlates = ordersWithPlates.reduce((sum, o) => sum + o.plates, 0)
-      
+
       const newAllocations: BulkAllocation[] = ordersWithPlates.map(({ order, plates }) => {
         const percentage = (plates / totalPlates) * 100
         return {
@@ -285,43 +304,43 @@ export default function CreateExpensePage() {
       setBulkAllocations(newAllocations)
     }
   }
-  
+
   // Handle order selection for bulk expense
   const handleOrderSelection = (orderId: string, isSelected: boolean) => {
-    const newSelectedIds = isSelected 
+    const newSelectedIds = isSelected
       ? [...selectedOrderIds, orderId]
       : selectedOrderIds.filter(id => id !== orderId)
     setSelectedOrderIds(newSelectedIds)
     recalculateAllocations(allocationMethod, newSelectedIds, calculatedAmount)
   }
-  
+
   // Handle allocation method change
   const handleAllocationMethodChange = (method: 'equal' | 'manual' | 'by-plates' | 'by-percentage') => {
     setAllocationMethod(method)
     recalculateAllocations(method, selectedOrderIds, calculatedAmount)
   }
-  
+
   // Handle manual allocation amount change
   const handleAllocationAmountChange = (orderId: string, amount: number) => {
-    setBulkAllocations(prev => prev.map(a => 
+    setBulkAllocations(prev => prev.map(a =>
       a.orderId === orderId ? { ...a, amount } : a
     ))
   }
-  
+
   // Handle percentage change
   const handlePercentageChange = (orderId: string, percentage: number) => {
-    setBulkAllocations(prev => prev.map(a => 
-      a.orderId === orderId 
-        ? { ...a, percentage, amount: Math.round((calculatedAmount * percentage / 100) * 100) / 100 } 
+    setBulkAllocations(prev => prev.map(a =>
+      a.orderId === orderId
+        ? { ...a, percentage, amount: Math.round((calculatedAmount * percentage / 100) * 100) / 100 }
         : a
     ))
   }
-  
+
   // Calculate total allocated
   const totalAllocated = useMemo(() => {
     return bulkAllocations.reduce((sum, a) => sum + (a.amount || 0), 0)
   }, [bulkAllocations])
-  
+
   // Allocation difference (should be 0 when properly allocated)
   const allocationDifference = useMemo(() => {
     return Math.round((calculatedAmount - totalAllocated) * 100) / 100
@@ -338,14 +357,14 @@ export default function CreateExpensePage() {
     e.preventDefault()
     setSaving(true)
     setFormError('')
-    
+
     if (!formData.category || calculatedAmount <= 0) {
       toast.error('Please fill in all required fields and ensure amount is greater than 0')
       setFormError('Please fill in all required fields and ensure amount is greater than 0')
       setSaving(false)
       return
     }
-    
+
     // Validate bulk expense allocation
     if (isBulkExpense) {
       if (selectedOrderIds.length < 2) {
@@ -405,7 +424,7 @@ export default function CreateExpensePage() {
       }
 
       const paidAmount = formData.paidAmount ? parseFloat(formData.paidAmount) : 0
-      
+
       // Validate custom category name if "other" is selected
       if (formData.category === 'other') {
         if (!formData.customCategoryName || !formData.customCategoryName.trim()) {
@@ -414,12 +433,12 @@ export default function CreateExpensePage() {
           return
         }
       }
-      
+
       // Use custom category name if "other" is selected and custom name is provided
-      const finalCategory = formData.category === 'other' && formData.customCategoryName.trim() 
-        ? formData.customCategoryName.trim() 
+      const finalCategory = formData.category === 'other' && formData.customCategoryName.trim()
+        ? formData.customCategoryName.trim()
         : formData.category
-      
+
       const expenseData: any = {
         orderId: isBulkExpense ? null : (formData.orderId || null),
         category: finalCategory,
@@ -437,7 +456,7 @@ export default function CreateExpensePage() {
         bulkAllocations: isBulkExpense ? bulkAllocations : null,
         allocationMethod: isBulkExpense ? allocationMethod : null,
       }
-      
+
       const url = expenseId ? `/api/expenses/${expenseId}` : '/api/expenses'
       const method = expenseId ? 'PUT' : 'POST'
 
@@ -452,7 +471,7 @@ export default function CreateExpensePage() {
         throw new Error(error.error || 'Failed to save expense')
       }
 
-      const successMessage = isBulkExpense 
+      const successMessage = isBulkExpense
         ? `Bulk expense ${expenseId ? 'updated' : 'added'} for ${selectedOrderIds.length} events!`
         : `Expense ${expenseId ? 'updated' : 'added'} successfully!`
       toast.success(successMessage)
@@ -579,11 +598,10 @@ export default function CreateExpensePage() {
                         return (
                           <label
                             key={order.id}
-                            className={`flex items-center gap-3 p-3 rounded-lg cursor-pointer transition-colors ${
-                              isSelected 
-                                ? 'bg-blue-50 border border-blue-200' 
+                            className={`flex items-center gap-3 p-3 rounded-lg cursor-pointer transition-colors ${isSelected
+                                ? 'bg-blue-50 border border-blue-200'
                                 : 'hover:bg-gray-50 border border-transparent'
-                            }`}
+                              }`}
                           >
                             <input
                               type="checkbox"
@@ -630,8 +648,8 @@ export default function CreateExpensePage() {
                   required
                   value={formData.category}
                   onChange={(e) => {
-                    setFormData({ 
-                      ...formData, 
+                    setFormData({
+                      ...formData,
                       category: e.target.value,
                       customCategoryName: e.target.value !== 'other' ? '' : formData.customCategoryName,
                       calculationMethod: 'total',
@@ -686,11 +704,10 @@ export default function CreateExpensePage() {
                           setCustomCategoryInputType('select')
                           setFormData({ ...formData, customCategoryName: '' })
                         }}
-                        className={`px-3 py-1.5 text-sm rounded-lg border transition-colors ${
-                          customCategoryInputType === 'select'
+                        className={`px-3 py-1.5 text-sm rounded-lg border transition-colors ${customCategoryInputType === 'select'
                             ? 'bg-primary-500 text-white border-primary-500'
                             : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
-                        }`}
+                          }`}
                       >
                         Select Existing
                       </button>
@@ -700,11 +717,10 @@ export default function CreateExpensePage() {
                           setCustomCategoryInputType('input')
                           setFormData({ ...formData, customCategoryName: '' })
                         }}
-                        className={`px-3 py-1.5 text-sm rounded-lg border transition-colors ${
-                          customCategoryInputType === 'input'
+                        className={`px-3 py-1.5 text-sm rounded-lg border transition-colors ${customCategoryInputType === 'input'
                             ? 'bg-primary-500 text-white border-primary-500'
                             : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
-                        }`}
+                          }`}
                       >
                         Add New
                       </button>
@@ -1051,7 +1067,7 @@ export default function CreateExpensePage() {
             {/* Bulk Allocation Details */}
             {isBulkExpense && selectedOrderIds.length >= 2 && calculatedAmount > 0 && (
               <div className="bg-gradient-to-r from-indigo-50 to-purple-50 rounded-lg border border-indigo-200 overflow-hidden">
-                <div 
+                <div
                   className="bg-indigo-100 px-4 py-3 border-b border-indigo-200 cursor-pointer"
                   onClick={() => setShowAllocationDetails(!showAllocationDetails)}
                 >
@@ -1068,7 +1084,7 @@ export default function CreateExpensePage() {
                     {showAllocationDetails ? <FaChevronUp className="text-indigo-600" /> : <FaChevronDown className="text-indigo-600" />}
                   </div>
                 </div>
-                
+
                 {showAllocationDetails && (
                   <div className="p-4 space-y-4">
                     {/* Allocation Method Selection */}
@@ -1082,11 +1098,10 @@ export default function CreateExpensePage() {
                             key={method.value}
                             type="button"
                             onClick={() => handleAllocationMethodChange(method.value as any)}
-                            className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors text-center ${
-                              allocationMethod === method.value
+                            className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors text-center ${allocationMethod === method.value
                                 ? 'bg-indigo-600 text-white shadow-md'
                                 : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
-                            }`}
+                              }`}
                             title={method.description}
                           >
                             {method.label}
@@ -1187,9 +1202,8 @@ export default function CreateExpensePage() {
                                 {bulkAllocations.reduce((sum, a) => sum + (a.percentage || 0), 0).toFixed(1)}%
                               </td>
                             )}
-                            <td className={`px-4 py-3 text-right ${
-                              Math.abs(allocationDifference) > 0.01 ? 'text-red-600' : 'text-green-600'
-                            }`}>
+                            <td className={`px-4 py-3 text-right ${Math.abs(allocationDifference) > 0.01 ? 'text-red-600' : 'text-green-600'
+                              }`}>
                               {formatCurrency(totalAllocated)}
                             </td>
                             {allocationMethod === 'manual' && <td></td>}
@@ -1200,15 +1214,13 @@ export default function CreateExpensePage() {
 
                     {/* Allocation Status */}
                     {Math.abs(allocationDifference) > 0.01 && (
-                      <div className={`p-3 rounded-lg ${
-                        allocationDifference > 0 
-                          ? 'bg-yellow-50 border border-yellow-200' 
+                      <div className={`p-3 rounded-lg ${allocationDifference > 0
+                          ? 'bg-yellow-50 border border-yellow-200'
                           : 'bg-red-50 border border-red-200'
-                      }`}>
-                        <p className={`text-sm font-medium ${
-                          allocationDifference > 0 ? 'text-yellow-700' : 'text-red-700'
                         }`}>
-                          {allocationDifference > 0 
+                        <p className={`text-sm font-medium ${allocationDifference > 0 ? 'text-yellow-700' : 'text-red-700'
+                          }`}>
+                          {allocationDifference > 0
                             ? `Under-allocated: ${formatCurrency(allocationDifference)} remaining to allocate`
                             : `Over-allocated: ${formatCurrency(Math.abs(allocationDifference))} exceeds total`
                           }

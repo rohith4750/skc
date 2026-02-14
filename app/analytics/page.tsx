@@ -413,7 +413,17 @@ export default function AnalyticsPage() {
       if (order.mealTypeAmounts && typeof order.mealTypeAmounts === 'object') {
         Object.entries(order.mealTypeAmounts).forEach(([mealType, data]: [string, any]) => {
           const amount = typeof data === 'object' ? data.amount : data
-          mealTypes[mealType] = (mealTypes[mealType] || 0) + (amount || 0)
+          let label = mealType
+
+          // Sanitize label
+          if (label.startsWith('Session_') || label.length > 20 || /^[0-9a-fA-F-]{36}$/.test(label)) {
+            label = 'Custom / Other'
+          } else {
+            // Capitalize first letter
+            label = label.charAt(0).toUpperCase() + label.slice(1)
+          }
+
+          mealTypes[label] = (mealTypes[label] || 0) + (amount || 0)
         })
       }
     })

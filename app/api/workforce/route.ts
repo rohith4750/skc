@@ -8,12 +8,12 @@ export async function GET(request: NextRequest) {
   const auth = await requireAuth(request)
   if (auth.response) return auth.response
   try {
-    const workforce = await (prisma as any).workforce.findMany({
+    const workforce = await prisma.workforce.findMany({
       orderBy: { createdAt: 'desc' },
     })
 
     // Fetch all expenses
-    const expenses = await (prisma as any).expense.findMany({
+    const expenses = await prisma.expense.findMany({
       include: {
         order: {
           include: {
@@ -27,7 +27,7 @@ export async function GET(request: NextRequest) {
     // Fetch all workforce payments (bulk payments against outstanding)
     let workforcePayments: any[] = []
     try {
-      workforcePayments = await (prisma as any).workforcePayment.findMany({
+      workforcePayments = await prisma.workforcePayment.findMany({
         orderBy: { paymentDate: 'desc' }
       })
     } catch {
@@ -122,7 +122,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Create workforce member
-    const workforce = await (prisma as any).workforce.create({
+    const workforce = await prisma.workforce.create({
       data: {
         name: data.name,
         role: data.role,
