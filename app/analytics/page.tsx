@@ -416,7 +416,8 @@ export default function AnalyticsPage() {
           let label = mealType
 
           // Sanitize label
-          if (label.startsWith('Session_') || label.length > 20 || /^[0-9a-fA-F-]{36}$/.test(label)) {
+          // Check for Session_ (case insensitive) or UUIDs or very long strings
+          if (label.toLowerCase().startsWith('session_') || label.length > 20 || /^[0-9a-fA-F-]{36}$/.test(label)) {
             label = 'Custom / Other'
           } else {
             // Capitalize first letter
