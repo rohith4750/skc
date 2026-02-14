@@ -70,7 +70,7 @@ export function buildOrderPdfHtml(
       }
 
       menuItemsHtml += `
-      <div style="grid-column: span 4; font-weight: 700; font-size: 10px; margin-top: 6px; margin-bottom: 3px; color: #222; text-transform: uppercase; padding-bottom: 2px; font-family: 'Poppins', sans-serif;">
+      <div style="grid-column: span 4; font-weight: 700; font-size: 12px; margin-top: 6px; margin-bottom: 3px; color: #222; text-transform: uppercase; padding-bottom: 2px; font-family: 'Poppins', sans-serif;">
         ${type}${memberInfo}${servicesLabel}
       </div>
     `
@@ -112,7 +112,7 @@ export function buildOrderPdfHtml(
       .section-title { font-size: 14px; font-weight: 600; margin-bottom: 8px; padding-bottom: 4px; border-bottom: 2px solid #ddd; color: #222; font-family: 'Poppins', sans-serif; }
       .info-row { margin-bottom: 6px; font-family: 'Poppins', sans-serif; }
       .info-label { font-weight: 600; display: inline-block; width: 120px; font-family: 'Poppins', sans-serif; }
-      .menu-item { padding: 2px 4px; font-family: 'Poppins', sans-serif; font-size: 9px; line-height: 1.3; font-weight: 600; }
+      .menu-item { padding: 2px 4px; font-family: 'Poppins', sans-serif; font-size: 11px; line-height: 1.3; font-weight: 600; }
     </style>
     <div class="header">
       <div class="header-top">
@@ -143,7 +143,7 @@ export function buildOrderPdfHtml(
     </div>
     <div class="section">
       <div class="section-title">Menu Items</div>
-      <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; font-size: 9px;">
+      <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; font-size: 11px;">
         ${menuItemsHtml}
       </div>
     </div>
