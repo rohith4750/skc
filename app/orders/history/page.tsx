@@ -3,7 +3,7 @@
 import { useEffect, useState, useMemo } from 'react'
 import { formatDateTime, formatDate, sanitizeMealLabel } from '@/lib/utils'
 import { Order } from '@/types'
-import { FaTrash, FaFilePdf, FaChevronLeft, FaChevronRight, FaEdit, FaFilter, FaChartLine, FaClock, FaCheckCircle, FaTimesCircle, FaEnvelope } from 'react-icons/fa'
+import { FaTrash, FaFilePdf, FaChevronLeft, FaChevronRight, FaEdit, FaFilter, FaChartLine, FaClock, FaCheckCircle, FaTimesCircle, FaEnvelope, FaCalendarAlt } from 'react-icons/fa'
 import Link from 'next/link'
 import jsPDF from 'jspdf'
 import html2canvas from 'html2canvas'
@@ -804,7 +804,7 @@ export default function OrdersHistoryPage() {
                         </div>
                       </td>
                       <td className="px-6 py-4">
-                        <div className="text-sm text-gray-900 space-y-3">
+                        <div className="text-sm text-gray-900 space-y-4">
                           {(() => {
                             const isCombinedOrder = eventDates.some(ed => ed.key.startsWith('session_') || ed.key.includes('_merged_'))
                             const groupedByDate: Record<string, typeof eventDates> = {}
@@ -817,38 +817,45 @@ export default function OrdersHistoryPage() {
 
                             return sortedDates.length > 0 ? (
                               sortedDates.map((date) => (
-                                <div key={date} className="relative pl-3 border-l-2 border-primary-50 group/date">
-                                  <div className="flex items-center justify-between gap-4 mb-1">
-                                    <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none">
-                                      {formatDate(date)}
-                                    </span>
+                                <div key={date} className="relative group/date">
+                                  {/* Date Header / Badge */}
+                                  <div className="flex items-center gap-2 mb-1.5">
+                                    <div className="flex items-center gap-1.5 bg-slate-100 px-2 py-0.5 rounded-md border border-slate-200 shadow-sm">
+                                      <FaCalendarAlt className="text-slate-400 text-[10px]" />
+                                      <span className="text-[10px] font-black text-slate-600 uppercase tracking-widest leading-none">
+                                        {new Date(date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
+                                      </span>
+                                    </div>
+
                                     {isCombinedOrder && sortedDates.length > 1 && (
                                       <button
                                         onClick={(e) => {
                                           e.stopPropagation();
                                           handleDiscardDate(order.id, date);
                                         }}
-                                        className="text-red-300 hover:text-red-500 p-0.5 opacity-0 group-hover/date:opacity-100 transition-opacity"
+                                        className="text-red-400 hover:text-red-600 p-0.5 opacity-0 group-hover/date:opacity-100 transition-all hover:scale-110"
                                         title="Separate all sessions on this date"
                                       >
-                                        <FaTimesCircle size={12} />
+                                        <FaTimesCircle size={14} />
                                       </button>
                                     )}
                                   </div>
-                                  <div className="flex flex-wrap gap-x-3 gap-y-1">
+
+                                  {/* Sessions List */}
+                                  <div className="flex flex-wrap gap-1.5 pl-1 border-l-2 border-slate-100 ml-1">
                                     {groupedByDate[date].map(({ mealType, key }) => (
-                                      <div key={key} className="flex items-center gap-1.5 bg-slate-50 px-2 py-0.5 rounded-md border border-slate-100 group/session">
-                                        <span className="capitalize text-[11px] font-bold text-slate-600">{sanitizeMealLabel(mealType)}</span>
+                                      <div key={key} className="flex items-center gap-1.5 bg-white px-2.5 py-1 rounded-lg border border-slate-200 shadow-sm group/session hover:border-primary-300 transition-colors">
+                                        <span className="capitalize text-[11px] font-bold text-slate-700">{sanitizeMealLabel(mealType)}</span>
                                         {isCombinedOrder && eventDates.length > 1 && (
                                           <button
                                             onClick={(e) => {
                                               e.stopPropagation();
                                               handleDiscardSession(order.id, key);
                                             }}
-                                            className="text-slate-300 hover:text-red-400 opacity-0 group-hover/session:opacity-100 transition-opacity"
+                                            className="text-slate-300 hover:text-red-500 opacity-0 group-hover/session:opacity-100 transition-all hover:scale-110"
                                             title="Separate only this session"
                                           >
-                                            <FaTimesCircle size={10} />
+                                            <FaTimesCircle size={12} />
                                           </button>
                                         )}
                                       </div>
@@ -857,7 +864,7 @@ export default function OrdersHistoryPage() {
                                 </div>
                               ))
                             ) : (
-                              <span className="text-sm text-gray-400">-</span>
+                              <span className="text-gray-400 italic">No dates set</span>
                             )
                           })()}
                         </div>
