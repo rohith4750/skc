@@ -70,7 +70,7 @@ export function buildOrderPdfHtml(
       }
 
       menuItemsHtml += `
-      <div style="grid-column: span 4; font-weight: 700; font-size: 12px; margin-top: 6px; margin-bottom: 3px; color: #222; text-transform: uppercase; padding-bottom: 2px; font-family: 'Poppins', sans-serif;">
+      <div style="grid-column: span 4; font-weight: 700; font-size: 14px; margin-top: 6px; margin-bottom: 3px; color: #222; text-transform: uppercase; padding-bottom: 2px; font-family: 'Poppins', sans-serif;">
         ${type}${memberInfo}${servicesLabel}
       </div>
     `
@@ -79,7 +79,7 @@ export function buildOrderPdfHtml(
           ? (item.menuItem?.name || item.menuItem?.nameTelugu || 'Unknown Item')
           : (item.menuItem?.nameTelugu || item.menuItem?.name || 'Unknown Item')
         menuItemsHtml += `
-        <div style="padding: 2px 4px; font-family: 'Poppins', sans-serif; line-height: 1.3; font-weight: 600;">
+        <div style="padding: 2px 4px; font-family: 'Poppins', sans-serif; line-height: 1.3; font-weight: 600; font-size: 14px;">
           ${index + 1}. ${itemName}${item.customization ? ` (${item.customization})` : ''}
         </div>
       `

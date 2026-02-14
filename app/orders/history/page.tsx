@@ -3,7 +3,7 @@
 import { useEffect, useState, useMemo } from 'react'
 import { formatDateTime, formatDate } from '@/lib/utils'
 import { Order } from '@/types'
-import { FaTrash, FaFilePdf, FaChevronLeft, FaChevronRight, FaEdit, FaFilter, FaChartLine, FaClock, FaCheckCircle, FaTimesCircle, FaEnvelope } from 'react-icons/fa'
+import { FaTrash, FaFilePdf, FaImage, FaChevronLeft, FaChevronRight, FaEdit, FaFilter, FaChartLine, FaClock, FaCheckCircle, FaTimesCircle, FaEnvelope } from 'react-icons/fa'
 import Link from 'next/link'
 import jsPDF from 'jspdf'
 import html2canvas from 'html2canvas'
@@ -34,6 +34,10 @@ export default function OrdersHistoryPage() {
   const [customerSearch, setCustomerSearch] = useState<string>('')
   const [dateRange, setDateRange] = useState({ start: '', end: '' })
   const [pdfLanguageModal, setPdfLanguageModal] = useState<{ isOpen: boolean; order: any | null }>({
+    isOpen: false,
+    order: null,
+  })
+  const [imageLanguageModal, setImageLanguageModal] = useState<{ isOpen: boolean; order: any | null }>({
     isOpen: false,
     order: null,
   })
@@ -286,7 +290,7 @@ export default function OrdersHistoryPage() {
       
       <div class="section">
         <div class="section-title">Menu Items</div>
-        <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; font-size: 9px;">
+        <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; font-size: 14px;">
     `
 
     // Group items by type
@@ -315,7 +319,7 @@ export default function OrdersHistoryPage() {
       // Add type section with member count
       const memberInfo = getMemberCount(type)
       htmlContent += `
-        <div style="grid-column: span 4; font-weight: 700; font-size: 10px; margin-top: 6px; margin-bottom: 3px; color: #222; text-transform: uppercase; padding-bottom: 2px; font-family: 'Poppins', sans-serif;">
+        <div style="grid-column: span 4; font-weight: 700; font-size: 14px; margin-top: 6px; margin-bottom: 3px; color: #222; text-transform: uppercase; padding-bottom: 2px; font-family: 'Poppins', sans-serif;">
           ${type}${memberInfo}
         </div>
       `
@@ -327,7 +331,7 @@ export default function OrdersHistoryPage() {
           ? (item.menuItem?.name || item.menuItem?.nameTelugu || 'Unknown Item')
           : (item.menuItem?.nameTelugu || item.menuItem?.name || 'Unknown Item')
         htmlContent += `
-          <div style="padding: 2px 4px; font-family: 'Poppins', sans-serif; line-height: 1.3; font-weight: 600;">
+          <div style="padding: 2px 4px; font-family: 'Poppins', sans-serif; line-height: 1.3; font-weight: 600; font-size: 14px;">
             ${index + 1}. ${itemName}${item.customization ? ` (${item.customization})` : ''}
           </div>
         `
@@ -386,8 +390,8 @@ export default function OrdersHistoryPage() {
       while (heightLeft >= 0) {
         position = heightLeft - imgHeight
         pdf.addPage()
-      pdf.addImage(imgData, 'JPEG', 0, position, imgWidth, imgHeight)
-      heightLeft -= pageHeight
+        pdf.addImage(imgData, 'JPEG', 0, position, imgWidth, imgHeight)
+        heightLeft -= pageHeight
       }
 
       const dataUrl = pdf.output('datauristring')
@@ -416,6 +420,207 @@ export default function OrdersHistoryPage() {
     a.click()
     URL.revokeObjectURL(url)
     toast.success(`PDF downloaded (${language === 'english' ? 'English' : 'Telugu'})`)
+  }
+
+  const handleGenerateImage = async (order: any, language: 'english' | 'telugu') => {
+    // Re-use logic to generate HTML but stop before PDF creation
+    // We need to slightly modify renderOrderToPdf or extract common logic
+    // For now, let's duplicate the core rendering part to avoid complex refactoring risks
+    // ...actually, renderOrderToPdf returns base64 PDF. Let's create a specialized helper for image
+    // But duplicating 150 lines is bad. Let's refactor slightly.
+
+    // Actually, let's just copy the logic for now to ensure we don't break PDF generation
+    // passed in buildOrderPdfHtml
+    // Wait, buildOrderPdfHtml is not imported here? 
+    // Ah, renderOrderToPdf has the HTML generation logic INLINE in this file! 
+    // It should import from lib/order-pdf-html.ts? 
+    // Let's check imports.
+    // Line 9 imports html2canvas. 
+    // Line 204: renderOrderToPdf starts.
+    // It seems the logic is indeed inline here despite buildOrderPdfHtml existing in lib.
+    // Wait, let me check if buildOrderPdfHtml is imported. No. 
+    // But in app/bills/page.tsx it IS imported.
+    // The user recently asked to change font size in lib/order-pdf-html.ts.
+    // If this file (orders/history/page.tsx) uses INLINE logic, then the font size change I made earlier will NOT affect this!
+    // I need to check if the user wanted to change font size here too.
+    // The user request was "INCREASE THE FONT SIZE IN THE MENU PDF DOR MENU ITEMS".
+    // If I only changed it in lib/order-pdf-html.ts and this file doesn't use it, then I missed part of the request.
+    // BUT the current request is "ADD IMAGE DONWLOAD ASO ABOVETHEPDF IMAGE DOWNLOD WITH SAME TEMPLATE".
+    // So I should first refactor this file to use the shared lib/order-pdf-html.ts if possible, or apply the same font size changes here.
+    // However, refactoring might be risky.
+    // Let's see if I can use the generateImage logic here.
+
+    // Let's implement handleGenerateImage by copying the logic for now and adapting for Image download.
+    // AND I should probably apply the font size change here too if I notice it's the same code.
+
+    const customer = order.customer
+    const supervisor = order.supervisor
+    const useEnglish = language === 'english'
+
+    const mealTypeAmounts = order.mealTypeAmounts as Record<string, { amount: number; date: string } | number> | null
+    const eventDates: string[] = []
+    if (mealTypeAmounts) {
+      Object.entries(mealTypeAmounts).forEach(([mealType, data]) => {
+        if (typeof data === 'object' && data !== null && data.date) {
+          const dateStr = formatDate(data.date)
+          if (!eventDates.includes(dateStr)) {
+            eventDates.push(dateStr)
+          }
+        }
+      })
+    }
+    const eventDateDisplay = eventDates.length > 0 ? eventDates.join(', ') : formatDate(order.createdAt)
+
+    const tempDiv = document.createElement('div')
+    tempDiv.style.position = 'absolute'
+    tempDiv.style.left = '-9999px'
+    tempDiv.style.width = '210mm'
+    tempDiv.style.padding = '15mm'
+    tempDiv.style.fontFamily = 'Poppins, "Segoe UI", Tahoma, Geneva, Verdana, sans-serif'
+    tempDiv.style.fontSize = '11px'
+    tempDiv.style.lineHeight = '1.6'
+    tempDiv.style.background = 'white'
+    tempDiv.style.color = '#333'
+
+    // Note: Applying the font size increase here as well (10px -> 12px for headers, 9px -> 11px for items)
+    let htmlContent = `
+      <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+      <style>
+        * { font-family: 'Poppins', sans-serif !important; }
+        .header { text-align: center; margin-bottom: 25px; padding-bottom: 15px; border-bottom: 2px solid #333; }
+        .header-top { display: flex; justify-content: space-between; font-size: 10px; margin-bottom: 10px; color: #555; font-family: 'Poppins', sans-serif; }
+        .header-main { font-size: 32px; font-weight: 700; margin: 15px 0 8px 0; letter-spacing: 2px; color: #1a1a1a; font-family: 'Poppins', sans-serif; }
+        .header-subtitle { font-size: 14px; color: #666; margin-bottom: 12px; font-style: italic; font-family: 'Poppins', sans-serif; }
+        .header-details { font-size: 9px; line-height: 1.6; color: #444; margin-top: 10px; font-family: 'Poppins', sans-serif; }
+        .header-details div { margin-bottom: 3px; }
+        .section { margin-bottom: 15px; font-family: 'Poppins', sans-serif; }
+        .section-title { font-size: 14px; font-weight: 600; margin-bottom: 8px; padding-bottom: 4px; border-bottom: 2px solid #ddd; color: #222; font-family: 'Poppins', sans-serif; }
+        .info-row { margin-bottom: 6px; font-family: 'Poppins', sans-serif; }
+        .info-label { font-weight: 600; display: inline-block; width: 120px; font-family: 'Poppins', sans-serif; }
+        .menu-item { padding: 2px 4px; font-family: 'Poppins', sans-serif; font-size: 9px; line-height: 1.3; font-weight: 600; }
+        .financial-row { display: flex; justify-content: space-between; padding: 6px 0; border-bottom: 1px solid #eee; font-family: 'Poppins', sans-serif; }
+        .financial-row.total { font-weight: 700; font-size: 13px; border-top: 2px solid #333; border-bottom: 2px solid #333; margin-top: 5px; padding-top: 8px; }
+        .financial-label { font-weight: 600; }
+      </style>
+      
+      <div class="header">
+        <div class="header-top">
+          <div>Telidevara Rajendraprasad</div>
+          <div>ART FOOD ZONE (A Food Caterers)</div>
+        </div>
+        <div class="header-main">SRIVATSASA & KOWNDINYA CATERERS</div>
+        <div class="header-subtitle">(Pure Vegetarian)</div>
+        <div class="header-details">
+          <div>Regd. No: 2361930100031</div>
+          <div>Plot No. 115, Padmavathi Nagar, Bank Colony, Saheb Nag Vanathalipuram, Hyderabad - 500070.</div>
+          <div>Email: pujyasri1989cya@gmail.com, Cell: 9866525102, 9963691393, 9390015302</div>
+        </div>
+      </div>
+      
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 25px;">
+        <div class="section">
+          <div class="section-title">Customer Details</div>
+          <div class="info-row"><span class="info-label">Name:</span> ${customer?.name || 'N/A'}</div>
+          <div class="info-row"><span class="info-label">Phone:</span> ${customer?.phone || 'N/A'}</div>
+          <div class="info-row"><span class="info-label">Email:</span> ${customer?.email || 'N/A'}</div>
+          <div class="info-row"><span class="info-label">Address:</span> ${customer?.address || 'N/A'}</div>
+        </div>
+        
+        <div class="section">
+          <div class="section-title">Order Information</div>
+          <div class="info-row"><span class="info-label">Event Date:</span> ${eventDateDisplay}</div>
+          <div class="info-row"><span class="info-label">Supervisor:</span> ${supervisor?.name || 'N/A'}</div>
+          <div class="info-row"><span class="info-label">Order ID:</span> SKC-ORDER-${(order as any).serialNumber || order.id.slice(0, 8).toUpperCase()}</div>
+        </div>
+      </div>
+      
+      <div class="section">
+        <div class="section-title">Menu Items</div>
+        <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; font-size: 14px;">
+    `
+
+    const itemsByType: Record<string, any[]> = {}
+    order.items.forEach((item: any) => {
+      const type = item.menuItem?.type || 'OTHER'
+      if (!itemsByType[type]) {
+        itemsByType[type] = []
+      }
+      itemsByType[type].push(item)
+    })
+
+    const getMemberCount = (mealType: string): string => {
+      if (mealTypeAmounts) {
+        const mealData = mealTypeAmounts[mealType.toLowerCase()] as any
+        if (mealData && typeof mealData === 'object' && mealData.numberOfMembers) {
+          return ` (${mealData.numberOfMembers} Members)`
+        }
+      }
+      return ''
+    }
+
+    Object.keys(itemsByType).forEach((type) => {
+      const memberInfo = getMemberCount(type)
+      htmlContent += `
+        <div style="grid-column: span 4; font-weight: 700; font-size: 14px; margin-top: 6px; margin-bottom: 3px; color: #222; text-transform: uppercase; padding-bottom: 2px; font-family: 'Poppins', sans-serif;">
+          ${type}${memberInfo}
+        </div>
+      `
+      itemsByType[type].forEach((item: any, index: number) => {
+        const itemName = useEnglish
+          ? (item.menuItem?.name || item.menuItem?.nameTelugu || 'Unknown Item')
+          : (item.menuItem?.nameTelugu || item.menuItem?.name || 'Unknown Item')
+        htmlContent += `
+          <div style="padding: 2px 4px; font-family: 'Poppins', sans-serif; line-height: 1.3; font-weight: 600; font-size: 14px;">
+            ${index + 1}. ${itemName}${item.customization ? ` (${item.customization})` : ''}
+          </div>
+        `
+      })
+    })
+
+    htmlContent += `
+        </div>
+      </div>
+    `
+
+    if (order.stalls && Array.isArray(order.stalls) && order.stalls.length > 0) {
+      htmlContent += `
+        <div class="section">
+          <div class="section-title">Stalls</div>
+          <div style="font-size: 11px;">
+      `
+      order.stalls.forEach((stall: any, idx: number) => {
+        htmlContent += `<div class="menu-item" style="font-size: 11px;">${idx + 1}. ${stall.category}${stall.description ? ` - ${stall.description}` : ''}</div>`
+      })
+      htmlContent += `
+          </div>
+        </div>
+      `
+    }
+
+    tempDiv.innerHTML = htmlContent
+    document.body.appendChild(tempDiv)
+
+    try {
+      const canvas = await html2canvas(tempDiv, {
+        scale: 1.5,
+        useCORS: true,
+        logging: false,
+        backgroundColor: '#ffffff'
+      })
+      document.body.removeChild(tempDiv)
+
+      // Download Image
+      const link = document.createElement('a')
+      link.href = canvas.toDataURL('image/jpeg', 0.9)
+      link.download = `order-SKC-ORDER-${(order as any).serialNumber || order.id.slice(0, 8)}.jpg`
+      link.click()
+
+      toast.success(`Image downloaded (${language === 'english' ? 'English' : 'Telugu'})`)
+    } catch (error) {
+      tempDiv.parentNode?.removeChild(tempDiv)
+      console.error('Error generating Image:', error)
+      toast.error('Failed to generate Image. Please try again.')
+    }
   }
 
   const handleSendOrderEmail = async (order: any, language: 'english' | 'telugu') => {
@@ -693,6 +898,13 @@ export default function OrdersHistoryPage() {
                             <FaFilePdf />
                           </button>
                           <button
+                            onClick={() => setImageLanguageModal({ isOpen: true, order })}
+                            className="text-purple-600 hover:text-purple-800 p-2 hover:bg-purple-50 rounded"
+                            title="Download Image"
+                          >
+                            <FaImage />
+                          </button>
+                          <button
                             onClick={() => {
                               if (!order.customer?.email) {
                                 toast.error('Customer email not available')
@@ -835,6 +1047,42 @@ export default function OrdersHistoryPage() {
             </div>
             <button
               onClick={() => setPdfLanguageModal({ isOpen: false, order: null })}
+              className="mt-3 w-full px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-lg text-sm font-medium transition-colors"
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Image Language Selection Modal */}
+      {imageLanguageModal.isOpen && imageLanguageModal.order && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-xl shadow-xl p-6 max-w-sm w-full mx-4">
+            <h3 className="text-lg font-semibold text-gray-800 mb-2">Download Order Image</h3>
+            <p className="text-sm text-gray-600 mb-4">Do you want the menu items in English or Telugu?</p>
+            <div className="flex gap-3">
+              <button
+                onClick={() => {
+                  handleGenerateImage(imageLanguageModal.order, 'english')
+                  setImageLanguageModal({ isOpen: false, order: null })
+                }}
+                className="flex-1 px-4 py-2.5 bg-purple-500 text-white rounded-lg font-medium hover:bg-purple-600 transition-colors"
+              >
+                English
+              </button>
+              <button
+                onClick={() => {
+                  handleGenerateImage(imageLanguageModal.order, 'telugu')
+                  setImageLanguageModal({ isOpen: false, order: null })
+                }}
+                className="flex-1 px-4 py-2.5 bg-purple-500 text-white rounded-lg font-medium hover:bg-purple-600 transition-colors"
+              >
+                తెలుగు (Telugu)
+              </button>
+            </div>
+            <button
+              onClick={() => setImageLanguageModal({ isOpen: false, order: null })}
               className="mt-3 w-full px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-lg text-sm font-medium transition-colors"
             >
               Cancel

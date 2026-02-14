@@ -3,7 +3,7 @@
 import { useEffect, useState, useMemo } from 'react'
 import { formatCurrency, formatDateTime, formatDate, sendWhatsAppMessage } from '@/lib/utils'
 import { Bill, Order, Customer } from '@/types'
-import { FaPrint, FaCheck, FaEdit, FaFilter, FaChartLine, FaWallet, FaPercent, FaCalendarAlt, FaEnvelope, FaWhatsapp } from 'react-icons/fa'
+import { FaPrint, FaCheck, FaEdit, FaFilter, FaChartLine, FaWallet, FaPercent, FaCalendarAlt, FaEnvelope, FaWhatsapp, FaImage } from 'react-icons/fa'
 import toast from 'react-hot-toast'
 import { fetchWithLoader } from '@/lib/fetch-with-loader'
 import Table from '@/components/Table'
@@ -375,6 +375,52 @@ export default function BillsPage() {
     toast.success('Bill PDF generated successfully!')
   }
 
+  const handleGenerateBillImage = async (bill: any) => {
+    const pdfBase64 = await renderBillToPdf(bill)
+    if (!pdfBase64) {
+      toast.error('Failed to generate Bill image. Please try again.')
+      return
+    }
+
+    // Since renderBillToPdf generates a PDF, and internally it generates a CANVAS first...
+    // We ideally should expose the CANVAS generation. 
+    // But `renderBillToPdf` returns base64 string of PDF.
+    // If we want IMAGE, we should refactor `renderBillToPdf` or create a new `renderBillToImage`.
+    // Let's create `renderBillToImage` by copying logic from `renderBillToPdf` but returning dataURL.
+
+    // Re-implementing logic here safely
+    const { pdfData } = buildBillPdfData(bill)
+    const htmlContent = generatePDFTemplate(pdfData)
+
+    const tempDiv = document.createElement('div')
+    tempDiv.style.position = 'absolute'
+    tempDiv.style.left = '-9999px'
+    tempDiv.style.width = '210mm'
+    tempDiv.style.padding = '0'
+    tempDiv.style.background = 'white'
+    tempDiv.style.color = '#000'
+    tempDiv.innerHTML = htmlContent
+    document.body.appendChild(tempDiv)
+
+    try {
+      const canvas = await html2canvas(tempDiv, { scale: 1.5, useCORS: true, logging: false, backgroundColor: '#ffffff', width: tempDiv.scrollWidth, height: tempDiv.scrollHeight })
+      document.body.removeChild(tempDiv)
+
+      const imgData = canvas.toDataURL('image/jpeg', 0.9)
+      const link = document.createElement('a')
+      link.href = imgData
+      const billNumber = pdfData.billNumber || bill.id.slice(0, 8)
+      link.download = `SKC-Bill-${billNumber}.jpg`
+      link.click()
+
+      toast.success('Bill Image downloaded successfully!')
+    } catch (error) {
+      if (document.body.contains(tempDiv)) document.body.removeChild(tempDiv)
+      console.error('Error generating bill image:', error)
+      toast.error('Failed to generate Bill Image.')
+    }
+  }
+
   // Filter bills
   const filteredBills = useMemo(() => {
     let filtered = bills
@@ -634,6 +680,13 @@ export default function BillsPage() {
               title="Download PDF Bill"
             >
               <FaPrint />
+            </button>
+            <button
+              onClick={() => handleGenerateBillImage(bill)}
+              className="text-purple-600 hover:text-purple-700 p-2 hover:bg-purple-50 rounded transition-all active:scale-90"
+              title="Download Bill Image"
+            >
+              <FaImage />
             </button>
           </div>
         )}
