@@ -42,6 +42,18 @@ export default function OrdersHistoryPage() {
     order: null,
   })
   const [emailSending, setEmailSending] = useState(false)
+  const [separationConfirm, setSeparationConfirm] = useState<{
+    isOpen: boolean
+    orderId: string | null
+    sessionKey: string | null
+    sessionLabel: string
+    date?: string
+  }>({
+    isOpen: false,
+    orderId: null,
+    sessionKey: null,
+    sessionLabel: '',
+  })
 
   useEffect(() => {
     loadData()
@@ -219,16 +231,38 @@ export default function OrdersHistoryPage() {
     setStatusConfirm({ isOpen: false, id: null, newStatus: '', oldStatus: '' })
   }
 
-  const handleDiscardSession = async (orderId: string, sessionKey: string) => {
-    if (!confirm(`Are you sure you want to separate the session "${sanitizeMealLabel(sessionKey)}" from this group? It will be removed from this order and become its own separate record in the list.`)) {
-      return
-    }
+  const handleDiscardSession = (orderId: string, sessionKey: string) => {
+    const sessionLabel = sanitizeMealLabel(sessionKey)
+    setSeparationConfirm({
+      isOpen: true,
+      orderId,
+      sessionKey,
+      sessionLabel,
+    })
+  }
+
+  const handleDiscardDate = (orderId: string, date: string) => {
+    setSeparationConfirm({
+      isOpen: true,
+      orderId,
+      sessionKey: null, // null means date-based
+      sessionLabel: formatDate(date),
+      date,
+    })
+  }
+
+  const confirmSeparation = async () => {
+    const { orderId, sessionKey, date } = separationConfirm
+    if (!orderId) return
 
     try {
-      const response = await fetch('/api/orders/discard-session', {
+      const endpoint = sessionKey ? '/api/orders/discard-session' : '/api/orders/discard-date'
+      const body = sessionKey ? { orderId, sessionKey } : { orderId, date }
+
+      const response = await fetch(endpoint, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ orderId, sessionKey }),
+        body: JSON.stringify(body),
       })
 
       if (!response.ok) {
@@ -236,11 +270,12 @@ export default function OrdersHistoryPage() {
         throw new Error(error.error || 'Failed to separate session')
       }
 
-      toast.success('Session separated and restored as a new order')
+      toast.success(sessionKey ? 'Session separated successfully' : 'Date group separated successfully')
+      setSeparationConfirm({ isOpen: false, orderId: null, sessionKey: null, sessionLabel: '', date: '' })
       loadData()
     } catch (error: any) {
-      console.error('Failed to separate session:', error)
-      toast.error(error.message || 'Failed to separate session')
+      console.error('Failed to separate:', error)
+      toast.error(error.message || 'Failed to separate')
     }
   }
 
@@ -637,11 +672,30 @@ export default function OrdersHistoryPage() {
                 {paginatedOrders.map((order: any) => {
                   // Extract all event dates from meal types
                   const mealTypeAmounts = order.mealTypeAmounts as Record<string, { amount: number; date: string } | number> | null
-                  const eventDates: Array<{ mealType: string; date: string }> = []
+                  const eventDates: Array<{ mealType: string; date: string; key: string }> = []
                   if (mealTypeAmounts) {
-                    Object.entries(mealTypeAmounts).forEach(([mealType, data]) => {
+                    Object.entries(mealTypeAmounts).forEach(([key, data]) => {
                       if (typeof data === 'object' && data !== null && data.date) {
-                        eventDates.push({ mealType, date: data.date })
+                        // Priority: 1. menuType in data, 2. the session key if it's not a UUID/long ID, 3. "Meal"
+                        let displayLabel = (data as any).menuType
+                        if (!displayLabel) {
+                          if (key.length > 20 || key.includes('-') || key.startsWith('session_')) {
+                            // Try to extract name from session_NAME_serial
+                            if (key.startsWith('session_')) {
+                              const parts = key.split('_')
+                              if (parts.length > 1 && parts[1] !== 'merged') {
+                                displayLabel = parts[1]
+                              } else {
+                                displayLabel = 'Meal'
+                              }
+                            } else {
+                              displayLabel = 'Meal'
+                            }
+                          } else {
+                            displayLabel = key
+                          }
+                        }
+                        eventDates.push({ mealType: displayLabel, date: data.date, key })
                       }
                     })
                   }
@@ -673,29 +727,61 @@ export default function OrdersHistoryPage() {
                         </div>
                       </td>
                       <td className="px-6 py-4">
-                        <div className="text-sm text-gray-900 space-y-1.5">
-                          {eventDates.length > 0 ? (
-                            eventDates.map(({ mealType, date }) => (
-                              <div key={mealType} className="flex items-center justify-between gap-4 min-w-[200px] group/session">
-                                <div className="flex items-center gap-2">
-                                  <span className="capitalize text-sm font-semibold text-gray-700">{sanitizeMealLabel(mealType)}:</span>
-                                  <span className="text-sm text-gray-900 font-medium">{formatDate(date)}</span>
+                        <div className="text-sm text-gray-900 space-y-3">
+                          {(() => {
+                            const groupedByDate: Record<string, typeof eventDates> = {}
+                            eventDates.forEach(ed => {
+                              if (!groupedByDate[ed.date]) groupedByDate[ed.date] = []
+                              groupedByDate[ed.date].push(ed)
+                            })
+
+                            const sortedDates = Object.keys(groupedByDate).sort((a, b) => new Date(a).getTime() - new Date(b).getTime())
+
+                            return sortedDates.length > 0 ? (
+                              sortedDates.map((date) => (
+                                <div key={date} className="relative pl-3 border-l-2 border-primary-50 group/date">
+                                  <div className="flex items-center justify-between gap-4 mb-1">
+                                    <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none">
+                                      {formatDate(date)}
+                                    </span>
+                                    {eventDates.length > 1 && (
+                                      <button
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          handleDiscardDate(order.id, date);
+                                        }}
+                                        className="text-red-300 hover:text-red-500 p-0.5 opacity-0 group-hover/date:opacity-100 transition-opacity"
+                                        title="Separate all sessions on this date"
+                                      >
+                                        <FaTimesCircle size={12} />
+                                      </button>
+                                    )}
+                                  </div>
+                                  <div className="flex flex-wrap gap-x-3 gap-y-1">
+                                    {groupedByDate[date].map(({ mealType, key }) => (
+                                      <div key={key} className="flex items-center gap-1.5 bg-slate-50 px-2 py-0.5 rounded-md border border-slate-100 group/session">
+                                        <span className="capitalize text-[11px] font-bold text-slate-600">{sanitizeMealLabel(mealType)}</span>
+                                        {eventDates.length > 1 && (
+                                          <button
+                                            onClick={(e) => {
+                                              e.stopPropagation();
+                                              handleDiscardSession(order.id, key);
+                                            }}
+                                            className="text-slate-300 hover:text-red-400 opacity-0 group-hover/session:opacity-100 transition-opacity"
+                                            title="Separate only this session"
+                                          >
+                                            <FaTimesCircle size={10} />
+                                          </button>
+                                        )}
+                                      </div>
+                                    ))}
+                                  </div>
                                 </div>
-                                <button
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    handleDiscardSession(order.id, mealType);
-                                  }}
-                                  className="text-red-400 hover:text-red-600 p-1 opacity-0 group-hover/session:opacity-100 transition-opacity"
-                                  title="Discard this session"
-                                >
-                                  <FaTimesCircle size={14} />
-                                </button>
-                              </div>
-                            ))
-                          ) : (
-                            <span className="text-sm text-gray-400">-</span>
-                          )}
+                              ))
+                            ) : (
+                              <span className="text-sm text-gray-400">-</span>
+                            )
+                          })()}
                         </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
@@ -935,6 +1021,16 @@ export default function OrdersHistoryPage() {
           </div>
         </div>
       )}
+      <ConfirmModal
+        isOpen={separationConfirm.isOpen}
+        title="Separate Session"
+        message={`Are you sure you want to separate the session "${separationConfirm.sessionLabel}" from this group? It will be removed from this order and become its own separate record in the list.`}
+        confirmText="Separate"
+        cancelText="Keep in Group"
+        onConfirm={confirmSeparation}
+        onCancel={() => setSeparationConfirm({ isOpen: false, orderId: null, sessionKey: null, sessionLabel: '' })}
+        variant="warning"
+      />
     </div>
   )
 }

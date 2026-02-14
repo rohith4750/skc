@@ -77,9 +77,25 @@ export function sendSMS(phone: string, message: string) {
 
 export function sanitizeMealLabel(label: string): string {
   if (!label) return ''
-  // Strip tracking suffixes like _merged_X or session_X
-  // We look for common patterns used in our merge/multi-session logic
-  const cleanLabel = label.split('_')[0]
+
+  // If it's a long string with hyphens (likely a UUID), return generic label
+  if (label.length > 20 && label.includes('-')) return 'Meal'
+
+  let workingLabel = label
+  // Strip tracking suffixes like session_NAME_serial
+  if (workingLabel.startsWith('session_')) {
+    const parts = workingLabel.split('_')
+    if (parts.length > 1 && parts[1] !== 'merged') {
+      workingLabel = parts[1]
+    } else {
+      workingLabel = 'Meal'
+    }
+  }
+
+  const cleanLabel = workingLabel.split('_')[0]
+  // If still too long, it's likely a technical ID
+  if (cleanLabel.length > 20) return 'Meal'
+
   // Capitalize for consistent display
   return cleanLabel.charAt(0).toUpperCase() + cleanLabel.slice(1).toLowerCase()
 }
