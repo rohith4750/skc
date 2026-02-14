@@ -9,6 +9,8 @@ import jsPDF from 'jspdf'
 import html2canvas from 'html2canvas'
 import toast from 'react-hot-toast'
 import ConfirmModal from '@/components/ConfirmModal'
+import MergeOrdersModal from '@/components/MergeOrdersModal'
+import { FaLayerGroup } from 'react-icons/fa'
 
 export default function OrdersHistoryPage() {
   const [orders, setOrders] = useState<Order[]>([])
@@ -54,6 +56,9 @@ export default function OrdersHistoryPage() {
     sessionKey: null,
     sessionLabel: '',
   })
+  const [selectedOrderIds, setSelectedOrderIds] = useState<string[]>([])
+  const [isMergeModalOpen, setIsMergeModalOpen] = useState(false)
+  const [isMerging, setIsMerging] = useState(false)
 
   useEffect(() => {
     loadData()
@@ -278,6 +283,45 @@ export default function OrdersHistoryPage() {
       toast.error(error.message || 'Failed to separate')
     }
   }
+
+  const handleMergeConfirm = async (primaryOrderId: string) => {
+    const secondaryOrderIds = selectedOrderIds.filter(id => id !== primaryOrderId)
+    if (secondaryOrderIds.length === 0) {
+      toast.error('Please select more than one order to merge')
+      return
+    }
+
+    setIsMerging(true)
+    try {
+      const response = await fetch('/api/orders/merge', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ primaryOrderId, secondaryOrderIds })
+      })
+
+      if (!response.ok) {
+        const error = await response.json()
+        throw new Error(error.error || 'Failed to merge orders')
+      }
+
+      toast.success('Orders merged successfully!')
+      setSelectedOrderIds([])
+      setIsMergeModalOpen(false)
+      loadData()
+    } catch (error: any) {
+      console.error('Merge error:', error)
+      toast.error(error.message || 'Failed to merge orders')
+    } finally {
+      setIsMerging(false)
+    }
+  }
+
+  const toggleOrderSelection = (id: string) => {
+    setSelectedOrderIds(prev =>
+      prev.includes(id) ? prev.filter(oid => oid !== id) : [...prev, id]
+    )
+  }
+
 
 
   const renderOrderToPdf = async (order: any, language: 'english' | 'telugu'): Promise<string | null> => {
@@ -532,13 +576,24 @@ export default function OrdersHistoryPage() {
     <div className="p-6">
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-3xl font-bold text-gray-800">Orders History</h1>
-        <button
-          onClick={() => setShowFilters(!showFilters)}
-          className="flex items-center gap-2 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors"
-        >
-          <FaFilter />
-          {showFilters ? 'Hide Filters' : 'Show Filters'}
-        </button>
+        <div className="flex items-center gap-3">
+          {selectedOrderIds.length > 1 && (
+            <button
+              onClick={() => setIsMergeModalOpen(true)}
+              className="flex items-center gap-2 px-6 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-all shadow-md animate-in slide-in-from-right-4"
+            >
+              <FaLayerGroup />
+              Merge Selected ({selectedOrderIds.length})
+            </button>
+          )}
+          <button
+            onClick={() => setShowFilters(!showFilters)}
+            className="flex items-center gap-2 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors"
+          >
+            <FaFilter />
+            {showFilters ? 'Hide Filters' : 'Show Filters'}
+          </button>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 mb-6">
@@ -657,6 +712,20 @@ export default function OrdersHistoryPage() {
             <table className="min-w-full divide-y divide-gray-200">
               <thead className="bg-gray-50">
                 <tr>
+                  <th className="px-6 py-3 text-left">
+                    <input
+                      type="checkbox"
+                      checked={selectedOrderIds.length === paginatedOrders.length && paginatedOrders.length > 0}
+                      onChange={(e) => {
+                        if (e.target.checked) {
+                          setSelectedOrderIds(paginatedOrders.map(o => o.id))
+                        } else {
+                          setSelectedOrderIds([])
+                        }
+                      }}
+                      className="w-4 h-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500"
+                    />
+                  </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Customer</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Event Name</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Event Type</th>
@@ -701,7 +770,15 @@ export default function OrdersHistoryPage() {
                   }
 
                   return (
-                    <tr key={order.id} className="hover:bg-gray-50">
+                    <tr key={order.id} className="hover:bg-slate-50 transition-all border-b border-slate-100 group">
+                      <td className="px-6 py-4">
+                        <input
+                          type="checkbox"
+                          checked={selectedOrderIds.includes(order.id)}
+                          onChange={() => toggleOrderSelection(order.id)}
+                          className="w-4 h-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500"
+                        />
+                      </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="text-sm font-medium text-gray-900">{order.customer?.name || 'Unknown'}</div>
                         <div className="text-sm text-gray-500">{order.customer?.phone || ''}</div>
@@ -1028,8 +1105,16 @@ export default function OrdersHistoryPage() {
         confirmText="Separate"
         cancelText="Keep in Group"
         onConfirm={confirmSeparation}
-        onCancel={() => setSeparationConfirm({ isOpen: false, orderId: null, sessionKey: null, sessionLabel: '' })}
+        onCancel={() => setSeparationConfirm({ isOpen: false, orderId: null, sessionKey: null, sessionLabel: '', date: '' })}
         variant="warning"
+      />
+
+      <MergeOrdersModal
+        isOpen={isMergeModalOpen}
+        onClose={() => setIsMergeModalOpen(false)}
+        selectedOrders={orders.filter(o => selectedOrderIds.includes(o.id))}
+        onMerge={handleMergeConfirm}
+        isMerging={isMerging}
       />
     </div>
   )
