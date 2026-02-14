@@ -45,16 +45,23 @@ export default function OrdersOverviewPage() {
 
   // Calendar helper functions
   const getMealColor = (mealType: string) => {
-    switch (mealType.toLowerCase()) {
-      case 'breakfast':
-        return 'bg-amber-100 text-amber-800 hover:bg-amber-200'
-      case 'lunch':
-        return 'bg-orange-100 text-orange-800 hover:bg-orange-200'
-      case 'dinner':
-        return 'bg-blue-100 text-blue-800 hover:bg-blue-200'
-      default:
-        return 'bg-gray-100 text-gray-800 hover:bg-gray-200'
-    }
+    const type = mealType.toLowerCase()
+    if (type.includes('breakfast')) return 'bg-amber-100 text-amber-800 border-amber-200'
+    if (type.includes('lunch')) return 'bg-orange-100 text-orange-800 border-orange-200'
+    if (type.includes('dinner')) return 'bg-blue-100 text-blue-800 border-blue-200'
+    if (type.includes('snacks')) return 'bg-purple-100 text-purple-800 border-purple-200'
+    if (type.includes('sweets')) return 'bg-pink-100 text-pink-800 border-pink-200'
+    if (type.includes('saree')) return 'bg-emerald-100 text-emerald-800 border-emerald-200'
+    return 'bg-gray-100 text-gray-800 border-gray-200'
+  }
+
+  const getMealPriority = (type: string) => {
+    const t = type.toLowerCase()
+    if (t.includes('breakfast')) return 1
+    if (t.includes('lunch')) return 2
+    if (t.includes('snacks')) return 3
+    if (t.includes('dinner')) return 4
+    return 5
   }
 
   const getMealsForDate = (date: Date) => {
@@ -259,17 +266,38 @@ export default function OrdersOverviewPage() {
                       </div>
 
                       {mealsForDay.length > 0 && (
-                        <div className="space-y-1">
-                          {mealsForDay.map((meal, idx) => (
-                            <Link
-                              key={`${meal.orderId}-${meal.mealType}-${idx}`}
-                              href={`/orders/summary/${meal.orderId}`}
-                              className={`block text-xs px-2 py-1 rounded transition-colors truncate ${getMealColor(meal.mealType)}`}
-                              title={`${meal.mealType}: ${meal.customerName}`}
-                            >
-                              <span className="font-semibold capitalize">{meal.mealType}</span>: {meal.customerName}
-                            </Link>
-                          ))}
+                        <div className="space-y-4">
+                          {(() => {
+                            // Group meals by type
+                            const grouped: Record<string, typeof mealsForDay> = {}
+                            mealsForDay.forEach(meal => {
+                              if (!grouped[meal.mealType]) grouped[meal.mealType] = []
+                              grouped[meal.mealType].push(meal)
+                            })
+
+                            // Sort types by priority
+                            const sortedTypes = Object.keys(grouped).sort((a, b) =>
+                              getMealPriority(a) - getMealPriority(b)
+                            )
+
+                            return sortedTypes.map(type => (
+                              <div key={type} className="space-y-1">
+                                <div className="text-[10px] font-bold text-gray-500 uppercase tracking-tight mb-1 border-b border-gray-100 pb-0.5">
+                                  {type}
+                                </div>
+                                {grouped[type].map((meal, idx) => (
+                                  <Link
+                                    key={`${meal.orderId}-${meal.mealType}-${idx}`}
+                                    href={`/orders/summary/${meal.orderId}`}
+                                    className={`block text-[10px] px-2 py-1.5 rounded-md border shadow-sm transition-all hover:scale-[1.02] truncate flex flex-col gap-0.5 ${getMealColor(meal.mealType)}`}
+                                    title={`${meal.mealType}: ${meal.customerName}`}
+                                  >
+                                    <span className="font-bold opacity-90">{meal.customerName}</span>
+                                  </Link>
+                                ))}
+                              </div>
+                            ))
+                          })()}
                         </div>
                       )}
                     </div>

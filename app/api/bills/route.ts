@@ -10,6 +10,13 @@ export async function GET(request: NextRequest) {
   if (auth.response) return auth.response
   try {
     const bills = await prisma.bill.findMany({
+      where: {
+        order: {
+          status: {
+            not: 'pending'
+          }
+        }
+      },
       include: {
         order: {
           include: {

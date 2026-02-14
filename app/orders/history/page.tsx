@@ -229,7 +229,7 @@ export default function OrdersHistoryPage() {
     const tempDiv = document.createElement('div')
     tempDiv.style.position = 'absolute'
     tempDiv.style.left = '-9999px'
-    tempDiv.style.width = '210mm' // A4 width
+    tempDiv.style.width = '215.9mm' // Legal width (8.5 inches)
     tempDiv.style.padding = '15mm'
     tempDiv.style.fontFamily = 'Poppins, "Segoe UI", Tahoma, Geneva, Verdana, sans-serif'
     tempDiv.style.fontSize = '11px'
@@ -376,9 +376,9 @@ export default function OrdersHistoryPage() {
 
       // Create PDF from canvas (JPEG for smaller size - avoids 413 on email send)
       const imgData = canvas.toDataURL('image/jpeg', 0.85)
-      const pdf = new jsPDF('p', 'mm', 'a4')
-      const imgWidth = 210 // A4 width in mm
-      const pageHeight = 297 // A4 height in mm
+      const pdf = new jsPDF('p', 'mm', 'legal')
+      const imgWidth = 215.9 // Legal width in mm
+      const pageHeight = 355.6 // Legal height in mm (14 inches)
       const imgHeight = (canvas.height * imgWidth) / canvas.width
       let heightLeft = imgHeight
 
@@ -474,7 +474,7 @@ export default function OrdersHistoryPage() {
     const tempDiv = document.createElement('div')
     tempDiv.style.position = 'absolute'
     tempDiv.style.left = '-9999px'
-    tempDiv.style.width = '210mm'
+    tempDiv.style.width = '215.9mm' // Legal width (8.5 inches)
     tempDiv.style.padding = '15mm'
     tempDiv.style.fontFamily = 'Poppins, "Segoe UI", Tahoma, Geneva, Verdana, sans-serif'
     tempDiv.style.fontSize = '11px'

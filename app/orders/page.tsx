@@ -32,6 +32,9 @@ export default function OrdersPage() {
   const [originalAdvancePaid, setOriginalAdvancePaid] = useState<number>(0)
   const [originalMealTypeAmounts, setOriginalMealTypeAmounts] = useState<Record<string, any>>({})
   const [formError, setFormError] = useState<string>('')
+  const [showQuickAddModal, setShowQuickAddModal] = useState(false)
+  const [quickAddMealTypeId, setQuickAddMealTypeId] = useState<string | null>(null)
+  const [quickAddFormData, setQuickAddFormData] = useState({ name: '', description: '' })
 
   const [formData, setFormData] = useState({
     customerId: '',
@@ -645,6 +648,49 @@ export default function OrdersPage() {
     }
   }
 
+  const handleQuickAddSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!quickAddMealTypeId || !quickAddFormData.name) return
+
+    try {
+      const mealType = formData.mealTypes.find(mt => mt.id === quickAddMealTypeId)
+      if (!mealType) return
+
+      const newItem = {
+        name: quickAddFormData.name,
+        type: mealType.menuType, // Use current meal type
+        description: quickAddFormData.description,
+        isActive: true,
+      }
+
+      await Storage.saveMenuItem(newItem)
+
+      // Reload menu items
+      const updatedMenuItems = await Storage.getMenuItems()
+      setMenuItems(updatedMenuItems)
+
+      // Find the newly created item to get its ID
+      const savedItem = updatedMenuItems.find((item: MenuItem) =>
+        item.name === newItem.name &&
+        item.type === newItem.type &&
+        item.description === newItem.description
+      )
+
+      if (savedItem) {
+        // Automatically select the new item
+        handleMenuItemToggle(quickAddMealTypeId, savedItem.id)
+      }
+
+      toast.success('Menu item added and selected!')
+      setShowQuickAddModal(false)
+      setQuickAddFormData({ name: '', description: '' })
+      setQuickAddMealTypeId(null)
+    } catch (error) {
+      console.error('Failed to quick add menu item:', error)
+      toast.error('Failed to add menu item')
+    }
+  }
+
   // Extract subcategory from description (e.g., "FRY (Any One)" -> "FRY")
   const extractSubcategory = (description: string | undefined): string => {
     if (!description) return ''
@@ -657,7 +703,7 @@ export default function OrdersPage() {
   const getAvailableSubcategories = (menuType: string) => {
     if (!menuType) return []
     // When lunch, dinner or snacks is selected, also include sweets for subcategories
-    const categoryItems = menuItems.filter(item => {
+    const categoryItems = menuItems.filter((item: MenuItem) => {
       const itemType = item.type.toLowerCase()
       if (menuType.toLowerCase() === 'lunch' || menuType.toLowerCase() === 'dinner') {
         return itemType === 'lunch' || itemType === 'sweets'
@@ -668,7 +714,7 @@ export default function OrdersPage() {
       return itemType === menuType.toLowerCase()
     })
     const subcategories = categoryItems
-      .map(item => extractSubcategory(item.description))
+      .map((item: MenuItem) => extractSubcategory(item.description))
       .filter(sub => sub !== '')
     // Remove duplicates and sort
     return Array.from(new Set(subcategories)).sort()
@@ -1140,15 +1186,27 @@ export default function OrdersPage() {
                                       <label className="block text-sm font-medium text-gray-700 mb-2">
                                         Menu Items * (Select items by checking the boxes)
                                       </label>
-                                      <div className="relative">
-                                        <FaSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
-                                        <input
-                                          type="text"
-                                          value={search}
-                                          onChange={(e: any) => setMenuItemSearch(prev => ({ ...prev, [mealType.id]: e.target.value }))}
-                                          placeholder="Search menu items by name or description..."
-                                          className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-                                        />
+                                      <div className="flex flex-col sm:flex-row gap-3 mb-3">
+                                        <div className="relative flex-1">
+                                          <FaSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
+                                          <input
+                                            type="text"
+                                            value={search}
+                                            onChange={(e: any) => setMenuItemSearch(prev => ({ ...prev, [mealType.id]: e.target.value }))}
+                                            placeholder="Search menu items..."
+                                            className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                                          />
+                                        </div>
+                                        <button
+                                          type="button"
+                                          onClick={() => {
+                                            setQuickAddMealTypeId(mealType.id)
+                                            setShowQuickAddModal(true)
+                                          }}
+                                          className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors flex items-center justify-center gap-2 text-sm whitespace-nowrap"
+                                        >
+                                          <FaPlus className="w-3 h-3" /> Quick Add Missing Item
+                                        </button>
                                       </div>
                                     </div>
 
@@ -1688,6 +1746,82 @@ export default function OrdersPage() {
           </Link>
         </div >
       </DragDropContext >
+
+      {/* Quick Add Menu Item Modal */}
+      {showQuickAddModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[100] p-4">
+          <div className="bg-white rounded-lg shadow-xl w-full max-w-md">
+            <div className="p-6 border-b border-gray-200 flex justify-between items-center">
+              <h2 className="text-xl font-bold text-gray-800">Quick Add Menu Item</h2>
+              <button
+                onClick={() => {
+                  setShowQuickAddModal(false)
+                  setQuickAddMealTypeId(null)
+                }}
+                className="text-gray-400 hover:text-gray-600"
+              >
+                <FaTimes />
+              </button>
+            </div>
+            <form onSubmit={handleQuickAddSubmit} className="p-6">
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Item Name *
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    autoFocus
+                    value={quickAddFormData.name}
+                    onChange={(e) => setQuickAddFormData({ ...quickAddFormData, name: e.target.value })}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                    placeholder="e.g., Special Paneer"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Subcategory / Description (Optional)
+                  </label>
+                  <input
+                    type="text"
+                    value={quickAddFormData.description}
+                    onChange={(e) => setQuickAddFormData({ ...quickAddFormData, description: e.target.value })}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                    placeholder="e.g., CURRY"
+                  />
+                  <p className="text-xs text-gray-500 mt-1">
+                    Tip: Use subcategories like CURRY, FRY, PALYA to group items.
+                  </p>
+                </div>
+                <div className="bg-blue-50 p-3 rounded-md">
+                  <p className="text-xs text-blue-700">
+                    <strong>Note:</strong> This item will be created as <strong>{formData.mealTypes.find(mt => mt.id === quickAddMealTypeId)?.menuType}</strong> type and automatically selected.
+                  </p>
+                </div>
+              </div>
+              <div className="mt-6 flex justify-end gap-3">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowQuickAddModal(false)
+                    setQuickAddMealTypeId(null)
+                  }}
+                  className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="px-6 py-2 bg-primary-500 text-white rounded-lg hover:bg-primary-600"
+                >
+                  Add & Select
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div >
   )
 }

@@ -92,12 +92,10 @@ export async function PUT(
         })
       }
 
-      // If order reverted to pending -> delete the bill (undo "In Progress" action)
+      // If order reverted to pending -> we no longer delete the bill to preserve the serial number.
+      // The bills page will filter out bills for pending orders.
       if (bill && status === 'pending') {
-        await prisma.bill.delete({
-          where: { id: bill.id }
-        })
-        bill = null
+        // Do nothing - preserve bill record and its serialNumber
       }
 
       // If order completed → mark bill paid
