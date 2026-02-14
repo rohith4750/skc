@@ -21,6 +21,10 @@ export default function BillsPage() {
   const [statusFilter, setStatusFilter] = useState<string>('all')
   const [customerSearch, setCustomerSearch] = useState<string>('')
   const [dateRange, setDateRange] = useState({ start: '', end: '' })
+  const [billModal, setBillModal] = useState<{ isOpen: boolean; bill: any | null; type: 'pdf' | 'image' }>({ isOpen: false, bill: null, type: 'pdf' })
+  const [selectedBillIds, setSelectedBillIds] = useState<string[]>([])
+  const [consolidateModal, setConsolidateModal] = useState<{ isOpen: boolean; title: string }>({ isOpen: false, title: 'Statement of Account' })
+
   const loadBills = async (showToast = false) => {
     try {
       const timestamp = new Date().getTime()
@@ -138,6 +142,102 @@ export default function BillsPage() {
     }
   }
 
+  const handleCombineBills = async (type: 'pdf' | 'image') => {
+    if (selectedBillIds.length < 2) {
+      toast.error('Please select at least 2 bills to combine')
+      return
+    }
+
+    const selectedBills = bills.filter(b => selectedBillIds.includes(b.id))
+
+    // Check if multiple customers are selected
+    const customerIds = new Set(selectedBills.map(b => b.order?.customer?.id || 'unknown'))
+    if (customerIds.size > 1) {
+      if (!confirm('You have selected bills for different customers. Combine them into one statement anyway?')) {
+        return
+      }
+    }
+
+    const customer = selectedBills[0].order?.customer
+
+    const billsData = selectedBills.map(b => ({
+      serialNumber: String(b.serialNumber || b.id.slice(0, 8).toUpperCase()),
+      date: b.createdAt,
+      eventName: b.order?.eventName || 'N/A',
+      total: b.totalAmount,
+      paid: b.paidAmount,
+      balance: b.remainingAmount
+    }))
+
+    const statementData: PDFTemplateData = {
+      type: 'statement',
+      date: new Date().toISOString(),
+      statementDetails: {
+        customerName: customer?.name || 'Various Customers',
+        customerPhone: customer?.phone,
+        bills: billsData,
+        grandTotal: selectedBills.reduce((sum, b) => sum + b.totalAmount, 0),
+        totalPaid: selectedBills.reduce((sum, b) => sum + b.paidAmount, 0),
+        totalBalance: selectedBills.reduce((sum, b) => sum + b.remainingAmount, 0)
+      }
+    }
+
+    const htmlContent = generatePDFTemplate(statementData)
+    const tempDiv = document.createElement('div')
+    tempDiv.style.position = 'absolute'
+    tempDiv.style.left = '-9999px'
+    tempDiv.style.width = '210mm'
+    tempDiv.style.background = 'white'
+    tempDiv.innerHTML = htmlContent
+    document.body.appendChild(tempDiv)
+
+    try {
+      // Use higher scale for better quality, but watch memory
+      const canvas = await html2canvas(tempDiv, {
+        scale: 1.5,
+        useCORS: true,
+        logging: false,
+        backgroundColor: '#ffffff',
+        windowWidth: 794 // Approximately A4 width at 96 DPI
+      })
+      document.body.removeChild(tempDiv)
+
+      if (type === 'pdf') {
+        const imgData = canvas.toDataURL('image/jpeg', 0.85)
+        const pdf = new jsPDF('p', 'mm', 'a4')
+        const imgWidth = 210
+        const pageHeight = 297
+        const imgHeight = (canvas.height * imgWidth) / canvas.width
+        let heightLeft = imgHeight
+        let position = 0
+
+        pdf.addImage(imgData, 'JPEG', 0, position, imgWidth, imgHeight)
+        heightLeft -= pageHeight
+        while (heightLeft >= 0) {
+          position = heightLeft - imgHeight
+          pdf.addPage()
+          pdf.addImage(imgData, 'JPEG', 0, position, imgWidth, imgHeight)
+          heightLeft -= pageHeight
+        }
+        pdf.save(`${consolidateModal.title.replace(/\s+/g, '-')}-${formatDate(new Date().toISOString())}.pdf`)
+      } else {
+        const imgData = canvas.toDataURL('image/jpeg', 0.9)
+        const link = document.createElement('a')
+        link.href = imgData
+        link.download = `${consolidateModal.title.replace(/\s+/g, '-')}-${formatDate(new Date().toISOString())}.jpg`
+        link.click()
+      }
+
+      toast.success('Statement generated successfully!')
+      setConsolidateModal({ ...consolidateModal, isOpen: false })
+      setSelectedBillIds([]) // Clear selection after success
+    } catch (error) {
+      console.error('Error generating statement:', error)
+      toast.error('Failed to generate statement')
+      if (tempDiv.parentNode) document.body.removeChild(tempDiv)
+    }
+  }
+
   const buildBillPdfData = (bill: any) => {
     const order = bill.order
     const customer = order?.customer
@@ -207,9 +307,9 @@ export default function BillsPage() {
     }
   }
 
-  const renderBillToPdf = async (bill: any): Promise<string | null> => {
+  const renderBillToPdf = async (bill: any, options: { splitByDate?: boolean } = {}): Promise<string | null> => {
     const { pdfData } = buildBillPdfData(bill)
-    const htmlContent = generatePDFTemplate(pdfData)
+    const htmlContent = generatePDFTemplate({ ...pdfData, options })
 
     const tempDiv = document.createElement('div')
     tempDiv.style.position = 'absolute'
@@ -354,8 +454,8 @@ export default function BillsPage() {
     sendWhatsAppMessage(customerPhone, message)
   }
 
-  const handleGeneratePDF = async (bill: any) => {
-    const pdfBase64 = await renderBillToPdf(bill)
+  const handleGeneratePDF = async (bill: any, options: { splitByDate?: boolean } = {}) => {
+    const pdfBase64 = await renderBillToPdf(bill, options)
     if (!pdfBase64) {
       toast.error('Failed to generate PDF. Please try again.')
       return
@@ -369,28 +469,16 @@ export default function BillsPage() {
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
     a.href = url
-    a.download = `SKC-Bill-${billNumber}.pdf`
+    a.download = `SKC-Bill-${billNumber}${options.splitByDate ? '-Separate' : ''}.pdf`
     a.click()
     URL.revokeObjectURL(url)
     toast.success('Bill PDF generated successfully!')
+    setBillModal({ isOpen: false, bill: null, type: 'pdf' })
   }
 
-  const handleGenerateBillImage = async (bill: any) => {
-    const pdfBase64 = await renderBillToPdf(bill)
-    if (!pdfBase64) {
-      toast.error('Failed to generate Bill image. Please try again.')
-      return
-    }
-
-    // Since renderBillToPdf generates a PDF, and internally it generates a CANVAS first...
-    // We ideally should expose the CANVAS generation. 
-    // But `renderBillToPdf` returns base64 string of PDF.
-    // If we want IMAGE, we should refactor `renderBillToPdf` or create a new `renderBillToImage`.
-    // Let's create `renderBillToImage` by copying logic from `renderBillToPdf` but returning dataURL.
-
-    // Re-implementing logic here safely
+  const handleGenerateBillImage = async (bill: any, options: { splitByDate?: boolean } = {}) => {
     const { pdfData } = buildBillPdfData(bill)
-    const htmlContent = generatePDFTemplate(pdfData)
+    const htmlContent = generatePDFTemplate({ ...pdfData, options })
 
     const tempDiv = document.createElement('div')
     tempDiv.style.position = 'absolute'
@@ -410,14 +498,30 @@ export default function BillsPage() {
       const link = document.createElement('a')
       link.href = imgData
       const billNumber = pdfData.billNumber || bill.id.slice(0, 8)
-      link.download = `SKC-Bill-${billNumber}.jpg`
+      link.download = `SKC-Bill-${billNumber}${options.splitByDate ? '-Separate' : ''}.jpg`
       link.click()
 
       toast.success('Bill Image downloaded successfully!')
+      setBillModal({ isOpen: false, bill: null, type: 'image' })
     } catch (error) {
       if (document.body.contains(tempDiv)) document.body.removeChild(tempDiv)
       console.error('Error generating bill image:', error)
       toast.error('Failed to generate Bill Image.')
+    }
+  }
+
+  const checkAndOpenBillModal = (bill: any, type: 'pdf' | 'image') => {
+    const mealTypeAmounts = bill.order?.mealTypeAmounts || {}
+    const dates = new Set()
+    Object.values(mealTypeAmounts).forEach((d: any) => {
+      if (d && typeof d === 'object' && d.date) dates.add(d.date)
+    })
+
+    if (dates.size > 1) {
+      setBillModal({ isOpen: true, bill, type })
+    } else {
+      if (type === 'pdf') handleGeneratePDF(bill)
+      else handleGenerateBillImage(bill)
     }
   }
 
@@ -645,6 +749,20 @@ export default function BillsPage() {
         totalItems={filteredBills.length}
         onPageChange={setCurrentPage}
         onItemsPerPageChange={setItemsPerPage}
+        showCheckbox={true}
+        selectedItems={selectedBillIds}
+        onSelectItem={(id) => {
+          setSelectedBillIds(prev =>
+            prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]
+          )
+        }}
+        onSelectAll={() => {
+          if (selectedBillIds.length === filteredBills.length) {
+            setSelectedBillIds([])
+          } else {
+            setSelectedBillIds(filteredBills.map(b => b.id))
+          }
+        }}
         itemName={tableConfig.itemName}
         getItemId={tableConfig.getItemId}
         renderActions={(bill) => (
@@ -675,14 +793,14 @@ export default function BillsPage() {
               <FaWhatsapp />
             </button>
             <button
-              onClick={() => handleGeneratePDF(bill)}
+              onClick={() => checkAndOpenBillModal(bill, 'pdf')}
               className="text-primary-600 hover:text-primary-700 p-2 hover:bg-primary-50 rounded transition-all active:scale-90"
               title="Download PDF Bill"
             >
               <FaPrint />
             </button>
             <button
-              onClick={() => handleGenerateBillImage(bill)}
+              onClick={() => checkAndOpenBillModal(bill, 'image')}
               className="text-purple-600 hover:text-purple-700 p-2 hover:bg-purple-50 rounded transition-all active:scale-90"
               title="Download Bill Image"
             >
@@ -691,6 +809,130 @@ export default function BillsPage() {
           </div>
         )}
       />
+
+      {/* Bill Selection Modal */}
+      {billModal.isOpen && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-xl shadow-2xl max-width-md w-full p-6 animate-in fade-in zoom-in duration-200">
+            <h3 className="text-xl font-bold text-gray-900 mb-2">Multiple Dates Detected</h3>
+            <p className="text-gray-600 mb-6">How would you like to generate this {billModal.type.toUpperCase()}? This order spans multiple event dates.</p>
+
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <button
+                onClick={() => {
+                  if (billModal.type === 'pdf') handleGeneratePDF(billModal.bill, { splitByDate: false })
+                  else handleGenerateBillImage(billModal.bill, { splitByDate: false })
+                }}
+                className="flex flex-col items-center justify-center p-4 border-2 border-primary-100 rounded-xl hover:border-primary-500 hover:bg-primary-50 transition-all group"
+              >
+                <span className="text-primary-600 font-bold mb-1">Grouped Bill</span>
+                <span className="text-xs text-gray-500 group-hover:text-primary-600">All dates consolidated</span>
+              </button>
+
+              <button
+                onClick={() => {
+                  if (billModal.type === 'pdf') handleGeneratePDF(billModal.bill, { splitByDate: true })
+                  else handleGenerateBillImage(billModal.bill, { splitByDate: true })
+                }}
+                className="flex flex-col items-center justify-center p-4 border-2 border-purple-100 rounded-xl hover:border-purple-500 hover:bg-purple-50 transition-all group"
+              >
+                <span className="text-purple-600 font-bold mb-1">Separate Bills</span>
+                <span className="text-xs text-gray-500 group-hover:text-purple-600">Each date on a new page</span>
+              </button>
+            </div>
+
+            <button
+              onClick={() => setBillModal({ isOpen: false, bill: null, type: 'pdf' })}
+              className="mt-6 w-full py-2 text-gray-500 hover:text-gray-700 font-medium"
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Consolidate Selection Modal */}
+      {consolidateModal.isOpen && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-xl shadow-2xl max-w-md w-full p-6 animate-in fade-in zoom-in duration-200">
+            <h3 className="text-xl font-bold text-gray-900 mb-4">Combine {selectedBillIds.length} Bills</h3>
+
+            <div className="space-y-4 mb-6">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Statement Title</label>
+                <input
+                  type="text"
+                  value={consolidateModal.title}
+                  onChange={(e) => setConsolidateModal({ ...consolidateModal, title: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
+                  placeholder="e.g. Monthly Statement"
+                />
+              </div>
+
+              <div className="bg-slate-50 p-3 rounded-lg border border-slate-100 max-h-48 overflow-y-auto">
+                <p className="text-xs font-bold text-slate-500 uppercase mb-2">Selected Bills</p>
+                {bills.filter(b => selectedBillIds.includes(b.id)).map(b => (
+                  <div key={b.id} className="text-sm flex justify-between py-1 border-b border-slate-200 last:border-0">
+                    <span>#{b.serialNumber || b.id.slice(0, 8)}</span>
+                    <span className="font-bold">{formatCurrency(b.remainingAmount)}</span>
+                  </div>
+                ))}
+                <div className="mt-2 text-right">
+                  <p className="text-xs text-slate-500">Total Pending</p>
+                  <p className="text-lg font-black text-primary-600">
+                    {formatCurrency(bills.filter(b => selectedBillIds.includes(b.id)).reduce((sum, b) => sum + b.remainingAmount, 0))}
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <button
+                onClick={() => handleCombineBills('pdf')}
+                className="flex items-center justify-center gap-2 py-3 bg-primary-600 text-white rounded-xl font-bold hover:bg-primary-700 transition-all"
+              >
+                <FaPrint /> PDF
+              </button>
+              <button
+                onClick={() => handleCombineBills('image')}
+                className="flex items-center justify-center gap-2 py-3 bg-purple-600 text-white rounded-xl font-bold hover:bg-purple-700 transition-all"
+              >
+                <FaImage /> Image
+              </button>
+            </div>
+
+            <button
+              onClick={() => setConsolidateModal({ ...consolidateModal, isOpen: false })}
+              className="mt-4 w-full py-2 text-gray-500 hover:text-gray-700 font-medium"
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Floating Action Bar */}
+      {selectedBillIds.length >= 2 && (
+        <div className="fixed bottom-8 left-1/2 -translate-x-1/2 bg-white rounded-full shadow-2xl border border-primary-100 px-6 py-4 flex items-center gap-6 z-40 animate-in slide-in-from-bottom-8 duration-300">
+          <div className="flex flex-col">
+            <span className="text-xs font-bold text-slate-500 uppercase">Selected</span>
+            <span className="text-sm font-black text-primary-600">{selectedBillIds.length} Bills</span>
+          </div>
+          <div className="h-8 w-px bg-slate-200"></div>
+          <button
+            onClick={() => setConsolidateModal({ ...consolidateModal, isOpen: true })}
+            className="bg-primary-600 text-white px-6 py-2 rounded-full font-bold shadow-lg shadow-primary-200 hover:bg-primary-700 transition-all flex items-center gap-2 active:scale-95"
+          >
+            Combine Selection
+          </button>
+          <button
+            onClick={() => setSelectedBillIds([])}
+            className="text-slate-400 hover:text-slate-600 p-1"
+          >
+            Clear
+          </button>
+        </div>
+      )}
     </div>
   )
 }

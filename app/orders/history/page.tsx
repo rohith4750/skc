@@ -3,12 +3,13 @@
 import { useEffect, useState, useMemo } from 'react'
 import { formatDateTime, formatDate } from '@/lib/utils'
 import { Order } from '@/types'
-import { FaTrash, FaFilePdf, FaImage, FaChevronLeft, FaChevronRight, FaEdit, FaFilter, FaChartLine, FaClock, FaCheckCircle, FaTimesCircle, FaEnvelope } from 'react-icons/fa'
+import { FaTrash, FaFilePdf, FaImage, FaChevronLeft, FaChevronRight, FaEdit, FaFilter, FaChartLine, FaClock, FaCheckCircle, FaTimesCircle, FaEnvelope, FaPrint } from 'react-icons/fa'
 import Link from 'next/link'
 import jsPDF from 'jspdf'
 import html2canvas from 'html2canvas'
 import toast from 'react-hot-toast'
 import ConfirmModal from '@/components/ConfirmModal'
+import { generatePDFTemplate } from '@/lib/pdf-template'
 
 export default function OrdersHistoryPage() {
   const [orders, setOrders] = useState<Order[]>([])
@@ -46,6 +47,17 @@ export default function OrdersHistoryPage() {
     order: null,
   })
   const [emailSending, setEmailSending] = useState(false)
+  const [docModal, setDocModal] = useState<{ isOpen: boolean; order: any | null; type: 'menu-pdf' | 'menu-image' | 'bill-pdf' | 'bill-image'; language?: 'english' | 'telugu' }>({
+    isOpen: false,
+    order: null,
+    type: 'menu-pdf'
+  })
+  const [selectedOrderIds, setSelectedOrderIds] = useState<string[]>([])
+  const [mergeModal, setMergeModal] = useState<{ isOpen: boolean; primaryId: string | null; loading: boolean }>({
+    isOpen: false,
+    primaryId: null,
+    loading: false
+  })
 
   useEffect(() => {
     loadData()
@@ -117,6 +129,139 @@ export default function OrdersHistoryPage() {
   const startIndex = (currentPage - 1) * itemsPerPage
   const endIndex = startIndex + itemsPerPage
   const paginatedOrders = filteredOrders.slice(startIndex, endIndex)
+
+  const handleMergeOrders = async () => {
+    if (!mergeModal.primaryId) {
+      toast.error('Please select a primary order');
+      return;
+    }
+
+    setMergeModal(prev => ({ ...prev, loading: true }));
+    try {
+      const secondaryOrderIds = selectedOrderIds.filter(id => id !== mergeModal.primaryId);
+
+      const response = await fetch('/api/orders/merge', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          primaryOrderId: mergeModal.primaryId,
+          secondaryOrderIds
+        })
+      });
+
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.error || 'Failed to merge orders');
+      }
+
+      toast.success('Orders merged successfully!');
+      setMergeModal({ isOpen: false, primaryId: null, loading: false });
+      setSelectedOrderIds([]);
+      loadData();
+    } catch (error: any) {
+      console.error('Merge error:', error);
+      toast.error(error.message || 'Error merging orders');
+      setMergeModal(prev => ({ ...prev, loading: false }));
+    }
+  };
+
+  const handleDownloadBill = async (order: any, options: { splitByDate?: boolean; type: 'pdf' | 'image' }) => {
+    // We need to fetch the bill for this order first
+    try {
+      const response = await fetch(`/api/bills/order/${order.id}`)
+      if (!response.ok) throw new Error('Bill not found for this order')
+      const bill = await response.json()
+
+      // Build PDF Data (Similar to Bills page)
+      const mealTypeAmounts = order.mealTypeAmounts || {}
+      const stalls = order.stalls || []
+      const transportCost = parseFloat(order.transportCost || '0') || 0
+      const waterBottlesCost = parseFloat(order.waterBottlesCost || '0') || 0
+
+      const pdfData = {
+        type: 'bill' as const,
+        billNumber: bill.serialNumber || bill.id.slice(0, 8).toUpperCase(),
+        date: bill.createdAt,
+        customer: { name: order.customer?.name, phone: order.customer?.phone, email: order.customer?.email, address: order.customer?.address },
+        eventDetails: { eventName: order.eventName || '', functionDate: formatDate(order.createdAt), functionTime: '', functionVenue: '' },
+        mealTypeAmounts: mealTypeAmounts,
+        stalls: stalls,
+        financial: {
+          transport: transportCost,
+          waterBottlesCost: waterBottlesCost,
+          extra: stalls.reduce((sum: number, s: any) => sum + (parseFloat(s.cost) || 0), 0),
+          totalAmount: bill.totalAmount,
+          advancePaid: bill.advancePaid,
+          balanceAmount: bill.remainingAmount,
+          paidAmount: bill.paidAmount
+        },
+        status: bill.status,
+        options
+      }
+
+      const htmlContent = generatePDFTemplate(pdfData)
+      const tempDiv = document.createElement('div')
+      tempDiv.style.position = 'absolute'
+      tempDiv.style.left = '-9999px'
+      tempDiv.style.width = '210mm'
+      tempDiv.style.padding = '0'
+      tempDiv.style.background = 'white'
+      tempDiv.style.color = '#000'
+      tempDiv.innerHTML = htmlContent
+      document.body.appendChild(tempDiv)
+
+      const canvas = await html2canvas(tempDiv, { scale: 1.5, useCORS: true, logging: false, backgroundColor: '#ffffff', width: tempDiv.scrollWidth, height: tempDiv.scrollHeight })
+      document.body.removeChild(tempDiv)
+
+      if (options.type === 'pdf') {
+        const imgData = canvas.toDataURL('image/jpeg', 0.85)
+        const pdf = new jsPDF('p', 'mm', 'a4')
+        const imgWidth = 210
+        const pageHeight = 297
+        const imgHeight = (canvas.height * imgWidth) / canvas.width
+        let heightLeft = imgHeight
+        let position = 0
+        pdf.addImage(imgData, 'JPEG', 0, position, imgWidth, imgHeight)
+        heightLeft -= pageHeight
+        while (heightLeft >= 0) {
+          position = heightLeft - imgHeight
+          pdf.addPage()
+          pdf.addImage(imgData, 'JPEG', 0, position, imgWidth, imgHeight)
+          heightLeft -= pageHeight
+        }
+        pdf.save(`SKC-Bill-${pdfData.billNumber}${options.splitByDate ? '-Separate' : ''}.pdf`)
+      } else {
+        const imgData = canvas.toDataURL('image/jpeg', 0.9)
+        const link = document.createElement('a')
+        link.href = imgData
+        link.download = `SKC-Bill-${pdfData.billNumber}${options.splitByDate ? '-Separate' : ''}.jpg`
+        link.click()
+      }
+
+      toast.success('Bill downloaded successfully!')
+      setDocModal({ isOpen: false, order: null, type: 'bill-pdf' })
+    } catch (error: any) {
+      console.error('Error downloading bill:', error)
+      toast.error(error.message || 'Failed to download bill')
+    }
+  }
+
+  const checkAndOpenDocModal = (order: any, type: 'menu-pdf' | 'menu-image' | 'bill-pdf' | 'bill-image', language?: 'english' | 'telugu') => {
+    const mealTypeAmounts = order.mealTypeAmounts || {}
+    const dates = new Set()
+    Object.values(mealTypeAmounts).forEach((d: any) => {
+      if (d && typeof d === 'object' && d.date) dates.add(d.date)
+    })
+
+    if (dates.size > 1) {
+      setDocModal({ isOpen: true, order, type, language })
+    } else {
+      if (type === 'menu-pdf') handleGeneratePDF(order, language || 'english')
+      else if (type === 'menu-image') handleGenerateImage(order, language || 'english')
+      else if (type === 'bill-pdf') handleDownloadBill(order, { splitByDate: false, type: 'pdf' })
+      else if (type === 'bill-image') handleDownloadBill(order, { splitByDate: false, type: 'image' })
+    }
+  }
 
   const handleDelete = (id: string) => {
     setDeleteConfirm({ isOpen: true, id })
@@ -834,6 +979,20 @@ export default function OrdersHistoryPage() {
             <table className="min-w-full divide-y divide-gray-200">
               <thead className="bg-gray-50">
                 <tr>
+                  <th className="px-6 py-3 text-left">
+                    <input
+                      type="checkbox"
+                      checked={selectedOrderIds.length === paginatedOrders.length && paginatedOrders.length > 0}
+                      onChange={() => {
+                        if (selectedOrderIds.length === paginatedOrders.length) {
+                          setSelectedOrderIds([])
+                        } else {
+                          setSelectedOrderIds(paginatedOrders.map((o: any) => o.id))
+                        }
+                      }}
+                      className="w-4 h-4 text-primary-600 border-gray-300 rounded focus:ring-primary-500"
+                    />
+                  </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Customer</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Event Name</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Event Type</th>
@@ -859,7 +1018,19 @@ export default function OrdersHistoryPage() {
                   }
 
                   return (
-                    <tr key={order.id} className="hover:bg-gray-50">
+                    <tr key={order.id} className={`hover:bg-gray-50 ${selectedOrderIds.includes(order.id) ? 'bg-primary-50/50' : ''}`}>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <input
+                          type="checkbox"
+                          checked={selectedOrderIds.includes(order.id)}
+                          onChange={() => {
+                            setSelectedOrderIds(prev =>
+                              prev.includes(order.id) ? prev.filter(i => i !== order.id) : [...prev, order.id]
+                            )
+                          }}
+                          className="w-4 h-4 text-primary-600 border-gray-300 rounded focus:ring-primary-500"
+                        />
+                      </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="text-sm font-medium text-gray-900">{order.customer?.name || 'Unknown'}</div>
                         <div className="text-sm text-gray-500">{order.customer?.phone || ''}</div>
@@ -942,19 +1113,28 @@ export default function OrdersHistoryPage() {
                             <FaEdit />
                           </Link>
                           <button
-                            onClick={() => setPdfLanguageModal({ isOpen: true, order })}
+                            onClick={() => checkAndOpenDocModal(order, 'menu-pdf')}
                             className="text-secondary-500 hover:text-secondary-700 p-2 hover:bg-secondary-50 rounded"
-                            title="Download PDF"
+                            title="Download Menu PDF"
                           >
                             <FaFilePdf />
                           </button>
                           <button
-                            onClick={() => setImageLanguageModal({ isOpen: true, order })}
+                            onClick={() => checkAndOpenDocModal(order, 'menu-image')}
                             className="text-purple-600 hover:text-purple-800 p-2 hover:bg-purple-50 rounded"
-                            title="Download Image"
+                            title="Download Menu Image"
                           >
                             <FaImage />
                           </button>
+                          {(order.status === 'in_progress' || order.status === 'completed') && (
+                            <button
+                              onClick={() => checkAndOpenDocModal(order, 'bill-pdf')}
+                              className="text-primary-600 hover:text-primary-900 p-2 hover:bg-primary-50 rounded"
+                              title="Download Financial Bill"
+                            >
+                              <FaPrint />
+                            </button>
+                          )}
                           <button
                             onClick={() => {
                               if (!order.customer?.email) {
@@ -1176,6 +1356,128 @@ export default function OrdersHistoryPage() {
               Cancel
             </button>
           </div>
+        </div>
+      )}
+      {/* Group/Separate Doc Choice Modal */}
+      {docModal.isOpen && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 z-[60] flex items-center justify-center p-4">
+          <div className="bg-white rounded-xl shadow-2xl max-w-md w-full p-6 animate-in fade-in zoom-in duration-200">
+            <h3 className="text-xl font-bold text-gray-900 mb-2">Multiple Dates Detected</h3>
+            <p className="text-gray-600 mb-6">How would you like to generate this document? This order spans multiple event dates.</p>
+
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <button
+                onClick={() => {
+                  if (docModal.type === 'menu-pdf') setPdfLanguageModal({ isOpen: true, order: docModal.order })
+                  else if (docModal.type === 'menu-image') setImageLanguageModal({ isOpen: true, order: docModal.order })
+                  else if (docModal.type === 'bill-pdf') handleDownloadBill(docModal.order, { splitByDate: false, type: 'pdf' })
+                  else if (docModal.type === 'bill-image') handleDownloadBill(docModal.order, { splitByDate: false, type: 'image' })
+                  setDocModal({ ...docModal, isOpen: false })
+                }}
+                className="flex flex-col items-center justify-center p-4 border-2 border-primary-100 rounded-xl hover:border-primary-500 hover:bg-primary-50 transition-all group"
+              >
+                <span className="text-primary-600 font-bold mb-1">Grouped</span>
+                <span className="text-xs text-gray-500 group-hover:text-primary-600">All dates consolidated</span>
+              </button>
+
+              <button
+                onClick={() => {
+                  if (docModal.type === 'menu-pdf') setPdfLanguageModal({ isOpen: true, order: docModal.order })
+                  else if (docModal.type === 'menu-image') setImageLanguageModal({ isOpen: true, order: docModal.order })
+                  else if (docModal.type === 'bill-pdf') handleDownloadBill(docModal.order, { splitByDate: true, type: 'pdf' })
+                  else if (docModal.type === 'bill-image') handleDownloadBill(docModal.order, { splitByDate: true, type: 'image' })
+                  setDocModal({ ...docModal, isOpen: false })
+                }}
+                className="flex flex-col items-center justify-center p-4 border-2 border-purple-100 rounded-xl hover:border-purple-500 hover:bg-purple-50 transition-all group"
+              >
+                <span className="text-purple-600 font-bold mb-1">Separate</span>
+                <span className="text-xs text-gray-500 group-hover:text-purple-600">Each date starts new page</span>
+              </button>
+            </div>
+
+            <button
+              onClick={() => setDocModal({ isOpen: false, order: null, type: 'menu-pdf' })}
+              className="mt-6 w-full py-2 text-gray-500 hover:text-gray-700 font-medium"
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Merge Orders Modal */}
+      {mergeModal.isOpen && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[70] p-4">
+          <div className="bg-white rounded-xl shadow-2xl max-w-md w-full p-6 animate-in fade-in zoom-in duration-200">
+            <h3 className="text-xl font-bold text-gray-900 mb-4 text-center">Merge {selectedOrderIds.length} Orders</h3>
+
+            <div className="space-y-4 mb-6">
+              <p className="text-sm text-gray-600 bg-amber-50 border border-amber-100 p-3 rounded-lg">
+                <strong>Attention:</strong> This will combine all dates, sessions, and payments into one record. This action is Permanent.
+              </p>
+
+              <div>
+                <label className="block text-sm font-bold text-gray-700 mb-2">Select Primary Order (Destination)</label>
+                <div className="space-y-2 max-h-48 overflow-y-auto border rounded-lg p-2 bg-gray-50">
+                  {orders.filter(o => selectedOrderIds.includes(o.id)).map(o => (
+                    <label key={o.id} className={`flex items-center gap-3 p-3 rounded-lg border-2 cursor-pointer transition-all ${mergeModal.primaryId === o.id ? 'border-primary-500 bg-primary-50' : 'border-gray-200 bg-white hover:border-primary-200'}`}>
+                      <input
+                        type="radio"
+                        name="primaryOrder"
+                        checked={mergeModal.primaryId === o.id}
+                        onChange={() => setMergeModal(prev => ({ ...prev, primaryId: o.id }))}
+                        className="w-4 h-4 text-primary-600"
+                      />
+                      <div className="flex-1">
+                        <div className="text-sm font-black text-gray-900">#{o.serialNumber} - {o.customer?.name}</div>
+                        <div className="text-xs text-gray-500">{o.eventName} • {formatDate(o.createdAt)}</div>
+                      </div>
+                    </label>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            <div className="flex gap-3">
+              <button
+                onClick={() => setMergeModal({ isOpen: false, primaryId: null, loading: false })}
+                className="flex-1 py-3 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl font-bold transition-all"
+                disabled={mergeModal.loading}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleMergeOrders}
+                disabled={!mergeModal.primaryId || mergeModal.loading}
+                className="flex-1 py-3 bg-primary-600 hover:bg-primary-700 text-white rounded-xl font-bold shadow-lg shadow-primary-200 transition-all flex items-center justify-center gap-2 disabled:opacity-50"
+              >
+                {mergeModal.loading ? 'Merging...' : 'Confirm Merge'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Floating Action Bar */}
+      {selectedOrderIds.length >= 2 && (
+        <div className="fixed bottom-8 left-1/2 -translate-x-1/2 bg-white rounded-full shadow-2xl border border-primary-100 px-6 py-4 flex items-center gap-6 z-40 animate-in slide-in-from-bottom-8 duration-300">
+          <div className="flex flex-col">
+            <span className="text-xs font-bold text-slate-500 uppercase">Selection</span>
+            <span className="text-sm font-black text-primary-600">{selectedOrderIds.length} Orders</span>
+          </div>
+          <div className="h-8 w-px bg-slate-200"></div>
+          <button
+            onClick={() => setMergeModal({ isOpen: true, primaryId: null, loading: false })}
+            className="bg-primary-600 text-white px-6 py-2 rounded-full font-bold shadow-lg shadow-primary-200 hover:bg-primary-700 transition-all flex items-center gap-2 active:scale-95"
+          >
+            Merge Selection
+          </button>
+          <button
+            onClick={() => setSelectedOrderIds([])}
+            className="text-slate-400 hover:text-slate-600 p-1"
+          >
+            Clear
+          </button>
         </div>
       )}
     </div>
