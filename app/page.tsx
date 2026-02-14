@@ -5,11 +5,11 @@ import { Storage } from '@/lib/storage-api'
 import { fetchWithLoader } from '@/lib/fetch-with-loader'
 import { formatCurrency, formatDateTime } from '@/lib/utils'
 import Link from 'next/link'
-import { 
-  FaUsers, 
-  FaUtensils, 
-  FaShoppingCart, 
-  FaFileInvoiceDollar, 
+import {
+  FaUsers,
+  FaUtensils,
+  FaShoppingCart,
+  FaFileInvoiceDollar,
   FaMoneyBillWave,
   FaUserShield,
   FaUserTie,
@@ -75,14 +75,14 @@ export default function Dashboard() {
         ])
 
         // Calculate revenue from paid bills
-        const totalRevenue = bills.reduce((sum: number, bill: any) => sum + (bill.paidAmount || 0), 0)
-        const totalExpenses = expenses.reduce((sum: number, expense: any) => sum + (expense.amount || 0), 0)
-        const totalBilled = bills.reduce((sum: number, bill: any) => sum + (bill.totalAmount || 0), 0)
-        const totalReceivable = bills.reduce((sum: number, bill: any) => sum + (bill.remainingAmount || 0), 0)
+        const totalRevenue = bills.reduce((sum: number, bill: any) => sum + (parseFloat(bill.paidAmount) || 0), 0)
+        const totalExpenses = expenses.reduce((sum: number, expense: any) => sum + (parseFloat(expense.amount) || 0), 0)
+        const totalBilled = bills.reduce((sum: number, bill: any) => sum + (parseFloat(bill.totalAmount) || 0), 0)
+        const totalReceivable = bills.reduce((sum: number, bill: any) => sum + (parseFloat(bill.remainingAmount) || 0), 0)
         const avgOrderValue = orders.length > 0 ? totalRevenue / orders.length : 0
         const profitMargin = totalRevenue > 0 ? ((totalRevenue - totalExpenses) / totalRevenue) * 100 : 0
         const collectionRate = totalBilled > 0 ? (totalRevenue / totalBilled) * 100 : 0
-        
+
         // Order status counts
         const pendingOrders = orders.filter((o: any) => o.status === 'pending' || o.status === 'in_progress').length
         const completedOrders = orders.filter((o: any) => o.status === 'completed').length
@@ -94,12 +94,12 @@ export default function Dashboard() {
           if (expense.paymentStatus) {
             return expense.paymentStatus !== 'paid'
           }
-          return (expense.paidAmount || 0) < (expense.amount || 0)
+          return (parseFloat(expense.paidAmount) || 0) < (parseFloat(expense.amount) || 0)
         })
         const pendingExpenses = pendingExpensesList.length
         const outstandingExpenses = pendingExpensesList.reduce((sum: number, expense: any) => {
-          const amount = expense.amount || 0
-          const paidAmount = expense.paidAmount || 0
+          const amount = parseFloat(expense.amount) || 0
+          const paidAmount = parseFloat(expense.paidAmount) || 0
           return sum + Math.max(0, amount - paidAmount)
         }, 0)
 
@@ -427,7 +427,7 @@ export default function Dashboard() {
               <div className={`${stat.color} absolute top-0 right-0 p-3 sm:p-4 rounded-bl-2xl`}>
                 <Icon className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
               </div>
-              
+
               {/* Content */}
               <div className="relative pr-12 sm:pr-16">
                 <p className="text-gray-600 text-xs sm:text-sm font-medium mb-3">{stat.title}</p>
@@ -456,7 +456,7 @@ export default function Dashboard() {
                 <div className={`${stat.color} absolute top-0 right-0 p-3 sm:p-4 rounded-bl-2xl`}>
                   <Icon className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
                 </div>
-                
+
                 {/* Content */}
                 <div className="relative pr-12 sm:pr-16">
                   <p className="text-gray-600 text-xs sm:text-sm font-medium mb-3">{stat.title}</p>
