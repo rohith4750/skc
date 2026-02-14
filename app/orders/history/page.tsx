@@ -220,7 +220,7 @@ export default function OrdersHistoryPage() {
   }
 
   const handleDiscardSession = async (orderId: string, sessionKey: string) => {
-    if (!confirm(`Are you sure you want to discard the session "${sanitizeMealLabel(sessionKey)}"? This will recalulate the total and update the bill.`)) {
+    if (!confirm(`Are you sure you want to separate the session "${sanitizeMealLabel(sessionKey)}" from this group? It will be removed from this order and become its own separate record in the list.`)) {
       return
     }
 
@@ -233,14 +233,14 @@ export default function OrdersHistoryPage() {
 
       if (!response.ok) {
         const error = await response.json()
-        throw new Error(error.error || 'Failed to discard session')
+        throw new Error(error.error || 'Failed to separate session')
       }
 
-      toast.success('Session discarded successfully')
+      toast.success('Session separated and restored as a new order')
       loadData()
     } catch (error: any) {
-      console.error('Failed to discard session:', error)
-      toast.error(error.message || 'Failed to discard session')
+      console.error('Failed to separate session:', error)
+      toast.error(error.message || 'Failed to separate session')
     }
   }
 
