@@ -74,11 +74,10 @@ export default function CreateExpensePage() {
     notes: '',
     paidAmount: '',
     paymentStatus: 'pending' as 'pending' | 'partial' | 'paid',
+    mealType: '', // Add mealType to state
   })
 
-  useEffect(() => {
-    loadData()
-  }, [])
+
 
   const loadData = async () => {
     try {
@@ -144,6 +143,7 @@ export default function CreateExpensePage() {
             notes: expenseData.notes || '',
             paidAmount: expenseData.paidAmount?.toString() || '0',
             paymentStatus: expenseData.paymentStatus || 'pending',
+            mealType: details.mealType || '',
           })
           if (isCustomCategory) {
             setCustomCategoryInputType('input')
@@ -182,6 +182,14 @@ export default function CreateExpensePage() {
     })
     return Array.from(categories).sort()
   }, [existingExpenses, workforce])
+
+  // Get available meal types for the selected order
+  const availableMealTypes = useMemo(() => {
+    if (!formData.orderId) return []
+    const order = orders.find(o => o.id === formData.orderId)
+    if (!order || !order.mealTypeAmounts) return []
+    return Object.keys(order.mealTypeAmounts as object)
+  }, [formData.orderId, orders])
 
   // Calculate total amount based on category and calculation method
   const calculatedAmount = useMemo(() => {
@@ -355,11 +363,34 @@ export default function CreateExpensePage() {
 
   // Autofill plates from order when category is 'chef'
   useEffect(() => {
+    // console.log('Autofill check:', { category: formData.category, orderId: formData.orderId, mealType: formData.mealType, isBulkExpense })
+
     if (formData.category === 'chef' && formData.orderId && !isBulkExpense) {
       const selectedOrder = orders.find(o => o.id === formData.orderId)
+      // console.log('Selected Order:', selectedOrder)
+
       if (selectedOrder) {
-        const plates = getOrderPlates(selectedOrder)
+        let plates = 0
+
+        // If a specific meal type is selected, try to get plates for that meal
+        if (formData.mealType && selectedOrder.mealTypeAmounts) {
+          const mealData = (selectedOrder.mealTypeAmounts as any)[formData.mealType]
+          if (mealData) {
+            if (typeof mealData === 'object') {
+              plates = mealData.numberOfPlates || mealData.numberOfMembers || 0
+            } else if (typeof mealData === 'number') {
+              // If it's just a number, it's likely the amount, not plates. 
+            }
+          }
+        }
+        // If no meal type selected (or explicitly 'Total'), fallback to total plates logic
+        else {
+          plates = getOrderPlates(selectedOrder)
+        }
+
+        // console.log('Calculated plates:', plates)
         if (plates > 0) {
+          // console.log('Setting plates to:', plates)
           setFormData(prev => ({
             ...prev,
             plates: plates.toString()
@@ -367,7 +398,7 @@ export default function CreateExpensePage() {
         }
       }
     }
-  }, [formData.orderId, formData.category, isBulkExpense, orders])
+  }, [formData.orderId, formData.category, formData.mealType, isBulkExpense, orders])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -430,6 +461,9 @@ export default function CreateExpensePage() {
         if (formData.calculationMethod === 'plate-wise') {
           calculationDetails.plates = parseFloat(formData.plates)
           calculationDetails.perPlateAmount = parseFloat(formData.amount)
+          if (formData.mealType) {
+            calculationDetails.mealType = formData.mealType
+          }
         }
       } else if (formData.category === 'labours') {
         calculationDetails.numberOfLabours = parseFloat(formData.numberOfLabours)
@@ -688,21 +722,42 @@ export default function CreateExpensePage() {
                 </select>
               </div>
 
-              {/* Chef Calculation Method */}
+              {/* Chef Calculation Method & Meal Type */}
               {formData.category === 'chef' && (
-                <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">
-                    Calculation Method *
-                  </label>
-                  <select
-                    required
-                    value={formData.calculationMethod}
-                    onChange={(e) => setFormData({ ...formData, calculationMethod: e.target.value as 'plate-wise' | 'total', amount: '', plates: '' })}
-                    className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-                  >
-                    <option value="total">Total Amount</option>
-                    <option value="plate-wise">Plate-wise</option>
-                  </select>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">
+                      Calculation Method *
+                    </label>
+                    <select
+                      required
+                      value={formData.calculationMethod}
+                      onChange={(e) => setFormData({ ...formData, calculationMethod: e.target.value as 'plate-wise' | 'total', amount: '', plates: '' })}
+                      className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                    >
+                      <option value="total">Total Amount</option>
+                      <option value="plate-wise">Plate-wise</option>
+                    </select>
+                  </div>
+
+                  {/* Meal Type Selection (Visible only when Order is selected) */}
+                  {formData.orderId && !isBulkExpense && availableMealTypes.length > 0 && (
+                    <div>
+                      <label className="block text-sm font-semibold text-gray-700 mb-2">
+                        Meal Type (Optional)
+                      </label>
+                      <select
+                        value={formData.mealType}
+                        onChange={(e) => setFormData({ ...formData, mealType: e.target.value })}
+                        className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                      >
+                        <option value="">All / Specific Meal Not Selected</option>
+                        {availableMealTypes.map(type => (
+                          <option key={type} value={type}>{type}</option>
+                        ))}
+                      </select>
+                    </div>
+                  )}
                 </div>
               )}
 
