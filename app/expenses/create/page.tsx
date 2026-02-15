@@ -79,6 +79,10 @@ export default function CreateExpensePage() {
 
 
 
+  useEffect(() => {
+    loadData()
+  }, [])
+
   const loadData = async () => {
     try {
       setLoading(true)
