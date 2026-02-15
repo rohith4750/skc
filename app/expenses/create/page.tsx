@@ -353,6 +353,22 @@ export default function CreateExpensePage() {
     }
   }, [calculatedAmount])
 
+  // Autofill plates from order when category is 'chef'
+  useEffect(() => {
+    if (formData.category === 'chef' && formData.orderId && !isBulkExpense) {
+      const selectedOrder = orders.find(o => o.id === formData.orderId)
+      if (selectedOrder) {
+        const plates = getOrderPlates(selectedOrder)
+        if (plates > 0) {
+          setFormData(prev => ({
+            ...prev,
+            plates: plates.toString()
+          }))
+        }
+      }
+    }
+  }, [formData.orderId, formData.category, isBulkExpense, orders])
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setSaving(true)
@@ -599,8 +615,8 @@ export default function CreateExpensePage() {
                           <label
                             key={order.id}
                             className={`flex items-center gap-3 p-3 rounded-lg cursor-pointer transition-colors ${isSelected
-                                ? 'bg-blue-50 border border-blue-200'
-                                : 'hover:bg-gray-50 border border-transparent'
+                              ? 'bg-blue-50 border border-blue-200'
+                              : 'hover:bg-gray-50 border border-transparent'
                               }`}
                           >
                             <input
@@ -705,8 +721,8 @@ export default function CreateExpensePage() {
                           setFormData({ ...formData, customCategoryName: '' })
                         }}
                         className={`px-3 py-1.5 text-sm rounded-lg border transition-colors ${customCategoryInputType === 'select'
-                            ? 'bg-primary-500 text-white border-primary-500'
-                            : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
+                          ? 'bg-primary-500 text-white border-primary-500'
+                          : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
                           }`}
                       >
                         Select Existing
@@ -718,8 +734,8 @@ export default function CreateExpensePage() {
                           setFormData({ ...formData, customCategoryName: '' })
                         }}
                         className={`px-3 py-1.5 text-sm rounded-lg border transition-colors ${customCategoryInputType === 'input'
-                            ? 'bg-primary-500 text-white border-primary-500'
-                            : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
+                          ? 'bg-primary-500 text-white border-primary-500'
+                          : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
                           }`}
                       >
                         Add New
@@ -1099,8 +1115,8 @@ export default function CreateExpensePage() {
                             type="button"
                             onClick={() => handleAllocationMethodChange(method.value as any)}
                             className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors text-center ${allocationMethod === method.value
-                                ? 'bg-indigo-600 text-white shadow-md'
-                                : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
+                              ? 'bg-indigo-600 text-white shadow-md'
+                              : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
                               }`}
                             title={method.description}
                           >
@@ -1215,8 +1231,8 @@ export default function CreateExpensePage() {
                     {/* Allocation Status */}
                     {Math.abs(allocationDifference) > 0.01 && (
                       <div className={`p-3 rounded-lg ${allocationDifference > 0
-                          ? 'bg-yellow-50 border border-yellow-200'
-                          : 'bg-red-50 border border-red-200'
+                        ? 'bg-yellow-50 border border-yellow-200'
+                        : 'bg-red-50 border border-red-200'
                         }`}>
                         <p className={`text-sm font-medium ${allocationDifference > 0 ? 'text-yellow-700' : 'text-red-700'
                           }`}>

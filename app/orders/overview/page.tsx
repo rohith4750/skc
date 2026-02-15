@@ -94,7 +94,22 @@ export default function OrdersOverviewPage() {
           meals.push({
             orderId: order.id,
             customerName: order.customer?.name || 'Unknown',
-            mealType: data.menuType || type // Use stored menuType if it's an ID-keyed object
+            mealType: (() => {
+              let label = data.menuType || type
+
+              // Handle merged labels (e.g., LUNCH_MERGED_7 -> LUNCH)
+              if (label.includes('_MERGED_')) {
+                label = label.split('_MERGED_')[0]
+              }
+
+              // Handle Session IDs and UUIDs
+              if (label.toLowerCase().startsWith('session_') || label.length > 20 || /^[0-9a-fA-F-]{36}$/.test(label)) {
+                return 'Custom / Other'
+              }
+
+              // Capitalize
+              return label.charAt(0).toUpperCase() + label.slice(1).toLowerCase()
+            })()
           })
         }
       })
