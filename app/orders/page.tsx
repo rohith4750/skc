@@ -143,13 +143,16 @@ export default function OrdersPage() {
 
       // Group order items by their stored mealType (not menuItem.type)
       const itemsByType: Record<string, string[]> = {}
+      const itemsByTypeLower: Record<string, string[]> = {}
       order.items.forEach((item: any) => {
-        // Use stored mealType if available, otherwise fall back to menuItem.type
         const mealType = item.mealType || item.menuItem?.type?.toLowerCase() || 'other'
         if (!itemsByType[mealType]) {
           itemsByType[mealType] = []
         }
         itemsByType[mealType].push(item.menuItemId)
+        const keyLower = mealType.toLowerCase()
+        if (!itemsByTypeLower[keyLower]) itemsByTypeLower[keyLower] = []
+        itemsByTypeLower[keyLower].push(item.menuItemId)
       })
 
       // Extract item customizations and quantities
@@ -201,15 +204,18 @@ export default function OrdersPage() {
               ? mealTypeData.manualAmount.toString()
               : amount.toString()
 
-          // Assign items that match this session key or legacy menuType
-          const selectedMenuItems = itemsByType[key.toLowerCase()] || itemsByType[menuTypeName.toLowerCase()] || []
+          // Assign items that match this session key or legacy menuType (exact + case-insensitive for merged keys)
+          const selectedMenuItems = itemsByType[key] || itemsByType[menuTypeName]
+            || itemsByTypeLower[key.toLowerCase()] || itemsByTypeLower[menuTypeName?.toLowerCase() || '']
+            || []
 
+          const lookupKey = itemsByType[key] ? key : (itemsByType[menuTypeName] ? menuTypeName : Object.keys(itemsByType).find(k => k.toLowerCase() === key.toLowerCase()) || key)
           return {
-            id: key.length > 20 ? key : generateId(), // If key looks like a UUID, use it as ID
+            id: key,
             menuType: menuTypeName,
             selectedMenuItems,
-            itemCustomizations: customizationsByItemAndType[key] || customizationsByItemAndType[menuTypeName] || {},
-            itemQuantities: quantitiesByItemAndType[key] || quantitiesByItemAndType[menuTypeName] || {},
+            itemCustomizations: customizationsByItemAndType[lookupKey] || customizationsByItemAndType[key] || customizationsByItemAndType[menuTypeName] || {},
+            itemQuantities: quantitiesByItemAndType[lookupKey] || quantitiesByItemAndType[key] || quantitiesByItemAndType[menuTypeName] || {},
             pricingMethod,
             numberOfPlates,
             platePrice,
@@ -713,16 +719,18 @@ export default function OrdersPage() {
   // Get unique subcategories for a specific menu type
   const getAvailableSubcategories = (menuType: string) => {
     if (!menuType) return []
+    const baseType = getBaseMenuType(menuType)
+    if (!baseType) return []
     // When lunch, dinner or snacks is selected, also include sweets for subcategories
     const categoryItems = menuItems.filter((item: MenuItem) => {
-      const itemType = item.type.toLowerCase()
-      if (menuType.toLowerCase() === 'lunch' || menuType.toLowerCase() === 'dinner') {
+      const itemType = (item.type || '').toLowerCase()
+      if (baseType === 'lunch' || baseType === 'dinner') {
         return itemType === 'lunch' || itemType === 'sweets'
       }
-      if (menuType.toLowerCase() === 'snacks') {
+      if (baseType === 'snacks') {
         return itemType === 'snacks' || itemType === 'sweets'
       }
-      return itemType === menuType.toLowerCase()
+      return itemType === baseType
     })
     const subcategories = categoryItems
       .map((item: MenuItem) => extractSubcategory(item.description))
@@ -847,24 +855,45 @@ export default function OrdersPage() {
     }))
   }
 
+  // Normalize merged/session meal type names to base type for menu filtering (e.g. Lunch_merged_7 -> lunch, session_xyz_7 -> use menuType from data)
+  const getBaseMenuType = (menuType: string): string => {
+    if (!menuType) return ''
+    const lower = menuType.toLowerCase()
+    if (lower.includes('_merged_')) {
+      const parts = lower.split('_merged_')
+      if (parts[0] && ['breakfast', 'lunch', 'dinner', 'snacks', 'tiffins', 'high_tea'].includes(parts[0])) return parts[0]
+    }
+    if (lower.startsWith('session_')) {
+      const match = lower.match(/session_[a-z0-9]+_\d+/)
+      if (match) {
+        const parts = lower.replace(/^session_/, '').split('_')
+        const base = parts[0]
+        if (base && ['breakfast', 'lunch', 'dinner', 'snacks', 'tiffins'].includes(base)) return base
+      }
+    }
+    return lower
+  }
+
   // Filter menu items for a specific meal type
   const getFilteredMenuItems = (mealTypeId: string, menuType: string) => {
     if (!menuType) return []
 
-    // Match items by exact type
+    const baseType = getBaseMenuType(menuType)
+    if (!baseType) return []
+
+    // Match items by base type (handles Lunch_merged_7, session_xxx, etc.)
     let filtered = menuItems.filter((m: any) => {
-      const itemType = m.type.toLowerCase()
-      const selectedType = menuType.toLowerCase()
+      const itemType = m.type?.toLowerCase() || 'other'
 
       // Allow sweets to show up for lunch, dinner and snacks
-      if (selectedType === 'lunch' || selectedType === 'dinner') {
-        return m.isActive !== false && (itemType === selectedType || itemType === 'sweets')
+      if (baseType === 'lunch' || baseType === 'dinner') {
+        return m.isActive !== false && (itemType === baseType || itemType === 'sweets')
       }
-      if (selectedType === 'snacks') {
+      if (baseType === 'snacks') {
         return m.isActive !== false && (itemType === 'snacks' || itemType === 'sweets')
       }
 
-      return m.isActive !== false && itemType === selectedType
+      return m.isActive !== false && itemType === baseType
     })
 
     // Filter by subcategory if selected
