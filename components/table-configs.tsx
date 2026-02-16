@@ -165,12 +165,12 @@ export function getBillTableConfig(): TableConfig<BillWithOrder> {
       | undefined
     if (!mealTypeAmounts) return bill.order?.numberOfMembers || null
 
-    const total = Object.values(mealTypeAmounts).reduce((sum, value) => {
-      if (typeof value === 'object' && value !== null && value.numberOfMembers) {
-        return sum + (Number(value.numberOfMembers) || 0)
+    let total = 0
+    Object.values(mealTypeAmounts).forEach((value) => {
+      if (typeof value === 'object' && value !== null && (value as any).numberOfMembers) {
+        total += Number((value as any).numberOfMembers) || 0
       }
-      return sum
-    }, 0)
+    })
 
     return total > 0 ? total : bill.order?.numberOfMembers || null
   }
