@@ -1,4 +1,4 @@
-﻿'use client'
+'use client'
 
 import { useEffect, useState, useMemo } from 'react'
 import { formatCurrency, formatDateTime, formatDate, sendWhatsAppMessage } from '@/lib/utils'
@@ -204,30 +204,40 @@ export default function BillsPage() {
     tempDiv.style.left = '-9999px'
     tempDiv.style.width = '210mm'
     tempDiv.style.padding = '0'
+    tempDiv.style.paddingBottom = '10mm'
     tempDiv.style.background = 'white'
     tempDiv.style.color = '#000'
     tempDiv.innerHTML = htmlContent
     document.body.appendChild(tempDiv)
 
     try {
-      const canvas = await html2canvas(tempDiv, { scale: 1.5, useCORS: true, logging: false, backgroundColor: '#ffffff', width: tempDiv.scrollWidth, height: tempDiv.scrollHeight })
+      const canvas = await html2canvas(tempDiv, {
+        scale: 1.5,
+        useCORS: true,
+        logging: false,
+        backgroundColor: '#ffffff',
+        width: tempDiv.scrollWidth,
+        height: tempDiv.scrollHeight + 10,
+      })
       document.body.removeChild(tempDiv)
 
       const imgData = canvas.toDataURL('image/jpeg', 0.85)
       const pdf = new jsPDF('p', 'mm', 'a4')
-      const imgWidth = 210
-      const pageHeight = 297
+      const pageWidth = pdf.internal.pageSize.getWidth()
+      const pageHeight = pdf.internal.pageSize.getHeight()
+      const margin = 6
+      const imgWidth = pageWidth - margin * 2
       const imgHeight = (canvas.height * imgWidth) / canvas.width
       let heightLeft = imgHeight
-      let position = 0
+      let position = margin
 
-      pdf.addImage(imgData, 'JPEG', 0, position, imgWidth, imgHeight)
-      heightLeft -= pageHeight
-      while (heightLeft >= 0) {
-        position = heightLeft - imgHeight
+      pdf.addImage(imgData, 'JPEG', margin, position, imgWidth, imgHeight)
+      heightLeft -= pageHeight - margin * 2
+      while (heightLeft > 0) {
+        position = margin - (imgHeight - heightLeft)
         pdf.addPage()
-        pdf.addImage(imgData, 'JPEG', 0, position, imgWidth, imgHeight)
-        heightLeft -= pageHeight
+        pdf.addImage(imgData, 'JPEG', margin, position, imgWidth, imgHeight)
+        heightLeft -= pageHeight - margin * 2
       }
 
       const dataUrl = pdf.output('datauristring')
@@ -249,6 +259,7 @@ export default function BillsPage() {
     tempDiv.style.left = '-9999px'
     tempDiv.style.width = '210mm'
     tempDiv.style.padding = '15mm'
+    tempDiv.style.paddingBottom = '20mm'
     tempDiv.style.fontFamily = 'Poppins, sans-serif'
     tempDiv.style.fontSize = '11px'
     tempDiv.style.lineHeight = '1.6'
@@ -257,22 +268,31 @@ export default function BillsPage() {
     tempDiv.innerHTML = htmlContent
     document.body.appendChild(tempDiv)
     try {
-      const canvas = await html2canvas(tempDiv, { scale: 1.5, useCORS: true, logging: false, backgroundColor: '#ffffff' })
+      const canvas = await html2canvas(tempDiv, {
+        scale: 1.5,
+        useCORS: true,
+        logging: false,
+        backgroundColor: '#ffffff',
+        width: tempDiv.scrollWidth,
+        height: tempDiv.scrollHeight + 10,
+      })
       document.body.removeChild(tempDiv)
       const imgData = canvas.toDataURL('image/jpeg', 0.85)
       const pdf = new jsPDF('p', 'mm', 'a4')
-      const imgWidth = 210
-      const pageHeight = 297
+      const pageWidth = pdf.internal.pageSize.getWidth()
+      const pageHeight = pdf.internal.pageSize.getHeight()
+      const margin = 6
+      const imgWidth = pageWidth - margin * 2
       const imgHeight = (canvas.height * imgWidth) / canvas.width
       let heightLeft = imgHeight
-      let position = 0
-      pdf.addImage(imgData, 'JPEG', 0, position, imgWidth, imgHeight)
-      heightLeft -= pageHeight
-      while (heightLeft >= 0) {
-        position = heightLeft - imgHeight
+      let position = margin
+      pdf.addImage(imgData, 'JPEG', margin, position, imgWidth, imgHeight)
+      heightLeft -= pageHeight - margin * 2
+      while (heightLeft > 0) {
+        position = margin - (imgHeight - heightLeft)
         pdf.addPage()
-        pdf.addImage(imgData, 'JPEG', 0, position, imgWidth, imgHeight)
-        heightLeft -= pageHeight
+        pdf.addImage(imgData, 'JPEG', margin, position, imgWidth, imgHeight)
+        heightLeft -= pageHeight - margin * 2
       }
       const dataUrl = pdf.output('datauristring')
       return dataUrl ? dataUrl.split(',')[1] : null
