@@ -145,7 +145,8 @@ export default function OrdersPage() {
       // Use trim + store both exact and lower for robust lookup (merged keys: Lunch_merged_7, session_xyz_7)
       const itemsByType: Record<string, string[]> = {}
       const itemsByTypeLower: Record<string, string[]> = {}
-      order.items.forEach((item: any) => {
+      const orderItems = Array.isArray(order.items) ? order.items : []
+      orderItems.forEach((item: any) => {
         const raw = item.mealType || item.menuItem?.type?.toLowerCase() || 'other'
         const mealType = typeof raw === 'string' ? raw.trim() : String(raw)
         if (!itemsByType[mealType]) {
@@ -161,7 +162,7 @@ export default function OrdersPage() {
       const customizationsByItemAndType: Record<string, Record<string, string>> = {}
       const quantitiesByItemAndType: Record<string, Record<string, string>> = {}
 
-      order.items.forEach((item: any) => {
+      orderItems.forEach((item: any) => {
         const raw = item.mealType || item.menuItem?.type?.toLowerCase() || 'other'
         const mealType = typeof raw === 'string' ? raw.trim() : String(raw)
         if (!customizationsByItemAndType[mealType]) {
@@ -208,6 +209,7 @@ export default function OrdersPage() {
               : amount.toString()
 
           // Assign items that match this session key or legacy menuType (exact + case-insensitive + trim)
+          // Merged orders: key can be session_xyz_7 (items have that) or Lunch_merged_7 (items may have that or session key)
           const keyNorm = typeof key === 'string' ? key.trim() : String(key)
           const menuNorm = typeof menuTypeName === 'string' ? menuTypeName.trim() : (menuTypeName || '')
           let lookupKey = keyNorm
@@ -220,7 +222,12 @@ export default function OrdersPage() {
             })
             if (found) lookupKey = found
           }
-          const selectedMenuItems = itemsByType[lookupKey] || itemsByTypeLower[keyNorm.toLowerCase()] || (menuNorm ? itemsByTypeLower[menuNorm.toLowerCase()] : []) || []
+          // Fallback: try menuType/key variants (handles Lunch_merged_7 vs lunch_merged_7, session_xyz vs items keyed by menuType)
+          let selectedMenuItems = itemsByType[lookupKey] || itemsByTypeLower[keyNorm.toLowerCase()] || (menuNorm ? itemsByTypeLower[menuNorm.toLowerCase()] : []) || []
+          if (selectedMenuItems.length === 0 && menuNorm && menuNorm !== keyNorm) {
+            const byMenu = itemsByType[menuNorm] || itemsByTypeLower[menuNorm.toLowerCase()]
+            if (byMenu?.length) selectedMenuItems = byMenu
+          }
           const custQtKey = customizationsByItemAndType[lookupKey] ? lookupKey : (Object.keys(customizationsByItemAndType).find(k => k.trim().toLowerCase() === keyNorm.toLowerCase()) || lookupKey)
           return {
             id: key,
