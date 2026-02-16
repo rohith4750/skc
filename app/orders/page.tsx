@@ -518,11 +518,6 @@ export default function OrdersPage() {
     }))
   }
 
-  const normalizeDate = (value: string | undefined | null) => {
-    if (!value) return ''
-    return value.split('T')[0]
-  }
-
   const handleDragEnd = (result: any) => {
     if (!result.destination) return
 
@@ -547,23 +542,6 @@ export default function OrdersPage() {
         return mealType
       })
     }))
-  }
-
-  const findExistingOrderForCustomerDate = async () => {
-    const datesToCheck = formData.mealTypes
-      .map(mealType => normalizeDate(mealType.date))
-      .filter(Boolean)
-
-    if (!formData.customerId || datesToCheck.length === 0) return null
-
-    const orders = await Storage.getOrders()
-    return orders.find((order: any) => {
-      if (order.customerId !== formData.customerId) return false
-      const existingDates = Object.values(order.mealTypeAmounts || {})
-        .map((data: any) => normalizeDate(typeof data === 'object' ? data?.date : ''))
-        .filter(Boolean)
-      return existingDates.some((date: string) => datesToCheck.includes(date))
-    })
   }
 
   const handleSubmit = async (e: any) => {
@@ -597,15 +575,6 @@ export default function OrdersPage() {
     }
 
     try {
-      if (!isEditMode) {
-        const existingOrder = await findExistingOrderForCustomerDate()
-        if (existingOrder?.id) {
-          toast.error('Order already exists for this customer on the same date. Please update the existing order.')
-          router.push(`/orders?edit=${existingOrder.id}`)
-          return
-        }
-      }
-
       const totalAmount = parseFloat(formData.totalAmount) || 0
       const inputAdvancePaid = parseFloat(formData.advancePaid) || 0
       const effectiveAdvancePaid = isEditMode ? originalAdvancePaid + inputAdvancePaid : inputAdvancePaid
