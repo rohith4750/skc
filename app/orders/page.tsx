@@ -155,7 +155,7 @@ export default function OrdersPage() {
         itemsByTypeLower[keyLower].push(item.menuItemId)
       })
 
-      // Extract item customizations and quantities
+      // Extract item customizations and quantities (keyed by mealType, build both exact and lower for lookup)
       const customizationsByItemAndType: Record<string, Record<string, string>> = {}
       const quantitiesByItemAndType: Record<string, Record<string, string>> = {}
 
@@ -204,18 +204,25 @@ export default function OrdersPage() {
               ? mealTypeData.manualAmount.toString()
               : amount.toString()
 
-          // Assign items that match this session key or legacy menuType (exact + case-insensitive for merged keys)
-          const selectedMenuItems = itemsByType[key] || itemsByType[menuTypeName]
-            || itemsByTypeLower[key.toLowerCase()] || itemsByTypeLower[menuTypeName?.toLowerCase() || '']
-            || []
-
-          const lookupKey = itemsByType[key] ? key : (itemsByType[menuTypeName] ? menuTypeName : Object.keys(itemsByType).find(k => k.toLowerCase() === key.toLowerCase()) || key)
+          // Assign items that match this session key or legacy menuType (exact + case-insensitive + prefix match for merged keys)
+          let lookupKey = key
+          if (itemsByType[key]?.length) lookupKey = key
+          else if (itemsByType[menuTypeName]?.length) lookupKey = menuTypeName
+          else {
+            const found = Object.keys(itemsByType).find(k =>
+              k.toLowerCase() === key.toLowerCase() ||
+              k.toLowerCase() === (menuTypeName || '').toLowerCase()
+            )
+            if (found) lookupKey = found
+          }
+          const selectedMenuItems = itemsByType[lookupKey] || itemsByTypeLower[key.toLowerCase()] || itemsByTypeLower[menuTypeName?.toLowerCase() || ''] || []
+          const custQtKey = customizationsByItemAndType[lookupKey] ? lookupKey : (Object.keys(customizationsByItemAndType).find(k => k.toLowerCase() === key.toLowerCase()) || lookupKey)
           return {
             id: key,
             menuType: menuTypeName,
             selectedMenuItems,
-            itemCustomizations: customizationsByItemAndType[lookupKey] || customizationsByItemAndType[key] || customizationsByItemAndType[menuTypeName] || {},
-            itemQuantities: quantitiesByItemAndType[lookupKey] || quantitiesByItemAndType[key] || quantitiesByItemAndType[menuTypeName] || {},
+            itemCustomizations: customizationsByItemAndType[custQtKey] || customizationsByItemAndType[key] || customizationsByItemAndType[menuTypeName] || {},
+            itemQuantities: quantitiesByItemAndType[custQtKey] || quantitiesByItemAndType[key] || quantitiesByItemAndType[menuTypeName] || {},
             pricingMethod,
             numberOfPlates,
             platePrice,
