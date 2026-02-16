@@ -3,7 +3,7 @@
 import { useEffect, useState, useMemo } from 'react'
 import { formatDateTime, formatDate, sanitizeMealLabel } from '@/lib/utils'
 import { Order } from '@/types'
-import { FaTrash, FaFilePdf, FaChevronLeft, FaChevronRight, FaEdit, FaFilter, FaChartLine, FaClock, FaCheckCircle, FaTimesCircle, FaEnvelope, FaCalendarAlt } from 'react-icons/fa'
+import { FaTrash, FaFilePdf, FaFileImage, FaChevronLeft, FaChevronRight, FaEdit, FaFilter, FaChartLine, FaClock, FaCheckCircle, FaTimesCircle, FaEnvelope, FaCalendarAlt } from 'react-icons/fa'
 import Link from 'next/link'
 import jsPDF from 'jspdf'
 import html2canvas from 'html2canvas'
@@ -11,6 +11,7 @@ import toast from 'react-hot-toast'
 import ConfirmModal from '@/components/ConfirmModal'
 import MergeOrdersModal from '@/components/MergeOrdersModal'
 import { FaLayerGroup } from 'react-icons/fa'
+import { buildOrderPdfHtml } from '@/lib/order-pdf-html'
 
 export default function OrdersHistoryPage() {
   const [orders, setOrders] = useState<Order[]>([])
@@ -529,6 +530,41 @@ export default function OrdersHistoryPage() {
     }
   }
 
+  const renderOrderToImage = async (order: any, language: 'english' | 'telugu'): Promise<string | null> => {
+    if (!order?.items?.length) return null
+    const htmlContent = buildOrderPdfHtml(order, {
+      useEnglish: language === 'english',
+      formatDate,
+    })
+    const tempDiv = document.createElement('div')
+    tempDiv.style.position = 'absolute'
+    tempDiv.style.left = '-9999px'
+    tempDiv.style.width = '210mm'
+    tempDiv.style.padding = '15mm'
+    tempDiv.style.fontFamily = 'Poppins, sans-serif'
+    tempDiv.style.fontSize = '11px'
+    tempDiv.style.lineHeight = '1.6'
+    tempDiv.style.background = 'white'
+    tempDiv.style.color = '#333'
+    tempDiv.innerHTML = htmlContent
+    document.body.appendChild(tempDiv)
+    try {
+      const canvas = await html2canvas(tempDiv, {
+        scale: 1.5,
+        useCORS: true,
+        logging: false,
+        backgroundColor: '#ffffff',
+        width: tempDiv.scrollWidth,
+        height: tempDiv.scrollHeight + 10,
+      })
+      document.body.removeChild(tempDiv)
+      return canvas.toDataURL('image/png')
+    } catch {
+      if (document.body.contains(tempDiv)) document.body.removeChild(tempDiv)
+      return null
+    }
+  }
+
   const handleGeneratePDF = async (order: any, language: 'english' | 'telugu') => {
     const pdfBase64 = await renderOrderToPdf(order, language)
     if (!pdfBase64) {
@@ -546,6 +582,19 @@ export default function OrdersHistoryPage() {
     a.click()
     URL.revokeObjectURL(url)
     toast.success(`PDF downloaded (${language === 'english' ? 'English' : 'Telugu'})`)
+  }
+
+  const handleGenerateImage = async (order: any, language: 'english' | 'telugu' = 'english') => {
+    const imageDataUrl = await renderOrderToImage(order, language)
+    if (!imageDataUrl) {
+      toast.error('Failed to generate image. Please try again.')
+      return
+    }
+    const a = document.createElement('a')
+    a.href = imageDataUrl
+    a.download = `order-SKC-ORDER-${(order as any).serialNumber || order.id.slice(0, 8)}.png`
+    a.click()
+    toast.success('Order image downloaded!')
   }
 
   const handleSendOrderEmail = async (order: any, language: 'english' | 'telugu') => {
@@ -941,6 +990,13 @@ export default function OrdersHistoryPage() {
                             title="Download PDF"
                           >
                             <FaFilePdf />
+                          </button>
+                          <button
+                            onClick={() => handleGenerateImage(order, 'english')}
+                            className="text-indigo-600 hover:text-indigo-800 p-2 hover:bg-indigo-50 rounded"
+                            title="Download Image (PNG)"
+                          >
+                            <FaFileImage />
                           </button>
                           <button
                             onClick={() => {

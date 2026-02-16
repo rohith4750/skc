@@ -3,7 +3,7 @@
 import { useEffect, useState, useMemo } from 'react'
 import { formatCurrency, formatDateTime, formatDate, sendWhatsAppMessage } from '@/lib/utils'
 import { Bill, Order, Customer } from '@/types'
-import { FaPrint, FaCheck, FaEdit, FaFilter, FaChartLine, FaWallet, FaPercent, FaCalendarAlt, FaEnvelope, FaWhatsapp } from 'react-icons/fa'
+import { FaPrint, FaCheck, FaEdit, FaFilter, FaChartLine, FaWallet, FaPercent, FaCalendarAlt, FaEnvelope, FaWhatsapp, FaFileImage } from 'react-icons/fa'
 import toast from 'react-hot-toast'
 import { fetchWithLoader } from '@/lib/fetch-with-loader'
 import Table from '@/components/Table'
@@ -248,6 +248,38 @@ export default function BillsPage() {
     }
   }
 
+  const renderBillToImage = async (bill: any): Promise<string | null> => {
+    const { pdfData } = buildBillPdfData(bill)
+    const htmlContent = generatePDFTemplate(pdfData)
+
+    const tempDiv = document.createElement('div')
+    tempDiv.style.position = 'absolute'
+    tempDiv.style.left = '-9999px'
+    tempDiv.style.width = '210mm'
+    tempDiv.style.padding = '0'
+    tempDiv.style.paddingBottom = '10mm'
+    tempDiv.style.background = 'white'
+    tempDiv.style.color = '#000'
+    tempDiv.innerHTML = htmlContent
+    document.body.appendChild(tempDiv)
+
+    try {
+      const canvas = await html2canvas(tempDiv, {
+        scale: 1.5,
+        useCORS: true,
+        logging: false,
+        backgroundColor: '#ffffff',
+        width: tempDiv.scrollWidth,
+        height: tempDiv.scrollHeight + 10,
+      })
+      document.body.removeChild(tempDiv)
+      return canvas.toDataURL('image/png')
+    } catch {
+      if (document.body.contains(tempDiv)) document.body.removeChild(tempDiv)
+      return null
+    }
+  }
+
   const renderOrderToPdf = async (order: any, language: 'english' | 'telugu'): Promise<string | null> => {
     if (!order?.items?.length) return null
     const htmlContent = buildOrderPdfHtml(order, {
@@ -381,6 +413,21 @@ export default function BillsPage() {
     a.click()
     URL.revokeObjectURL(url)
     toast.success('Bill PDF generated successfully!')
+  }
+
+  const handleGenerateImage = async (bill: any) => {
+    const imageDataUrl = await renderBillToImage(bill)
+    if (!imageDataUrl) {
+      toast.error('Failed to generate image. Please try again.')
+      return
+    }
+    const { pdfData } = buildBillPdfData(bill)
+    const billNumber = pdfData.billNumber || bill.id.slice(0, 8)
+    const a = document.createElement('a')
+    a.href = imageDataUrl
+    a.download = `SKC-Bill-${billNumber}.png`
+    a.click()
+    toast.success('Bill image downloaded!')
   }
 
   // Filter bills
@@ -654,6 +701,13 @@ export default function BillsPage() {
               disabled={!bill.order?.customer?.phone}
             >
               <FaWhatsapp />
+            </button>
+            <button
+              onClick={() => handleGenerateImage(bill)}
+              className="text-indigo-600 hover:text-indigo-700 p-2 hover:bg-indigo-50 rounded transition-all active:scale-90"
+              title="Download Bill Image (PNG)"
+            >
+              <FaFileImage />
             </button>
             <button
               onClick={() => handleGeneratePDF(bill)}
