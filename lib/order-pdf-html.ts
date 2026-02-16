@@ -70,11 +70,25 @@ export function buildOrderPdfHtml(
     })
   }
 
+  const resolveSessionData = (sessionKey: string): { data: any; resolvedKey: string } | null => {
+    const sk = typeof sessionKey === 'string' ? sessionKey.trim() : ''
+    if (!sk || !mealTypeAmounts) return null
+    const direct = mealTypeAmounts[sk]
+    if (typeof direct === 'object' && direct !== null) return { data: direct, resolvedKey: sk }
+    const keyLower = sk.toLowerCase()
+    const found = Object.entries(mealTypeAmounts).find(([k]) => k.toLowerCase() === keyLower)
+    if (found) {
+      const v = found[1]
+      return (typeof v === 'object' && v !== null) ? { data: v, resolvedKey: found[0] } : null
+    }
+    return null
+  }
+
   ;(order.items || []).forEach((item: any) => {
-    const sessionKey = item.mealType
-    const sessionData = sessionKey && mealTypeAmounts?.[sessionKey]
-      ? (typeof mealTypeAmounts[sessionKey] === 'object' && mealTypeAmounts[sessionKey] !== null ? mealTypeAmounts[sessionKey] as any : null)
-      : null
+    const sessionKey = item.mealType || ''
+    const resolved = resolveSessionData(sessionKey)
+    const sessionData = resolved?.data ?? null
+    const resolvedKey = resolved?.resolvedKey || sessionKey
 
     const menuType = sessionData?.menuType || item.menuItem?.type || 'OTHER'
     const rawDate = sessionData?.date ? String(sessionData.date).split('T')[0] : null
@@ -82,7 +96,7 @@ export function buildOrderPdfHtml(
     const members = sessionData?.numberOfMembers
     const services = sessionData?.services
 
-    addToDate(dateKey, sessionKey || '', menuType, item, members, services)
+    addToDate(dateKey, resolvedKey, menuType, item, members, services)
   })
 
   // Sort dates (use raw ISO for reliable sort, format for display)

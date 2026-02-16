@@ -437,18 +437,33 @@ export default function OrdersHistoryPage() {
       })
     }
 
+    const resolveSessionData = (sk: string): { data: any; resolvedKey: string } | null => {
+      const key = typeof sk === 'string' ? sk.trim() : ''
+      if (!key || !mealTypeAmounts) return null
+      const direct = mealTypeAmounts[key]
+      if (typeof direct === 'object' && direct !== null) return { data: direct, resolvedKey: key }
+      const keyLower = key.toLowerCase()
+      const found = Object.entries(mealTypeAmounts).find(([k]) => k.toLowerCase() === keyLower)
+      if (found) {
+        const v = found[1]
+        return (typeof v === 'object' && v !== null) ? { data: v, resolvedKey: found[0] } : null
+      }
+      return null
+    }
+
     order.items.forEach((item: any) => {
-      const sessionKey = item.mealType
-      const sessionData = sessionKey && mealTypeAmounts?.[sessionKey]
-        ? (typeof mealTypeAmounts[sessionKey] === 'object' && mealTypeAmounts[sessionKey] !== null ? mealTypeAmounts[sessionKey] as any : null)
-        : null
+      const sessionKey = item.mealType || ''
+      const resolved = resolveSessionData(sessionKey)
+      const sessionData = resolved?.data ?? null
+      const resolvedKey = resolved?.resolvedKey || sessionKey
+
       const menuType = sessionData?.menuType || item.menuItem?.type || 'OTHER'
       const rawDate = sessionData?.date ? String(sessionData.date).split('T')[0] : null
       const dateKey = rawDate || eventDateDisplay
       const members = sessionData?.numberOfMembers
       const services = sessionData?.services
 
-      const groupKey = sessionKey || `legacy_${menuType}`
+      const groupKey = resolvedKey || `legacy_${menuType}`
       if (!byDate[dateKey]) byDate[dateKey] = []
       let session = byDate[dateKey].find((s: any) => s._key === groupKey)
       if (!session) {

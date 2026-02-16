@@ -142,10 +142,12 @@ export default function OrdersPage() {
       } | number> | null
 
       // Group order items by their stored mealType (not menuItem.type)
+      // Use trim + store both exact and lower for robust lookup (merged keys: Lunch_merged_7, session_xyz_7)
       const itemsByType: Record<string, string[]> = {}
       const itemsByTypeLower: Record<string, string[]> = {}
       order.items.forEach((item: any) => {
-        const mealType = item.mealType || item.menuItem?.type?.toLowerCase() || 'other'
+        const raw = item.mealType || item.menuItem?.type?.toLowerCase() || 'other'
+        const mealType = typeof raw === 'string' ? raw.trim() : String(raw)
         if (!itemsByType[mealType]) {
           itemsByType[mealType] = []
         }
@@ -160,7 +162,8 @@ export default function OrdersPage() {
       const quantitiesByItemAndType: Record<string, Record<string, string>> = {}
 
       order.items.forEach((item: any) => {
-        const mealType = item.mealType || item.menuItem?.type?.toLowerCase() || 'other'
+        const raw = item.mealType || item.menuItem?.type?.toLowerCase() || 'other'
+        const mealType = typeof raw === 'string' ? raw.trim() : String(raw)
         if (!customizationsByItemAndType[mealType]) {
           customizationsByItemAndType[mealType] = {}
           quantitiesByItemAndType[mealType] = {}
@@ -204,19 +207,21 @@ export default function OrdersPage() {
               ? mealTypeData.manualAmount.toString()
               : amount.toString()
 
-          // Assign items that match this session key or legacy menuType (exact + case-insensitive + prefix match for merged keys)
-          let lookupKey = key
-          if (itemsByType[key]?.length) lookupKey = key
-          else if (itemsByType[menuTypeName]?.length) lookupKey = menuTypeName
+          // Assign items that match this session key or legacy menuType (exact + case-insensitive + trim)
+          const keyNorm = typeof key === 'string' ? key.trim() : String(key)
+          const menuNorm = typeof menuTypeName === 'string' ? menuTypeName.trim() : (menuTypeName || '')
+          let lookupKey = keyNorm
+          if (itemsByType[keyNorm]?.length) lookupKey = keyNorm
+          else if (menuNorm && itemsByType[menuNorm]?.length) lookupKey = menuNorm
           else {
-            const found = Object.keys(itemsByType).find(k =>
-              k.toLowerCase() === key.toLowerCase() ||
-              k.toLowerCase() === (menuTypeName || '').toLowerCase()
-            )
+            const found = Object.keys(itemsByType).find(k => {
+              const kNorm = k.trim().toLowerCase()
+              return kNorm === keyNorm.toLowerCase() || (menuNorm && kNorm === menuNorm.toLowerCase())
+            })
             if (found) lookupKey = found
           }
-          const selectedMenuItems = itemsByType[lookupKey] || itemsByTypeLower[key.toLowerCase()] || itemsByTypeLower[menuTypeName?.toLowerCase() || ''] || []
-          const custQtKey = customizationsByItemAndType[lookupKey] ? lookupKey : (Object.keys(customizationsByItemAndType).find(k => k.toLowerCase() === key.toLowerCase()) || lookupKey)
+          const selectedMenuItems = itemsByType[lookupKey] || itemsByTypeLower[keyNorm.toLowerCase()] || (menuNorm ? itemsByTypeLower[menuNorm.toLowerCase()] : []) || []
+          const custQtKey = customizationsByItemAndType[lookupKey] ? lookupKey : (Object.keys(customizationsByItemAndType).find(k => k.trim().toLowerCase() === keyNorm.toLowerCase()) || lookupKey)
           return {
             id: key,
             menuType: menuTypeName,
@@ -865,7 +870,7 @@ export default function OrdersPage() {
   // Normalize merged/session meal type names to base type for menu filtering (e.g. Lunch_merged_7 -> lunch, session_xyz_7 -> use menuType from data)
   const getBaseMenuType = (menuType: string): string => {
     if (!menuType) return ''
-    const lower = menuType.toLowerCase()
+    const lower = (typeof menuType === 'string' ? menuType.trim() : String(menuType)).toLowerCase()
     if (lower.includes('_merged_')) {
       const parts = lower.split('_merged_')
       if (parts[0] && ['breakfast', 'lunch', 'dinner', 'snacks', 'tiffins', 'high_tea'].includes(parts[0])) return parts[0]
@@ -877,6 +882,8 @@ export default function OrdersPage() {
         const base = parts[0]
         if (base && ['breakfast', 'lunch', 'dinner', 'snacks', 'tiffins'].includes(base)) return base
       }
+      // Fallback: session keys without menuType in data - use lunch so items at least show
+      return 'lunch'
     }
     return lower
   }
@@ -1477,7 +1484,7 @@ export default function OrdersPage() {
                   </h4>
                   <div className="space-y-2">
                     {formData.mealTypes.map(mt => {
-                      const original = originalMealTypeAmounts[mt.menuType]
+                      const original = originalMealTypeAmounts[mt.id] ?? originalMealTypeAmounts[mt.menuType]
                       const oldMembers = original?.numberOfMembers || 0
                       const newMembers = parseInt(mt.numberOfMembers) || 0
                       const diff = newMembers - oldMembers
@@ -1496,7 +1503,7 @@ export default function OrdersPage() {
                         </div>
                       )
                     })}
-                    {!formData.mealTypes.some(mt => (parseInt(mt.numberOfMembers) || 0) !== (originalMealTypeAmounts[mt.menuType]?.numberOfMembers || 0)) && (
+                    {!formData.mealTypes.some(mt => (parseInt(mt.numberOfMembers) || 0) !== ((originalMealTypeAmounts[mt.id] ?? originalMealTypeAmounts[mt.menuType])?.numberOfMembers || 0)) && (
                       <p className="text-xs text-gray-500 italic">No member changes detected yet.</p>
                     )}
                   </div>
