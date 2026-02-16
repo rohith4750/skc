@@ -377,7 +377,7 @@ export default function OrdersHistoryPage() {
         .financial-label { font-weight: 600; }
       </style>
       
-      <div class="header" style="position: relative;">
+      <div class="header">
         <div class="header-top">
           <div>Telidevara Rajendraprasad</div>
           <div>ART FOOD ZONE (A Food Caterers)</div>
@@ -388,9 +388,6 @@ export default function OrdersHistoryPage() {
           <div>Regd. No: 2361930100031</div>
           <div>Plot No. 115, Padmavathi Nagar, Bank Colony, Saheb Nag Vanathalipuram, Hyderabad - 500070.</div>
           <div>Email: pujyasri1989cya@gmail.com, Cell: 9866525102, 9963691393, 9390015302</div>
-        </div>
-        <div style="position: absolute; top: 10px; right: 10px;">
-          <img src="/images/stamp.png" alt="Business Stamp" style="height: 70px; width: auto; transform: rotate(90deg); object-fit: contain;" crossorigin="anonymous" />
         </div>
       </div>
       
@@ -488,6 +485,13 @@ export default function OrdersHistoryPage() {
         </div>
       `
     }
+
+    // Add stamp below menu (and stalls)
+    htmlContent += `
+      <div style="margin-top: 25px; display: flex; justify-content: flex-end;">
+        <img src="/images/stamp.png" alt="Business Stamp" width="90" height="90" style="width: 90px; height: 90px; transform: rotate(-90deg); object-fit: contain;" crossorigin="anonymous" />
+      </div>
+    `
 
     tempDiv.innerHTML = htmlContent
     document.body.appendChild(tempDiv)
