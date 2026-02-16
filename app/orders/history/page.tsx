@@ -1,4 +1,4 @@
-﻿'use client'
+'use client'
 
 import { useEffect, useState, useMemo } from 'react'
 import { formatDateTime, formatDate, sanitizeMealLabel } from '@/lib/utils'
@@ -422,15 +422,22 @@ export default function OrdersHistoryPage() {
       itemsByType[type].push(item)
     })
 
-    // Get member count for each meal type
+    // Get member count for each meal type (sum across merged sessions)
     const getMemberCount = (mealType: string): string => {
-      if (mealTypeAmounts) {
-        const mealData = mealTypeAmounts[mealType.toLowerCase()] as any
-        if (mealData && typeof mealData === 'object' && mealData.numberOfMembers) {
-          return ` (${mealData.numberOfMembers} Members)`
+      if (!mealTypeAmounts) return ''
+      const target = mealType.toLowerCase()
+      let total = 0
+
+      Object.entries(mealTypeAmounts).forEach(([key, value]) => {
+        if (typeof value === 'object' && value !== null) {
+          const label = (value as any).menuType || key
+          if (label && label.toLowerCase() === target && (value as any).numberOfMembers) {
+            total += Number((value as any).numberOfMembers) || 0
+          }
         }
-      }
-      return ''
+      })
+
+      return total > 0 ? ` (${total} Members)` : ''
     }
 
     // Display items grouped by type in compact grid
@@ -740,6 +747,14 @@ export default function OrdersHistoryPage() {
                 {paginatedOrders.map((order: any) => {
                   // Extract all event dates from meal types
                   const mealTypeAmounts = order.mealTypeAmounts as Record<string, { amount: number; date: string; numberOfMembers?: number } | number> | null
+                  let totalMembersAll = 0
+                  if (mealTypeAmounts) {
+                    Object.values(mealTypeAmounts).forEach((value) => {
+                      if (typeof value === 'object' && value !== null && (value as any).numberOfMembers) {
+                        totalMembersAll += Number((value as any).numberOfMembers) || 0
+                      }
+                    })
+                  }
                   const eventDates: Array<{ mealType: string; date: string; key: string; members?: number }> = []
                   if (mealTypeAmounts) {
                     Object.entries(mealTypeAmounts).forEach(([key, data]) => {
@@ -849,7 +864,9 @@ export default function OrdersHistoryPage() {
                                           {members ? (
                                             <span className="ml-1 text-primary-600 font-black">({members})</span>
                                           ) : order.numberOfMembers ? (
-                                            <span className="ml-1 text-slate-400 font-medium">({order.numberOfMembers})</span>
+                                            <span className="ml-1 text-slate-400 font-medium">
+                                              ({totalMembersAll > 0 ? totalMembersAll : order.numberOfMembers})
+                                            </span>
                                           ) : null}
                                         </span>
                                         {isCombinedOrder && eventDates.length > 1 && (

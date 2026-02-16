@@ -158,6 +158,23 @@ export function getMenuItemTableConfig(): TableConfig<MenuItem> {
 type BillWithOrder = Bill & { order?: Order & { customer?: Customer } }
 
 export function getBillTableConfig(): TableConfig<BillWithOrder> {
+  const getTotalMembers = (bill: BillWithOrder) => {
+    const mealTypeAmounts = bill.order?.mealTypeAmounts as
+      | Record<string, { numberOfMembers?: number } | number>
+      | null
+      | undefined
+    if (!mealTypeAmounts) return bill.order?.numberOfMembers || null
+
+    const total = Object.values(mealTypeAmounts).reduce((sum, value) => {
+      if (typeof value === 'object' && value !== null && value.numberOfMembers) {
+        return sum + (Number(value.numberOfMembers) || 0)
+      }
+      return sum
+    }, 0)
+
+    return total > 0 ? total : bill.order?.numberOfMembers || null
+  }
+
   const getEventDate = (bill: BillWithOrder) => {
     const mealTypeAmounts = bill.order?.mealTypeAmounts as
       | Record<string, { date?: string } | number>
@@ -172,8 +189,27 @@ export function getBillTableConfig(): TableConfig<BillWithOrder> {
 
   const getServicesSummary = (bill: BillWithOrder) => {
     const services = bill.order?.services as string[] | undefined
-    if (!services || services.length === 0) return 'No services'
-    return services.map((service) => service.charAt(0).toUpperCase() + service.slice(1)).join(', ')
+    if (services && services.length > 0) {
+      return services.map((service) => service.charAt(0).toUpperCase() + service.slice(1)).join(', ')
+    }
+
+    const mealTypeAmounts = bill.order?.mealTypeAmounts as
+      | Record<string, { services?: string[] } | number>
+      | null
+      | undefined
+    if (!mealTypeAmounts) return 'No services'
+
+    const mergedServices = new Set<string>()
+    Object.values(mealTypeAmounts).forEach((value) => {
+      if (typeof value === 'object' && value !== null && Array.isArray(value.services)) {
+        value.services.forEach((service) => mergedServices.add(service))
+      }
+    })
+
+    if (mergedServices.size === 0) return 'No services'
+    return Array.from(mergedServices)
+      .map((service) => service.charAt(0).toUpperCase() + service.slice(1))
+      .join(', ')
   }
 
   return {
@@ -225,7 +261,7 @@ export function getBillTableConfig(): TableConfig<BillWithOrder> {
         header: 'Details',
         render: (bill) => (
           <div className="text-xs text-gray-600 space-y-1">
-            <div>Members: {bill.order?.numberOfMembers || 'N/A'}</div>
+            <div>Members: {getTotalMembers(bill) || 'N/A'}</div>
             <div>Services: {getServicesSummary(bill)}</div>
           </div>
         ),
