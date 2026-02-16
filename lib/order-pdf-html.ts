@@ -41,7 +41,6 @@ export function buildOrderPdfHtml(
 
   const addToDate = (date: string, sessionKey: string, menuType: string, item: any, members?: number, services?: string[]) => {
     if (!byDate[date]) byDate[date] = []
-    // Use sessionKey to keep merged sessions separate; fallback to menuType for legacy
     const groupKey = sessionKey || `legacy_${menuType}`
     let session = byDate[date].find(s => (s as any)._key === groupKey)
     if (!session) {
@@ -54,6 +53,23 @@ export function buildOrderPdfHtml(
     if (services?.length) session.services = services
   }
 
+  // Pre-populate dates from mealTypeAmounts so all dates appear even if items are missing
+  if (mealTypeAmounts) {
+    Object.entries(mealTypeAmounts).forEach(([key, data]) => {
+      const d = typeof data === 'object' && data !== null && data.date ? String(data.date).split('T')[0] : null
+      if (d) {
+        if (!byDate[d]) byDate[d] = []
+        const menuType = (data as any)?.menuType || 'OTHER'
+        const groupKey = key || `legacy_${menuType}`
+        if (!byDate[d].some((s: any) => s._key === groupKey)) {
+          const session = { menuType, members: (data as any)?.numberOfMembers, services: (data as any)?.services, items: [] } as SessionGroup & { _key?: string }
+          ;(session as any)._key = groupKey
+          byDate[d].push(session)
+        }
+      }
+    })
+  }
+
   ;(order.items || []).forEach((item: any) => {
     const sessionKey = item.mealType
     const sessionData = sessionKey && mealTypeAmounts?.[sessionKey]
@@ -61,14 +77,15 @@ export function buildOrderPdfHtml(
       : null
 
     const menuType = sessionData?.menuType || item.menuItem?.type || 'OTHER'
-    const date = sessionData?.date ? formatDate(sessionData.date) : eventDateDisplay
+    const rawDate = sessionData?.date ? String(sessionData.date).split('T')[0] : null
+    const dateKey = rawDate || eventDateDisplay
     const members = sessionData?.numberOfMembers
     const services = sessionData?.services
 
-    addToDate(date, sessionKey || '', menuType, item, members, services)
+    addToDate(dateKey, sessionKey || '', menuType, item, members, services)
   })
 
-  // Sort dates and sessions (use numeric sort for formatted dates)
+  // Sort dates (use raw ISO for reliable sort, format for display)
   const sortedDates = Object.keys(byDate).sort((a, b) => {
     const da = new Date(a).getTime()
     const db = new Date(b).getTime()
@@ -76,11 +93,15 @@ export function buildOrderPdfHtml(
   })
 
   let menuItemsHtml = ''
-  sortedDates.forEach((date) => {
-    const sessions = byDate[date].sort((a, b) => getMealTypePriority(a.menuType) - getMealTypePriority(b.menuType))
+  sortedDates.forEach((dateKey) => {
+    const sessions = byDate[dateKey]
+      .filter(s => s.items.length > 0)
+      .sort((a, b) => getMealTypePriority(a.menuType) - getMealTypePriority(b.menuType))
+    if (sessions.length === 0) return
+    const dateDisplay = /^\d{4}-\d{2}-\d{2}/.test(dateKey) ? formatDate(dateKey) : dateKey
     menuItemsHtml += `
       <div style="grid-column: span 4; font-weight: 700; font-size: 12px; margin-top: 12px; margin-bottom: 4px; color: #444; text-transform: uppercase; padding-bottom: 2px; border-bottom: 1px solid #ddd; font-family: 'Poppins', sans-serif;">
-        📅 ${date}
+        📅 ${dateDisplay}
       </div>
     `
     sessions.forEach((session) => {
@@ -169,7 +190,7 @@ export function buildOrderPdfHtml(
     </div>
     ${stallsHtml}
     <div style="margin-top: 25px; display: flex; justify-content: flex-end;">
-      <img src="/images/stamp.png" alt="Business Stamp" width="90" height="90" style="width: 90px; height: 90px; transform: rotate(-90deg); object-fit: contain;" crossorigin="anonymous" />
+      <img src="/images/stamp.png" alt="Business Stamp" width="220" height="120" style="width: 220px; height: 120px; transform: rotate(-90deg); object-fit: contain;" crossorigin="anonymous" />
     </div>
   `
 }

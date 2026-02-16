@@ -421,23 +421,40 @@ export default function OrdersHistoryPage() {
     type SessionGroup = { menuType: string; members?: number; services?: string[]; items: any[] }
     const byDate: Record<string, SessionGroup[]> = {}
 
+    if (mealTypeAmounts) {
+      Object.entries(mealTypeAmounts).forEach(([key, data]) => {
+        const d = typeof data === 'object' && data !== null && (data as any).date ? String((data as any).date).split('T')[0] : null
+        if (d) {
+          if (!byDate[d]) byDate[d] = []
+          const menuType = (data as any)?.menuType || 'OTHER'
+          const groupKey = key || `legacy_${menuType}`
+          if (!byDate[d].some((s: any) => s._key === groupKey)) {
+            const session = { menuType, members: (data as any)?.numberOfMembers, services: (data as any)?.services, items: [] } as SessionGroup & { _key?: string }
+            ;(session as any)._key = groupKey
+            byDate[d].push(session)
+          }
+        }
+      })
+    }
+
     order.items.forEach((item: any) => {
       const sessionKey = item.mealType
       const sessionData = sessionKey && mealTypeAmounts?.[sessionKey]
         ? (typeof mealTypeAmounts[sessionKey] === 'object' && mealTypeAmounts[sessionKey] !== null ? mealTypeAmounts[sessionKey] as any : null)
         : null
       const menuType = sessionData?.menuType || item.menuItem?.type || 'OTHER'
-      const date = sessionData?.date ? formatDate(sessionData.date) : eventDateDisplay
+      const rawDate = sessionData?.date ? String(sessionData.date).split('T')[0] : null
+      const dateKey = rawDate || eventDateDisplay
       const members = sessionData?.numberOfMembers
       const services = sessionData?.services
 
       const groupKey = sessionKey || `legacy_${menuType}`
-      if (!byDate[date]) byDate[date] = []
-      let session = byDate[date].find((s: any) => s._key === groupKey)
+      if (!byDate[dateKey]) byDate[dateKey] = []
+      let session = byDate[dateKey].find((s: any) => s._key === groupKey)
       if (!session) {
         session = { menuType, members, services, items: [] } as SessionGroup & { _key?: string }
         ;(session as any)._key = groupKey
-        byDate[date].push(session)
+        byDate[dateKey].push(session)
       }
       session.items.push(item)
       if (members != null) session.members = members
@@ -449,11 +466,15 @@ export default function OrdersHistoryPage() {
       const db = new Date(b).getTime()
       return isNaN(da) ? 1 : isNaN(db) ? -1 : da - db
     })
-    sortedDates.forEach((date) => {
-      const sessions = byDate[date].sort((a, b) => getMealTypePriority(a.menuType) - getMealTypePriority(b.menuType))
+    sortedDates.forEach((dateKey) => {
+      const sessions = byDate[dateKey]
+        .filter((s: any) => s.items.length > 0)
+        .sort((a: any, b: any) => getMealTypePriority(a.menuType) - getMealTypePriority(b.menuType))
+      if (sessions.length === 0) return
+      const dateDisplay = /^\d{4}-\d{2}-\d{2}/.test(dateKey) ? formatDate(dateKey) : dateKey
       htmlContent += `
         <div style="grid-column: span 4; font-weight: 700; font-size: 10px; margin-top: 12px; margin-bottom: 4px; color: #444; text-transform: uppercase; padding-bottom: 2px; border-bottom: 1px solid #ddd; font-family: 'Poppins', sans-serif;">
-          📅 ${date}
+          📅 ${dateDisplay}
         </div>
       `
       sessions.forEach((session) => {
@@ -500,7 +521,7 @@ export default function OrdersHistoryPage() {
     // Add stamp below menu (and stalls)
     htmlContent += `
       <div style="margin-top: 25px; display: flex; justify-content: flex-end;">
-        <img src="/images/stamp.png" alt="Business Stamp" width="200" height="90" style="width: 200px; height: 90px; transform: rotate(-90deg); object-fit: contain;" crossorigin="anonymous" />
+        <img src="/images/stamp.png" alt="Business Stamp" width="220" height="120" style="width: 220px; height: 120px; transform: rotate(-90deg); object-fit: contain;" crossorigin="anonymous" />
       </div>
     `
 
@@ -597,7 +618,9 @@ export default function OrdersHistoryPage() {
   }
 
   const handleGeneratePDF = async (order: any, language: 'english' | 'telugu') => {
-    const pdfBase64 = await renderOrderToPdf(order, language)
+    const freshOrder = await fetch(`/api/orders/${order.id}`).then(r => r.ok ? r.json() : order).catch(() => order)
+    const orderToUse = freshOrder?.items?.length ? freshOrder : order
+    const pdfBase64 = await renderOrderToPdf(orderToUse, language)
     if (!pdfBase64) {
       toast.error('Failed to generate PDF. Please try again.')
       return
@@ -616,7 +639,9 @@ export default function OrdersHistoryPage() {
   }
 
   const handleGenerateImage = async (order: any, language: 'english' | 'telugu' = 'english') => {
-    const imageDataUrl = await renderOrderToImage(order, language)
+    const freshOrder = await fetch(`/api/orders/${order.id}`).then(r => r.ok ? r.json() : order).catch(() => order)
+    const orderToUse = freshOrder?.items?.length ? freshOrder : order
+    const imageDataUrl = await renderOrderToImage(orderToUse, language)
     if (!imageDataUrl) {
       toast.error('Failed to generate image. Please try again.')
       return
@@ -636,7 +661,9 @@ export default function OrdersHistoryPage() {
     }
     setEmailSending(true)
     try {
-      const pdfBase64 = await renderOrderToPdf(order, language)
+      const freshOrder = await fetch(`/api/orders/${order.id}`).then(r => r.ok ? r.json() : order).catch(() => order)
+      const orderToUse = freshOrder?.items?.length ? freshOrder : order
+      const pdfBase64 = await renderOrderToPdf(orderToUse, language)
       if (!pdfBase64) {
         toast.error('Failed to generate PDF. Please try again.')
         return
