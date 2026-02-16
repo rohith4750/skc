@@ -377,7 +377,7 @@ export default function OrdersHistoryPage() {
         .financial-label { font-weight: 600; }
       </style>
       
-      <div class="header">
+      <div class="header" style="position: relative;">
         <div class="header-top">
           <div>Telidevara Rajendraprasad</div>
           <div>ART FOOD ZONE (A Food Caterers)</div>
@@ -388,6 +388,9 @@ export default function OrdersHistoryPage() {
           <div>Regd. No: 2361930100031</div>
           <div>Plot No. 115, Padmavathi Nagar, Bank Colony, Saheb Nag Vanathalipuram, Hyderabad - 500070.</div>
           <div>Email: pujyasri1989cya@gmail.com, Cell: 9866525102, 9963691393, 9390015302</div>
+        </div>
+        <div style="position: absolute; top: 10px; right: 10px;">
+          <img src="/images/stamp.png" alt="Business Stamp" style="height: 70px; width: auto; transform: rotate(90deg); object-fit: contain;" crossorigin="anonymous" />
         </div>
       </div>
       
@@ -629,10 +632,10 @@ export default function OrdersHistoryPage() {
   }
 
   return (
-    <div className="p-6">
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="text-3xl font-bold text-gray-800">Orders History</h1>
-        <div className="flex items-center gap-3">
+    <div className="p-4 md:p-6">
+      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 md:gap-0 mb-6">
+        <h1 className="text-2xl md:text-3xl font-bold text-gray-800">Orders History</h1>
+        <div className="flex flex-wrap items-center gap-2 md:gap-3">
           {selectedOrderIds.length > 1 && (
             <button
               onClick={() => setIsMergeModalOpen(true)}
@@ -725,18 +728,18 @@ export default function OrdersHistoryPage() {
             {/* Date Range */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">Date Range</label>
-              <div className="flex gap-2">
+              <div className="flex flex-col sm:flex-row gap-2">
                 <input
                   type="date"
                   value={dateRange.start}
                   onChange={(e) => setDateRange({ ...dateRange, start: e.target.value })}
-                  className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                  className="flex-1 px-3 py-2.5 sm:py-2 min-h-[44px] sm:min-h-0 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
                 />
                 <input
                   type="date"
                   value={dateRange.end}
                   onChange={(e) => setDateRange({ ...dateRange, end: e.target.value })}
-                  className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                  className="flex-1 px-3 py-2.5 sm:py-2 min-h-[44px] sm:min-h-0 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
                 />
               </div>
             </div>
@@ -757,13 +760,83 @@ export default function OrdersHistoryPage() {
         </div>
       )}
 
-      {/* Orders Table */}
+      {/* Orders - Mobile Card Layout (only on mobile) */}
       {filteredOrders.length === 0 ? (
         <div className="bg-white rounded-lg shadow-md p-8 text-center text-gray-500">
           No orders found.
         </div>
       ) : (
-        <div className="bg-white rounded-lg shadow-md overflow-hidden">
+        <>
+        {/* Mobile Cards - visible only below md */}
+        <div className="md:hidden space-y-3">
+          {paginatedOrders.map((order: any) => {
+            const mealTypeAmounts = order.mealTypeAmounts as Record<string, { date: string; numberOfMembers?: number } | number> | null
+            const eventDates: string[] = []
+            if (mealTypeAmounts) {
+              Object.values(mealTypeAmounts).forEach((v) => {
+                if (typeof v === 'object' && v !== null && v.date && !eventDates.includes(v.date)) {
+                  eventDates.push(v.date)
+                }
+              })
+            }
+            eventDates.sort((a, b) => new Date(a).getTime() - new Date(b).getTime())
+            const firstDate = eventDates[0] ? new Date(eventDates[0]).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }) : null
+
+            return (
+              <div key={order.id} className="bg-white rounded-xl shadow-md border border-gray-100 overflow-hidden">
+                <div className="p-4">
+                  <div className="flex items-start justify-between gap-3 mb-3">
+                    <div className="flex-1 min-w-0">
+                      <div className="font-semibold text-gray-900 truncate">{order.customer?.name || 'Unknown'}</div>
+                      <div className="text-sm text-gray-500">{order.customer?.phone || ''}</div>
+                      {(order as any).eventName && (
+                        <div className="text-sm text-gray-700 mt-0.5 truncate">{(order as any).eventName}</div>
+                      )}
+                    </div>
+                    <input
+                      type="checkbox"
+                      checked={selectedOrderIds.includes(order.id)}
+                      onChange={() => toggleOrderSelection(order.id)}
+                      className="w-5 h-5 rounded border-gray-300 text-primary-600 focus:ring-primary-500 flex-shrink-0 mt-0.5"
+                    />
+                  </div>
+                  <div className="flex flex-wrap items-center gap-2 mb-3">
+                    {firstDate && (
+                      <span className="inline-flex items-center gap-1 px-2 py-1 bg-slate-100 rounded-lg text-xs font-medium text-slate-700">
+                        <FaCalendarAlt className="text-slate-500" /> {firstDate}
+                        {eventDates.length > 1 && <span className="text-slate-500">+{eventDates.length - 1}</span>}
+                      </span>
+                    )}
+                    <select
+                      value={order.status}
+                      onChange={(e) => {
+                        if (e.target.value === order.status) return
+                        setStatusConfirm({ isOpen: true, id: order.id, newStatus: e.target.value, oldStatus: order.status })
+                      }}
+                      className={`px-3 py-1.5 text-xs font-semibold rounded-full border-0 cursor-pointer touch-manipulation ${order.status === 'completed' ? 'bg-green-100 text-green-800' : order.status === 'in_progress' ? 'bg-yellow-100 text-yellow-800' : order.status === 'cancelled' ? 'bg-red-100 text-red-800' : 'bg-gray-100 text-gray-800'}`}
+                    >
+                      <option value="pending">Pending</option>
+                      <option value="in_progress">In Progress</option>
+                      <option value="completed">Completed</option>
+                      <option value="cancelled">Cancelled</option>
+                    </select>
+                  </div>
+                  <div className="flex flex-wrap gap-2 pt-3 border-t border-gray-100">
+                    <Link href={`/orders/summary/${order.id}`} className="p-2.5 bg-blue-50 text-blue-600 rounded-lg touch-manipulation" title="Summary"><FaChartLine /></Link>
+                    <Link href={`/orders?edit=${order.id}`} className="p-2.5 bg-yellow-50 text-yellow-600 rounded-lg touch-manipulation" title="Edit"><FaEdit /></Link>
+                    <button onClick={() => setPdfLanguageModal({ isOpen: true, order })} className="p-2.5 bg-secondary-50 text-secondary-600 rounded-lg touch-manipulation" title="PDF"><FaFilePdf /></button>
+                    <button onClick={() => handleGenerateImage(order, 'english')} className="p-2.5 bg-indigo-50 text-indigo-600 rounded-lg touch-manipulation" title="Image"><FaFileImage /></button>
+                    <button onClick={() => order.customer?.email ? setEmailModal({ isOpen: true, order }) : toast.error('Customer email not available')} className="p-2.5 bg-green-50 text-green-600 rounded-lg touch-manipulation" title="Email"><FaEnvelope /></button>
+                    <button onClick={() => handleDelete(order.id)} className="p-2.5 bg-red-50 text-red-600 rounded-lg touch-manipulation" title="Delete"><FaTrash /></button>
+                  </div>
+                </div>
+              </div>
+            )
+          })}
+        </div>
+
+        {/* Desktop Table - visible only md and up */}
+        <div className="hidden md:block bg-white rounded-lg shadow-md overflow-hidden">
           <div className="overflow-x-auto">
             <table className="min-w-full divide-y divide-gray-200">
               <thead className="bg-gray-50">
@@ -1027,6 +1100,7 @@ export default function OrdersHistoryPage() {
             </table>
           </div>
         </div>
+        </>
       )}
 
       {/* Pagination Controls */}

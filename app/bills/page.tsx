@@ -3,7 +3,7 @@
 import { useEffect, useState, useMemo } from 'react'
 import { formatCurrency, formatDateTime, formatDate, sendWhatsAppMessage } from '@/lib/utils'
 import { Bill, Order, Customer } from '@/types'
-import { FaPrint, FaCheck, FaEdit, FaFilter, FaChartLine, FaWallet, FaPercent, FaCalendarAlt, FaEnvelope, FaWhatsapp, FaFileImage } from 'react-icons/fa'
+import { FaPrint, FaCheck, FaEdit, FaFilter, FaChartLine, FaWallet, FaPercent, FaCalendarAlt, FaEnvelope, FaWhatsapp, FaFileImage, FaChevronLeft, FaChevronRight } from 'react-icons/fa'
 import toast from 'react-hot-toast'
 import { fetchWithLoader } from '@/lib/fetch-with-loader'
 import Table from '@/components/Table'
@@ -514,14 +514,27 @@ export default function BillsPage() {
 
   const tableConfig = getBillTableConfig()
 
+  // Pagination for mobile cards
+  const totalPagesBills = Math.ceil(filteredBills.length / itemsPerPage) || 1
+  const startIdx = (currentPage - 1) * itemsPerPage
+  const endIdx = startIdx + itemsPerPage
+  const paginatedBills = filteredBills.slice(startIdx, endIdx)
+
+  const getBillEventDate = (bill: any) => {
+    const mealTypeAmounts = bill.order?.mealTypeAmounts as Record<string, { date?: string } | number> | null
+    if (!mealTypeAmounts) return null
+    const first = Object.values(mealTypeAmounts).find((v) => typeof v === 'object' && v !== null && (v as any).date) as { date?: string } | undefined
+    return first?.date ? formatDate(first.date) : null
+  }
+
   return (
-    <div className="p-8">
-      <div className="mb-8 flex justify-between items-center">
+    <div className="p-4 md:p-8">
+      <div className="mb-6 md:mb-8 flex flex-col md:flex-row md:justify-between md:items-center gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-gray-800">Bills</h1>
-          <p className="text-gray-600 mt-2">Smart billing overview with event insights</p>
+          <h1 className="text-2xl md:text-3xl font-bold text-gray-800">Bills</h1>
+          <p className="text-gray-600 mt-1 md:mt-2 text-sm md:text-base">Smart billing overview with event insights</p>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-2 md:gap-3">
           <div className="flex bg-white border border-gray-200 rounded-lg p-1 shadow-sm">
             <button
               onClick={() => { setStatusFilter('all'); setCurrentPage(1); }}
@@ -586,7 +599,7 @@ export default function BillsPage() {
             {/* Date Range */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">Date Range</label>
-              <div className="flex gap-2">
+              <div className="flex flex-col sm:flex-row gap-2">
                 <input
                   type="date"
                   value={dateRange.start}
@@ -594,7 +607,7 @@ export default function BillsPage() {
                     setDateRange({ ...dateRange, start: e.target.value })
                     setCurrentPage(1)
                   }}
-                  className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                  className="flex-1 px-3 py-2.5 sm:py-2 min-h-[44px] sm:min-h-0 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
                 />
                 <input
                   type="date"
@@ -603,7 +616,7 @@ export default function BillsPage() {
                     setDateRange({ ...dateRange, end: e.target.value })
                     setCurrentPage(1)
                   }}
-                  className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                  className="flex-1 px-3 py-2.5 sm:py-2 min-h-[44px] sm:min-h-0 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
                 />
               </div>
             </div>
@@ -664,6 +677,77 @@ export default function BillsPage() {
         </div>
       </div>
 
+      {/* Mobile Card Layout - visible only below md */}
+      <div className="md:hidden space-y-3">
+        {filteredBills.length === 0 ? (
+          <div className="bg-white rounded-lg shadow-md p-8 text-center text-gray-500">{tableConfig.emptyMessage}</div>
+        ) : (
+          <>
+            {paginatedBills.map((bill: any) => {
+              const total = bill.totalAmount || 0
+              const paid = bill.paidAmount || 0
+              const pct = total > 0 ? Math.min(100, (paid / total) * 100) : 0
+              return (
+                <div key={bill.id} className="bg-white rounded-xl shadow-md border border-gray-100 overflow-hidden">
+                  <div className="p-4">
+                    <div className="font-semibold text-gray-900">{bill.order?.customer?.name || 'Unknown'}</div>
+                    <div className="text-sm text-gray-500">{bill.order?.customer?.phone || ''}</div>
+                    <div className="text-sm text-gray-700 mt-1">{bill.order?.eventName || 'Event'}</div>
+                    <div className="text-xs text-gray-500 mt-0.5">{getBillEventDate(bill) || formatDateTime(bill.createdAt)}</div>
+                    <div className="flex items-center justify-between mt-3 pt-3 border-t border-gray-100">
+                      <div>
+                        <div className="text-xs text-gray-500">Total</div>
+                        <div className="font-semibold text-gray-900">{formatCurrency(bill.totalAmount)}</div>
+                      </div>
+                      <div>
+                        <div className="text-xs text-gray-500">Remaining</div>
+                        <div className="font-semibold text-red-600">{formatCurrency(bill.remainingAmount)}</div>
+                      </div>
+                      <span className={`px-3 py-1 rounded-full text-xs font-medium ${bill.status === 'paid' ? 'bg-green-100 text-green-800' : bill.status === 'partial' ? 'bg-yellow-100 text-yellow-800' : 'bg-red-100 text-red-800'}`}>
+                        {bill.status.charAt(0).toUpperCase() + bill.status.slice(1)}
+                      </span>
+                    </div>
+                    <div className="mt-3">
+                      <div className="flex justify-between text-xs text-gray-500 mb-1">
+                        <span>{pct.toFixed(0)}% paid</span>
+                        <span>{formatCurrency(paid)}</span>
+                      </div>
+                      <div className="h-2 w-full rounded-full bg-gray-100">
+                        <div className="h-2 rounded-full bg-primary-500 transition-all" style={{ width: `${pct}%` }} />
+                      </div>
+                    </div>
+                    <div className="flex flex-wrap gap-2 mt-3 pt-3 border-t border-gray-100">
+                      {bill.status !== 'paid' && (
+                        <button onClick={() => handleMarkPaid(bill.id)} className="p-2.5 bg-green-50 text-green-600 rounded-lg touch-manipulation" title="Mark Paid"><FaCheck /></button>
+                      )}
+                      <button onClick={() => handleSendBillEmail(bill)} disabled={!bill.order?.customer?.email} className="p-2.5 bg-slate-50 text-slate-600 rounded-lg touch-manipulation disabled:opacity-50" title="Email"><FaEnvelope /></button>
+                      <button onClick={() => handleSendBillWhatsApp(bill)} disabled={!bill.order?.customer?.phone} className="p-2.5 bg-emerald-50 text-emerald-600 rounded-lg touch-manipulation disabled:opacity-50" title="WhatsApp"><FaWhatsapp /></button>
+                      <button onClick={() => handleGenerateImage(bill)} className="p-2.5 bg-indigo-50 text-indigo-600 rounded-lg touch-manipulation" title="Image"><FaFileImage /></button>
+                      <button onClick={() => handleGeneratePDF(bill)} className="p-2.5 bg-primary-50 text-primary-600 rounded-lg touch-manipulation" title="PDF"><FaPrint /></button>
+                    </div>
+                  </div>
+                </div>
+              )
+            })}
+            {/* Mobile Pagination */}
+            {(totalPagesBills > 1 || itemsPerPage < filteredBills.length) && (
+              <div className="flex items-center justify-between bg-white px-4 py-3 rounded-lg shadow-md mt-4">
+                <div className="text-sm text-gray-700">
+                  {startIdx + 1}-{Math.min(endIdx, filteredBills.length)} of {filteredBills.length}
+                </div>
+                <div className="flex items-center gap-1">
+                  <button onClick={() => setCurrentPage((p) => Math.max(1, p - 1))} disabled={currentPage === 1} className="p-2 rounded-lg bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed"><FaChevronLeft /></button>
+                  <span className="px-3 py-1 text-sm font-medium">{currentPage} / {totalPagesBills}</span>
+                  <button onClick={() => setCurrentPage((p) => Math.min(totalPagesBills, p + 1))} disabled={currentPage === totalPagesBills} className="p-2 rounded-lg bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed"><FaChevronRight /></button>
+                </div>
+              </div>
+            )}
+          </>
+        )}
+      </div>
+
+      {/* Desktop Table - visible only md and up */}
+      <div className="hidden md:block">
       <Table
         columns={tableConfig.columns}
         data={filteredBills}
@@ -719,6 +803,7 @@ export default function BillsPage() {
           </div>
         )}
       />
+      </div>
     </div>
   )
 }

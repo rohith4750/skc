@@ -115,7 +115,7 @@ export function buildOrderPdfHtml(
       .info-label { font-weight: 600; display: inline-block; width: 120px; font-family: 'Poppins', sans-serif; }
       .menu-item { padding: 2px 4px; font-family: 'Poppins', sans-serif; font-size: 11px; line-height: 1.3; font-weight: 600; }
     </style>
-    <div class="header">
+    <div class="header" style="position: relative;">
       <div class="header-top">
         <div>Telidevara Rajendraprasad</div>
         <div>ART FOOD ZONE (A Food Caterers)</div>
@@ -126,6 +126,9 @@ export function buildOrderPdfHtml(
         <div>Regd. No: 2361930100031</div>
         <div>Plot No. 115, Padmavathi Nagar, Bank Colony, Saheb Nag Vanathalipuram, Hyderabad - 500070.</div>
         <div>Email: pujyasri1989cya@gmail.com, Cell: 9866525102, 9963691393, 9390015302</div>
+      </div>
+      <div style="position: absolute; top: 10px; right: 10px;">
+        <img src="/images/stamp.png" alt="Business Stamp" style="height: 70px; width: auto; transform: rotate(90deg); object-fit: contain;" crossorigin="anonymous" />
       </div>
     </div>
     <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 25px;">

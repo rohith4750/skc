@@ -5,7 +5,7 @@ import { Storage } from '@/lib/storage-api'
 import { generateId, formatCurrency, formatDateTime } from '@/lib/utils'
 import { Customer, MenuItem, OrderItem } from '@/types'
 import { FaSearch, FaPlus, FaTimes, FaGripLines } from 'react-icons/fa'
-import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd'
+import { DragDropContext, Droppable, Draggable, type DroppableProvided, type DraggableProvided, type DraggableStateSnapshot } from '@hello-pangea/dnd'
 import Link from 'next/link'
 import { useSearchParams, useRouter } from 'next/navigation'
 import toast from 'react-hot-toast'
@@ -890,14 +890,14 @@ export default function OrdersPage() {
   }
 
   return (
-    <div className="p-8">
+    <div className="p-4 md:p-8 pb-20 md:pb-8">
       <DragDropContext onDragEnd={handleDragEnd}>
         <div className="mb-6 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
           <div>
-            <h1 className="text-3xl font-bold text-gray-800 mb-2">
+            <h1 className="text-2xl md:text-3xl font-bold text-gray-800 mb-2">
               {isEditMode ? 'Edit Order' : 'Create New Order'}
             </h1>
-            <p className="text-gray-600">
+            <p className="text-gray-600 text-sm md:text-base">
               {isEditMode ? 'Update the order details below' : 'Fill in the form below to create a new catering order'}
             </p>
           </div>
@@ -912,7 +912,7 @@ export default function OrdersPage() {
         </div>
 
         {/* Order Form */}
-        <div className="bg-white rounded-lg shadow-md p-6 mb-8">
+        <div className="bg-white rounded-xl md:rounded-lg shadow-lg md:shadow-md p-4 md:p-6 mb-8 border border-gray-100 md:border-0">
           <form onSubmit={handleSubmit}>
             <div className="space-y-6">
               <div>
@@ -934,8 +934,8 @@ export default function OrdersPage() {
                         }
                       }}
                       onFocus={() => setShowCustomerDropdown(true)}
-                      placeholder="Search customer by name, phone, or email..."
-                      className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                      placeholder="Search customer..."
+                      className="w-full pl-10 pr-4 py-3 md:py-2 min-h-[48px] md:min-h-0 border border-gray-300 rounded-xl md:rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 text-base md:text-sm touch-manipulation"
                     />
                     {formData.customerId && (
                       <button
@@ -997,19 +997,19 @@ export default function OrdersPage() {
                   type="text"
                   value={formData.eventName}
                   onChange={(e: any) => setFormData({ ...formData, eventName: e.target.value })}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-                  placeholder="Enter event name (e.g., Wedding, Birthday, etc.)"
+                  className="w-full px-4 py-3 md:py-2 min-h-[48px] md:min-h-0 border border-gray-300 rounded-xl md:rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 text-base md:text-sm touch-manipulation"
+                  placeholder="e.g., Wedding, Birthday..."
                 />
               </div>
 
               {/* Meal Types Section */}
               <div className="border-t border-gray-200 pt-4">
-                <div className="flex justify-between items-center mb-4">
+                <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 mb-4">
                   <h3 className="text-lg font-semibold text-gray-800">Meal Types</h3>
                   <button
                     type="button"
                     onClick={handleAddMealType}
-                    className="px-4 py-2 bg-primary-500 text-white rounded-lg hover:bg-primary-600 transition-colors flex items-center gap-2"
+                    className="w-full sm:w-auto px-4 py-3 md:py-2 bg-primary-500 text-white rounded-xl md:rounded-lg hover:bg-primary-600 transition-colors flex items-center justify-center gap-2 font-medium touch-manipulation min-h-[48px] md:min-h-0"
                   >
                     <FaPlus /> Add Meal Type
                   </button>
@@ -1032,8 +1032,8 @@ export default function OrdersPage() {
                         const isCollapsed = collapsedMealTypes[mealType.id] || false
 
                         return (
-                          <div key={mealType.id} className="border border-gray-300 rounded-lg bg-gray-50">
-                            <div className="flex justify-between items-center p-4 border-b border-gray-300">
+                          <div key={mealType.id} className="border border-gray-300 rounded-xl md:rounded-lg bg-gray-50 overflow-hidden">
+                            <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 p-4 border-b border-gray-300">
                               <h4 className="text-md font-semibold text-gray-800">
                                 Meal Type #{index + 1} {mealType.menuType && `- ${mealType.menuType.charAt(0).toUpperCase() + mealType.menuType.slice(1)}`}
                               </h4>
@@ -1067,9 +1067,9 @@ export default function OrdersPage() {
                             </div>
 
                             {!isCollapsed && (
-                              <div className="p-6 space-y-4">
+                              <div className="p-4 md:p-6 space-y-4">
                                 {/* Menu Type Selector and Date */}
-                                <div className="grid grid-cols-2 gap-4">
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                   <div>
                                     <label className="block text-sm font-medium text-gray-700 mb-1">
                                       Menu Type *
@@ -1078,7 +1078,7 @@ export default function OrdersPage() {
                                       required
                                       value={mealType.menuType}
                                       onChange={(e: any) => handleUpdateMealType(mealType.id, 'menuType', e.target.value)}
-                                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                                      className="w-full px-4 py-3 md:py-2 min-h-[48px] md:min-h-0 border border-gray-300 rounded-xl md:rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 text-base md:text-sm touch-manipulation"
                                     >
                                       <option value="">Select Menu Type</option>
                                       <option value="breakfast">Breakfast</option>
@@ -1098,7 +1098,7 @@ export default function OrdersPage() {
                                       required
                                       value={mealType.date}
                                       onChange={(e: any) => handleUpdateMealType(mealType.id, 'date', e.target.value)}
-                                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                                      className="w-full px-4 py-3 md:py-2 min-h-[48px] md:min-h-0 border border-gray-300 rounded-xl md:rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 text-base md:text-sm touch-manipulation"
                                     />
                                   </div>
                                 </div>
@@ -1112,7 +1112,7 @@ export default function OrdersPage() {
                                     </label>
                                     <div className="space-y-2">
                                       {['buffet', 'vaddana', 'handover', 'water_bottles', 'cleaning'].map((service) => (
-                                        <label key={service} className="flex items-center p-2 border border-gray-200 rounded-lg hover:bg-gray-50 cursor-pointer">
+                                        <label key={service} className="flex items-center p-3 md:p-2 border border-gray-200 rounded-xl md:rounded-lg hover:bg-gray-50 cursor-pointer touch-manipulation min-h-[48px] md:min-h-0">
                                           <input
                                             type="checkbox"
                                             checked={mealType.services.includes(service)}
@@ -1123,7 +1123,7 @@ export default function OrdersPage() {
                                                 handleUpdateMealType(mealType.id, 'services', mealType.services.filter((s: string) => s !== service))
                                               }
                                             }}
-                                            className="w-4 h-4 text-primary-600 border-gray-300 rounded focus:ring-primary-500 mr-3"
+                                            className="w-5 h-5 md:w-4 md:h-4 text-primary-600 border-gray-300 rounded focus:ring-primary-500 mr-3 flex-shrink-0"
                                           />
                                           <span className="text-sm font-medium text-gray-900 capitalize">
                                             {service.charAt(0).toUpperCase() + service.slice(1)}
@@ -1144,8 +1144,8 @@ export default function OrdersPage() {
                                       step="1"
                                       value={mealType.numberOfMembers}
                                       onChange={(e: any) => handleUpdateMealType(mealType.id, 'numberOfMembers', e.target.value)}
-                                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-                                      placeholder="Enter number of members/guests"
+                                      className="w-full px-4 py-3 md:py-2 min-h-[48px] md:min-h-0 border border-gray-300 rounded-xl md:rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 text-base md:text-sm touch-manipulation"
+                                      placeholder="Number of guests"
                                     />
                                     <p className="text-xs text-gray-500 mt-1">
                                       Number of guests for this meal type
@@ -1168,7 +1168,7 @@ export default function OrdersPage() {
                                           <button
                                             type="button"
                                             onClick={() => setSelectedSubFilter(prev => ({ ...prev, [mealType.id]: 'all' }))}
-                                            className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${subFilter === 'all'
+                                            className={`px-4 py-2.5 md:py-2 rounded-xl md:rounded-lg text-sm font-medium transition-colors touch-manipulation min-h-[44px] md:min-h-0 ${subFilter === 'all'
                                               ? 'bg-primary-500 text-white'
                                               : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                                               }`}
@@ -1180,7 +1180,7 @@ export default function OrdersPage() {
                                               key={subcategory}
                                               type="button"
                                               onClick={() => setSelectedSubFilter(prev => ({ ...prev, [mealType.id]: subcategory }))}
-                                              className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${subFilter === subcategory
+                                              className={`px-4 py-2.5 md:py-2 rounded-xl md:rounded-lg text-sm font-medium transition-colors touch-manipulation min-h-[44px] md:min-h-0 ${subFilter === subcategory
                                                 ? 'bg-green-600 text-white'
                                                 : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                                                 }`}
@@ -1205,7 +1205,7 @@ export default function OrdersPage() {
                                             value={search}
                                             onChange={(e: any) => setMenuItemSearch(prev => ({ ...prev, [mealType.id]: e.target.value }))}
                                             placeholder="Search menu items..."
-                                            className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                                            className="w-full pl-10 pr-4 py-3 md:py-2 min-h-[48px] md:min-h-0 border border-gray-300 rounded-xl md:rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 text-base md:text-sm touch-manipulation"
                                           />
                                         </div>
                                         <button
@@ -1214,7 +1214,7 @@ export default function OrdersPage() {
                                             setQuickAddMealTypeId(mealType.id)
                                             setShowQuickAddModal(true)
                                           }}
-                                          className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors flex items-center justify-center gap-2 text-sm whitespace-nowrap"
+                                          className="px-4 py-3 md:py-2 min-h-[48px] md:min-h-0 bg-green-600 text-white rounded-xl md:rounded-lg hover:bg-green-700 transition-colors flex items-center justify-center gap-2 text-sm whitespace-nowrap touch-manipulation"
                                         >
                                           <FaPlus className="w-3 h-3" /> Quick Add Missing Item
                                         </button>
@@ -1234,13 +1234,13 @@ export default function OrdersPage() {
                                           filteredMenuItems.map((menuItem: any) => (
                                             <label
                                               key={menuItem.id}
-                                              className="flex items-center p-3 border border-gray-200 rounded-lg hover:bg-gray-50 cursor-pointer"
+                                              className="flex items-center p-3 md:p-3 border border-gray-200 rounded-xl md:rounded-lg hover:bg-gray-50 cursor-pointer touch-manipulation min-h-[56px] md:min-h-0"
                                             >
                                               <input
                                                 type="checkbox"
                                                 checked={mealType.selectedMenuItems.includes(menuItem.id)}
                                                 onChange={() => handleMenuItemToggle(mealType.id, menuItem.id)}
-                                                className="w-4 h-4 text-primary-600 border-gray-300 rounded focus:ring-primary-500 mr-3"
+                                                className="w-5 h-5 md:w-4 md:h-4 text-primary-600 border-gray-300 rounded focus:ring-primary-500 mr-3 flex-shrink-0"
                                               />
                                               <div className="flex-1">
                                                 <span className="text-sm font-medium text-gray-900">{menuItem.name}</span>
@@ -1259,7 +1259,7 @@ export default function OrdersPage() {
                                           Selected Items ({mealType.selectedMenuItems.length}):
                                         </p>
                                         <Droppable droppableId={mealType.id}>
-                                          {(provided) => (
+                                          {(provided: DroppableProvided) => (
                                             <div
                                               {...provided.droppableProps}
                                               ref={provided.innerRef}
@@ -1270,7 +1270,7 @@ export default function OrdersPage() {
 
                                                 return item ? (
                                                   <Draggable key={`${mealType.id}-${itemId}`} draggableId={`${mealType.id}-${itemId}`} index={index}>
-                                                    {(provided, snapshot) => (
+                                                    {(provided: DraggableProvided, snapshot: DraggableStateSnapshot) => (
                                                       <div
                                                         ref={provided.innerRef}
                                                         {...provided.draggableProps}
@@ -1726,19 +1726,19 @@ export default function OrdersPage() {
                 )
               }
 
-              <div className="flex justify-end gap-4 pt-4 border-t border-gray-200">
+              <div className="flex flex-col-reverse sm:flex-row justify-end gap-3 md:gap-4 pt-4 border-t border-gray-200">
                 <FormError message={formError} className="mr-auto self-center" />
                 <button
                   type="button"
                   onClick={resetForm}
-                  className="px-6 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors"
+                  className="w-full sm:w-auto px-6 py-3 md:py-2 min-h-[48px] md:min-h-0 border border-gray-300 rounded-xl md:rounded-lg text-gray-700 hover:bg-gray-50 transition-colors touch-manipulation"
                 >
                   Clear Form
                 </button>
                 <button
                   type="submit"
                   disabled={formData.mealTypes.length === 0 || formData.mealTypes.some(mt => mt.selectedMenuItems.length === 0)}
-                  className="px-6 py-2 bg-primary-500 text-white rounded-lg hover:bg-primary-600 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed"
+                  className="w-full sm:w-auto px-6 py-3 md:py-2 min-h-[48px] md:min-h-0 bg-primary-500 text-white rounded-xl md:rounded-lg hover:bg-primary-600 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed touch-manipulation font-medium"
                 >
                   {isEditMode ? 'Update Order' : 'Create Order'}
                 </button>
