@@ -489,7 +489,7 @@ export default function OrdersHistoryPage() {
     // Add stamp below menu (and stalls)
     htmlContent += `
       <div style="margin-top: 25px; display: flex; justify-content: flex-end;">
-        <img src="/images/stamp.png" alt="Business Stamp" width="90" height="90" style="width: 90px; height: 90px; transform: rotate(-90deg); object-fit: contain;" crossorigin="anonymous" />
+        <img src="/images/stamp.png" alt="Business Stamp" width="90" height="90" style="width: 200px; height: 90px; transform: rotate(-90deg); object-fit: contain;" crossorigin="anonymous" />
       </div>
     `
 
