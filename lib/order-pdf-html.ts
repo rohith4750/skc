@@ -24,23 +24,6 @@ export function buildOrderPdfHtml(
   }
   const eventDateDisplay = eventDates.length > 0 ? eventDates.join(', ') : formatDate(order.createdAt)
 
-  const itemsByType: Record<string, any[]> = {}
-    ; (order.items || []).forEach((item: any) => {
-      const type = item.menuItem?.type || 'OTHER'
-      if (!itemsByType[type]) itemsByType[type] = []
-      itemsByType[type].push(item)
-    })
-
-  const getMemberCount = (mealType: string): string => {
-    if (mealTypeAmounts) {
-      const mealData = mealTypeAmounts[mealType.toLowerCase()] as any
-      if (mealData && typeof mealData === 'object' && mealData.numberOfMembers) {
-        return ` (${mealData.numberOfMembers} Members)`
-      }
-    }
-    return ''
-  }
-
   const getMealTypePriority = (type: string) => {
     const priorities: Record<string, number> = {
       'BREAKFAST': 1,
@@ -48,34 +31,69 @@ export function buildOrderPdfHtml(
       'DINNER': 3,
       'SNACKS': 4
     }
-    return priorities[type.toUpperCase()] || 99
+    return priorities[type?.toUpperCase()] || 99
   }
 
+  // Build date-wise structure for merged orders: date -> sessions (menuType + items)
+  // Group by session key so merged sessions stay separate
+  type SessionGroup = { menuType: string; members?: number; services?: string[]; items: any[] }
+  const byDate: Record<string, SessionGroup[]> = {}
+
+  const addToDate = (date: string, sessionKey: string, menuType: string, item: any, members?: number, services?: string[]) => {
+    if (!byDate[date]) byDate[date] = []
+    // Use sessionKey to keep merged sessions separate; fallback to menuType for legacy
+    const groupKey = sessionKey || `legacy_${menuType}`
+    let session = byDate[date].find(s => (s as any)._key === groupKey)
+    if (!session) {
+      session = { menuType, members, services, items: [] } as SessionGroup & { _key?: string }
+      ;(session as any)._key = groupKey
+      byDate[date].push(session)
+    }
+    session.items.push(item)
+    if (members != null) session.members = members
+    if (services?.length) session.services = services
+  }
+
+  ;(order.items || []).forEach((item: any) => {
+    const sessionKey = item.mealType
+    const sessionData = sessionKey && mealTypeAmounts?.[sessionKey]
+      ? (typeof mealTypeAmounts[sessionKey] === 'object' && mealTypeAmounts[sessionKey] !== null ? mealTypeAmounts[sessionKey] as any : null)
+      : null
+
+    const menuType = sessionData?.menuType || item.menuItem?.type || 'OTHER'
+    const date = sessionData?.date ? formatDate(sessionData.date) : eventDateDisplay
+    const members = sessionData?.numberOfMembers
+    const services = sessionData?.services
+
+    addToDate(date, sessionKey || '', menuType, item, members, services)
+  })
+
+  // Sort dates and sessions (use numeric sort for formatted dates)
+  const sortedDates = Object.keys(byDate).sort((a, b) => {
+    const da = new Date(a).getTime()
+    const db = new Date(b).getTime()
+    return isNaN(da) ? 1 : isNaN(db) ? -1 : da - db
+  })
+
   let menuItemsHtml = ''
-  Object.keys(itemsByType)
-    .sort((a, b) => getMealTypePriority(a) - getMealTypePriority(b))
-    .forEach((type) => {
-      const memberInfo = getMemberCount(type)
-
-      let servicesLabel = ''
-      if (mealTypeAmounts) {
-        const mealKey = Object.keys(mealTypeAmounts).find(k => k.toLowerCase() === type.toLowerCase())
-        const mealData = mealKey ? (mealTypeAmounts[mealKey] as any) : null
-
-        if (mealData && Array.isArray(mealData.services) && mealData.services.length > 0) {
-          const formattedServices = mealData.services.map((s: string) => {
-            return s.split('_').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ')
-          }).join(', ')
-          servicesLabel = ` - Services: ${formattedServices}`
-        }
-      }
-
-      menuItemsHtml += `
-      <div style="grid-column: span 4; font-weight: 700; font-size: 14px; margin-top: 6px; margin-bottom: 3px; color: #222; text-transform: uppercase; padding-bottom: 2px; font-family: 'Poppins', sans-serif;">
-        ${sanitizeMealLabel(type)}${memberInfo}${servicesLabel}
+  sortedDates.forEach((date) => {
+    const sessions = byDate[date].sort((a, b) => getMealTypePriority(a.menuType) - getMealTypePriority(b.menuType))
+    menuItemsHtml += `
+      <div style="grid-column: span 4; font-weight: 700; font-size: 12px; margin-top: 12px; margin-bottom: 4px; color: #444; text-transform: uppercase; padding-bottom: 2px; border-bottom: 1px solid #ddd; font-family: 'Poppins', sans-serif;">
+        📅 ${date}
       </div>
     `
-      itemsByType[type].forEach((item: any, index: number) => {
+    sessions.forEach((session) => {
+      const memberInfo = session.members ? ` (${session.members} Members)` : ''
+      const servicesLabel = session.services?.length
+        ? ` - Services: ${session.services.map((s: string) => s.split('_').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ')).join(', ')}`
+        : ''
+      menuItemsHtml += `
+      <div style="grid-column: span 4; font-weight: 700; font-size: 14px; margin-top: 6px; margin-bottom: 3px; color: #222; text-transform: uppercase; padding-bottom: 2px; font-family: 'Poppins', sans-serif;">
+        ${sanitizeMealLabel(session.menuType)}${memberInfo}${servicesLabel}
+      </div>
+    `
+      session.items.forEach((item: any, index: number) => {
         const itemName = useEnglish
           ? (item.menuItem?.name || item.menuItem?.nameTelugu || 'Unknown Item')
           : (item.menuItem?.nameTelugu || item.menuItem?.name || 'Unknown Item')
@@ -86,6 +104,7 @@ export function buildOrderPdfHtml(
       `
       })
     })
+  })
 
   let stallsHtml = ''
   if (order.stalls && Array.isArray(order.stalls) && order.stalls.length > 0) {

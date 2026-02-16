@@ -61,14 +61,45 @@ export default function OrderSummaryPage() {
     ? (order.bill?.paymentHistory as PaymentHistoryEntry[])
     : []
 
-  // Group order items by their menu item type
+  // Group order items by mealType key (session key)
   const itemsByMealType: Record<string, any[]> = {}
   order.items?.forEach((item: any) => {
-    const type = item.mealType?.toLowerCase() || 'other'
-    if (!itemsByMealType[type]) {
-      itemsByMealType[type] = []
-    }
-    itemsByMealType[type].push(item)
+    const key = item.mealType || 'other'
+    if (!itemsByMealType[key]) itemsByMealType[key] = []
+    itemsByMealType[key].push(item)
+  })
+
+  // Build date-wise structure: date -> sessions (for one customer with many dates)
+  const getMealTypePriority = (type: string) => {
+    const p: Record<string, number> = { breakfast: 1, lunch: 2, dinner: 3, snacks: 4, high_tea: 5 }
+    return p[(type || '').toLowerCase()] || 99
+  }
+  type SessionEntry = { key: string; data: any; detail: any; items: any[] }
+  const byDate: Record<string, SessionEntry[]> = {}
+  const mealTypeAmounts = order.mealTypeAmounts as Record<string, { date?: string; menuType?: string; [k: string]: any } | number> | null
+  if (mealTypeAmounts) {
+    Object.entries(mealTypeAmounts).forEach(([key, data]) => {
+      const detail = typeof data === 'object' && data !== null ? data : null
+      const date = detail?.date ? String(detail.date) : ''
+      const dateKey = date || 'unspecified'
+      if (!byDate[dateKey]) byDate[dateKey] = []
+      byDate[dateKey].push({
+        key,
+        data,
+        detail,
+        items: itemsByMealType[key] || []
+      })
+    })
+  }
+  const sortedDates = Object.keys(byDate).sort((a, b) => {
+    if (a === 'unspecified') return 1
+    if (b === 'unspecified') return -1
+    return new Date(a).getTime() - new Date(b).getTime()
+  })
+  sortedDates.forEach(d => {
+    byDate[d].sort((a, b) =>
+      getMealTypePriority(a.detail?.menuType || '') - getMealTypePriority(b.detail?.menuType || '')
+    )
   })
 
   const totalAmount = order.totalAmount || 0
@@ -237,11 +268,16 @@ export default function OrderSummaryPage() {
           </div>
 
           <div className="grid grid-cols-1 gap-6">
-            {Object.entries(order.mealTypeAmounts || {}).map(([mealType, data]) => {
-              const detail = typeof data === 'object' && data !== null ? data : null;
-              const items = itemsByMealType[mealType.toLowerCase()] || [];
-
-              return (
+            {sortedDates.map((date) => (
+              <div key={date} className="space-y-4">
+                <div className="flex items-center gap-2">
+                  <FaCalendarAlt className="text-primary-500" />
+                  <span className="text-sm font-black text-slate-700 uppercase tracking-widest">
+                    {date === 'unspecified' ? 'Date Pending' : formatDate(date)}
+                  </span>
+                </div>
+                <div className="grid grid-cols-1 gap-4 pl-4 border-l-2 border-slate-100">
+                  {byDate[date].map(({ key: mealType, data, detail, items }) => (
                 <div key={mealType} className="bg-white rounded-[2rem] border border-slate-100 shadow-sm hover:shadow-xl hover:border-primary-100 transition-all group overflow-hidden">
                   <div className="flex flex-col md:flex-row h-full">
                     {/* Left: Meal Category Header */}
@@ -329,8 +365,10 @@ export default function OrderSummaryPage() {
                     </div>
                   </div>
                 </div>
-              );
-            })}
+                  ))}
+                </div>
+              </div>
+            ))}
           </div>
         </div>
 

@@ -413,55 +413,66 @@ export default function OrdersHistoryPage() {
         <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; font-size: 9px;">
     `
 
-    // Group items by type
-    const itemsByType: Record<string, any[]> = {}
+    // Build date-wise structure for merged orders (same as order-pdf-html)
+    const getMealTypePriority = (type: string) => {
+      const p: Record<string, number> = { 'BREAKFAST': 1, 'LUNCH': 2, 'DINNER': 3, 'SNACKS': 4 }
+      return p[type?.toUpperCase()] || 99
+    }
+    type SessionGroup = { menuType: string; members?: number; services?: string[]; items: any[] }
+    const byDate: Record<string, SessionGroup[]> = {}
+
     order.items.forEach((item: any) => {
-      const type = item.menuItem?.type || 'OTHER'
-      if (!itemsByType[type]) {
-        itemsByType[type] = []
+      const sessionKey = item.mealType
+      const sessionData = sessionKey && mealTypeAmounts?.[sessionKey]
+        ? (typeof mealTypeAmounts[sessionKey] === 'object' && mealTypeAmounts[sessionKey] !== null ? mealTypeAmounts[sessionKey] as any : null)
+        : null
+      const menuType = sessionData?.menuType || item.menuItem?.type || 'OTHER'
+      const date = sessionData?.date ? formatDate(sessionData.date) : eventDateDisplay
+      const members = sessionData?.numberOfMembers
+      const services = sessionData?.services
+
+      const groupKey = sessionKey || `legacy_${menuType}`
+      if (!byDate[date]) byDate[date] = []
+      let session = byDate[date].find((s: any) => s._key === groupKey)
+      if (!session) {
+        session = { menuType, members, services, items: [] } as SessionGroup & { _key?: string }
+        ;(session as any)._key = groupKey
+        byDate[date].push(session)
       }
-      itemsByType[type].push(item)
+      session.items.push(item)
+      if (members != null) session.members = members
+      if (services?.length) session.services = services
     })
 
-    // Get member count for each meal type (sum across merged sessions)
-    const getMemberCount = (mealType: string): string => {
-      if (!mealTypeAmounts) return ''
-      const target = mealType.toLowerCase()
-      let total = 0
-
-      Object.entries(mealTypeAmounts).forEach(([key, value]) => {
-        if (typeof value === 'object' && value !== null) {
-          const label = (value as any).menuType || key
-          if (label && label.toLowerCase() === target && (value as any).numberOfMembers) {
-            total += Number((value as any).numberOfMembers) || 0
-          }
-        }
-      })
-
-      return total > 0 ? ` (${total} Members)` : ''
-    }
-
-    // Display items grouped by type in compact grid
-    Object.keys(itemsByType).forEach((type) => {
-      // Add type section with member count
-      const memberInfo = getMemberCount(type)
+    const sortedDates = Object.keys(byDate).sort((a, b) => {
+      const da = new Date(a).getTime()
+      const db = new Date(b).getTime()
+      return isNaN(da) ? 1 : isNaN(db) ? -1 : da - db
+    })
+    sortedDates.forEach((date) => {
+      const sessions = byDate[date].sort((a, b) => getMealTypePriority(a.menuType) - getMealTypePriority(b.menuType))
       htmlContent += `
-        <div style="grid-column: span 4; font-weight: 700; font-size: 10px; margin-top: 6px; margin-bottom: 3px; color: #222; text-transform: uppercase; padding-bottom: 2px; font-family: 'Poppins', sans-serif;">
-          ${sanitizeMealLabel(type)}${memberInfo}
+        <div style="grid-column: span 4; font-weight: 700; font-size: 10px; margin-top: 12px; margin-bottom: 4px; color: #444; text-transform: uppercase; padding-bottom: 2px; border-bottom: 1px solid #ddd; font-family: 'Poppins', sans-serif;">
+          📅 ${date}
         </div>
       `
-
-      // Add items for this type in grid
-      itemsByType[type].forEach((item: any, index: number) => {
-        // Use English or Telugu based on user selection
-        const itemName = useEnglish
-          ? (item.menuItem?.name || item.menuItem?.nameTelugu || 'Unknown Item')
-          : (item.menuItem?.nameTelugu || item.menuItem?.name || 'Unknown Item')
+      sessions.forEach((session) => {
+        const memberInfo = session.members ? ` (${session.members} Members)` : ''
         htmlContent += `
+        <div style="grid-column: span 4; font-weight: 700; font-size: 10px; margin-top: 6px; margin-bottom: 3px; color: #222; text-transform: uppercase; padding-bottom: 2px; font-family: 'Poppins', sans-serif;">
+          ${sanitizeMealLabel(session.menuType)}${memberInfo}
+        </div>
+      `
+        session.items.forEach((item: any, index: number) => {
+          const itemName = useEnglish
+            ? (item.menuItem?.name || item.menuItem?.nameTelugu || 'Unknown Item')
+            : (item.menuItem?.nameTelugu || item.menuItem?.name || 'Unknown Item')
+          htmlContent += `
           <div style="padding: 2px 4px; font-family: 'Poppins', sans-serif; line-height: 1.3; font-weight: 600;">
             ${index + 1}. ${itemName}${item.customization ? ` (${item.customization})` : ''}
           </div>
         `
+        })
       })
     })
 
