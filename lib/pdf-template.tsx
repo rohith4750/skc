@@ -132,6 +132,7 @@ export function generatePDFTemplate(data: PDFTemplateData): string {
           border-right: 2px solid #000;
           padding: 0 15mm;
           min-height: 277mm;
+          overflow: visible;
         }
         .header {
           text-align: center;
@@ -351,7 +352,13 @@ function generateBillContent(data: PDFTemplateData): string {
     groupedByDate[date].push({ key, ...dataObj })
   })
 
-  const sortedDates = Object.keys(groupedByDate).sort((a, b) => new Date(a).getTime() - new Date(b).getTime())
+  const sortedDates = Object.keys(groupedByDate).sort((a, b) => {
+    if (a === 'Other') return 1
+    if (b === 'Other') return -1
+    const da = new Date(a).getTime()
+    const db = new Date(b).getTime()
+    return (isNaN(da) ? Infinity : da) - (isNaN(db) ? Infinity : db)
+  })
 
   // If we are NOT splitting, we just run the existing logic once for all dates
   // If we ARE splitting, we loop through dates and generate a full bill section for each.
@@ -481,7 +488,7 @@ function generateBillContent(data: PDFTemplateData): string {
         </div>
 
         <!-- Bill Summary -->
-        <div class="form-section" style="border: 2px solid #000; padding: 12px; margin: 15px 0; min-height: 120mm;">
+        <div class="form-section" style="border: 2px solid #000; padding: 12px; margin: 15px 0; min-height: 120mm; overflow: visible;">
           <div style="font-weight: bold; font-size: 14px; margin-bottom: 10px; text-transform: uppercase; text-align: center;">
             ${splitByDate ? 'PARTIAL BILL SUMMARY' : 'BILL SUMMARY'}
           </div>

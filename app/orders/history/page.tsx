@@ -505,15 +505,22 @@ export default function OrdersHistoryPage() {
     `
 
     tempDiv.innerHTML = htmlContent
+    tempDiv.style.overflow = 'visible'
     document.body.appendChild(tempDiv)
+    await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)))
 
     try {
-      // Convert HTML to canvas (scale 1.5 + JPEG to keep payload under 4.5MB limit)
+      const w = tempDiv.scrollWidth
+      const h = Math.max(tempDiv.scrollHeight + 20, 1)
       const canvas = await html2canvas(tempDiv, {
         scale: 1.5,
         useCORS: true,
         logging: false,
-        backgroundColor: '#ffffff'
+        backgroundColor: '#ffffff',
+        width: w,
+        height: h,
+        windowWidth: w,
+        windowHeight: h,
       })
 
       // Remove temporary element
@@ -565,15 +572,21 @@ export default function OrdersHistoryPage() {
     tempDiv.style.background = 'white'
     tempDiv.style.color = '#333'
     tempDiv.innerHTML = htmlContent
+    tempDiv.style.overflow = 'visible'
     document.body.appendChild(tempDiv)
+    await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)))
     try {
+      const w = tempDiv.scrollWidth
+      const h = Math.max(tempDiv.scrollHeight + 20, 1)
       const canvas = await html2canvas(tempDiv, {
         scale: 1.5,
         useCORS: true,
         logging: false,
         backgroundColor: '#ffffff',
-        width: tempDiv.scrollWidth,
-        height: tempDiv.scrollHeight + 10,
+        width: w,
+        height: h,
+        windowWidth: w,
+        windowHeight: h,
       })
       document.body.removeChild(tempDiv)
       return canvas.toDataURL('image/png')

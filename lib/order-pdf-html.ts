@@ -161,9 +161,9 @@ export function buildOrderPdfHtml(
         <div class="info-row"><span class="info-label">Order ID:</span> SKC-ORDER-${(order as any).serialNumber || order.id.slice(0, 8).toUpperCase()}</div>
       </div>
     </div>
-    <div class="section">
+    <div class="section" style="overflow: visible;">
       <div class="section-title">Menu Items</div>
-      <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; font-size: 11px;">
+      <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; font-size: 11px; overflow: visible;">
         ${menuItemsHtml}
       </div>
     </div>

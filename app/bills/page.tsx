@@ -208,16 +208,22 @@ export default function BillsPage() {
     tempDiv.style.background = 'white'
     tempDiv.style.color = '#000'
     tempDiv.innerHTML = htmlContent
+    tempDiv.style.overflow = 'visible'
     document.body.appendChild(tempDiv)
+    await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)))
 
     try {
+      const w = tempDiv.scrollWidth
+      const h = Math.max(tempDiv.scrollHeight + 20, 1)
       const canvas = await html2canvas(tempDiv, {
         scale: 1.5,
         useCORS: true,
         logging: false,
         backgroundColor: '#ffffff',
-        width: tempDiv.scrollWidth,
-        height: tempDiv.scrollHeight + 10,
+        width: w,
+        height: h,
+        windowWidth: w,
+        windowHeight: h,
       })
       document.body.removeChild(tempDiv)
 
@@ -261,16 +267,22 @@ export default function BillsPage() {
     tempDiv.style.background = 'white'
     tempDiv.style.color = '#000'
     tempDiv.innerHTML = htmlContent
+    tempDiv.style.overflow = 'visible'
     document.body.appendChild(tempDiv)
+    await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)))
 
     try {
+      const w = tempDiv.scrollWidth
+      const h = Math.max(tempDiv.scrollHeight + 20, 1)
       const canvas = await html2canvas(tempDiv, {
         scale: 1.5,
         useCORS: true,
         logging: false,
         backgroundColor: '#ffffff',
-        width: tempDiv.scrollWidth,
-        height: tempDiv.scrollHeight + 10,
+        width: w,
+        height: h,
+        windowWidth: w,
+        windowHeight: h,
       })
       document.body.removeChild(tempDiv)
       return canvas.toDataURL('image/png')
@@ -298,15 +310,21 @@ export default function BillsPage() {
     tempDiv.style.background = 'white'
     tempDiv.style.color = '#333'
     tempDiv.innerHTML = htmlContent
+    tempDiv.style.overflow = 'visible'
     document.body.appendChild(tempDiv)
+    await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)))
     try {
+      const w = tempDiv.scrollWidth
+      const h = Math.max(tempDiv.scrollHeight + 20, 1)
       const canvas = await html2canvas(tempDiv, {
         scale: 1.5,
         useCORS: true,
         logging: false,
         backgroundColor: '#ffffff',
-        width: tempDiv.scrollWidth,
-        height: tempDiv.scrollHeight + 10,
+        width: w,
+        height: h,
+        windowWidth: w,
+        windowHeight: h,
       })
       document.body.removeChild(tempDiv)
       const imgData = canvas.toDataURL('image/jpeg', 0.85)
@@ -342,9 +360,11 @@ export default function BillsPage() {
     }
 
     try {
+      const freshBill = await fetch(`/api/bills/${bill.id}`).then(r => r.ok ? r.json() : bill).catch(() => bill)
+      const billToUse = freshBill?.order ? freshBill : bill
       const [pdfBase64, orderPdfBase64] = await Promise.all([
-        renderBillToPdf(bill),
-        renderOrderToPdf(bill.order, 'english'),
+        renderBillToPdf(billToUse),
+        renderOrderToPdf(billToUse.order, 'english'),
       ])
       const response = await fetchWithLoader(`/api/bills/${bill.id}/send`, {
         method: 'POST',
@@ -395,7 +415,9 @@ export default function BillsPage() {
   }
 
   const handleGeneratePDF = async (bill: any) => {
-    const pdfBase64 = await renderBillToPdf(bill)
+    const freshBill = await fetch(`/api/bills/${bill.id}`).then(r => r.ok ? r.json() : bill).catch(() => bill)
+    const billToUse = freshBill?.order?.mealTypeAmounts ? freshBill : bill
+    const pdfBase64 = await renderBillToPdf(billToUse)
     if (!pdfBase64) {
       toast.error('Failed to generate PDF. Please try again.')
       return
@@ -416,7 +438,9 @@ export default function BillsPage() {
   }
 
   const handleGenerateImage = async (bill: any) => {
-    const imageDataUrl = await renderBillToImage(bill)
+    const freshBill = await fetch(`/api/bills/${bill.id}`).then(r => r.ok ? r.json() : bill).catch(() => bill)
+    const billToUse = freshBill?.order?.mealTypeAmounts ? freshBill : bill
+    const imageDataUrl = await renderBillToImage(billToUse)
     if (!imageDataUrl) {
       toast.error('Failed to generate image. Please try again.')
       return

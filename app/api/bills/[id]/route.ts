@@ -2,15 +2,45 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { isNonNegativeNumber, validateEnum } from '@/lib/validation'
 
+export async function GET(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const { id } = await params
+    const bill = await prisma.bill.findUnique({
+      where: { id },
+      include: {
+        order: {
+          include: {
+            customer: true,
+            supervisor: true,
+            items: {
+              include: {
+                menuItem: true,
+              },
+            },
+          },
+        },
+      },
+    })
+    if (!bill) return NextResponse.json({ error: 'Bill not found' }, { status: 404 })
+    return NextResponse.json(bill)
+  } catch (error: any) {
+    return NextResponse.json({ error: error.message }, { status: 500 })
+  }
+}
+
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
+  const { id } = await params
   try {
     const data = await request.json()
 
     const existingBill = await prisma.bill.findUnique({
-      where: { id: params.id },
+      where: { id },
     })
 
     if (!existingBill) {
@@ -55,7 +85,7 @@ export async function PUT(
       : paymentHistory
 
     const bill = await prisma.bill.update({
-      where: { id: params.id },
+      where: { id },
       data: {
         paidAmount: paidAmount,
         advancePaid: Number(existingBill.advancePaid) > 0 ? existingBill.advancePaid : paidAmount,
@@ -74,7 +104,7 @@ export async function PUT(
     })
 
     const updatedBill = await prisma.bill.findUnique({
-      where: { id: params.id },
+      where: { id },
       include: {
         order: {
           include: {
