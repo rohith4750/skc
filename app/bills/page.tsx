@@ -184,10 +184,10 @@ export default function BillsPage() {
 
       const output = pdf.output('dataurlstring')
       return output.split(',')[1] || output
-    } catch (e) {
+    } catch (e: any) {
       if (tempDiv && document.body.contains(tempDiv)) document.body.removeChild(tempDiv)
       console.error('PDF Generation Error:', e)
-      toast.error('Failed to generate PDF')
+      toast.error(`Failed to generate PDF: ${e.message || e}`)
       return null
     }
   }
