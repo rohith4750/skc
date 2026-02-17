@@ -76,18 +76,26 @@ export default function OrderSummaryPage() {
   }
   type SessionEntry = { key: string; data: any; detail: any; items: any[] }
   const byDate: Record<string, SessionEntry[]> = {}
-  const mealTypeAmounts = order.mealTypeAmounts as Record<string, { date?: string; menuType?: string; [k: string]: any } | number> | null
+  const mealTypeAmounts = order.mealTypeAmounts as Record<string, { date?: string; menuType?: string;[k: string]: any } | number> | null
   if (mealTypeAmounts) {
     Object.entries(mealTypeAmounts).forEach(([key, data]) => {
       const detail = typeof data === 'object' && data !== null ? data : null
       const date = detail?.date ? String(detail.date) : ''
       const dateKey = date || 'unspecified'
       if (!byDate[dateKey]) byDate[dateKey] = []
+      // Find items matching this session key or menuType (supports both session keys and type names)
+      const menuType = detail?.menuType || key
+      const matchingItems = itemsByMealType[key] ||
+        itemsByMealType[menuType] ||
+        itemsByMealType[String(menuType).toLowerCase()] ||
+        itemsByMealType[String(key).toLowerCase()] ||
+        []
+
       byDate[dateKey].push({
         key,
         data,
         detail,
-        items: itemsByMealType[key] || []
+        items: matchingItems
       })
     })
   }
@@ -278,93 +286,93 @@ export default function OrderSummaryPage() {
                 </div>
                 <div className="grid grid-cols-1 gap-4 pl-4 border-l-2 border-slate-100">
                   {byDate[date].map(({ key: mealType, data, detail, items }) => (
-                <div key={mealType} className="bg-white rounded-[2rem] border border-slate-100 shadow-sm hover:shadow-xl hover:border-primary-100 transition-all group overflow-hidden">
-                  <div className="flex flex-col md:flex-row h-full">
-                    {/* Left: Meal Category Header */}
-                    <div className={`w-full md:w-64 p-6 flex flex-col justify-center items-center text-center ${(detail?.menuType?.toLowerCase() || mealType.toLowerCase()) === 'breakfast' ? 'bg-orange-50/50' :
-                        (detail?.menuType?.toLowerCase() || mealType.toLowerCase()) === 'lunch' ? 'bg-emerald-50/50' :
-                          (detail?.menuType?.toLowerCase() || mealType.toLowerCase()) === 'dinner' ? 'bg-indigo-50/50' :
-                            'bg-slate-50/50'
-                      }`}>
-                      <div className={`w-12 h-12 rounded-2xl flex items-center justify-center shadow-sm mb-3 ${(detail?.menuType?.toLowerCase() || mealType.toLowerCase()) === 'breakfast' ? 'bg-orange-100 text-orange-600' :
-                          (detail?.menuType?.toLowerCase() || mealType.toLowerCase()) === 'lunch' ? 'bg-emerald-100 text-emerald-600' :
-                            (detail?.menuType?.toLowerCase() || mealType.toLowerCase()) === 'dinner' ? 'bg-indigo-100 text-indigo-600' :
-                              'bg-slate-100 text-slate-600'
-                        }`}>
-                        <FaUtensils className="text-xl" />
-                      </div>
-                      <h3 className="text-xl font-black capitalize text-slate-900 leading-none">{sanitizeMealLabel(detail?.menuType || mealType)}</h3>
-                      <p className="text-[10px] font-bold text-slate-400 uppercase mt-2 tracking-widest">
-                        {detail?.date ? formatDate(detail.date) : 'Date Pending'}
-                      </p>
-                    </div>
+                    <div key={mealType} className="bg-white rounded-[2rem] border border-slate-100 shadow-sm hover:shadow-xl hover:border-primary-100 transition-all group overflow-hidden">
+                      <div className="flex flex-col md:flex-row h-full">
+                        {/* Left: Meal Category Header */}
+                        <div className={`w-full md:w-64 p-6 flex flex-col justify-center items-center text-center ${(detail?.menuType?.toLowerCase() || mealType.toLowerCase()) === 'breakfast' ? 'bg-orange-50/50' :
+                          (detail?.menuType?.toLowerCase() || mealType.toLowerCase()) === 'lunch' ? 'bg-emerald-50/50' :
+                            (detail?.menuType?.toLowerCase() || mealType.toLowerCase()) === 'dinner' ? 'bg-indigo-50/50' :
+                              'bg-slate-50/50'
+                          }`}>
+                          <div className={`w-12 h-12 rounded-2xl flex items-center justify-center shadow-sm mb-3 ${(detail?.menuType?.toLowerCase() || mealType.toLowerCase()) === 'breakfast' ? 'bg-orange-100 text-orange-600' :
+                            (detail?.menuType?.toLowerCase() || mealType.toLowerCase()) === 'lunch' ? 'bg-emerald-100 text-emerald-600' :
+                              (detail?.menuType?.toLowerCase() || mealType.toLowerCase()) === 'dinner' ? 'bg-indigo-100 text-indigo-600' :
+                                'bg-slate-100 text-slate-600'
+                            }`}>
+                            <FaUtensils className="text-xl" />
+                          </div>
+                          <h3 className="text-xl font-black capitalize text-slate-900 leading-none">{sanitizeMealLabel(detail?.menuType || mealType)}</h3>
+                          <p className="text-[10px] font-bold text-slate-400 uppercase mt-2 tracking-widest">
+                            {detail?.date ? formatDate(detail.date) : 'Date Pending'}
+                          </p>
+                        </div>
 
-                    {/* Right: Details & Items */}
-                    <div className="flex-grow p-6">
-                      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6 mb-6">
-                        <div className="flex gap-8">
-                          <div>
-                            <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-1">Guest Count</span>
-                            <div className="flex items-center gap-2">
-                              <span className="text-lg font-black text-slate-900">{detail?.numberOfMembers || 'N/A'}</span>
-                              {detail?.originalMembers !== undefined && detail?.numberOfMembers !== undefined && detail.originalMembers !== detail.numberOfMembers && (
-                                <span className={`px-2 py-0.5 rounded-lg text-[10px] font-black ${(detail.numberOfMembers ?? 0) > (detail.originalMembers ?? 0) ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-700'
-                                  }`}>
-                                  {(detail.numberOfMembers ?? 0) > (detail.originalMembers ?? 0) ? '↑' : '↓'}
-                                  {Math.abs((detail.numberOfMembers ?? 0) - (detail.originalMembers ?? 0))}
+                        {/* Right: Details & Items */}
+                        <div className="flex-grow p-6">
+                          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6 mb-6">
+                            <div className="flex gap-8">
+                              <div>
+                                <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-1">Guest Count</span>
+                                <div className="flex items-center gap-2">
+                                  <span className="text-lg font-black text-slate-900">{detail?.numberOfMembers || 'N/A'}</span>
+                                  {detail?.originalMembers !== undefined && detail?.numberOfMembers !== undefined && detail.originalMembers !== detail.numberOfMembers && (
+                                    <span className={`px-2 py-0.5 rounded-lg text-[10px] font-black ${(detail.numberOfMembers ?? 0) > (detail.originalMembers ?? 0) ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-700'
+                                      }`}>
+                                      {(detail.numberOfMembers ?? 0) > (detail.originalMembers ?? 0) ? '↑' : '↓'}
+                                      {Math.abs((detail.numberOfMembers ?? 0) - (detail.originalMembers ?? 0))}
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
+                              <div>
+                                <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-1">Pricing</span>
+                                <span className="text-lg font-black text-slate-900 capitalize">{detail?.pricingMethod || 'Manual'}</span>
+                              </div>
+                            </div>
+                            <div className="bg-slate-50 px-6 py-3 rounded-2xl border border-slate-100 text-right">
+                              <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-0.5">Amount</span>
+                              <div className="flex flex-col items-end">
+                                <span className="text-xl font-black text-primary-600">
+                                  {(() => {
+                                    const storedAmount = Number(detail?.amount || (typeof data === 'number' ? data : 0));
+                                    const plates = Number(detail?.numberOfPlates || detail?.numberOfMembers || 0);
+                                    const price = Number(detail?.platePrice || 0);
+
+                                    // Auto-calculate if stored amount is 0 but we have valid plate-based data
+                                    const finalAmount = (detail?.pricingMethod === 'plate-based' && storedAmount === 0 && plates > 0 && price > 0)
+                                      ? plates * price
+                                      : storedAmount;
+
+                                    return formatCurrency(finalAmount);
+                                  })()}
                                 </span>
-                              )}
+                                {detail?.pricingMethod === 'plate-based' && (
+                                  <span className="text-[10px] font-bold text-slate-400 mt-1 bg-white px-2 py-0.5 rounded border border-slate-100">
+                                    {detail.numberOfPlates || detail.numberOfMembers || 0} p × {formatCurrency(detail.platePrice || 0)}
+                                  </span>
+                                )}
+                              </div>
                             </div>
                           </div>
+
                           <div>
-                            <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-1">Pricing</span>
-                            <span className="text-lg font-black text-slate-900 capitalize">{detail?.pricingMethod || 'Manual'}</span>
-                          </div>
-                        </div>
-                        <div className="bg-slate-50 px-6 py-3 rounded-2xl border border-slate-100 text-right">
-                          <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-0.5">Amount</span>
-                          <div className="flex flex-col items-end">
-                            <span className="text-xl font-black text-primary-600">
-                              {(() => {
-                                const storedAmount = Number(detail?.amount || (typeof data === 'number' ? data : 0));
-                                const plates = Number(detail?.numberOfPlates || detail?.numberOfMembers || 0);
-                                const price = Number(detail?.platePrice || 0);
-
-                                // Auto-calculate if stored amount is 0 but we have valid plate-based data
-                                const finalAmount = (detail?.pricingMethod === 'plate-based' && storedAmount === 0 && plates > 0 && price > 0)
-                                  ? plates * price
-                                  : storedAmount;
-
-                                return formatCurrency(finalAmount);
-                              })()}
-                            </span>
-                            {detail?.pricingMethod === 'plate-based' && (
-                              <span className="text-[10px] font-bold text-slate-400 mt-1 bg-white px-2 py-0.5 rounded border border-slate-100">
-                                {detail.numberOfPlates || detail.numberOfMembers || 0} p × {formatCurrency(detail.platePrice || 0)}
-                              </span>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-
-                      <div>
-                        <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-3">Selected Menu Items</span>
-                        <div className="flex flex-wrap gap-2">
-                          {items.length > 0 ? items.map((item) => (
-                            <span key={item.id} className="px-3 py-1.5 bg-white border border-slate-200 text-slate-700 rounded-xl text-xs font-bold shadow-sm hover:border-primary-300 transition-colors flex items-center gap-1">
-                              {item.menuItem?.name}
-                              {item.customization && (
-                                <span className="text-[10px] text-primary-500 font-medium bg-primary-50 px-1.5 py-0.5 rounded-md">
-                                  {item.customization}
+                            <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-3">Selected Menu Items</span>
+                            <div className="flex flex-wrap gap-2">
+                              {items.length > 0 ? items.map((item) => (
+                                <span key={item.id} className="px-3 py-1.5 bg-white border border-slate-200 text-slate-700 rounded-xl text-xs font-bold shadow-sm hover:border-primary-300 transition-colors flex items-center gap-1">
+                                  {item.menuItem?.name}
+                                  {item.customization && (
+                                    <span className="text-[10px] text-primary-500 font-medium bg-primary-50 px-1.5 py-0.5 rounded-md">
+                                      {item.customization}
+                                    </span>
+                                  )}
                                 </span>
-                              )}
-                            </span>
-                          )) : <p className="text-xs text-slate-300 font-bold italic">No menu items added.</p>}
+                              )) : <p className="text-xs text-slate-300 font-bold italic">No menu items added.</p>}
+                            </div>
+                          </div>
                         </div>
                       </div>
                     </div>
-                  </div>
-                </div>
                   ))}
                 </div>
               </div>
