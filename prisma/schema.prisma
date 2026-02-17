@@ -51,6 +51,11 @@ enum OrderSource {
   CUSTOMER
 }
 
+enum BillingCycle {
+  INDIVIDUAL
+  CONSOLIDATED
+}
+
 model CustomerUser {
   id               String    @id @default(uuid())
   customerId       String    @unique
@@ -106,8 +111,10 @@ model Customer {
   createdAt DateTime          @default(now())
   updatedAt DateTime          @updatedAt
   orders    Order[]
+  bills     Bill[]
   sessions  CustomerSession[]
   user      CustomerUser?
+  billingCycle BillingCycle @default(INDIVIDUAL)
 
   @@map("customers")
 }
@@ -191,7 +198,9 @@ model Order {
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
 
-  bill            Bill?     // ✅ FIXED
+  billId          String?
+  bill            Bill?     @relation("BillToOrders", fields: [billId], references: [id], onDelete: SetNull)
+  oldBill         Bill?     @relation("OldBillLink")
   expenses        Expense[]
 
   @@map("orders")
@@ -214,14 +223,19 @@ model OrderItem {
 model Bill {
   id              String   @id @default(uuid())
   serialNumber    Int      @unique @default(autoincrement())
-  orderId         String   @unique
-  order           Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  orderId         String?  @unique
+  order           Order?   @relation("OldBillLink", fields: [orderId], references: [id], onDelete: Cascade)
+  customerId      String?
+  customer        Customer? @relation(fields: [customerId], references: [id], onDelete: SetNull)
+  orders          Order[]   @relation("BillToOrders")
   totalAmount     Decimal   @db.Decimal(10, 2)
   advancePaid     Decimal   @default(0) @db.Decimal(10, 2)
   remainingAmount Decimal   @db.Decimal(10, 2)
   paidAmount      Decimal   @default(0) @db.Decimal(10, 2)
   status          PaymentStatus @default(pending)
   paymentHistory  Json?
+  startDate       DateTime?
+  endDate         DateTime?
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 
@@ -349,7 +363,7 @@ model StockTransaction {
 
 model Inventory {
   id          String            @id @default(uuid())
-  name        String
+  name      String
   category    String            // "glasses", "vessels", "cooking_utensils", "serving_items", "storage", "other"
   quantity    Int               @default(0)
   unit        String            // "pieces", "sets", "units"
@@ -359,6 +373,7 @@ model Inventory {
   purchaseDate DateTime?        // Purchase date
   purchasePrice Decimal?        @db.Decimal(10, 2) // Purchase price
   description String?
+  minQuantity Int?
   isActive    Boolean           @default(true)
   createdAt   DateTime          @default(now())
   updatedAt   DateTime          @updatedAt
