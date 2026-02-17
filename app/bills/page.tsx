@@ -130,6 +130,7 @@ export default function BillsPage() {
         formatDate,
         showFinancials: true,
         formatCurrency,
+        bill: bill
       })
 
       tempDiv = document.createElement('div')

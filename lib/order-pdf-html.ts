@@ -54,7 +54,15 @@ export function buildOrderPdfHtml(
         const dateStr = safeString(data.date).split("T")[0];
         if (!summaryByDate[dateStr]) summaryByDate[dateStr] = [];
 
-        const menuType = data.menuType || "OTHER";
+        let menuType = data.menuType;
+        if (!menuType) {
+          // Fallback to key if reasonable
+          if (key && !key.includes("-") && !key.startsWith("session_")) {
+            menuType = key;
+          }
+        }
+        menuType = menuType || "OTHER";
+
         const label = sanitizeMealLabel(menuType);
         const count = Number(data.numberOfMembers) || 0;
         const amount = Number(data.amount) || 0;
@@ -139,9 +147,10 @@ export function buildOrderPdfHtml(
     bill?.remainingAmount || order.remainingAmount || 0,
   );
 
-  const billNo = bill?.serialNumber
-    ? `SKC-${bill.serialNumber}`
-    : `SKC-${order.id.slice(0, 6).toUpperCase()}`;
+  const billNo =
+    bill?.serialNumber != null
+      ? `SKC-${bill.serialNumber}`
+      : `SKC-${order.id.slice(0, 6).toUpperCase()}`;
 
   return `
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
