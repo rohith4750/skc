@@ -663,7 +663,7 @@ export default function OrdersPage() {
 
       const newItem = {
         name: quickAddFormData.name,
-        type: mealType.menuType, // Use current meal type
+        type: [mealType.menuType], // Use current meal type as array
         description: quickAddFormData.description,
         isActive: true,
       }
@@ -677,7 +677,7 @@ export default function OrdersPage() {
       // Find the newly created item to get its ID
       const savedItem = updatedMenuItems.find((item: MenuItem) =>
         item.name === newItem.name &&
-        item.type === newItem.type &&
+        (Array.isArray(item.type) ? item.type.includes(mealType.menuType) : item.type === mealType.menuType) &&
         item.description === newItem.description
       )
 
@@ -711,14 +711,14 @@ export default function OrdersPage() {
     if (!baseType) return []
     // When lunch, dinner or snacks is selected, also include sweets for subcategories
     const categoryItems = menuItems.filter((item: MenuItem) => {
-      const itemType = (item.type || '').toLowerCase()
+      const itemTypes = (Array.isArray(item.type) ? item.type : [item.type]).map(t => String(t || '').toLowerCase())
       if (baseType === 'lunch' || baseType === 'dinner') {
-        return itemType === 'lunch' || itemType === 'sweets'
+        return itemTypes.includes('lunch') || itemTypes.includes('sweets')
       }
       if (baseType === 'snacks') {
-        return itemType === 'snacks' || itemType === 'sweets'
+        return itemTypes.includes('snacks') || itemTypes.includes('sweets')
       }
-      return itemType === baseType
+      return itemTypes.includes(baseType)
     })
     const subcategories = categoryItems
       .map((item: MenuItem) => extractSubcategory(item.description))
@@ -873,17 +873,17 @@ export default function OrdersPage() {
 
     // Match items by base type (handles Lunch_merged_7, session_xxx, etc.)
     let filtered = menuItems.filter((m: any) => {
-      const itemType = m.type?.toLowerCase() || 'other'
+      const itemTypes = (Array.isArray(m.type) ? m.type : [m.type]).map((t: any) => String(t || '').toLowerCase())
 
       // Allow sweets to show up for lunch, dinner and snacks
       if (baseType === 'lunch' || baseType === 'dinner') {
-        return m.isActive !== false && (itemType === baseType || itemType === 'sweets')
+        return m.isActive !== false && (itemTypes.includes(baseType) || itemTypes.includes('sweets'))
       }
       if (baseType === 'snacks') {
-        return m.isActive !== false && (itemType === 'snacks' || itemType === 'sweets')
+        return m.isActive !== false && (itemTypes.includes('snacks') || itemTypes.includes('sweets'))
       }
 
-      return m.isActive !== false && itemType === baseType
+      return m.isActive !== false && itemTypes.includes(baseType)
     })
 
     // Filter by subcategory if selected
