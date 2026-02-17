@@ -28,7 +28,7 @@ async function main() {
           where: { id: existing.id },
           data: {
             nameTelugu: item.nameTelugu,
-            type: item.type,
+            type: [item.type] as any,
             description: item.category,
             descriptionTelugu: item.categoryTelugu,
             isActive: true,
@@ -41,7 +41,7 @@ async function main() {
           data: {
             name: item.name,
             nameTelugu: item.nameTelugu,
-            type: item.type,
+            type: [item.type] as any,
             description: item.category,
             descriptionTelugu: item.categoryTelugu,
             isActive: true,
