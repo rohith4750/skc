@@ -47,14 +47,15 @@ export function buildOrderPdfHtml(
   const eventDateDisplay =
     eventDates.length > 0 ? eventDates.join(", ") : formatDate(order.createdAt);
 
-  const getMealTypePriority = (type: string) => {
+  const getMealTypePriority = (type: any) => {
+    const safeType = typeof type === "string" ? type : String(type || "");
     const priorities: Record<string, number> = {
       BREAKFAST: 1,
       LUNCH: 2,
       DINNER: 3,
       SNACKS: 4,
     };
-    return priorities[type?.toUpperCase()] || 99;
+    return priorities[safeType.toUpperCase()] || 99;
   };
 
   type SessionGroup = {
