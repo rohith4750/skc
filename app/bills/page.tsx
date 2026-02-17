@@ -118,6 +118,166 @@ export default function BillsPage() {
     }
   }
 
+  // PDF Generation for Bills
+  const renderBillToPdf = async (bill: ExtendedBill): Promise<string | null> => {
+    if (!bill?.order) return null
+
+    // Ensure order has items for PDF generation
+
+    const htmlContent = buildOrderPdfHtml(bill.order, {
+      useEnglish: true,
+      formatDate,
+      showFinancials: true,
+      formatCurrency,
+    })
+
+    const tempDiv = document.createElement('div')
+    tempDiv.style.position = 'absolute'
+    tempDiv.style.left = '-9999px'
+    tempDiv.style.width = '210mm'
+    tempDiv.style.padding = '15mm'
+    tempDiv.style.fontFamily = 'Poppins, sans-serif'
+    tempDiv.style.fontSize = '11px'
+    tempDiv.style.lineHeight = '1.6'
+    tempDiv.style.background = 'white'
+    tempDiv.style.color = '#333'
+    tempDiv.innerHTML = htmlContent
+    tempDiv.style.overflow = 'visible'
+    document.body.appendChild(tempDiv)
+
+    await new Promise(r => setTimeout(r, 500))
+
+    try {
+      const w = tempDiv.scrollWidth
+      const h = Math.max(tempDiv.scrollHeight + 20, 1)
+      const canvas = await html2canvas(tempDiv, {
+        scale: 1.5,
+        useCORS: true,
+        logging: false,
+        backgroundColor: '#ffffff',
+        width: w,
+        height: h,
+        windowWidth: w,
+        windowHeight: h,
+      })
+
+      document.body.removeChild(tempDiv)
+
+      const imgData = canvas.toDataURL('image/jpeg', 0.85)
+      const pdf = new jsPDF('p', 'mm', 'a4')
+      const imgWidth = 210
+      const pageHeight = 297
+      const imgHeight = (canvas.height * imgWidth) / canvas.width
+      let heightLeft = imgHeight
+      let position = 0
+
+      pdf.addImage(imgData, 'JPEG', 0, position, imgWidth, imgHeight)
+      heightLeft -= pageHeight
+
+      while (heightLeft >= 0) {
+        position = heightLeft - imgHeight
+        pdf.addPage()
+        pdf.addImage(imgData, 'JPEG', 0, position, imgWidth, imgHeight)
+        heightLeft -= pageHeight
+      }
+
+      const output = pdf.output('dataurlstring')
+      return output.split(',')[1] || output
+    } catch (e) {
+      if (document.body.contains(tempDiv)) document.body.removeChild(tempDiv)
+      console.error('PDF Generation Error:', e)
+      toast.error('Failed to generate PDF')
+      return null
+    }
+  }
+
+  const handleDownloadBillPDF = async (bill: ExtendedBill) => {
+    const toastId = toast.loading('Generating PDF...')
+    try {
+      const pdfBase64 = await renderBillToPdf(bill)
+
+      if (pdfBase64) {
+        const billNumber = bill.serialNumber?.toString() || bill.id.slice(0, 8).toUpperCase()
+        const link = document.createElement('a')
+        link.href = `data:application/pdf;base64,${pdfBase64}`
+        link.download = `SKC-Bill-${billNumber}.pdf`
+        document.body.appendChild(link)
+        link.click()
+        document.body.removeChild(link)
+        toast.success('PDF downloaded successfully', { id: toastId })
+      } else {
+        toast.error('Failed to generate PDF', { id: toastId })
+      }
+    } catch (error) {
+      console.error(error)
+      toast.error('Error downloading PDF', { id: toastId })
+    }
+  }
+
+  const handleSendBillEmail = async (bill: ExtendedBill) => {
+    if (!bill.order.customer.email) {
+      toast.error('Customer email not found')
+      return
+    }
+
+    const toastId = toast.loading('Generating and sending PDF...')
+    try {
+      const pdfBase64 = await renderBillToPdf(bill)
+
+      if (!pdfBase64) {
+        toast.error('Failed to generate PDF', { id: toastId })
+        return
+      }
+
+      const response = await fetch(`/api/bills/${bill.id}/send`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ pdfBase64 })
+      })
+
+      if (response.ok) {
+        toast.success(`Bill sent to ${bill.order.customer.email}`, { id: toastId })
+      } else {
+        const error = await response.json()
+        toast.error(error.error || 'Failed to send bill', { id: toastId })
+      }
+    } catch (error) {
+      console.error(error)
+      toast.error('Failed to send bill', { id: toastId })
+    }
+  }
+
+  const handleSendBillWhatsApp = async (bill: ExtendedBill) => {
+    if (!bill.order.customer.phone) {
+      toast.error('Customer phone not found')
+      return
+    }
+
+    const toastId = toast.loading('Generating PDF...')
+    try {
+      const pdfBase64 = await renderBillToPdf(bill)
+
+      if (pdfBase64) {
+        const billNumber = bill.serialNumber?.toString() || bill.id.slice(0, 8).toUpperCase()
+        const link = document.createElement('a')
+        link.href = `data:application/pdf;base64,${pdfBase64}`
+        link.download = `SKC-Bill-${billNumber}.pdf`
+        document.body.appendChild(link)
+        link.click()
+        document.body.removeChild(link)
+
+        const message = `Hi ${bill.order.customer.name}! Here's your bill from SKC Caterers for ${bill.order.eventName || 'your event'}. Bill No: SKC-${billNumber}. Total: ${formatCurrency(bill.totalAmount)}, Remaining: ${formatCurrency(bill.remainingAmount)}.`
+        sendWhatsAppMessage(bill.order.customer.phone, message)
+        toast.success('PDF downloaded. WhatsApp opening...', { id: toastId })
+      } else {
+        toast.error('Failed to generate PDF', { id: toastId })
+      }
+    } catch (error) {
+      console.error(error)
+      toast.error('Error processing WhatsApp request', { id: toastId })
+    }
+  }
+
 
   return (
     <div className="min-h-screen bg-slate-50/50 p-4 md:p-8">
