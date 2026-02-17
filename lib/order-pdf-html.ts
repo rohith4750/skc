@@ -77,6 +77,8 @@ export function buildOrderPdfHtml(
     (a, b) => new Date(a).getTime() - new Date(b).getTime(),
   );
 
+  const isMultiEvent = sortedDates.length > 1;
+
   // Build Summary Rows HTML
   let summaryRowsHtml = "";
   if (sortedDates.length === 0) {
@@ -84,14 +86,16 @@ export function buildOrderPdfHtml(
     summaryRowsHtml = `<tr><td colspan="4" style="text-align:center; padding: 20px;">No specific event details found.</td></tr>`;
   } else {
     sortedDates.forEach((dateStr) => {
-      // Date Header Row
-      summaryRowsHtml += `
+      // Date Header Row - ONLY SHOW if multi-event
+      if (isMultiEvent) {
+        summaryRowsHtml += `
             <tr style="background-color: #f3f3f3;">
                 <td colspan="4" style="padding: 6px 10px; font-weight: 700; font-size: 12px; border-bottom: 1px solid #000;">
                     Event Date: ${formatDate(dateStr)}
                 </td>
             </tr>
           `;
+      }
 
       // Sort meals by priority (Breakfast -> Lunch -> Dinner)
       const meals = summaryByDate[dateStr].sort((a, b) => {
@@ -164,36 +168,41 @@ export function buildOrderPdfHtml(
              </div>
         </div>
 
-        <!-- BILL INFO & CUSTOMER DETAILS -->
-        <div style="margin-bottom: 20px; display: flex; justify-content: space-between; align-items: flex-end;">
-            <div style="font-size: 12px; line-height: 1.5;">
-                <div><span style="font-weight: 700;">Bill No:</span> ${billNo}</div>
-                <div><span style="font-weight: 500;">Date:</span> ${formatDate(new Date().toISOString())}</div>
-            </div>
-            
-             <div style="text-align: center; width: 60%;">
-                <div style="font-weight: 800; font-size: 14px; text-transform: uppercase; margin-bottom: 10px;">CUSTOMER DETAILS</div>
+        <!-- CUSTOMER DETAILS (Centered & Top) -->
+        <div style="margin-bottom: 20px;">
+             <div style="text-align: center; margin-bottom: 15px;">
+                <div style="font-weight: 800; font-size: 14px; text-transform: uppercase; border-bottom: 1px solid #ddd; display: inline-block; padding-bottom: 4px;">CUSTOMER DETAILS</div>
              </div>
-             <div style="width: 10px;"></div> 
+
+             <div style="font-size: 12px; line-height: 1.6; max-width: 600px; margin: 0 auto;">
+                <div style="display: flex; margin-bottom: 4px;">
+                    <div style="width: 140px; font-weight: 600;">Name:</div>
+                    <div style="font-weight: 500;">${safeString(customer?.name)}</div>
+                </div>
+                 <div style="display: flex; margin-bottom: 4px;">
+                    <div style="width: 140px; font-weight: 600;">Address:</div>
+                    <div style="font-weight: 500;">${safeString(customer?.address) || "new nandhi hills RoadNO 1"}</div>
+                </div>
+                 <div style="display: flex; margin-bottom: 4px;">
+                    <div style="width: 140px; font-weight: 600;">Contact No:</div>
+                    <div style="font-weight: 500;">${safeString(customer?.phone)}</div>
+                </div>
+                ${
+                  !isMultiEvent
+                    ? `
+                <div style="display: flex; margin-bottom: 4px;">
+                    <div style="width: 140px; font-weight: 600;">Function Date:</div>
+                    <div style="font-weight: 500;">${sortedDates.length > 0 ? formatDate(sortedDates[0]) : "N/A"}</div>
+                </div>`
+                    : ""
+                }
+            </div>
         </div>
 
-        <div style="margin-bottom: 30px; font-size: 12px; line-height: 1.6;">
-            <div style="display: flex; margin-bottom: 4px;">
-                <div style="width: 120px; font-weight: 600;">Name:</div>
-                <div style="font-weight: 500;">${safeString(customer?.name)}</div>
-            </div>
-             <div style="display: flex; margin-bottom: 4px;">
-                <div style="width: 120px; font-weight: 600;">Address:</div>
-                <div style="font-weight: 500;">${safeString(customer?.address) || "new nandhi hills RoadNO 1"}</div>
-            </div>
-             <div style="display: flex; margin-bottom: 4px;">
-                <div style="width: 120px; font-weight: 600;">Contact No:</div>
-                <div style="font-weight: 500;">${safeString(customer?.phone)}</div>
-            </div>
-            <div style="display: flex; margin-bottom: 4px;">
-                <div style="width: 120px; font-weight: 600;">Function Date:</div>
-                <div style="font-weight: 500;">${sortedDates.length > 0 ? formatDate(sortedDates[0]) : "N/A"}</div>
-            </div>
+        <!-- BILL NO & DATE (Below Customer Details) -->
+        <div style="margin-bottom: 20px; font-size: 12px; line-height: 1.5; border-top: 1px dashed #ccc; padding-top: 10px;">
+            <div><span style="font-weight: 700; width: 80px; display: inline-block;">Bill No:</span> ${billNo}</div>
+            <div><span style="font-weight: 500; width: 80px; display: inline-block;">Date:</span> ${formatDate(new Date().toISOString())}</div>
         </div>
 
         <!-- BILL SUMMARY BOX -->
