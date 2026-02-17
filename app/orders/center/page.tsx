@@ -1,9 +1,10 @@
 'use client'
 
 import { useEffect, useState, useMemo } from 'react'
+import { useRouter } from 'next/navigation'
 import { formatDateTime, formatDate, formatCurrency, sanitizeMealLabel } from '@/lib/utils'
 import { Order } from '@/types'
-import { FaTrash, FaFilePdf, FaFileImage, FaChevronLeft, FaChevronRight, FaEdit, FaFilter, FaChartLine, FaClock, FaCheckCircle, FaTimesCircle, FaEnvelope, FaCalendarAlt } from 'react-icons/fa'
+import { FaTrash, FaFilePdf, FaFileImage, FaChevronLeft, FaChevronRight, FaEdit, FaFilter, FaChartLine, FaClock, FaCheckCircle, FaTimesCircle, FaEnvelope, FaCalendarAlt, FaPlus } from 'react-icons/fa'
 import Link from 'next/link'
 import jsPDF from 'jspdf'
 import html2canvas from 'html2canvas'
@@ -14,6 +15,7 @@ import { FaLayerGroup } from 'react-icons/fa'
 import { buildOrderPdfHtml } from '@/lib/order-pdf-html'
 
 export default function OrderCenterPage() {
+  const router = useRouter()
   const [orders, setOrders] = useState<Order[]>([])
   const [currentPage, setCurrentPage] = useState(1)
   const [itemsPerPage] = useState(10)
@@ -721,6 +723,13 @@ export default function OrderCenterPage() {
               Merge Selected ({selectedOrderIds.length})
             </button>
           )}
+          <button
+            onClick={() => router.push('/orders')}
+            className="flex items-center gap-2 px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors shadow-md font-semibold"
+          >
+            <FaPlus />
+            Create Order
+          </button>
           <button
             onClick={() => setShowFilters(!showFilters)}
             className="flex items-center gap-2 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors"
