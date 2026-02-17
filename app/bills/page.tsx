@@ -122,32 +122,32 @@ export default function BillsPage() {
   const renderBillToPdf = async (bill: ExtendedBill): Promise<string | null> => {
     if (!bill?.order) return null
 
-    // Ensure order has items for PDF generation
-
-    const htmlContent = buildOrderPdfHtml(bill.order, {
-      useEnglish: true,
-      formatDate,
-      showFinancials: true,
-      formatCurrency,
-    })
-
-    const tempDiv = document.createElement('div')
-    tempDiv.style.position = 'absolute'
-    tempDiv.style.left = '-9999px'
-    tempDiv.style.width = '210mm'
-    tempDiv.style.padding = '15mm'
-    tempDiv.style.fontFamily = 'Poppins, sans-serif'
-    tempDiv.style.fontSize = '11px'
-    tempDiv.style.lineHeight = '1.6'
-    tempDiv.style.background = 'white'
-    tempDiv.style.color = '#333'
-    tempDiv.innerHTML = htmlContent
-    tempDiv.style.overflow = 'visible'
-    document.body.appendChild(tempDiv)
-
-    await new Promise(r => setTimeout(r, 500))
+    let tempDiv: HTMLDivElement | null = null;
 
     try {
+      const htmlContent = buildOrderPdfHtml(bill.order, {
+        useEnglish: true,
+        formatDate,
+        showFinancials: true,
+        formatCurrency,
+      })
+
+      tempDiv = document.createElement('div')
+      tempDiv.style.position = 'absolute'
+      tempDiv.style.left = '-9999px'
+      tempDiv.style.width = '210mm'
+      tempDiv.style.padding = '15mm'
+      tempDiv.style.fontFamily = 'Poppins, sans-serif'
+      tempDiv.style.fontSize = '11px'
+      tempDiv.style.lineHeight = '1.6'
+      tempDiv.style.background = 'white'
+      tempDiv.style.color = '#333'
+      tempDiv.innerHTML = htmlContent
+      tempDiv.style.overflow = 'visible'
+      document.body.appendChild(tempDiv)
+
+      await new Promise(r => setTimeout(r, 500))
+
       const w = tempDiv.scrollWidth
       const h = Math.max(tempDiv.scrollHeight + 20, 1)
       const canvas = await html2canvas(tempDiv, {
@@ -161,7 +161,8 @@ export default function BillsPage() {
         windowHeight: h,
       })
 
-      document.body.removeChild(tempDiv)
+      if (document.body.contains(tempDiv)) document.body.removeChild(tempDiv)
+      tempDiv = null;
 
       const imgData = canvas.toDataURL('image/jpeg', 0.85)
       const pdf = new jsPDF('p', 'mm', 'a4')
@@ -184,7 +185,7 @@ export default function BillsPage() {
       const output = pdf.output('dataurlstring')
       return output.split(',')[1] || output
     } catch (e) {
-      if (document.body.contains(tempDiv)) document.body.removeChild(tempDiv)
+      if (tempDiv && document.body.contains(tempDiv)) document.body.removeChild(tempDiv)
       console.error('PDF Generation Error:', e)
       toast.error('Failed to generate PDF')
       return null
