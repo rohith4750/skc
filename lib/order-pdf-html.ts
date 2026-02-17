@@ -333,8 +333,5 @@ export function buildOrderPdfHtml(
     </div>
     ${stallsHtml}
     ${financialsHtml}
-    <div style="margin-top: 25px; display: flex; justify-content: flex-end;">
-      <img src="/images/stamp.png" alt="Business Stamp" width="200" height="100" style="width: 200px; height: 100px; object-fit: contain;" crossorigin="anonymous" />
-    </div>
   `;
 }

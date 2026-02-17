@@ -533,13 +533,6 @@ export default function OrdersHistoryPage() {
       `
     }
 
-    // Add stamp below menu (and stalls)
-    htmlContent += `
-      <div style="margin-top: 25px; display: flex; justify-content: flex-end;">
-        <img src="/images/stamp.png" alt="Business Stamp" width="220" height="120" style="width: 220px; height: 120px; transform: rotate(-90deg); object-fit: contain;" crossorigin="anonymous" />
-      </div>
-    `
-
     tempDiv.innerHTML = htmlContent
     tempDiv.style.overflow = 'visible'
     document.body.appendChild(tempDiv)
