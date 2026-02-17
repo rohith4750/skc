@@ -331,7 +331,8 @@ export default function OrderCenterPage() {
 
 
 
-  const renderOrderToPdf = async (order: any, language: 'english' | 'telugu'): Promise<string | null> => {
+  // Shared HTML generator for Menu (PDF & Image)
+  const generateMenuHtml = (order: any, language: 'english' | 'telugu') => {
     const customer = order.customer
     const supervisor = order.supervisor
     const useEnglish = language === 'english'
@@ -350,18 +351,6 @@ export default function OrderCenterPage() {
       })
     }
     const eventDateDisplay = eventDates.length > 0 ? eventDates.join(', ') : formatDate(order.createdAt)
-
-    // Create a temporary HTML element to render Telugu text properly
-    const tempDiv = document.createElement('div')
-    tempDiv.style.position = 'absolute'
-    tempDiv.style.left = '-9999px'
-    tempDiv.style.width = '210mm' // A4 width
-    tempDiv.style.padding = '15mm'
-    tempDiv.style.fontFamily = 'Poppins, "Segoe UI", Tahoma, Geneva, Verdana, sans-serif'
-    tempDiv.style.fontSize = '11px'
-    tempDiv.style.lineHeight = '1.6'
-    tempDiv.style.background = 'white'
-    tempDiv.style.color = '#333'
 
     let htmlContent = `
       <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
@@ -539,6 +528,24 @@ export default function OrderCenterPage() {
       `
     }
 
+    return htmlContent
+  }
+
+  const renderOrderToPdf = async (order: any, language: 'english' | 'telugu'): Promise<string | null> => {
+    const htmlContent = generateMenuHtml(order, language)
+
+    // Create a temporary HTML element to render Telugu text properly
+    const tempDiv = document.createElement('div')
+    tempDiv.style.position = 'absolute'
+    tempDiv.style.left = '-9999px'
+    tempDiv.style.width = '210mm' // A4 width
+    tempDiv.style.padding = '15mm'
+    tempDiv.style.fontFamily = 'Poppins, "Segoe UI", Tahoma, Geneva, Verdana, sans-serif'
+    tempDiv.style.fontSize = '11px'
+    tempDiv.style.lineHeight = '1.6'
+    tempDiv.style.background = 'white'
+    tempDiv.style.color = '#333'
+
     tempDiv.innerHTML = htmlContent
     tempDiv.style.overflow = 'visible'
     document.body.appendChild(tempDiv)
@@ -592,12 +599,9 @@ export default function OrderCenterPage() {
 
   const renderOrderToImage = async (order: any, language: 'english' | 'telugu', showFinancials = false): Promise<string | null> => {
     if (!order?.items?.length) return null
-    const htmlContent = buildOrderPdfHtml(order, {
-      useEnglish: language === 'english',
-      formatDate,
-      showFinancials,
-      formatCurrency,
-    })
+    // Use the SAME menu layout as PDF (ignore showFinancials for now as user wants Menu list)
+    const htmlContent = generateMenuHtml(order, language)
+
     const tempDiv = document.createElement('div')
     tempDiv.style.position = 'absolute'
     tempDiv.style.left = '-9999px'
