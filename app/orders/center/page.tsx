@@ -408,6 +408,29 @@ export default function OrderCenterPage() {
         <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; font-size: 9px;">
     `
 
+    // Helper to resolve a displayable menu type name
+    const resolveMenuType = (sessionKey: string, sessionData: any, item?: any): string => {
+      // 1. Priority: stored menuType in session data
+      if (sessionData?.menuType) return sessionData.menuType
+
+      // 2. Fallback: parse from session key (session_LUNCH_serial or Lunch_merged)
+      if (sessionKey && !/^[0-9a-f-]{36}$/i.test(sessionKey)) {
+        if (sessionKey.startsWith('session_')) {
+          const parts = sessionKey.split('_')
+          if (parts.length > 1 && parts[1] !== 'merged') return parts[1]
+        }
+        const clean = sessionKey.split('_')[0]
+        if (['breakfast', 'lunch', 'dinner', 'snacks', 'tiffins', 'sweets'].includes(clean.toLowerCase())) return clean
+      }
+
+      // 3. Last fallback: Item's own type if it's a string or the first element of array
+      const itemType = item?.menuItem?.type
+      if (Array.isArray(itemType) && itemType.length > 0) return itemType[0]
+      if (typeof itemType === 'string') return itemType
+
+      return 'OTHER'
+    }
+
     // Build date-wise structure for merged orders (same as order-pdf-html)
     const getMealTypePriority = (type: string) => {
       const p: Record<string, number> = { 'BREAKFAST': 1, 'LUNCH': 2, 'DINNER': 3, 'SNACKS': 4 }
@@ -421,7 +444,8 @@ export default function OrderCenterPage() {
         const d = typeof data === 'object' && data !== null && (data as any).date ? String((data as any).date).split('T')[0] : null
         if (d) {
           if (!byDate[d]) byDate[d] = []
-          const menuType = (data as any)?.menuType || 'OTHER'
+          const sessionData = typeof data === 'object' ? data : null
+          const menuType = resolveMenuType(key, sessionData)
           const groupKey = key || `legacy_${menuType}`
           if (!byDate[d].some((s: any) => s._key === groupKey)) {
             const session = { menuType, members: (data as any)?.numberOfMembers, services: (data as any)?.services, items: [] } as SessionGroup & { _key?: string }
@@ -452,7 +476,7 @@ export default function OrderCenterPage() {
       const sessionData = resolved?.data ?? null
       const resolvedKey = resolved?.resolvedKey || sessionKey
 
-      const menuType = sessionData?.menuType || item.menuItem?.type || 'OTHER'
+      const menuType = resolveMenuType(sessionKey, sessionData, item)
       const rawDate = sessionData?.date ? String(sessionData.date).split('T')[0] : null
       const dateKey = rawDate || eventDateDisplay
       const members = sessionData?.numberOfMembers

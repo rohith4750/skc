@@ -187,13 +187,29 @@ export default function OrdersPage() {
           const numberOfMembers = typeof mealTypeData === 'object' && mealTypeData !== null && mealTypeData.numberOfMembers ? mealTypeData.numberOfMembers.toString() : ''
 
           // If key is a menuType name (legacy), use it. If it's an ID-keyed object, use stored menuType.
-          const menuTypeName = (typeof mealTypeData === 'object' && mealTypeData !== null && (mealTypeData as any).menuType)
+          let menuTypeName = (typeof mealTypeData === 'object' && mealTypeData !== null && (mealTypeData as any).menuType)
             ? (mealTypeData as any).menuType
             : key;
 
-          const pricingMethod: 'manual' | 'plate-based' =
-            typeof mealTypeData === 'object' && mealTypeData !== null && mealTypeData.pricingMethod
-              ? mealTypeData.pricingMethod
+          // Robust fallback for session IDs or legacy names
+          if (!menuTypeName || /^[0-9a-f-]{36}$/i.test(menuTypeName)) {
+            // Check if key contains meal type (e.g. session_LUNCH_...)
+            if (key.startsWith('session_')) {
+              const parts = key.split('_');
+              if (parts.length > 1 && parts[1] !== 'merged') menuTypeName = parts[1].toLowerCase();
+            } else {
+              const clean = key.split('_')[0].toLowerCase();
+              if (['breakfast', 'lunch', 'dinner', 'snacks', 'tiffins', 'sweets'].includes(clean)) {
+                menuTypeName = clean;
+              }
+            }
+          }
+          // Final fallback to lowercase
+          if (menuTypeName) menuTypeName = menuTypeName.toLowerCase();
+
+          const pricingMethod =
+            (typeof mealTypeData === 'object' && mealTypeData !== null && (mealTypeData as any).pricingMethod)
+              ? (mealTypeData as any).pricingMethod as 'manual' | 'plate-based'
               : 'manual'
 
           const numberOfPlates =
@@ -620,9 +636,16 @@ export default function OrdersPage() {
         }))
       )
 
+      const allDates = formData.mealTypes
+        .map(mt => mt.date)
+        .filter(d => !!d)
+        .sort((a, b) => new Date(a).getTime() - new Date(b).getTime())
+      const primaryEventDate = allDates.length > 0 ? allDates[0] : null
+
       const orderData: any = {
         customerId: formData.customerId,
         eventName: formData.eventName || null,
+        eventDate: primaryEventDate,
         items: orderItems,
         totalAmount,
         advancePaid: effectiveAdvancePaid,
@@ -1502,251 +1525,247 @@ export default function OrdersPage() {
                 </div>
               )}
 
-              {
-                !isEditMode && (
-                  <div className="border-t border-gray-200 pt-4">
-                    <h3 className="text-lg font-semibold text-gray-800 mb-4">Additional Charges</h3>
+              <div className="border-t border-gray-200 pt-4">
+                <h3 className="text-lg font-semibold text-gray-800 mb-4">Additional Charges</h3>
 
-                    <div className="mb-4 border-t border-gray-200 pt-4">
-                      <div className="flex justify-between items-center mb-4">
-                        <div className="flex items-center gap-3">
-                          <label className="block text-sm font-medium text-gray-700">
-                            Stalls (Separate from plate calculation)
-                          </label>
-                          <button
-                            type="button"
-                            onClick={() => setShowStalls(!showStalls)}
-                            className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 ${showStalls ? 'bg-primary-500' : 'bg-gray-300'
-                              }`}
-                          >
-                            <span className="sr-only">Toggle Stalls</span>
-                            <span
-                              className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${showStalls ? 'translate-x-6' : 'translate-x-1'
-                                }`}
-                            />
-                          </button>
-                          <span className="text-sm text-gray-500">
-                            {showStalls ? 'Enabled' : 'Disabled'}
-                          </span>
+                <div className="mb-4 border-t border-gray-200 pt-4">
+                  <div className="flex justify-between items-center mb-4">
+                    <div className="flex items-center gap-3">
+                      <label className="block text-sm font-medium text-gray-700">
+                        Stalls (Separate from plate calculation)
+                      </label>
+                      <button
+                        type="button"
+                        onClick={() => setShowStalls(!showStalls)}
+                        className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 ${showStalls ? 'bg-primary-500' : 'bg-gray-300'
+                          }`}
+                      >
+                        <span className="sr-only">Toggle Stalls</span>
+                        <span
+                          className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${showStalls ? 'translate-x-6' : 'translate-x-1'
+                            }`}
+                        />
+                      </button>
+                      <span className="text-sm text-gray-500">
+                        {showStalls ? 'Enabled' : 'Disabled'}
+                      </span>
+                    </div>
+                    {showStalls && (
+                      <button
+                        type="button"
+                        onClick={handleAddStall}
+                        className="px-4 py-2 bg-primary-500 text-white rounded-lg hover:bg-primary-600 transition-colors text-sm"
+                      >
+                        + Add Stall
+                      </button>
+                    )}
+                  </div>
+
+                  {!showStalls ? (
+                    <p className="text-gray-500 text-sm text-center py-4 bg-gray-50 rounded-lg">
+                      Stalls are disabled. Toggle above to enable.
+                    </p>
+                  ) : formData.stalls.length === 0 ? (
+                    <p className="text-gray-500 text-sm text-center py-4 bg-gray-50 rounded-lg">
+                      No stalls added. Click "Add Stall" to add one.
+                    </p>
+                  ) : (
+                    <div className="space-y-4">
+                      {formData.stalls.map((stall, index) => (
+                        <div key={index} className="border border-gray-200 rounded-lg p-4 bg-gray-50">
+                          <div className="flex justify-between items-center mb-3">
+                            <h4 className="text-sm font-semibold text-gray-700">Stall #{index + 1}</h4>
+                            <button
+                              type="button"
+                              onClick={() => handleRemoveStall(index)}
+                              className="text-red-600 hover:text-red-800 text-sm font-medium"
+                            >
+                              Remove
+                            </button>
+                          </div>
+
+                          <div className="space-y-3">
+                            <div>
+                              <label className="block text-sm font-medium text-gray-700 mb-1">
+                                Stall Category *
+                              </label>
+                              <select
+                                value={stall.category}
+                                onChange={(e: any) => handleUpdateStall(index, 'category', e.target.value)}
+                                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                              >
+                                <option value="">Select Stall Category</option>
+                                <option value="Sweet Stall">Sweet Stall</option>
+                                <option value="Pan Stall">Pan Stall</option>
+                                <option value="LED Counter">LED Counter</option>
+                                <option value="Tiffin Counter">Tiffin Counter</option>
+                                <option value="Chat Counter">Chat Counter</option>
+                              </select>
+                            </div>
+
+                            <div>
+                              <label className="block text-sm font-medium text-gray-700 mb-1">
+                                Description/Tag
+                              </label>
+                              <textarea
+                                value={stall.description}
+                                onChange={(e: any) => handleUpdateStall(index, 'description', e.target.value)}
+                                rows={2}
+                                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                                placeholder="Enter description or tag for this stall..."
+                              />
+                            </div>
+
+                            <div>
+                              <label className="block text-sm font-medium text-gray-700 mb-1">
+                                Cost
+                              </label>
+                              <input
+                                type="number"
+                                step="0.01"
+                                min="0"
+                                value={stall.cost}
+                                onChange={(e: any) => handleUpdateStall(index, 'cost', e.target.value)}
+                                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                                placeholder="0.00"
+                              />
+                            </div>
+                          </div>
                         </div>
-                        {showStalls && (
-                          <button
-                            type="button"
-                            onClick={handleAddStall}
-                            className="px-4 py-2 bg-primary-500 text-white rounded-lg hover:bg-primary-600 transition-colors text-sm"
-                          >
-                            + Add Stall
-                          </button>
-                        )}
-                      </div>
+                      ))}
 
-                      {!showStalls ? (
-                        <p className="text-gray-500 text-sm text-center py-4 bg-gray-50 rounded-lg">
-                          Stalls are disabled. Toggle above to enable.
-                        </p>
-                      ) : formData.stalls.length === 0 ? (
-                        <p className="text-gray-500 text-sm text-center py-4 bg-gray-50 rounded-lg">
-                          No stalls added. Click "Add Stall" to add one.
-                        </p>
-                      ) : (
-                        <div className="space-y-4">
-                          {formData.stalls.map((stall, index) => (
-                            <div key={index} className="border border-gray-200 rounded-lg p-4 bg-gray-50">
-                              <div className="flex justify-between items-center mb-3">
-                                <h4 className="text-sm font-semibold text-gray-700">Stall #{index + 1}</h4>
-                                <button
-                                  type="button"
-                                  onClick={() => handleRemoveStall(index)}
-                                  className="text-red-600 hover:text-red-800 text-sm font-medium"
-                                >
-                                  Remove
-                                </button>
-                              </div>
-
-                              <div className="space-y-3">
-                                <div>
-                                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                                    Stall Category *
-                                  </label>
-                                  <select
-                                    value={stall.category}
-                                    onChange={(e: any) => handleUpdateStall(index, 'category', e.target.value)}
-                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-                                  >
-                                    <option value="">Select Stall Category</option>
-                                    <option value="Sweet Stall">Sweet Stall</option>
-                                    <option value="Pan Stall">Pan Stall</option>
-                                    <option value="LED Counter">LED Counter</option>
-                                    <option value="Tiffin Counter">Tiffin Counter</option>
-                                    <option value="Chat Counter">Chat Counter</option>
-                                  </select>
-                                </div>
-
-                                <div>
-                                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                                    Description/Tag
-                                  </label>
-                                  <textarea
-                                    value={stall.description}
-                                    onChange={(e: any) => handleUpdateStall(index, 'description', e.target.value)}
-                                    rows={2}
-                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-                                    placeholder="Enter description or tag for this stall..."
-                                  />
-                                </div>
-
-                                <div>
-                                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                                    Cost
-                                  </label>
-                                  <input
-                                    type="number"
-                                    step="0.01"
-                                    min="0"
-                                    value={stall.cost}
-                                    onChange={(e: any) => handleUpdateStall(index, 'cost', e.target.value)}
-                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-                                    placeholder="0.00"
-                                  />
-                                </div>
-                              </div>
-                            </div>
-                          ))}
-
-                          {formData.stalls.length > 0 && (
-                            <div className="mt-4 p-3 bg-blue-50 rounded-lg">
-                              <div className="flex justify-between items-center">
-                                <span className="text-sm font-medium text-gray-700">Total Stalls Cost:</span>
-                                <span className="text-lg font-bold text-blue-600">{formatCurrency(totalStallsCost)}</span>
-                              </div>
-                            </div>
-                          )}
+                      {formData.stalls.length > 0 && (
+                        <div className="mt-4 p-3 bg-blue-50 rounded-lg">
+                          <div className="flex justify-between items-center">
+                            <span className="text-sm font-medium text-gray-700">Total Stalls Cost:</span>
+                            <span className="text-lg font-bold text-blue-600">{formatCurrency(totalStallsCost)}</span>
+                          </div>
                         </div>
                       )}
                     </div>
+                  )}
+                </div>
 
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">
-                          Transport Cost
-                        </label>
-                        <input
-                          type="number"
-                          step="0.01"
-                          min="0"
-                          value={formData.transportCost}
-                          onChange={(e: any) => setFormData({ ...formData, transportCost: e.target.value })}
-                          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-                          placeholder="0.00"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">
-                          Water Bottles Cost
-                        </label>
-                        <input
-                          type="number"
-                          step="0.01"
-                          min="0"
-                          value={formData.waterBottlesCost}
-                          onChange={(e: any) => setFormData({ ...formData, waterBottlesCost: e.target.value })}
-                          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-                          placeholder="0.00"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">
-                          Discount
-                        </label>
-                        <input
-                          type="number"
-                          step="0.01"
-                          min="0"
-                          value={formData.discount}
-                          onChange={(e: any) => setFormData({ ...formData, discount: e.target.value })}
-                          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-                          placeholder="0.00"
-                        />
-                      </div>
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-4 mt-4">
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">
-                          {isEditMode ? 'Additional Advance Paid' : 'Advance Paid'}
-                        </label>
-                        <input
-                          type="number"
-                          step="0.01"
-                          min="0"
-                          value={formData.advancePaid}
-                          onChange={(e: any) => setFormData({ ...formData, advancePaid: e.target.value })}
-                          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-                          placeholder="0.00"
-                        />
-                        {isEditMode && (
-                          <p className="mt-1 text-xs text-gray-500">
-                            Current advance: {formatCurrency(originalAdvancePaid)} · New total: {formatCurrency(effectiveAdvancePaid)} · Remaining: {formatCurrency(effectiveRemainingAmount)}
-                          </p>
-                        )}
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">
-                          Payment Method
-                        </label>
-                        <select
-                          value={formData.paymentMethod}
-                          onChange={(e: any) => setFormData({ ...formData, paymentMethod: e.target.value })}
-                          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-                        >
-                          <option value="cash">Cash</option>
-                          <option value="upi">UPI</option>
-                          <option value="card">Card</option>
-                          <option value="bank_transfer">Bank Transfer</option>
-                          <option value="other">Other</option>
-                        </select>
-                      </div>
-                    </div>
-
-                    <div className="mt-4">
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Payment Notes
-                      </label>
-                      <input
-                        type="text"
-                        value={formData.paymentNotes}
-                        onChange={(e: any) => setFormData({ ...formData, paymentNotes: e.target.value })}
-                        placeholder="e.g., Transaction ID, Reference, etc."
-                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-                      />
-                    </div>
-
-                    <div className="mt-4">
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">
-                          Total Amount * (Auto-calculated: Meal Types + Transport + Stalls - Discount)
-                        </label>
-                        <input
-                          type="number"
-                          step="0.01"
-                          required
-                          value={formData.totalAmount}
-                          readOnly
-                          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 bg-gray-50"
-                          placeholder="0.00"
-                        />
-                      </div>
-                    </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Transport Cost
+                    </label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      value={formData.transportCost}
+                      onChange={(e: any) => setFormData({ ...formData, transportCost: e.target.value })}
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                      placeholder="0.00"
+                    />
                   </div>
-                )
-              }
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Water Bottles Cost
+                    </label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      value={formData.waterBottlesCost}
+                      onChange={(e: any) => setFormData({ ...formData, waterBottlesCost: e.target.value })}
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                      placeholder="0.00"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Discount
+                    </label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      value={formData.discount}
+                      onChange={(e: any) => setFormData({ ...formData, discount: e.target.value })}
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                      placeholder="0.00"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4 mt-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      {isEditMode ? 'Additional Advance Paid' : 'Advance Paid'}
+                    </label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      value={formData.advancePaid}
+                      onChange={(e: any) => setFormData({ ...formData, advancePaid: e.target.value })}
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                      placeholder="0.00"
+                    />
+                    {isEditMode && (
+                      <p className="mt-1 text-xs text-gray-500">
+                        Current advance: {formatCurrency(originalAdvancePaid)} · New total: {formatCurrency(effectiveAdvancePaid)} · Remaining: {formatCurrency(effectiveRemainingAmount)}
+                      </p>
+                    )}
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Payment Method
+                    </label>
+                    <select
+                      value={formData.paymentMethod}
+                      onChange={(e: any) => setFormData({ ...formData, paymentMethod: e.target.value })}
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                    >
+                      <option value="cash">Cash</option>
+                      <option value="upi">UPI</option>
+                      <option value="card">Card</option>
+                      <option value="bank_transfer">Bank Transfer</option>
+                      <option value="other">Other</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div className="mt-4">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Payment Notes
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.paymentNotes}
+                    onChange={(e: any) => setFormData({ ...formData, paymentNotes: e.target.value })}
+                    placeholder="e.g., Transaction ID, Reference, etc."
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                  />
+                </div>
+
+                <div className="mt-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Total Amount * (Auto-calculated: Meal Types + Transport + Stalls - Discount)
+                    </label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      required
+                      value={formData.totalAmount}
+                      readOnly
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 bg-gray-50"
+                      placeholder="0.00"
+                    />
+                  </div>
+                </div>
+              </div>
 
               {
                 isEditMode && (
                   <div className="border-t border-gray-200 pt-4">
                     <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
                       <p className="text-sm text-blue-700 font-medium">
-                        Financial updates (payments, discounts, transport, stalls) are handled in the Financial Tracking page.
+                        Detailed payment history is handled in the Financial Tracking page.
                       </p>
                       <div className="mt-3">
                         <Link

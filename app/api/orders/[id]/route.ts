@@ -1,14 +1,14 @@
-import { NextRequest, NextResponse } from 'next/server'
-import { prisma } from '@/lib/prisma'
-import { isNonEmptyString, isNonNegativeNumber } from '@/lib/validation'
-import { publishNotification } from '@/lib/notifications'
-import { transformDecimal } from '@/lib/decimal-utils'
-import { sendPaymentReceivedAlert } from '@/lib/email-alerts'
-import { formatCurrency } from '@/lib/utils'
+import { NextRequest, NextResponse } from "next/server";
+import { prisma } from "@/lib/prisma";
+import { isNonEmptyString, isNonNegativeNumber } from "@/lib/validation";
+import { publishNotification } from "@/lib/notifications";
+import { transformDecimal } from "@/lib/decimal-utils";
+import { sendPaymentReceivedAlert } from "@/lib/email-alerts";
+import { formatCurrency } from "@/lib/utils";
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: { id: string } },
 ) {
   try {
     const order = await prisma.order.findUnique({
@@ -17,60 +17,68 @@ export async function GET(
         customer: true,
         supervisor: true,
         items: {
-          include: { menuItem: true }
+          include: { menuItem: true },
         },
         bill: true,
-        expenses: true
-      }
-    })
+        expenses: true,
+      },
+    });
 
     if (!order) {
-      return NextResponse.json({ error: 'Order not found' }, { status: 404 })
+      return NextResponse.json({ error: "Order not found" }, { status: 404 });
     }
 
-    return NextResponse.json(transformDecimal(order))
+    return NextResponse.json(transformDecimal(order));
   } catch {
-    return NextResponse.json({ error: 'Failed to fetch order' }, { status: 500 })
+    return NextResponse.json(
+      { error: "Failed to fetch order" },
+      { status: 500 },
+    );
   }
 }
 
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: { id: string } },
 ) {
   try {
-    const data = await request.json()
+    const data = await request.json();
 
     // -------- STATUS UPDATE (MOST IMPORTANT PART) --------
     if (data.status && Object.keys(data).length === 1) {
-      const status = data.status
+      const status = data.status;
 
       const order = await prisma.order.update({
         where: { id: params.id },
         data: { status: status },
-      })
+      });
 
       let bill = await prisma.bill.findUnique({
-        where: { orderId: params.id }
-      })
+        where: { orderId: params.id },
+      });
 
       // Create bill ONLY when order starts or completes
-      if (!bill && ['in_progress', 'completed'].includes(status)) {
-        const initialPaymentHistory = Number(order.advancePaid) > 0 ? [{
-          amount: order.advancePaid,
-          totalPaid: order.advancePaid,
-          remainingAmount: order.remainingAmount,
-          status:
-            Number(order.remainingAmount) > 0
-              ? Number(order.advancePaid) > 0
-                ? 'partial'
-                : 'pending'
-              : 'paid',
-          date: order.createdAt.toISOString(),
-          source: 'booking',
-          method: 'cash', // Default for initial advance if not specified
-          notes: 'Initial advance taken at order creation',
-        }] : []
+      if (!bill && ["in_progress", "completed"].includes(status)) {
+        const initialPaymentHistory =
+          Number(order.advancePaid) > 0
+            ? [
+                {
+                  amount: order.advancePaid,
+                  totalPaid: order.advancePaid,
+                  remainingAmount: order.remainingAmount,
+                  status:
+                    Number(order.remainingAmount) > 0
+                      ? Number(order.advancePaid) > 0
+                        ? "partial"
+                        : "pending"
+                      : "paid",
+                  date: order.createdAt.toISOString(),
+                  source: "booking",
+                  method: "cash", // Default for initial advance if not specified
+                  notes: "Initial advance taken at order creation",
+                },
+              ]
+            : [];
 
         const billCreateData: any = {
           orderId: params.id,
@@ -82,33 +90,33 @@ export async function PUT(
           status:
             Number(order.remainingAmount) > 0
               ? Number(order.advancePaid) > 0
-                ? 'partial'
-                : 'pending'
-              : 'paid',
-        }
+                ? "partial"
+                : "pending"
+              : "paid",
+        };
 
         bill = await prisma.bill.create({
           data: billCreateData,
-        })
+        });
       }
 
       // If order reverted to pending -> we no longer delete the bill to preserve the serial number.
       // The bills page will filter out bills for pending orders.
-      if (bill && status === 'pending') {
+      if (bill && status === "pending") {
         // Do nothing - preserve bill record and its serialNumber
       }
 
       // If order completed → mark bill paid
-      if (bill && status === 'completed') {
+      if (bill && status === "completed") {
         bill = await prisma.bill.update({
           where: { id: bill.id },
           data: {
             advancePaid: order.advancePaid, // Preserve original advance
             paidAmount: bill.totalAmount,
             remainingAmount: 0,
-            status: 'paid',
+            status: "paid",
           },
-        })
+        });
 
         await prisma.order.update({
           where: { id: params.id },
@@ -116,16 +124,16 @@ export async function PUT(
             advancePaid: bill.totalAmount,
             remainingAmount: 0,
           },
-        })
+        });
       }
 
       publishNotification({
-        type: 'orders',
-        title: 'Order status updated',
+        type: "orders",
+        title: "Order status updated",
         message: `Order ${params.id.slice(0, 8).toUpperCase()} · ${status}`,
         entityId: params.id,
-        severity: status === 'completed' ? 'success' : 'info',
-      })
+        severity: status === "completed" ? "success" : "info",
+      });
 
       // Fetch the updated order with all relations to return complete data
       const updatedOrderWithRelations = await prisma.order.findUnique({
@@ -135,95 +143,126 @@ export async function PUT(
           supervisor: true,
           items: {
             include: {
-              menuItem: true
-            }
-          }
-        }
-      })
+              menuItem: true,
+            },
+          },
+        },
+      });
 
       return NextResponse.json({
         order: transformDecimal(updatedOrderWithRelations),
         bill: transformDecimal(bill),
         _billCreated: bill ? true : false,
         _billId: bill?.id,
-        _billStatus: bill ? 'created' : 'none'
-      })
+        _billStatus: bill ? "created" : "none",
+      });
     }
 
     if (!isNonEmptyString(data.customerId)) {
-      return NextResponse.json({ error: 'Customer is required' }, { status: 400 })
+      return NextResponse.json(
+        { error: "Customer is required" },
+        { status: 400 },
+      );
     }
 
-    const totalAmount = parseFloat(data.totalAmount) || 0
-    const advancePaid = parseFloat(data.advancePaid) || 0
-    const remainingAmount = Math.max(0, parseFloat(data.remainingAmount) || (totalAmount - advancePaid))
+    const totalAmount = parseFloat(data.totalAmount) || 0;
+    const advancePaid = parseFloat(data.advancePaid) || 0;
+    const remainingAmount = Math.max(
+      0,
+      parseFloat(data.remainingAmount) || totalAmount - advancePaid,
+    );
 
-    if (!isNonNegativeNumber(totalAmount) || !isNonNegativeNumber(advancePaid) || !isNonNegativeNumber(remainingAmount)) {
-      return NextResponse.json({ error: 'Invalid amounts' }, { status: 400 })
+    if (
+      !isNonNegativeNumber(totalAmount) ||
+      !isNonNegativeNumber(advancePaid) ||
+      !isNonNegativeNumber(remainingAmount)
+    ) {
+      return NextResponse.json({ error: "Invalid amounts" }, { status: 400 });
     }
-    const discount = parseFloat(data.discount) || 0
-    const transportCost = parseFloat(data.transportCost) || 0
-    const additionalPayment = parseFloat(data.additionalPayment) || 0
-    const paymentMethod = data.paymentMethod || 'cash'
-    const paymentNotes = data.paymentNotes || ''
+    const discount = parseFloat(data.discount) || 0;
+    const transportCost = parseFloat(data.transportCost) || 0;
+    const additionalPayment = parseFloat(data.additionalPayment) || 0;
+    const paymentMethod = data.paymentMethod || "cash";
+    const paymentNotes = data.paymentNotes || "";
 
     const existingOrder = await prisma.order.findUnique({
       where: { id: params.id },
-      include: { bill: true, items: true }
-    })
+      include: { bill: true, items: true },
+    });
 
     if (!existingOrder) {
-      return NextResponse.json({ error: 'Order not found' }, { status: 404 })
+      return NextResponse.json({ error: "Order not found" }, { status: 404 });
     }
 
     // --- TRACK MEAL TYPE MEMBER CHANGES ---
-    const oldMealTypeAmounts = (existingOrder.mealTypeAmounts as Record<string, any>) || {}
-    const newMealTypeAmounts = (data.mealTypeAmounts as Record<string, any>) || {}
-    const mealTypeChanges: string[] = []
-    let totalMemberPriceDifference = 0
-    let totalMembersChanged = 0
+    const oldMealTypeAmounts =
+      (existingOrder.mealTypeAmounts as Record<string, any>) || {};
+    const newMealTypeAmounts =
+      (data.mealTypeAmounts as Record<string, any>) || {};
+    const mealTypeChanges: string[] = [];
+    let totalMemberPriceDifference = 0;
+    let totalMembersChanged = 0;
 
     // Update new meal types with original values if they don't have them
-    Object.keys(newMealTypeAmounts).forEach(type => {
-      const oldType = oldMealTypeAmounts[type]
-      const newType = newMealTypeAmounts[type]
+    Object.keys(newMealTypeAmounts).forEach((type) => {
+      const oldType = oldMealTypeAmounts[type];
+      const newType = newMealTypeAmounts[type];
 
-      const oldMemberCount = oldType?.numberOfMembers || 0
-      const newMemberCount = newType?.numberOfMembers || 0
-      const memberDiff = newMemberCount - oldMemberCount
+      const oldMemberCount = oldType?.numberOfMembers || 0;
+      const newMemberCount = newType?.numberOfMembers || 0;
+      const memberDiff = newMemberCount - oldMemberCount;
 
-      const oldAmount = oldType?.amount || 0
-      const newAmount = newType?.amount || 0
-      const priceDiff = newAmount - oldAmount
+      const oldAmount = oldType?.amount || 0;
+      const newAmount = newType?.amount || 0;
+      const priceDiff = newAmount - oldAmount;
 
       // Keep track of the very first member count set for this meal type
-      const originalMembers = oldType?.originalMembers || oldMemberCount || newMemberCount
-      newType.originalMembers = originalMembers
+      const originalMembers =
+        oldType?.originalMembers || oldMemberCount || newMemberCount;
+      newType.originalMembers = originalMembers;
 
       if (memberDiff !== 0 && oldMemberCount !== 0) {
-        const diffSign = memberDiff > 0 ? '+' : ''
-        const priceSign = priceDiff > 0 ? '+' : ''
-        mealTypeChanges.push(`${type.charAt(0).toUpperCase() + type.slice(1)}: ${oldMemberCount} → ${newMemberCount} (${diffSign}${memberDiff} members, ${priceSign}${priceDiff.toFixed(2)} price)`)
-        totalMemberPriceDifference += priceDiff
-        totalMembersChanged += memberDiff
+        const diffSign = memberDiff > 0 ? "+" : "";
+        const priceSign = priceDiff > 0 ? "+" : "";
+        mealTypeChanges.push(
+          `${type.charAt(0).toUpperCase() + type.slice(1)}: ${oldMemberCount} → ${newMemberCount} (${diffSign}${memberDiff} members, ${priceSign}${priceDiff.toFixed(2)} price)`,
+        );
+        totalMemberPriceDifference += priceDiff;
+        totalMembersChanged += memberDiff;
       }
-    })
+    });
 
-    const mealTypeNotes = mealTypeChanges.length > 0
-      ? `Changes: ${mealTypeChanges.join(' | ')}`
-      : undefined
+    const mealTypeNotes =
+      mealTypeChanges.length > 0
+        ? `Changes: ${mealTypeChanges.join(" | ")}`
+        : undefined;
 
     // --- RECALCULATE TOTAL AMOUNT AS SAFETY CHECK ---
-    let recalculatedMealTypesTotal = 0
+    let recalculatedMealTypesTotal = 0;
     Object.values(newMealTypeAmounts).forEach((mt: any) => {
-      recalculatedMealTypesTotal += mt.amount || 0
-    })
-    const recalculatedTotal = Math.max(0, recalculatedMealTypesTotal + transportCost + (parseFloat(data.waterBottlesCost) || 0) +
-      ((data.stalls || []).reduce((sum: number, s: any) => sum + (parseFloat(s.cost) || 0), 0)) - discount)
+      recalculatedMealTypesTotal += mt.amount || 0;
+    });
+    const recalculatedTotal = Math.max(
+      0,
+      recalculatedMealTypesTotal +
+        transportCost +
+        (parseFloat(data.waterBottlesCost) || 0) +
+        (data.stalls || []).reduce(
+          (sum: number, s: any) => sum + (parseFloat(s.cost) || 0),
+          0,
+        ) -
+        discount,
+    );
 
     // Use recalculated total if the provided total is 0 but we have amounts elsewhere
-    const finalTotalAmount = (totalAmount === 0 && recalculatedTotal > 0) ? recalculatedTotal : totalAmount
-    const finalRemainingAmount = (totalAmount === 0 && recalculatedTotal > 0) ? Math.max(0, recalculatedTotal - advancePaid) : remainingAmount
+    const finalTotalAmount =
+      totalAmount === 0 && recalculatedTotal > 0
+        ? recalculatedTotal
+        : totalAmount;
+    const finalRemainingAmount =
+      totalAmount === 0 && recalculatedTotal > 0
+        ? Math.max(0, recalculatedTotal - advancePaid)
+        : remainingAmount;
 
     const orderUpdateData: any = {
       customerId: data.customerId,
@@ -232,23 +271,43 @@ export async function PUT(
       remainingAmount: finalRemainingAmount,
       status: data.status,
       eventName: data.eventName || null,
-      services: data.services && Array.isArray(data.services) && data.services.length > 0 ? data.services : null,
+      eventDate: data.eventDate
+        ? new Date(data.eventDate)
+        : (() => {
+            if (newMealTypeAmounts) {
+              const dates = Object.values(newMealTypeAmounts)
+                .map((mt: any) => mt.date)
+                .filter((d) => !!d)
+                .sort((a, b) => new Date(a).getTime() - new Date(b).getTime());
+              if (dates.length > 0) return new Date(dates[0]);
+            }
+            return null;
+          })(),
+      services:
+        data.services &&
+        Array.isArray(data.services) &&
+        data.services.length > 0
+          ? data.services
+          : null,
       numberOfMembers: data.numberOfMembers || null,
       mealTypeAmounts: newMealTypeAmounts,
-      stalls: data.stalls && Array.isArray(data.stalls) && data.stalls.length > 0 ? data.stalls : null,
+      stalls:
+        data.stalls && Array.isArray(data.stalls) && data.stalls.length > 0
+          ? data.stalls
+          : null,
       transportCost,
       waterBottlesCost: parseFloat(data.waterBottlesCost) || 0,
       discount,
-    }
+    };
 
     const result = await prisma.$transaction(async (tx) => {
       const order = await tx.order.update({
         where: { id: params.id },
         data: orderUpdateData,
-      })
+      });
 
       if (Array.isArray(data.items)) {
-        await tx.orderItem.deleteMany({ where: { orderId: params.id } })
+        await tx.orderItem.deleteMany({ where: { orderId: params.id } });
         if (data.items.length > 0) {
           await tx.orderItem.createMany({
             data: data.items.map((item: any) => ({
@@ -257,23 +316,34 @@ export async function PUT(
               quantity: item.quantity || 1,
               mealType: item.mealType || null,
               customization: item.customization || null,
-            }))
-          })
+            })),
+          });
         }
       }
 
       let bill = await tx.bill.findUnique({
         where: { orderId: params.id },
-      })
+      });
 
       if (bill) {
         const paymentHistory = Array.isArray((bill as any).paymentHistory)
           ? (bill as any).paymentHistory
-          : []
-        const historyEntries: any[] = []
-        const totalAdvanceDelta = Math.max(0, advancePaid - Number(existingOrder.advancePaid || 0))
-        const baseAdvanceDelta = Math.max(0, totalAdvanceDelta - additionalPayment)
-        const statusLabel = remainingAmount <= 0 ? 'paid' : advancePaid > 0 ? 'partial' : 'pending'
+          : [];
+        const historyEntries: any[] = [];
+        const totalAdvanceDelta = Math.max(
+          0,
+          advancePaid - Number(existingOrder.advancePaid || 0),
+        );
+        const baseAdvanceDelta = Math.max(
+          0,
+          totalAdvanceDelta - additionalPayment,
+        );
+        const statusLabel =
+          remainingAmount <= 0
+            ? "paid"
+            : advancePaid > 0
+              ? "partial"
+              : "pending";
 
         if (baseAdvanceDelta > 0) {
           historyEntries.push({
@@ -282,10 +352,13 @@ export async function PUT(
             remainingAmount,
             status: statusLabel,
             date: new Date().toISOString(),
-            source: Number(existingOrder.advancePaid || 0) === 0 ? 'booking' : 'revision',
+            source:
+              Number(existingOrder.advancePaid || 0) === 0
+                ? "booking"
+                : "revision",
             method: paymentMethod,
-            notes: paymentNotes || mealTypeNotes || 'Advance updated',
-          })
+            notes: paymentNotes || mealTypeNotes || "Advance updated",
+          });
         }
 
         if (additionalPayment > 0) {
@@ -295,17 +368,25 @@ export async function PUT(
             remainingAmount,
             status: statusLabel,
             date: new Date().toISOString(),
-            source: Number(existingOrder.advancePaid || 0) === 0 && baseAdvanceDelta === 0 ? 'booking' : 'payment',
+            source:
+              Number(existingOrder.advancePaid || 0) === 0 &&
+              baseAdvanceDelta === 0
+                ? "booking"
+                : "payment",
             method: paymentMethod,
-            notes: paymentNotes || mealTypeNotes || 'Payment recorded',
-          })
+            notes: paymentNotes || mealTypeNotes || "Payment recorded",
+          });
         }
 
         if (mealTypeChanges.length > 0) {
           if (historyEntries.length > 0) {
-            const lastEntry = historyEntries[historyEntries.length - 1]
-            lastEntry.membersChanged = totalMembersChanged !== 0 ? totalMembersChanged : undefined
-            lastEntry.totalPriceChange = totalMemberPriceDifference !== 0 ? totalMemberPriceDifference : undefined
+            const lastEntry = historyEntries[historyEntries.length - 1];
+            lastEntry.membersChanged =
+              totalMembersChanged !== 0 ? totalMembersChanged : undefined;
+            lastEntry.totalPriceChange =
+              totalMemberPriceDifference !== 0
+                ? totalMemberPriceDifference
+                : undefined;
           } else {
             historyEntries.push({
               amount: 0,
@@ -313,36 +394,46 @@ export async function PUT(
               remainingAmount,
               status: statusLabel,
               date: new Date().toISOString(),
-              source: 'revision',
+              source: "revision",
               method: undefined,
               notes: mealTypeNotes,
-              membersChanged: totalMembersChanged !== 0 ? totalMembersChanged : undefined,
-              totalPriceChange: totalMemberPriceDifference !== 0 ? totalMemberPriceDifference : undefined,
-            })
+              membersChanged:
+                totalMembersChanged !== 0 ? totalMembersChanged : undefined,
+              totalPriceChange:
+                totalMemberPriceDifference !== 0
+                  ? totalMemberPriceDifference
+                  : undefined,
+            });
           }
         }
 
-        const updatedPaymentHistory = historyEntries.length > 0
-          ? [...paymentHistory, ...historyEntries]
-          : paymentHistory
+        const updatedPaymentHistory =
+          historyEntries.length > 0
+            ? [...paymentHistory, ...historyEntries]
+            : paymentHistory;
 
         const billUpdateData: any = {
           totalAmount,
           advancePaid,
           paidAmount: advancePaid,
           remainingAmount,
-          status: remainingAmount <= 0 ? 'paid' : advancePaid > 0 ? 'partial' : 'pending',
+          status:
+            remainingAmount <= 0
+              ? "paid"
+              : advancePaid > 0
+                ? "partial"
+                : "pending",
           paymentHistory: updatedPaymentHistory,
-        }
+        };
 
         bill = await tx.bill.update({
           where: { id: bill.id },
           data: billUpdateData,
-        })
+        });
       }
 
-      return { order, bill }
-    })
+      return { order, bill };
+    });
 
     const updatedOrder = await prisma.order.findUnique({
       where: { id: params.id },
@@ -350,49 +441,54 @@ export async function PUT(
         customer: true,
         supervisor: true,
         items: {
-          include: { menuItem: true }
+          include: { menuItem: true },
         },
         bill: true,
-      }
-    })
+      },
+    });
 
-    const customerName = updatedOrder?.customer?.name || 'Customer'
+    const customerName = updatedOrder?.customer?.name || "Customer";
     publishNotification({
-      type: 'orders',
-      title: 'Order updated',
+      type: "orders",
+      title: "Order updated",
       message: `${customerName} · Total ${totalAmount.toFixed(2)}`,
       entityId: updatedOrder?.id,
-      severity: 'info',
-    })
+      severity: "info",
+    });
 
     // --- CHECK FOR SIGNIFICANT CHANGES AND SEND EMAIL ALERTS ---
-    const emailChanges: string[] = []
+    const emailChanges: string[] = [];
 
     // 1. Check for Total Amount Increase
-    const oldTotalAmount = Number(existingOrder.totalAmount || 0)
+    const oldTotalAmount = Number(existingOrder.totalAmount || 0);
     if (totalAmount > oldTotalAmount) {
-      emailChanges.push(`Total amount increased from ${formatCurrency(oldTotalAmount)} to ${formatCurrency(totalAmount)}`)
+      emailChanges.push(
+        `Total amount increased from ${formatCurrency(oldTotalAmount)} to ${formatCurrency(totalAmount)}`,
+      );
     }
 
     // 2. Check for Member Count Increase (already calculated above)
     if (totalMembersChanged > 0) {
       // We can iterate through mealTypeChanges to find specifically what increased
-      mealTypeChanges.forEach(change => {
-        if (change.includes('members')) {
-          emailChanges.push(change)
+      mealTypeChanges.forEach((change) => {
+        if (change.includes("members")) {
+          emailChanges.push(change);
         }
-      })
+      });
     }
 
     // 3. Check for Items Changed (Added/Removed)
     // We compare the number of items. Ideally we should do a deeper diff, but length change is a good indicator of addition/removal
-    const oldItemCount = existingOrder.items.length
-    const newItemCount = data.items && Array.isArray(data.items) ? data.items.length : oldItemCount
+    const oldItemCount = existingOrder.items.length;
+    const newItemCount =
+      data.items && Array.isArray(data.items)
+        ? data.items.length
+        : oldItemCount;
 
     if (newItemCount !== oldItemCount) {
-      const diff = newItemCount - oldItemCount
-      const action = diff > 0 ? 'added' : 'removed'
-      emailChanges.push(`${Math.abs(diff)} item(s) ${action}`)
+      const diff = newItemCount - oldItemCount;
+      const action = diff > 0 ? "added" : "removed";
+      emailChanges.push(`${Math.abs(diff)} item(s) ${action}`);
     } else if (data.items && Array.isArray(data.items)) {
       // If count is same but items might have changed - this is harder to detect without full diff
       // But we can check if any item IDs are new or different
@@ -406,72 +502,92 @@ export async function PUT(
 
     // If there are significant changes, send emails
     if (emailChanges.length > 0 && updatedOrder?.id) {
-      const { sendOrderUpdatedAlert, sendOrderUpdateToCustomer } = await import('@/lib/email-alerts')
+      const { sendOrderUpdatedAlert, sendOrderUpdateToCustomer } =
+        await import("@/lib/email-alerts");
 
       // Send to Internal Users
-      sendOrderUpdatedAlert(updatedOrder.id, emailChanges).catch(error => {
-        console.error('Failed to send order updated alert to internal users:', error)
-      })
+      sendOrderUpdatedAlert(updatedOrder.id, emailChanges).catch((error) => {
+        console.error(
+          "Failed to send order updated alert to internal users:",
+          error,
+        );
+      });
 
       // Send to Customer
-      sendOrderUpdateToCustomer(updatedOrder.id, emailChanges).catch(error => {
-        console.error('Failed to send order update email to customer:', error)
-      })
+      sendOrderUpdateToCustomer(updatedOrder.id, emailChanges).catch(
+        (error) => {
+          console.error(
+            "Failed to send order update email to customer:",
+            error,
+          );
+        },
+      );
     }
 
-    const totalAdvanceDelta = Math.max(0, advancePaid - Number(existingOrder.advancePaid || 0))
+    const totalAdvanceDelta = Math.max(
+      0,
+      advancePaid - Number(existingOrder.advancePaid || 0),
+    );
     if (totalAdvanceDelta > 0) {
       publishNotification({
-        type: 'payments',
-        title: 'Payment received',
+        type: "payments",
+        title: "Payment received",
         message: `${customerName} · ${totalAdvanceDelta.toFixed(2)}`,
         entityId: updatedOrder?.id,
-        severity: 'success',
-      })
+        severity: "success",
+      });
 
       // Send payment received email alert to all users
       if (updatedOrder?.id) {
-        sendPaymentReceivedAlert(updatedOrder.id, totalAdvanceDelta).catch(error => {
-          console.error('Failed to send payment received email alert:', error)
-        })
+        sendPaymentReceivedAlert(updatedOrder.id, totalAdvanceDelta).catch(
+          (error) => {
+            console.error(
+              "Failed to send payment received email alert:",
+              error,
+            );
+          },
+        );
       }
     }
 
-    return NextResponse.json({ order: transformDecimal(updatedOrder), bill: transformDecimal(result.bill) })
+    return NextResponse.json({
+      order: transformDecimal(updatedOrder),
+      bill: transformDecimal(result.bill),
+    });
   } catch (error: any) {
     return NextResponse.json(
-      { error: 'Failed to update order', details: error.message },
-      { status: 500 }
-    )
+      { error: "Failed to update order", details: error.message },
+      { status: 500 },
+    );
   }
 }
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: { id: string } },
 ) {
   try {
-    const orderId = params.id
+    const orderId = params.id;
 
     const existing = await prisma.order.findUnique({
       where: { id: orderId },
       select: { id: true },
-    })
+    });
 
     if (!existing) {
-      return NextResponse.json({ error: 'Order not found' }, { status: 404 })
+      return NextResponse.json({ error: "Order not found" }, { status: 404 });
     }
 
     await prisma.$transaction(async (tx) => {
-      await tx.bill.deleteMany({ where: { orderId } })
-      await tx.order.delete({ where: { id: orderId } })
-    })
+      await tx.bill.deleteMany({ where: { orderId } });
+      await tx.order.delete({ where: { id: orderId } });
+    });
 
-    return NextResponse.json({ success: true })
+    return NextResponse.json({ success: true });
   } catch (error: any) {
     return NextResponse.json(
-      { error: 'Failed to delete order', details: error.message },
-      { status: 500 }
-    )
+      { error: "Failed to delete order", details: error.message },
+      { status: 500 },
+    );
   }
 }

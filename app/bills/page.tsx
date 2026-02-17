@@ -689,7 +689,18 @@ function BillCard({ bill, onOpen, onDownload, onWhatsApp, onEmail }: {
             <p className="text-[10px] text-slate-400 uppercase font-bold tracking-widest mb-1">Event Date</p>
             <p className="text-sm font-bold text-slate-700 flex items-center gap-1.5">
               <FaCalendarAlt className="text-slate-300" />
-              {bill.order.eventDate ? formatDate(bill.order.eventDate as any) : formatDate(bill.createdAt as any)}
+              {(() => {
+                if (bill.order?.eventDate) return formatDate(bill.order.eventDate as any);
+                const mealTypeAmounts = bill.order?.mealTypeAmounts as Record<string, any>;
+                if (mealTypeAmounts && typeof mealTypeAmounts === 'object') {
+                  const dates = Object.values(mealTypeAmounts)
+                    .map(mt => mt?.date)
+                    .filter(d => !!d)
+                    .sort((a, b) => new Date(a).getTime() - new Date(b).getTime());
+                  if (dates.length > 0) return formatDate(dates[0]);
+                }
+                return formatDate(bill.createdAt as any);
+              })()}
             </p>
           </div>
           <div className="text-right">

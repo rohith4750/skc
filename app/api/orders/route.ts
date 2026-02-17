@@ -136,6 +136,18 @@ export async function POST(request: NextRequest) {
       remainingAmount: finalRemainingAmount,
       status: data.status || "pending",
       eventName: data.eventName || null,
+      eventDate: data.eventDate
+        ? new Date(data.eventDate)
+        : (() => {
+            if (data.mealTypeAmounts) {
+              const dates = Object.values(data.mealTypeAmounts)
+                .map((mt: any) => mt.date)
+                .filter((d) => !!d)
+                .sort((a, b) => new Date(a).getTime() - new Date(b).getTime());
+              if (dates.length > 0) return new Date(dates[0]);
+            }
+            return null;
+          })(),
       services:
         data.services &&
         Array.isArray(data.services) &&
