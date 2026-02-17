@@ -247,8 +247,27 @@ export default function BillsPage() {
                       </div>
                     </div>
                     <div className="flex gap-2">
-                      <button className="p-2 bg-white rounded-lg text-slate-600 hover:text-indigo-600 border border-slate-200 shadow-sm transition-all"><FaWhatsapp /></button>
-                      <button className="p-2 bg-white rounded-lg text-slate-600 hover:text-indigo-600 border border-slate-200 shadow-sm transition-all"><FaEnvelope /></button>
+                      <button
+                        onClick={() => handleDownloadBillPDF(selectedBill)}
+                        className="p-2 bg-white rounded-lg text-slate-600 hover:text-indigo-600 border border-slate-200 shadow-sm transition-all"
+                        title="Download PDF"
+                      >
+                        <FaFileInvoiceDollar />
+                      </button>
+                      <button
+                        onClick={() => handleSendBillWhatsApp(selectedBill)}
+                        className="p-2 bg-white rounded-lg text-slate-600 hover:text-indigo-600 border border-slate-200 shadow-sm transition-all"
+                        title="Send via WhatsApp"
+                      >
+                        <FaWhatsapp />
+                      </button>
+                      <button
+                        onClick={() => handleSendBillEmail(selectedBill)}
+                        className="p-2 bg-white rounded-lg text-slate-600 hover:text-indigo-600 border border-slate-200 shadow-sm transition-all"
+                        title="Send via Email"
+                      >
+                        <FaEnvelope />
+                      </button>
                     </div>
                   </div>
                 </div>
