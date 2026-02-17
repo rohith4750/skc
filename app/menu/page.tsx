@@ -28,7 +28,7 @@ export default function MenuPage() {
   const [initializeConfirm, setInitializeConfirm] = useState(false)
   const [formData, setFormData] = useState({
     name: '',
-    type: '',
+    type: [] as string[],
     description: '',
     price: '',
     unit: '',
@@ -47,11 +47,11 @@ export default function MenuPage() {
   const availableSubcategories = useMemo(() => {
     if (selectedFilter === 'all') return []
     const categoryItems = menuItems.filter(item => {
-      const itemType = item.type.toLowerCase()
+      const itemTypes = (item.type || []).map(t => t.toLowerCase())
       if (selectedFilter.toLowerCase() === 'snacks') {
-        return itemType === 'snacks' || itemType === 'sweets'
+        return itemTypes.includes('snacks') || itemTypes.includes('sweets')
       }
-      return itemType === selectedFilter.toLowerCase()
+      return itemTypes.includes(selectedFilter.toLowerCase())
     })
     const subcategories = categoryItems
       .map(item => extractSubcategory(item.description))
@@ -67,11 +67,11 @@ export default function MenuPage() {
     // Filter by main category
     if (selectedFilter !== 'all') {
       filtered = filtered.filter(item => {
-        const itemType = item.type.toLowerCase()
+        const itemTypes = (item.type || []).map(t => t.toLowerCase())
         if (selectedFilter.toLowerCase() === 'snacks') {
-          return itemType === 'snacks' || itemType === 'sweets'
+          return itemTypes.includes('snacks') || itemTypes.includes('sweets')
         }
-        return itemType === selectedFilter.toLowerCase()
+        return itemTypes.includes(selectedFilter.toLowerCase())
       })
     }
 
@@ -137,9 +137,9 @@ export default function MenuPage() {
     setFormError('')
 
     try {
-      if (!isNonEmptyString(formData.name) || !isNonEmptyString(formData.type)) {
-        toast.error('Please enter name and select type')
-        setFormError('Please enter name and select type')
+      if (!isNonEmptyString(formData.name) || formData.type.length === 0) {
+        toast.error('Please enter name and select at least one type')
+        setFormError('Please enter name and select at least one type')
         return
       }
 
@@ -173,7 +173,7 @@ export default function MenuPage() {
   const resetForm = () => {
     setFormData({
       name: '',
-      type: '',
+      type: [],
       description: '',
       price: '',
       unit: '',
@@ -188,7 +188,7 @@ export default function MenuPage() {
     setEditingItem(item)
     setFormData({
       name: item.name,
-      type: item.type,
+      type: Array.isArray(item.type) ? item.type : [item.type],
       description: item.description || '',
       price: item.price ? item.price.toString() : '',
       unit: item.unit || '',
@@ -250,10 +250,10 @@ export default function MenuPage() {
 
   const handlePrintMenu = () => {
     // Group menu items by type
-    const breakfastItems = menuItems.filter(item => item.type === 'breakfast' && item.isActive)
-    const lunchItems = menuItems.filter(item => item.type === 'lunch' && item.isActive)
-    const dinnerItems = menuItems.filter(item => item.type === 'dinner' && item.isActive)
-    const snacksItems = menuItems.filter(item => (item.type === 'snacks' || item.type === 'sweets') && item.isActive)
+    const breakfastItems = menuItems.filter(item => item.type.includes('breakfast') && item.isActive)
+    const lunchItems = menuItems.filter(item => item.type.includes('lunch') && item.isActive)
+    const dinnerItems = menuItems.filter(item => item.type.includes('dinner') && item.isActive)
+    const snacksItems = menuItems.filter(item => (item.type.includes('snacks') || item.type.includes('sweets')) && item.isActive)
 
     // Group items by subcategory within each meal type
     const groupBySubcategory = (items: MenuItem[]) => {
@@ -623,24 +623,39 @@ export default function MenuPage() {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Menu Type *
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Menu Types *
                   </label>
-                  <select
-                    required
-                    value={formData.type}
-                    onChange={(e) => setFormData({ ...formData, type: e.target.value })}
-                    className="w-full px-3 sm:px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm sm:text-base"
-                  >
-                    <option value="">Select Menu Type</option>
-                    <option value="breakfast">Breakfast</option>
-                    <option value="lunch">Lunch</option>
-                    <option value="dinner">Dinner</option>
-                    <option value="snacks">Snacks</option>
-                    <option value="sweets">Sweets</option>
-                    <option value="saree">Saree</option>
-                    <option value="water_bottles">Water Bottles</option>
-                  </select>
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 bg-slate-50 p-4 rounded-xl border border-slate-100">
+                    {[
+                      { id: 'breakfast', label: 'Breakfast' },
+                      { id: 'lunch', label: 'Lunch' },
+                      { id: 'dinner', label: 'Dinner' },
+                      { id: 'snacks', label: 'Snacks' },
+                      { id: 'sweets', label: 'Sweets' },
+                      { id: 'saree', label: 'Saree' },
+                      { id: 'water_bottles', label: 'Water Bottles' }
+                    ].map(type => (
+                      <label key={type.id} className="flex items-center group cursor-pointer">
+                        <div className="relative flex items-center">
+                          <input
+                            type="checkbox"
+                            checked={formData.type.includes(type.id)}
+                            onChange={(e) => {
+                              const checked = e.target.checked;
+                              const newTypes = checked
+                                ? [...formData.type, type.id]
+                                : formData.type.filter(t => t !== type.id);
+                              setFormData({ ...formData, type: newTypes });
+                            }}
+                            className="peer h-5 w-5 cursor-pointer appearance-none rounded-md border border-slate-300 transition-all checked:bg-indigo-600 checked:border-indigo-600"
+                          />
+                          <svg className="absolute h-3.5 w-3.5 opacity-0 peer-checked:opacity-100 top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-white pointer-events-none" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                        </div>
+                        <span className="ml-2 text-sm text-slate-600 group-hover:text-indigo-600 transition-colors">{type.label}</span>
+                      </label>
+                    ))}
+                  </div>
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">

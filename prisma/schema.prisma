@@ -136,7 +136,7 @@ model MenuItem {
   id              String  @id @default(uuid())
   name            String
   nameTelugu      String?
-  type            String
+  type            String[]
   description     String?
   descriptionTelugu String?
   price           Decimal? @db.Decimal(10, 2)
