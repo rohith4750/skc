@@ -13,7 +13,7 @@ import MergeOrdersModal from '@/components/MergeOrdersModal'
 import { FaLayerGroup } from 'react-icons/fa'
 import { buildOrderPdfHtml } from '@/lib/order-pdf-html'
 
-export default function OrdersHistoryPage() {
+export default function OrderCenterPage() {
   const [orders, setOrders] = useState<Order[]>([])
   const [currentPage, setCurrentPage] = useState(1)
   const [itemsPerPage] = useState(10)
@@ -60,6 +60,7 @@ export default function OrdersHistoryPage() {
   const [selectedOrderIds, setSelectedOrderIds] = useState<string[]>([])
   const [isMergeModalOpen, setIsMergeModalOpen] = useState(false)
   const [isMerging, setIsMerging] = useState(false)
+  const [previewOrder, setPreviewOrder] = useState<any | null>(null)
 
   useEffect(() => {
     loadData()
@@ -85,8 +86,8 @@ export default function OrdersHistoryPage() {
     if (statusFilter !== 'all') {
       filtered = filtered.filter(order => order.status === statusFilter)
     } else {
-      // Default view for Order History is everything EXCEPT pending/in_progress
-      filtered = filtered.filter(order => ['completed', 'cancelled'].includes(order.status))
+      // Default view for Order Center is everything EXCEPT completed/cancelled
+      filtered = filtered.filter(order => ['pending', 'in_progress'].includes(order.status))
     }
 
     // Customer search filter
@@ -700,10 +701,16 @@ export default function OrdersHistoryPage() {
     }
   }
 
+  const handleOpenPreview = async (order: any) => {
+    setPreviewOrder({ ...order, loading: true })
+    const freshOrder = await fetch(`/api/orders/${order.id}`).then(r => r.ok ? r.json() : order).catch(() => order)
+    setPreviewOrder(freshOrder)
+  }
+
   return (
     <div className="p-4 md:p-6">
       <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 md:gap-0 mb-6">
-        <h1 className="text-2xl md:text-3xl font-bold text-gray-800">Orders History</h1>
+        <h1 className="text-2xl md:text-3xl font-bold text-gray-800">Order Center</h1>
         <div className="flex flex-wrap items-center gap-2 md:gap-3">
           {selectedOrderIds.length > 1 && (
             <button
@@ -774,11 +781,11 @@ export default function OrdersHistoryPage() {
                 onChange={(e) => setStatusFilter(e.target.value)}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
               >
-                <option value="all">Historical Logs</option>
-                <option value="completed">Completed</option>
+                <option value="all">Active Orders</option>
+                <option value="pending">Pending</option>
+                <option value="in_progress">In Progress</option>
+                <option value="completed">Completed (Archived)</option>
                 <option value="cancelled">Cancelled</option>
-                <option value="pending">Pending (Active)</option>
-                <option value="in_progress">In Progress (Active)</option>
               </select>
             </div>
 
@@ -891,7 +898,7 @@ export default function OrdersHistoryPage() {
                       </select>
                     </div>
                     <div className="flex flex-wrap gap-2 pt-3 border-t border-gray-100">
-                      <Link href={`/orders/summary/${order.id}`} className="p-2.5 bg-blue-50 text-blue-600 rounded-lg touch-manipulation" title="Summary"><FaChartLine /></Link>
+                      <button onClick={() => handleOpenPreview(order)} className="p-2.5 bg-blue-50 text-blue-600 rounded-lg touch-manipulation" title="Preview Summary"><FaChartLine /></button>
                       <Link href={`/orders?edit=${order.id}`} className="p-2.5 bg-yellow-50 text-yellow-600 rounded-lg touch-manipulation" title="Edit"><FaEdit /></Link>
                       <button onClick={() => setPdfLanguageModal({ isOpen: true, order })} className="p-2.5 bg-secondary-50 text-secondary-600 rounded-lg touch-manipulation" title="PDF"><FaFilePdf /></button>
                       <button onClick={() => handleGenerateImage(order, 'english')} className="p-2.5 bg-indigo-50 text-indigo-600 rounded-lg touch-manipulation" title="Image"><FaFileImage /></button>
@@ -978,6 +985,12 @@ export default function OrdersHistoryPage() {
                         }
                       })
                     }
+
+                    const getStatusStep = (status: string) => {
+                      const steps = ['pending', 'in_progress', 'completed']
+                      return steps.indexOf(status)
+                    }
+                    const currentStep = getStatusStep(order.status)
 
                     return (
                       <tr key={order.id} className="hover:bg-slate-50 transition-all border-b border-slate-100 group">
@@ -1346,6 +1359,74 @@ export default function OrdersHistoryPage() {
         onMerge={handleMergeConfirm}
         isMerging={isMerging}
       />
+
+      {/* Quick Preview Drawer */}
+      {previewOrder && (
+        <div className="fixed inset-0 z-[100] overflow-hidden">
+          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm transition-opacity" onClick={() => setPreviewOrder(null)} />
+          <div className="absolute inset-y-0 right-0 max-w-full flex">
+            <div className="relative w-screen max-w-2xl bg-white border-l border-gray-100 shadow-2xl flex flex-col animate-in slide-in-from-right duration-300">
+              {/* Header */}
+              <div className="flex items-center justify-between p-6 border-b border-gray-100 bg-gray-50/50">
+                <div>
+                  <h2 className="text-xl font-bold text-gray-900 border-none m-0 p-0">Quick Order Preview</h2>
+                  <p className="text-sm text-gray-500 mt-1">
+                    ID: {previewOrder.serialNumber ? `SKC-ORDER-${previewOrder.serialNumber}` : previewOrder.id?.slice(0, 8)} |
+                    Status: <span className="capitalize font-semibold">{previewOrder.status?.replace('_', ' ')}</span>
+                  </p>
+                </div>
+                <button
+                  onClick={() => setPreviewOrder(null)}
+                  className="p-2 hover:bg-gray-200 rounded-full transition-colors"
+                >
+                  <FaTimesCircle className="w-6 h-6 text-gray-400" />
+                </button>
+              </div>
+
+              {/* Content */}
+              <div className="flex-1 overflow-y-auto bg-gray-100 p-4 md:p-8">
+                {previewOrder.loading ? (
+                  <div className="h-full flex flex-col items-center justify-center gap-4">
+                    <div className="w-12 h-12 border-4 border-primary-500 border-t-transparent rounded-full animate-spin"></div>
+                    <p className="text-gray-500 font-medium">Fetching details...</p>
+                  </div>
+                ) : (
+                  <div className="bg-white shadow-lg rounded-xl overflow-hidden min-h-min mx-auto" style={{ width: '210mm', maxWidth: '100%' }}>
+                    <div
+                      className="origin-top"
+                      style={{ transform: 'scale(0.95)', transformOrigin: 'top center' }}
+                      dangerouslySetInnerHTML={{
+                        __html: buildOrderPdfHtml(previewOrder, {
+                          useEnglish: true,
+                          formatDate,
+                          showFinancials: true,
+                          formatCurrency,
+                        })
+                      }}
+                    />
+                  </div>
+                )}
+              </div>
+
+              {/* Footer Actions */}
+              <div className="p-6 border-t border-gray-100 bg-gray-50/50 flex gap-3">
+                <button
+                  onClick={() => handleGenerateImage(previewOrder)}
+                  className="flex-1 flex items-center justify-center gap-2 px-6 py-3 bg-indigo-600 text-white rounded-xl font-semibold hover:bg-indigo-700 transition-all shadow-lg active:scale-95"
+                >
+                  <FaFileImage /> Download Summary Image
+                </button>
+                <button
+                  onClick={() => setPreviewOrder(null)}
+                  className="px-6 py-3 bg-white border border-gray-200 text-gray-700 rounded-xl font-semibold hover:bg-gray-50 transition-all shadow-sm"
+                >
+                  Close
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
