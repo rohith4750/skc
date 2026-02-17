@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState, useMemo } from 'react'
-import { formatDateTime, formatDate, sanitizeMealLabel } from '@/lib/utils'
+import { formatDateTime, formatDate, formatCurrency, sanitizeMealLabel } from '@/lib/utils'
 import { Order } from '@/types'
 import { FaTrash, FaFilePdf, FaFileImage, FaChevronLeft, FaChevronRight, FaEdit, FaFilter, FaChartLine, FaClock, FaCheckCircle, FaTimesCircle, FaEnvelope, FaCalendarAlt } from 'react-icons/fa'
 import Link from 'next/link'
@@ -430,7 +430,7 @@ export default function OrdersHistoryPage() {
           const groupKey = key || `legacy_${menuType}`
           if (!byDate[d].some((s: any) => s._key === groupKey)) {
             const session = { menuType, members: (data as any)?.numberOfMembers, services: (data as any)?.services, items: [] } as SessionGroup & { _key?: string }
-            ;(session as any)._key = groupKey
+              ; (session as any)._key = groupKey
             byDate[d].push(session)
           }
         }
@@ -468,7 +468,7 @@ export default function OrdersHistoryPage() {
       let session = byDate[dateKey].find((s: any) => s._key === groupKey)
       if (!session) {
         session = { menuType, members, services, items: [] } as SessionGroup & { _key?: string }
-        ;(session as any)._key = groupKey
+          ; (session as any)._key = groupKey
         byDate[dateKey].push(session)
       }
       session.items.push(item)
@@ -591,11 +591,13 @@ export default function OrdersHistoryPage() {
     }
   }
 
-  const renderOrderToImage = async (order: any, language: 'english' | 'telugu'): Promise<string | null> => {
+  const renderOrderToImage = async (order: any, language: 'english' | 'telugu', showFinancials = false): Promise<string | null> => {
     if (!order?.items?.length) return null
     const htmlContent = buildOrderPdfHtml(order, {
       useEnglish: language === 'english',
       formatDate,
+      showFinancials,
+      formatCurrency,
     })
     const tempDiv = document.createElement('div')
     tempDiv.style.position = 'absolute'
@@ -656,7 +658,7 @@ export default function OrdersHistoryPage() {
   const handleGenerateImage = async (order: any, language: 'english' | 'telugu' = 'english') => {
     const freshOrder = await fetch(`/api/orders/${order.id}`).then(r => r.ok ? r.json() : order).catch(() => order)
     const orderToUse = freshOrder?.items?.length ? freshOrder : order
-    const imageDataUrl = await renderOrderToImage(orderToUse, language)
+    const imageDataUrl = await renderOrderToImage(orderToUse, language, true)
     if (!imageDataUrl) {
       toast.error('Failed to generate image. Please try again.')
       return
@@ -837,339 +839,339 @@ export default function OrdersHistoryPage() {
         </div>
       ) : (
         <>
-        {/* Mobile Cards - visible only below md */}
-        <div className="md:hidden space-y-3">
-          {paginatedOrders.map((order: any) => {
-            const mealTypeAmounts = order.mealTypeAmounts as Record<string, { date: string; numberOfMembers?: number } | number> | null
-            const eventDates: string[] = []
-            if (mealTypeAmounts) {
-              Object.values(mealTypeAmounts).forEach((v) => {
-                if (typeof v === 'object' && v !== null && v.date && !eventDates.includes(v.date)) {
-                  eventDates.push(v.date)
-                }
-              })
-            }
-            eventDates.sort((a, b) => new Date(a).getTime() - new Date(b).getTime())
-            const firstDate = eventDates[0] ? new Date(eventDates[0]).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }) : null
+          {/* Mobile Cards - visible only below md */}
+          <div className="md:hidden space-y-3">
+            {paginatedOrders.map((order: any) => {
+              const mealTypeAmounts = order.mealTypeAmounts as Record<string, { date: string; numberOfMembers?: number } | number> | null
+              const eventDates: string[] = []
+              if (mealTypeAmounts) {
+                Object.values(mealTypeAmounts).forEach((v) => {
+                  if (typeof v === 'object' && v !== null && v.date && !eventDates.includes(v.date)) {
+                    eventDates.push(v.date)
+                  }
+                })
+              }
+              eventDates.sort((a, b) => new Date(a).getTime() - new Date(b).getTime())
+              const firstDate = eventDates[0] ? new Date(eventDates[0]).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }) : null
 
-            return (
-              <div key={order.id} className="bg-white rounded-xl shadow-md border border-gray-100 overflow-hidden">
-                <div className="p-4">
-                  <div className="flex items-start justify-between gap-3 mb-3">
-                    <div className="flex-1 min-w-0">
-                      <div className="font-semibold text-gray-900 truncate">{order.customer?.name || 'Unknown'}</div>
-                      <div className="text-sm text-gray-500">{order.customer?.phone || ''}</div>
-                      {(order as any).eventName && (
-                        <div className="text-sm text-gray-700 mt-0.5 truncate">{(order as any).eventName}</div>
-                      )}
+              return (
+                <div key={order.id} className="bg-white rounded-xl shadow-md border border-gray-100 overflow-hidden">
+                  <div className="p-4">
+                    <div className="flex items-start justify-between gap-3 mb-3">
+                      <div className="flex-1 min-w-0">
+                        <div className="font-semibold text-gray-900 truncate">{order.customer?.name || 'Unknown'}</div>
+                        <div className="text-sm text-gray-500">{order.customer?.phone || ''}</div>
+                        {(order as any).eventName && (
+                          <div className="text-sm text-gray-700 mt-0.5 truncate">{(order as any).eventName}</div>
+                        )}
+                      </div>
+                      <input
+                        type="checkbox"
+                        checked={selectedOrderIds.includes(order.id)}
+                        onChange={() => toggleOrderSelection(order.id)}
+                        className="w-5 h-5 rounded border-gray-300 text-primary-600 focus:ring-primary-500 flex-shrink-0 mt-0.5"
+                      />
                     </div>
-                    <input
-                      type="checkbox"
-                      checked={selectedOrderIds.includes(order.id)}
-                      onChange={() => toggleOrderSelection(order.id)}
-                      className="w-5 h-5 rounded border-gray-300 text-primary-600 focus:ring-primary-500 flex-shrink-0 mt-0.5"
-                    />
-                  </div>
-                  <div className="flex flex-wrap items-center gap-2 mb-3">
-                    {firstDate && (
-                      <span className="inline-flex items-center gap-1 px-2 py-1 bg-slate-100 rounded-lg text-xs font-medium text-slate-700">
-                        <FaCalendarAlt className="text-slate-500" /> {firstDate}
-                        {eventDates.length > 1 && <span className="text-slate-500">+{eventDates.length - 1}</span>}
-                      </span>
-                    )}
-                    <select
-                      value={order.status}
-                      onChange={(e) => {
-                        if (e.target.value === order.status) return
-                        setStatusConfirm({ isOpen: true, id: order.id, newStatus: e.target.value, oldStatus: order.status })
-                      }}
-                      className={`px-3 py-1.5 text-xs font-semibold rounded-full border-0 cursor-pointer touch-manipulation ${order.status === 'completed' ? 'bg-green-100 text-green-800' : order.status === 'in_progress' ? 'bg-yellow-100 text-yellow-800' : order.status === 'cancelled' ? 'bg-red-100 text-red-800' : 'bg-gray-100 text-gray-800'}`}
-                    >
-                      <option value="pending">Pending</option>
-                      <option value="in_progress">In Progress</option>
-                      <option value="completed">Completed</option>
-                      <option value="cancelled">Cancelled</option>
-                    </select>
-                  </div>
-                  <div className="flex flex-wrap gap-2 pt-3 border-t border-gray-100">
-                    <Link href={`/orders/summary/${order.id}`} className="p-2.5 bg-blue-50 text-blue-600 rounded-lg touch-manipulation" title="Summary"><FaChartLine /></Link>
-                    <Link href={`/orders?edit=${order.id}`} className="p-2.5 bg-yellow-50 text-yellow-600 rounded-lg touch-manipulation" title="Edit"><FaEdit /></Link>
-                    <button onClick={() => setPdfLanguageModal({ isOpen: true, order })} className="p-2.5 bg-secondary-50 text-secondary-600 rounded-lg touch-manipulation" title="PDF"><FaFilePdf /></button>
-                    <button onClick={() => handleGenerateImage(order, 'english')} className="p-2.5 bg-indigo-50 text-indigo-600 rounded-lg touch-manipulation" title="Image"><FaFileImage /></button>
-                    <button onClick={() => order.customer?.email ? setEmailModal({ isOpen: true, order }) : toast.error('Customer email not available')} className="p-2.5 bg-green-50 text-green-600 rounded-lg touch-manipulation" title="Email"><FaEnvelope /></button>
-                    <button onClick={() => handleDelete(order.id)} className="p-2.5 bg-red-50 text-red-600 rounded-lg touch-manipulation" title="Delete"><FaTrash /></button>
+                    <div className="flex flex-wrap items-center gap-2 mb-3">
+                      {firstDate && (
+                        <span className="inline-flex items-center gap-1 px-2 py-1 bg-slate-100 rounded-lg text-xs font-medium text-slate-700">
+                          <FaCalendarAlt className="text-slate-500" /> {firstDate}
+                          {eventDates.length > 1 && <span className="text-slate-500">+{eventDates.length - 1}</span>}
+                        </span>
+                      )}
+                      <select
+                        value={order.status}
+                        onChange={(e) => {
+                          if (e.target.value === order.status) return
+                          setStatusConfirm({ isOpen: true, id: order.id, newStatus: e.target.value, oldStatus: order.status })
+                        }}
+                        className={`px-3 py-1.5 text-xs font-semibold rounded-full border-0 cursor-pointer touch-manipulation ${order.status === 'completed' ? 'bg-green-100 text-green-800' : order.status === 'in_progress' ? 'bg-yellow-100 text-yellow-800' : order.status === 'cancelled' ? 'bg-red-100 text-red-800' : 'bg-gray-100 text-gray-800'}`}
+                      >
+                        <option value="pending">Pending</option>
+                        <option value="in_progress">In Progress</option>
+                        <option value="completed">Completed</option>
+                        <option value="cancelled">Cancelled</option>
+                      </select>
+                    </div>
+                    <div className="flex flex-wrap gap-2 pt-3 border-t border-gray-100">
+                      <Link href={`/orders/summary/${order.id}`} className="p-2.5 bg-blue-50 text-blue-600 rounded-lg touch-manipulation" title="Summary"><FaChartLine /></Link>
+                      <Link href={`/orders?edit=${order.id}`} className="p-2.5 bg-yellow-50 text-yellow-600 rounded-lg touch-manipulation" title="Edit"><FaEdit /></Link>
+                      <button onClick={() => setPdfLanguageModal({ isOpen: true, order })} className="p-2.5 bg-secondary-50 text-secondary-600 rounded-lg touch-manipulation" title="PDF"><FaFilePdf /></button>
+                      <button onClick={() => handleGenerateImage(order, 'english')} className="p-2.5 bg-indigo-50 text-indigo-600 rounded-lg touch-manipulation" title="Image"><FaFileImage /></button>
+                      <button onClick={() => order.customer?.email ? setEmailModal({ isOpen: true, order }) : toast.error('Customer email not available')} className="p-2.5 bg-green-50 text-green-600 rounded-lg touch-manipulation" title="Email"><FaEnvelope /></button>
+                      <button onClick={() => handleDelete(order.id)} className="p-2.5 bg-red-50 text-red-600 rounded-lg touch-manipulation" title="Delete"><FaTrash /></button>
+                    </div>
                   </div>
                 </div>
-              </div>
-            )
-          })}
-        </div>
+              )
+            })}
+          </div>
 
-        {/* Desktop Table - visible only md and up */}
-        <div className="hidden md:block bg-white rounded-lg shadow-md overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50">
-                <tr>
-                  <th className="px-6 py-3 text-left">
-                    <input
-                      type="checkbox"
-                      checked={selectedOrderIds.length === paginatedOrders.length && paginatedOrders.length > 0}
-                      onChange={(e) => {
-                        if (e.target.checked) {
-                          setSelectedOrderIds(paginatedOrders.map(o => o.id))
-                        } else {
-                          setSelectedOrderIds([])
+          {/* Desktop Table - visible only md and up */}
+          <div className="hidden md:block bg-white rounded-lg shadow-md overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="min-w-full divide-y divide-gray-200">
+                <thead className="bg-gray-50">
+                  <tr>
+                    <th className="px-6 py-3 text-left">
+                      <input
+                        type="checkbox"
+                        checked={selectedOrderIds.length === paginatedOrders.length && paginatedOrders.length > 0}
+                        onChange={(e) => {
+                          if (e.target.checked) {
+                            setSelectedOrderIds(paginatedOrders.map(o => o.id))
+                          } else {
+                            setSelectedOrderIds([])
+                          }
+                        }}
+                        className="w-4 h-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500"
+                      />
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Customer</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Event Name</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Event Type</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Venue</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Event Dates / Guests</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Created</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="bg-white divide-y divide-gray-200">
+                  {paginatedOrders.map((order: any) => {
+                    // Extract all event dates from meal types
+                    const mealTypeAmounts = order.mealTypeAmounts as Record<string, { amount: number; date: string; numberOfMembers?: number } | number> | null
+                    let totalMembersAll = 0
+                    if (mealTypeAmounts) {
+                      Object.values(mealTypeAmounts).forEach((value) => {
+                        if (typeof value === 'object' && value !== null && (value as any).numberOfMembers) {
+                          totalMembersAll += Number((value as any).numberOfMembers) || 0
                         }
-                      }}
-                      className="w-4 h-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500"
-                    />
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Customer</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Event Name</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Event Type</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Venue</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Event Dates / Guests</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Created</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
-                {paginatedOrders.map((order: any) => {
-                  // Extract all event dates from meal types
-                  const mealTypeAmounts = order.mealTypeAmounts as Record<string, { amount: number; date: string; numberOfMembers?: number } | number> | null
-                  let totalMembersAll = 0
-                  if (mealTypeAmounts) {
-                    Object.values(mealTypeAmounts).forEach((value) => {
-                      if (typeof value === 'object' && value !== null && (value as any).numberOfMembers) {
-                        totalMembersAll += Number((value as any).numberOfMembers) || 0
-                      }
-                    })
-                  }
-                  const eventDates: Array<{ mealType: string; date: string; key: string; members?: number }> = []
-                  if (mealTypeAmounts) {
-                    Object.entries(mealTypeAmounts).forEach(([key, data]) => {
-                      if (typeof data === 'object' && data !== null && data.date) {
-                        // Priority: 1. menuType in data, 2. the session key if it's not a UUID/long ID, 3. "Meal"
-                        let displayLabel = (data as any).menuType
-                        if (!displayLabel) {
-                          if (key.length > 20 || key.includes('-') || key.startsWith('session_')) {
-                            // Try to extract name from session_NAME_serial
-                            if (key.startsWith('session_')) {
-                              const parts = key.split('_')
-                              if (parts.length > 1 && parts[1] !== 'merged') {
-                                displayLabel = parts[1]
+                      })
+                    }
+                    const eventDates: Array<{ mealType: string; date: string; key: string; members?: number }> = []
+                    if (mealTypeAmounts) {
+                      Object.entries(mealTypeAmounts).forEach(([key, data]) => {
+                        if (typeof data === 'object' && data !== null && data.date) {
+                          // Priority: 1. menuType in data, 2. the session key if it's not a UUID/long ID, 3. "Meal"
+                          let displayLabel = (data as any).menuType
+                          if (!displayLabel) {
+                            if (key.length > 20 || key.includes('-') || key.startsWith('session_')) {
+                              // Try to extract name from session_NAME_serial
+                              if (key.startsWith('session_')) {
+                                const parts = key.split('_')
+                                if (parts.length > 1 && parts[1] !== 'merged') {
+                                  displayLabel = parts[1]
+                                } else {
+                                  displayLabel = 'Meal'
+                                }
                               } else {
                                 displayLabel = 'Meal'
                               }
                             } else {
-                              displayLabel = 'Meal'
+                              displayLabel = key
                             }
-                          } else {
-                            displayLabel = key
                           }
+                          eventDates.push({
+                            mealType: displayLabel,
+                            date: data.date,
+                            key,
+                            members: (data as any).numberOfMembers
+                          })
                         }
-                        eventDates.push({
-                          mealType: displayLabel,
-                          date: data.date,
-                          key,
-                          members: (data as any).numberOfMembers
-                        })
-                      }
-                    })
-                  }
+                      })
+                    }
 
-                  return (
-                    <tr key={order.id} className="hover:bg-slate-50 transition-all border-b border-slate-100 group">
-                      <td className="px-6 py-4">
-                        <input
-                          type="checkbox"
-                          checked={selectedOrderIds.includes(order.id)}
-                          onChange={() => toggleOrderSelection(order.id)}
-                          className="w-4 h-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500"
-                        />
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm font-medium text-gray-900">{order.customer?.name || 'Unknown'}</div>
-                        <div className="text-sm text-gray-500">{order.customer?.phone || ''}</div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm font-medium text-gray-900">
-                          {(order as any).eventName || <span className="text-gray-400">-</span>}
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm text-gray-900">
-                          {(order as any).eventType || <span className="text-gray-400">-</span>}
-                        </div>
-                      </td>
-                      <td className="px-6 py-4">
-                        <div className="text-sm text-gray-900 max-w-[200px] truncate" title={(order as any).venue || ''}>
-                          {(order as any).venue || <span className="text-gray-400">-</span>}
-                        </div>
-                      </td>
-                      <td className="px-6 py-4">
-                        <div className="text-sm text-gray-900 space-y-4">
-                          {(() => {
-                            const isCombinedOrder = eventDates.some(ed => ed.key.startsWith('session_') || ed.key.includes('_merged_'))
-                            const groupedByDate: Record<string, typeof eventDates> = {}
-                            eventDates.forEach(ed => {
-                              if (!groupedByDate[ed.date]) groupedByDate[ed.date] = []
-                              groupedByDate[ed.date].push(ed)
-                            })
+                    return (
+                      <tr key={order.id} className="hover:bg-slate-50 transition-all border-b border-slate-100 group">
+                        <td className="px-6 py-4">
+                          <input
+                            type="checkbox"
+                            checked={selectedOrderIds.includes(order.id)}
+                            onChange={() => toggleOrderSelection(order.id)}
+                            className="w-4 h-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500"
+                          />
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="text-sm font-medium text-gray-900">{order.customer?.name || 'Unknown'}</div>
+                          <div className="text-sm text-gray-500">{order.customer?.phone || ''}</div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="text-sm font-medium text-gray-900">
+                            {(order as any).eventName || <span className="text-gray-400">-</span>}
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="text-sm text-gray-900">
+                            {(order as any).eventType || <span className="text-gray-400">-</span>}
+                          </div>
+                        </td>
+                        <td className="px-6 py-4">
+                          <div className="text-sm text-gray-900 max-w-[200px] truncate" title={(order as any).venue || ''}>
+                            {(order as any).venue || <span className="text-gray-400">-</span>}
+                          </div>
+                        </td>
+                        <td className="px-6 py-4">
+                          <div className="text-sm text-gray-900 space-y-4">
+                            {(() => {
+                              const isCombinedOrder = eventDates.some(ed => ed.key.startsWith('session_') || ed.key.includes('_merged_'))
+                              const groupedByDate: Record<string, typeof eventDates> = {}
+                              eventDates.forEach(ed => {
+                                if (!groupedByDate[ed.date]) groupedByDate[ed.date] = []
+                                groupedByDate[ed.date].push(ed)
+                              })
 
-                            const sortedDates = Object.keys(groupedByDate).sort((a, b) => new Date(a).getTime() - new Date(b).getTime())
+                              const sortedDates = Object.keys(groupedByDate).sort((a, b) => new Date(a).getTime() - new Date(b).getTime())
 
-                            return sortedDates.length > 0 ? (
-                              sortedDates.map((date) => (
-                                <div key={date} className="relative group/date">
-                                  {/* Date Header / Badge */}
-                                  <div className="flex items-center gap-2 mb-1.5">
-                                    <div className="flex items-center gap-1.5 bg-slate-100 px-2 py-0.5 rounded-md border border-slate-200 shadow-sm">
-                                      <FaCalendarAlt className="text-slate-400 text-[10px]" />
-                                      <span className="text-[10px] font-black text-slate-600 uppercase tracking-widest leading-none">
-                                        {new Date(date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
-                                      </span>
+                              return sortedDates.length > 0 ? (
+                                sortedDates.map((date) => (
+                                  <div key={date} className="relative group/date">
+                                    {/* Date Header / Badge */}
+                                    <div className="flex items-center gap-2 mb-1.5">
+                                      <div className="flex items-center gap-1.5 bg-slate-100 px-2 py-0.5 rounded-md border border-slate-200 shadow-sm">
+                                        <FaCalendarAlt className="text-slate-400 text-[10px]" />
+                                        <span className="text-[10px] font-black text-slate-600 uppercase tracking-widest leading-none">
+                                          {new Date(date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
+                                        </span>
+                                      </div>
+
+                                      {isCombinedOrder && sortedDates.length > 1 && (
+                                        <button
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            handleDiscardDate(order.id, date);
+                                          }}
+                                          className="text-red-400 hover:text-red-600 p-0.5 opacity-0 group-hover/date:opacity-100 transition-all hover:scale-110"
+                                          title="Separate all sessions on this date"
+                                        >
+                                          <FaTimesCircle size={14} />
+                                        </button>
+                                      )}
                                     </div>
 
-                                    {isCombinedOrder && sortedDates.length > 1 && (
-                                      <button
-                                        onClick={(e) => {
-                                          e.stopPropagation();
-                                          handleDiscardDate(order.id, date);
-                                        }}
-                                        className="text-red-400 hover:text-red-600 p-0.5 opacity-0 group-hover/date:opacity-100 transition-all hover:scale-110"
-                                        title="Separate all sessions on this date"
-                                      >
-                                        <FaTimesCircle size={14} />
-                                      </button>
-                                    )}
+                                    {/* Sessions List */}
+                                    <div className="flex flex-wrap gap-1.5 pl-1 border-l-2 border-slate-100 ml-1">
+                                      {groupedByDate[date].map(({ mealType, key, members }) => (
+                                        <div key={key} className="flex items-center gap-1.5 bg-white px-2.5 py-1 rounded-lg border border-slate-200 shadow-sm group/session hover:border-primary-300 transition-colors">
+                                          <span className="capitalize text-[11px] font-bold text-slate-700">
+                                            {sanitizeMealLabel(mealType)}
+                                            {members ? (
+                                              <span className="ml-1 text-primary-600 font-black">({members})</span>
+                                            ) : order.numberOfMembers ? (
+                                              <span className="ml-1 text-slate-400 font-medium">
+                                                ({totalMembersAll > 0 ? totalMembersAll : order.numberOfMembers})
+                                              </span>
+                                            ) : null}
+                                          </span>
+                                          {isCombinedOrder && eventDates.length > 1 && (
+                                            <button
+                                              onClick={(e) => {
+                                                e.stopPropagation();
+                                                handleDiscardSession(order.id, key);
+                                              }}
+                                              className="text-slate-300 hover:text-red-500 opacity-0 group-hover/session:opacity-100 transition-all hover:scale-110"
+                                              title="Separate only this session"
+                                            >
+                                              <FaTimesCircle size={12} />
+                                            </button>
+                                          )}
+                                        </div>
+                                      ))}
+                                    </div>
                                   </div>
-
-                                  {/* Sessions List */}
-                                  <div className="flex flex-wrap gap-1.5 pl-1 border-l-2 border-slate-100 ml-1">
-                                    {groupedByDate[date].map(({ mealType, key, members }) => (
-                                      <div key={key} className="flex items-center gap-1.5 bg-white px-2.5 py-1 rounded-lg border border-slate-200 shadow-sm group/session hover:border-primary-300 transition-colors">
-                                        <span className="capitalize text-[11px] font-bold text-slate-700">
-                                          {sanitizeMealLabel(mealType)}
-                                          {members ? (
-                                            <span className="ml-1 text-primary-600 font-black">({members})</span>
-                                          ) : order.numberOfMembers ? (
-                                            <span className="ml-1 text-slate-400 font-medium">
-                                              ({totalMembersAll > 0 ? totalMembersAll : order.numberOfMembers})
-                                            </span>
-                                          ) : null}
-                                        </span>
-                                        {isCombinedOrder && eventDates.length > 1 && (
-                                          <button
-                                            onClick={(e) => {
-                                              e.stopPropagation();
-                                              handleDiscardSession(order.id, key);
-                                            }}
-                                            className="text-slate-300 hover:text-red-500 opacity-0 group-hover/session:opacity-100 transition-all hover:scale-110"
-                                            title="Separate only this session"
-                                          >
-                                            <FaTimesCircle size={12} />
-                                          </button>
-                                        )}
-                                      </div>
-                                    ))}
-                                  </div>
-                                </div>
-                              ))
-                            ) : (
-                              <span className="text-gray-400 italic">No dates set</span>
-                            )
-                          })()}
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <select
-                          value={order.status}
-                          onChange={(e) => {
-                            if (e.target.value === order.status) return
-                            setStatusConfirm({
-                              isOpen: true,
-                              id: order.id,
-                              newStatus: e.target.value,
-                              oldStatus: order.status
-                            })
-                          }}
-                          className={`px-3 py-1.5 text-xs font-semibold rounded-full border-0 cursor-pointer focus:ring-2 focus:ring-primary-500 focus:outline-none ${order.status === 'completed' ? 'bg-green-100 text-green-800 hover:bg-green-200' :
-                            order.status === 'in_progress' ? 'bg-yellow-100 text-yellow-800 hover:bg-yellow-200' :
-                              order.status === 'cancelled' ? 'bg-red-100 text-red-800 hover:bg-red-200' :
-                                'bg-gray-100 text-gray-800 hover:bg-gray-200'
-                            }`}
-                        >
-                          <option value="pending">Pending</option>
-                          <option value="in_progress">In Progress</option>
-                          <option value="completed">Completed</option>
-                          <option value="cancelled">Cancelled</option>
-                        </select>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {formatDateTime(order.createdAt)}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                        <div className="flex gap-2">
-                          <Link
-                            href={`/orders/summary/${order.id}`}
-                            className="text-blue-600 hover:text-blue-900 p-2 hover:bg-blue-50 rounded transition-colors"
-                            title="Order Summary"
-                          >
-                            <FaChartLine />
-                          </Link>
-                          <Link
-                            href={`/orders?edit=${order.id}`}
-                            className="text-yellow-600 hover:text-yellow-900 p-2 hover:bg-yellow-50 rounded transition-colors"
-                            title="Edit Order"
-                          >
-                            <FaEdit />
-                          </Link>
-                          <button
-                            onClick={() => setPdfLanguageModal({ isOpen: true, order })}
-                            className="text-secondary-500 hover:text-secondary-700 p-2 hover:bg-secondary-50 rounded"
-                            title="Download PDF"
-                          >
-                            <FaFilePdf />
-                          </button>
-                          <button
-                            onClick={() => handleGenerateImage(order, 'english')}
-                            className="text-indigo-600 hover:text-indigo-800 p-2 hover:bg-indigo-50 rounded"
-                            title="Download Image (PNG)"
-                          >
-                            <FaFileImage />
-                          </button>
-                          <button
-                            onClick={() => {
-                              if (!order.customer?.email) {
-                                toast.error('Customer email not available')
-                                return
-                              }
-                              setEmailModal({ isOpen: true, order })
+                                ))
+                              ) : (
+                                <span className="text-gray-400 italic">No dates set</span>
+                              )
+                            })()}
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <select
+                            value={order.status}
+                            onChange={(e) => {
+                              if (e.target.value === order.status) return
+                              setStatusConfirm({
+                                isOpen: true,
+                                id: order.id,
+                                newStatus: e.target.value,
+                                oldStatus: order.status
+                              })
                             }}
-                            className="text-green-600 hover:text-green-800 p-2 hover:bg-green-50 rounded"
-                            title="Email Order (Menu + Event Details)"
+                            className={`px-3 py-1.5 text-xs font-semibold rounded-full border-0 cursor-pointer focus:ring-2 focus:ring-primary-500 focus:outline-none ${order.status === 'completed' ? 'bg-green-100 text-green-800 hover:bg-green-200' :
+                              order.status === 'in_progress' ? 'bg-yellow-100 text-yellow-800 hover:bg-yellow-200' :
+                                order.status === 'cancelled' ? 'bg-red-100 text-red-800 hover:bg-red-200' :
+                                  'bg-gray-100 text-gray-800 hover:bg-gray-200'
+                              }`}
                           >
-                            <FaEnvelope />
-                          </button>
-                          <button
-                            onClick={() => handleDelete(order.id)}
-                            className="text-secondary-500 hover:text-secondary-700 p-2 hover:bg-secondary-50 rounded"
-                            title="Delete"
-                          >
-                            <FaTrash />
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  )
-                })}
-              </tbody>
-            </table>
+                            <option value="pending">Pending</option>
+                            <option value="in_progress">In Progress</option>
+                            <option value="completed">Completed</option>
+                            <option value="cancelled">Cancelled</option>
+                          </select>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                          {formatDateTime(order.createdAt)}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                          <div className="flex gap-2">
+                            <Link
+                              href={`/orders/summary/${order.id}`}
+                              className="text-blue-600 hover:text-blue-900 p-2 hover:bg-blue-50 rounded transition-colors"
+                              title="Order Summary"
+                            >
+                              <FaChartLine />
+                            </Link>
+                            <Link
+                              href={`/orders?edit=${order.id}`}
+                              className="text-yellow-600 hover:text-yellow-900 p-2 hover:bg-yellow-50 rounded transition-colors"
+                              title="Edit Order"
+                            >
+                              <FaEdit />
+                            </Link>
+                            <button
+                              onClick={() => setPdfLanguageModal({ isOpen: true, order })}
+                              className="text-secondary-500 hover:text-secondary-700 p-2 hover:bg-secondary-50 rounded"
+                              title="Download PDF"
+                            >
+                              <FaFilePdf />
+                            </button>
+                            <button
+                              onClick={() => handleGenerateImage(order, 'english')}
+                              className="text-indigo-600 hover:text-indigo-800 p-2 hover:bg-indigo-50 rounded"
+                              title="Download Image (PNG)"
+                            >
+                              <FaFileImage />
+                            </button>
+                            <button
+                              onClick={() => {
+                                if (!order.customer?.email) {
+                                  toast.error('Customer email not available')
+                                  return
+                                }
+                                setEmailModal({ isOpen: true, order })
+                              }}
+                              className="text-green-600 hover:text-green-800 p-2 hover:bg-green-50 rounded"
+                              title="Email Order (Menu + Event Details)"
+                            >
+                              <FaEnvelope />
+                            </button>
+                            <button
+                              onClick={() => handleDelete(order.id)}
+                              className="text-secondary-500 hover:text-secondary-700 p-2 hover:bg-secondary-50 rounded"
+                              title="Delete"
+                            >
+                              <FaTrash />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
+            </div>
           </div>
-        </div>
         </>
       )}
 

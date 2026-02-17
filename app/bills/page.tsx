@@ -255,17 +255,22 @@ export default function BillsPage() {
   }
 
   const renderBillToImage = async (bill: any): Promise<string | null> => {
-    const { pdfData } = buildBillPdfData(bill)
-    const htmlContent = generatePDFTemplate(pdfData)
+    if (!bill.order) return null
+    const htmlContent = buildOrderPdfHtml(bill.order, {
+      useEnglish: true,
+      formatDate,
+      showFinancials: true,
+      formatCurrency,
+      bill: bill,
+    })
 
     const tempDiv = document.createElement('div')
     tempDiv.style.position = 'absolute'
     tempDiv.style.left = '-9999px'
     tempDiv.style.width = '210mm'
-    tempDiv.style.padding = '0'
-    tempDiv.style.paddingBottom = '10mm'
+    tempDiv.style.padding = '15mm'
     tempDiv.style.background = 'white'
-    tempDiv.style.color = '#000'
+    tempDiv.style.color = '#333'
     tempDiv.innerHTML = htmlContent
     tempDiv.style.overflow = 'visible'
     document.body.appendChild(tempDiv)
@@ -772,61 +777,61 @@ export default function BillsPage() {
 
       {/* Desktop Table - visible only md and up */}
       <div className="hidden md:block">
-      <Table
-        columns={tableConfig.columns}
-        data={filteredBills}
-        emptyMessage={tableConfig.emptyMessage}
-        itemsPerPage={itemsPerPage}
-        currentPage={currentPage}
-        totalItems={filteredBills.length}
-        onPageChange={setCurrentPage}
-        onItemsPerPageChange={setItemsPerPage}
-        itemName={tableConfig.itemName}
-        getItemId={tableConfig.getItemId}
-        renderActions={(bill) => (
-          <div className="flex items-center gap-2">
-            {bill.status !== 'paid' && (
+        <Table
+          columns={tableConfig.columns}
+          data={filteredBills}
+          emptyMessage={tableConfig.emptyMessage}
+          itemsPerPage={itemsPerPage}
+          currentPage={currentPage}
+          totalItems={filteredBills.length}
+          onPageChange={setCurrentPage}
+          onItemsPerPageChange={setItemsPerPage}
+          itemName={tableConfig.itemName}
+          getItemId={tableConfig.getItemId}
+          renderActions={(bill) => (
+            <div className="flex items-center gap-2">
+              {bill.status !== 'paid' && (
+                <button
+                  onClick={() => handleMarkPaid(bill.id)}
+                  className="text-green-600 hover:text-green-700 p-2 hover:bg-green-50 rounded transition-all active:scale-90"
+                  title="Mark as Paid"
+                >
+                  <FaCheck />
+                </button>
+              )}
               <button
-                onClick={() => handleMarkPaid(bill.id)}
-                className="text-green-600 hover:text-green-700 p-2 hover:bg-green-50 rounded transition-all active:scale-90"
-                title="Mark as Paid"
+                onClick={() => handleSendBillEmail(bill)}
+                className="text-slate-600 hover:text-slate-700 p-2 hover:bg-slate-50 rounded transition-all active:scale-90"
+                title={bill.order?.customer?.email ? 'Send bill via email' : 'Customer email not available'}
+                disabled={!bill.order?.customer?.email}
               >
-                <FaCheck />
+                <FaEnvelope />
               </button>
-            )}
-            <button
-              onClick={() => handleSendBillEmail(bill)}
-              className="text-slate-600 hover:text-slate-700 p-2 hover:bg-slate-50 rounded transition-all active:scale-90"
-              title={bill.order?.customer?.email ? 'Send bill via email' : 'Customer email not available'}
-              disabled={!bill.order?.customer?.email}
-            >
-              <FaEnvelope />
-            </button>
-            <button
-              onClick={() => handleSendBillWhatsApp(bill)}
-              className="text-emerald-600 hover:text-emerald-700 p-2 hover:bg-emerald-50 rounded transition-all active:scale-90"
-              title={bill.order?.customer?.phone ? 'Send bill via WhatsApp to customer' : 'Customer phone not available'}
-              disabled={!bill.order?.customer?.phone}
-            >
-              <FaWhatsapp />
-            </button>
-            <button
-              onClick={() => handleGenerateImage(bill)}
-              className="text-indigo-600 hover:text-indigo-700 p-2 hover:bg-indigo-50 rounded transition-all active:scale-90"
-              title="Download Bill Image (PNG)"
-            >
-              <FaFileImage />
-            </button>
-            <button
-              onClick={() => handleGeneratePDF(bill)}
-              className="text-primary-600 hover:text-primary-700 p-2 hover:bg-primary-50 rounded transition-all active:scale-90"
-              title="Download PDF Bill"
-            >
-              <FaPrint />
-            </button>
-          </div>
-        )}
-      />
+              <button
+                onClick={() => handleSendBillWhatsApp(bill)}
+                className="text-emerald-600 hover:text-emerald-700 p-2 hover:bg-emerald-50 rounded transition-all active:scale-90"
+                title={bill.order?.customer?.phone ? 'Send bill via WhatsApp to customer' : 'Customer phone not available'}
+                disabled={!bill.order?.customer?.phone}
+              >
+                <FaWhatsapp />
+              </button>
+              <button
+                onClick={() => handleGenerateImage(bill)}
+                className="text-indigo-600 hover:text-indigo-700 p-2 hover:bg-indigo-50 rounded transition-all active:scale-90"
+                title="Download Bill Image (PNG)"
+              >
+                <FaFileImage />
+              </button>
+              <button
+                onClick={() => handleGeneratePDF(bill)}
+                className="text-primary-600 hover:text-primary-700 p-2 hover:bg-primary-50 rounded transition-all active:scale-90"
+                title="Download PDF Bill"
+              >
+                <FaPrint />
+              </button>
+            </div>
+          )}
+        />
       </div>
     </div>
   )
