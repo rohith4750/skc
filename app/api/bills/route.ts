@@ -9,21 +9,32 @@ export async function GET(request: NextRequest) {
   const auth = await requireAuth(request);
   if (auth.response) return auth.response;
   try {
-    const bills = await prisma.bill.findMany({
-      include: {
-        customer: true,
-        orders: {
-          include: {
-            items: {
-              include: {
-                menuItem: true,
+    // WORKAROUND: Sequential fetch to avoid Prisma crash with text[] columns in nested relations
+    const billIds = await prisma.bill.findMany({
+      select: { id: true },
+      orderBy: { createdAt: "desc" },
+    });
+
+    const bills = [];
+    for (const { id } of billIds) {
+      const bill = await prisma.bill.findUnique({
+        where: { id },
+        include: {
+          customer: true,
+          orders: {
+            include: {
+              items: {
+                include: {
+                  menuItem: true,
+                },
               },
             },
           },
-        },
-      } as any,
-      orderBy: { createdAt: "desc" },
-    });
+        } as any,
+      });
+      if (bill) bills.push(bill);
+    }
+
     const { searchParams } = new URL(request.url);
     const debug = searchParams.get("debug");
 

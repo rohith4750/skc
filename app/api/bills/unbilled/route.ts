@@ -10,23 +10,35 @@ export async function GET(request: NextRequest) {
 
   try {
     // Find all orders that don't have a bill and are NOT pending
-    const unbilledOrders = await prisma.order.findMany({
+    // WORKAROUND: Sequential fetch to avoid Prisma crash
+    // 1. Fetch IDs first
+    const unbilledOrderIds = await prisma.order.findMany({
+      select: { id: true },
       where: {
         ...({ billId: null } as any),
         status: {
           not: "pending",
         },
       },
-      include: {
-        customer: true,
-        items: {
-          include: {
-            menuItem: true,
-          },
-        },
-      } as any,
       orderBy: { eventDate: "asc" } as any,
     });
+
+    // 2. Fetch full details sequentially
+    const unbilledOrders = [];
+    for (const { id } of unbilledOrderIds) {
+      const order = await prisma.order.findUnique({
+        where: { id },
+        include: {
+          customer: true,
+          items: {
+            include: {
+              menuItem: true,
+            },
+          },
+        } as any,
+      });
+      if (order) unbilledOrders.push(order);
+    }
 
     // Group by customer
     const grouped: Record<string, { customer: any; orders: any[] }> = {};
