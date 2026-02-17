@@ -18,27 +18,22 @@ import { buildOrderPdfHtml } from '@/lib/order-pdf-html'
 interface ExtendedBill {
   id: string;
   serialNumber: number;
-  customerId: string | null;
+  orderId: string;
   totalAmount: any;
   paidAmount: any;
   remainingAmount: any;
   status: string;
   paymentHistory: any;
-  startDate: string | null;
-  endDate: string | null;
   createdAt: string;
   updatedAt: string;
-  customer?: Customer;
-  orders: (Order & { items: any[] })[];
+  order: Order & { items: any[], customer: Customer };
 }
 
 export default function BillsPage() {
   const [bills, setBills] = useState<ExtendedBill[]>([])
   const [loading, setLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState('')
-  const [activeTab, setActiveTab] = useState<'individual' | 'consolidated'>('individual')
   const [selectedBill, setSelectedBill] = useState<ExtendedBill | null>(null)
-  const [unbilledGroups, setUnbilledGroups] = useState<any[]>([])
   const [isDrawerOpen, setIsDrawerOpen] = useState(false)
   const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false)
   const [paymentData, setPaymentData] = useState({
@@ -55,12 +50,6 @@ export default function BillsPage() {
       if (!response.ok) throw new Error('Failed to fetch bills')
       const data = await response.json()
       setBills(data)
-
-      // Load unbilled
-      const unbilledResp = await fetch('/api/bills/unbilled')
-      if (unbilledResp.ok) {
-        setUnbilledGroups(await unbilledResp.json())
-      }
     } catch (error) {
       console.error('Failed to load bills:', error)
       toast.error('Failed to load bills')
@@ -73,6 +62,16 @@ export default function BillsPage() {
     loadBills()
   }, [])
 
+  const filteredBills = useMemo(() => {
+    return bills.filter(bill => {
+      const customerName = bill.order?.customer?.name?.toLowerCase() || ''
+      const phone = bill.order?.customer?.phone || ''
+      const query = searchQuery.toLowerCase()
+
+      return customerName.includes(query) || phone.includes(query)
+    })
+  }, [bills, searchQuery])
+
   // Metrics
   const metrics = useMemo(() => {
     const total = bills.reduce((sum, b) => sum + Number(b.totalAmount), 0)
@@ -80,22 +79,6 @@ export default function BillsPage() {
     const pending = bills.reduce((sum, b) => sum + Number(b.remainingAmount), 0)
     return { total, paid, pending, count: bills.length }
   }, [bills])
-
-  const filteredBills = useMemo(() => {
-    return bills.filter(bill => {
-      const customerName = bill.customer?.name?.toLowerCase() || ''
-      const phone = bill.customer?.phone || ''
-      const query = searchQuery.toLowerCase()
-
-      const matchesSearch = customerName.includes(query) || phone.includes(query)
-
-      // If a bill has more than 1 order, it's considered consolidated
-      const isConsolidated = bill.orders.length > 1
-      const matchesTab = (activeTab === 'consolidated' && isConsolidated) || (activeTab === 'individual' && !isConsolidated)
-
-      return matchesSearch && matchesTab
-    })
-  }, [bills, searchQuery, activeTab])
 
   const handleOpenDrawer = (bill: ExtendedBill) => {
     setSelectedBill(bill)
@@ -135,20 +118,6 @@ export default function BillsPage() {
     }
   }
 
-  const handleConsolidate = async (customerId: string, orderIds: string[]) => {
-    try {
-      const resp = await fetch('/api/bills/consolidate', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ customerId, orderIds })
-      })
-      if (!resp.ok) throw new Error('Consolidation failed')
-      toast.success('Bill consolidated successfully')
-      loadBills()
-    } catch (error) {
-      toast.error('Failed to consolidate orders')
-    }
-  }
 
   return (
     <div className="min-h-screen bg-slate-50/50 p-4 md:p-8">
@@ -199,23 +168,8 @@ export default function BillsPage() {
           />
         </div>
 
-        {/* Tabs & Search */}
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-200 pb-2">
-          <div className="flex gap-1 bg-slate-100 p-1 rounded-xl w-fit">
-            <TabButton
-              active={activeTab === 'individual'}
-              onClick={() => setActiveTab('individual')}
-              label="Individual Orders"
-              count={bills.filter(b => b.orders.length <= 1).length}
-            />
-            <TabButton
-              active={activeTab === 'consolidated'}
-              onClick={() => setActiveTab('consolidated')}
-              label="Consolidated Billing"
-              count={bills.filter(b => b.orders.length > 1).length}
-            />
-          </div>
-
+        {/* Search Bar */}
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div className="relative w-full md:w-96">
             <input
               type="text"
@@ -230,38 +184,6 @@ export default function BillsPage() {
 
         {/* Bills Grid */}
         <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6 pb-20">
-          {/* New Consolidation Candidates */}
-          {activeTab === 'consolidated' && unbilledGroups.map(group => (
-            <div key={group.customer.id} className="bg-indigo-600 rounded-[2rem] p-6 text-white shadow-xl shadow-indigo-100 flex flex-col justify-between border-4 border-white">
-              <div>
-                <div className="flex justify-between items-start mb-4">
-                  <div className="p-3 bg-white/20 rounded-2xl backdrop-blur-md">
-                    <FaPlus className="text-white text-lg" />
-                  </div>
-                  <span className="px-3 py-1 bg-white/20 rounded-full text-[10px] font-black uppercase tracking-widest">New Consolidation</span>
-                </div>
-                <h3 className="text-xl font-black">{group.customer.name}</h3>
-                <p className="text-indigo-200 text-sm">{group.orders.length} unbilled orders</p>
-
-                <div className="mt-4 space-y-2">
-                  {group.orders.slice(0, 3).map((o: any) => (
-                    <div key={o.id} className="text-[11px] text-indigo-100 flex justify-between">
-                      <span>{o.eventName || 'Order'} · {formatDate(o.eventDate)}</span>
-                      <span className="font-bold">{formatCurrency(Number(o.totalAmount))}</span>
-                    </div>
-                  ))}
-                  {group.orders.length > 3 && <p className="text-[10px] text-indigo-300">+{group.orders.length - 3} more orders</p>}
-                </div>
-              </div>
-
-              <button
-                onClick={() => handleConsolidate(group.customer.id, group.orders.map((o: any) => o.id))}
-                className="mt-6 w-full py-3 bg-white text-indigo-600 rounded-2xl font-black text-sm hover:bg-slate-50 transition-all shadow-lg active:scale-95"
-              >
-                Consolidate {group.orders.length} Orders
-              </button>
-            </div>
-          ))}
 
           {filteredBills.map(bill => (
             <BillCard
@@ -284,215 +206,214 @@ export default function BillsPage() {
       </div>
 
       {/* Drawer */}
-      {isDrawerOpen && selectedBill && (
-        <div className="fixed inset-0 z-50 flex justify-end">
-          <div className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm" onClick={() => setIsDrawerOpen(false)} />
-          <div className="relative w-full max-w-2xl bg-white h-full shadow-2xl flex flex-col animate-in slide-in-from-right duration-300">
-            {/* Drawer Header */}
-            <div className="p-6 border-b border-slate-100 flex items-center justify-between bg-white sticky top-0 z-10">
-              <div>
-                <h2 className="text-xl font-bold text-slate-900">Ledger Details</h2>
-                <div className="flex items-center gap-2 mt-1">
-                  <span className="text-sm font-medium text-slate-500">#{selectedBill.serialNumber}</span>
-                  <span className={`px-2 py-0.5 rounded-md text-xs font-bold uppercase ${selectedBill.status === 'paid' ? 'bg-emerald-100 text-emerald-700' :
-                    selectedBill.status === 'partial' ? 'bg-amber-100 text-amber-700' : 'bg-rose-100 text-rose-700'
-                    }`}>
-                    {selectedBill.status}
-                  </span>
-                </div>
-              </div>
-              <button
-                onClick={() => setIsDrawerOpen(false)}
-                className="p-2 hover:bg-slate-100 rounded-full text-slate-400 transition-colors"
-              >
-                <FaTimes />
-              </button>
-            </div>
-
-            {/* Drawer Content */}
-            <div className="flex-1 overflow-y-auto p-6 space-y-8">
-              {/* Customer Info */}
-              <div className="bg-indigo-50 rounded-2xl p-5 border border-indigo-100">
-                <div className="flex items-start justify-between">
-                  <div className="flex items-center gap-4">
-                    <div className="w-12 h-12 bg-white rounded-xl shadow-sm flex items-center justify-center text-indigo-600 font-bold text-xl">
-                      {selectedBill.customer?.name?.charAt(0)}
-                    </div>
-                    <div>
-                      <h3 className="font-bold text-slate-900 text-lg">{selectedBill.customer?.name}</h3>
-                      <p className="text-indigo-600 text-sm font-medium">{selectedBill.customer?.phone}</p>
-                    </div>
-                  </div>
-                  <div className="flex gap-2">
-                    <button className="p-2 bg-white rounded-lg text-slate-600 hover:text-indigo-600 border border-slate-200 shadow-sm transition-all"><FaWhatsapp /></button>
-                    <button className="p-2 bg-white rounded-lg text-slate-600 hover:text-indigo-600 border border-slate-200 shadow-sm transition-all"><FaEnvelope /></button>
-                  </div>
-                </div>
-              </div>
-
-              {/* Financial Summary */}
-              <div>
-                <h3 className="text-sm font-bold text-slate-400 uppercase tracking-wider mb-4">Financial Summary</h3>
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="p-4 bg-slate-50 rounded-xl border border-slate-200">
-                    <p className="text-xs text-slate-500 mb-1">Total Billable</p>
-                    <p className="text-lg font-bold text-slate-900">{formatCurrency(selectedBill.totalAmount)}</p>
-                  </div>
-                  <div className="p-4 bg-slate-50 rounded-xl border border-slate-200">
-                    <p className="text-xs text-slate-500 mb-1">Paid to Date</p>
-                    <p className="text-lg font-bold text-emerald-600">{formatCurrency(selectedBill.paidAmount)}</p>
-                  </div>
-                  <div className="p-4 bg-rose-50 rounded-xl border border-rose-100 col-span-2">
-                    <p className="text-xs text-rose-500 mb-1 font-semibold">Remaining Balance</p>
-                    <div className="flex items-baseline justify-between">
-                      <p className="text-2xl font-black text-rose-600">{formatCurrency(selectedBill.remainingAmount)}</p>
-                      <button
-                        onClick={() => setIsPaymentModalOpen(true)}
-                        className="px-4 py-2 bg-white text-rose-600 rounded-lg text-sm font-bold border border-rose-200 hover:bg-rose-600 hover:text-white transition-all shadow-sm"
-                      >
-                        Record Payment
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Linked Orders List */}
-              <div>
-                <div className="flex items-center justify-between mb-4">
-                  <h3 className="text-sm font-bold text-slate-400 uppercase tracking-wider">Line Items (Orders)</h3>
-                  <span className="text-xs font-bold text-slate-500">{selectedBill.orders.length} events</span>
-                </div>
-                <div className="space-y-4">
-                  {selectedBill.orders.map(order => (
-                    <div key={order.id} className="p-4 border border-slate-100 rounded-2xl bg-white hover:border-indigo-200 transition-all shadow-[0_2px_10px_-5px_rgba(0,0,0,0.1)]">
-                      <div className="flex justify-between items-start mb-2">
-                        <div>
-                          <p className="font-bold text-slate-800">{order.eventName || 'Unnamed Event'}</p>
-                          <p className="text-xs text-slate-500 flex items-center gap-1 mt-0.5">
-                            <FaCalendarAlt className="text-[10px]" />
-                            {order.eventDate ? formatDate(order.eventDate as any) : 'No date'}
-                          </p>
-                        </div>
-                        <p className="font-black text-slate-900">{formatCurrency(order.totalAmount)}</p>
-                      </div>
-
-                      <div className="grid grid-cols-3 gap-2 mt-3 pt-3 border-t border-slate-50">
-                        <MiniDetail label="Transport" value={formatCurrency(Number(order.transportCost))} />
-                        <MiniDetail label="Water" value={formatCurrency(Number((order as any).waterBottlesCost || 0))} />
-                        <MiniDetail label="Discount" value={formatCurrency(Number(order.discount))} accent="red" />
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              {/* Payment History */}
-              {selectedBill.paymentHistory && (selectedBill.paymentHistory as any[]).length > 0 && (
+      {
+        isDrawerOpen && selectedBill && (
+          <div className="fixed inset-0 z-50 flex justify-end">
+            <div className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm" onClick={() => setIsDrawerOpen(false)} />
+            <div className="relative w-full max-w-2xl bg-white h-full shadow-2xl flex flex-col animate-in slide-in-from-right duration-300">
+              {/* Drawer Header */}
+              <div className="p-6 border-b border-slate-100 flex items-center justify-between bg-white sticky top-0 z-10">
                 <div>
-                  <h3 className="text-sm font-bold text-slate-400 uppercase tracking-wider mb-4">Payment History</h3>
-                  <div className="space-y-3">
-                    {(selectedBill.paymentHistory as any[]).slice().reverse().map((p, idx) => (
-                      <div key={idx} className="flex items-center justify-between p-3 bg-slate-50 rounded-xl border-l-4 border-emerald-500">
-                        <div>
-                          <p className="text-sm font-bold text-slate-800">+{formatCurrency(p.amount)}</p>
-                          <p className="text-[10px] text-slate-500 uppercase tracking-tight">{p.method} · {formatDateTime(p.date)}</p>
-                        </div>
-                        {p.notes && (
-                          <div className="max-w-[150px] truncate text-xs text-slate-400 italic">
-                            {p.notes}
-                          </div>
-                        )}
-                      </div>
-                    ))}
+                  <h2 className="text-xl font-bold text-slate-900">Ledger Details</h2>
+                  <div className="flex items-center gap-2 mt-1">
+                    <span className="text-sm font-medium text-slate-500">#{selectedBill.serialNumber}</span>
+                    <span className={`px-2 py-0.5 rounded-md text-xs font-bold uppercase ${selectedBill.status === 'paid' ? 'bg-emerald-100 text-emerald-700' :
+                      selectedBill.status === 'partial' ? 'bg-amber-100 text-amber-700' : 'bg-rose-100 text-rose-700'
+                      }`}>
+                      {selectedBill.status}
+                    </span>
                   </div>
                 </div>
-              )}
-            </div>
+                <button
+                  onClick={() => setIsDrawerOpen(false)}
+                  className="p-2 hover:bg-slate-100 rounded-full text-slate-400 transition-colors"
+                >
+                  <FaTimes />
+                </button>
+              </div>
 
-            {/* Footer Actions */}
-            <div className="p-6 border-t border-slate-100 bg-slate-50 flex gap-3">
-              <button className="flex-1 flex items-center justify-center gap-2 py-3 bg-slate-900 text-white rounded-xl font-bold hover:bg-slate-800 transition-all shadow-lg active:scale-95">
-                <FaPrint /> Generate PDF
-              </button>
-              <button className="flex-1 flex items-center justify-center gap-2 py-3 bg-white border border-slate-200 text-slate-700 rounded-xl font-bold hover:bg-slate-50 transition-all shadow-sm active:scale-95">
-                <FaWhatsapp className="text-emerald-500" /> Share Bill
-              </button>
+              {/* Drawer Content */}
+              <div className="flex-1 overflow-y-auto p-6 space-y-8">
+                {/* Customer Info */}
+                <div className="bg-indigo-50 rounded-2xl p-5 border border-indigo-100">
+                  <div className="flex items-start justify-between">
+                    <div className="flex items-center gap-4">
+                      <div className="w-12 h-12 bg-white rounded-xl shadow-sm flex items-center justify-center text-indigo-600 font-bold text-xl">
+                        {selectedBill.order.customer.name.charAt(0)}
+                      </div>
+                      <div>
+                        <h3 className="font-bold text-slate-900 text-lg">{selectedBill.order.customer.name}</h3>
+                        <p className="text-indigo-600 text-sm font-medium">{selectedBill.order.customer.phone}</p>
+                      </div>
+                    </div>
+                    <div className="flex gap-2">
+                      <button className="p-2 bg-white rounded-lg text-slate-600 hover:text-indigo-600 border border-slate-200 shadow-sm transition-all"><FaWhatsapp /></button>
+                      <button className="p-2 bg-white rounded-lg text-slate-600 hover:text-indigo-600 border border-slate-200 shadow-sm transition-all"><FaEnvelope /></button>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Financial Summary */}
+                <div>
+                  <h3 className="text-sm font-bold text-slate-400 uppercase tracking-wider mb-4">Financial Summary</h3>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="p-4 bg-slate-50 rounded-xl border border-slate-200">
+                      <p className="text-xs text-slate-500 mb-1">Total Billable</p>
+                      <p className="text-lg font-bold text-slate-900">{formatCurrency(selectedBill.totalAmount)}</p>
+                    </div>
+                    <div className="p-4 bg-slate-50 rounded-xl border border-slate-200">
+                      <p className="text-xs text-slate-500 mb-1">Paid to Date</p>
+                      <p className="text-lg font-bold text-emerald-600">{formatCurrency(selectedBill.paidAmount)}</p>
+                    </div>
+                    <div className="p-4 bg-rose-50 rounded-xl border border-rose-100 col-span-2">
+                      <p className="text-xs text-rose-500 mb-1 font-semibold">Remaining Balance</p>
+                      <div className="flex items-baseline justify-between">
+                        <p className="text-2xl font-black text-rose-600">{formatCurrency(selectedBill.remainingAmount)}</p>
+                        <button
+                          onClick={() => setIsPaymentModalOpen(true)}
+                          className="px-4 py-2 bg-white text-rose-600 rounded-lg text-sm font-bold border border-rose-200 hover:bg-rose-600 hover:text-white transition-all shadow-sm"
+                        >
+                          Record Payment
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Order Details (Single Order) */}
+                <div>
+                  <div className="flex items-center justify-between mb-4">
+                    <h3 className="text-sm font-bold text-slate-400 uppercase tracking-wider">Order Details</h3>
+                  </div>
+                  <div className="p-4 border border-slate-100 rounded-2xl bg-white hover:border-indigo-200 transition-all shadow-[0_2px_10px_-5px_rgba(0,0,0,0.1)]">
+                    <div className="flex justify-between items-start mb-2">
+                      <div>
+                        <p className="font-bold text-slate-800">{selectedBill.order.eventName || 'Unnamed Event'}</p>
+                        <p className="text-xs text-slate-500 flex items-center gap-1 mt-0.5">
+                          <FaCalendarAlt className="text-[10px]" />
+                          {selectedBill.order.eventDate ? formatDate(selectedBill.order.eventDate as any) : 'No date'}
+                        </p>
+                      </div>
+                      <p className="font-black text-slate-900">{formatCurrency(selectedBill.order.totalAmount)}</p>
+                    </div>
+
+                    <div className="grid grid-cols-3 gap-2 mt-3 pt-3 border-t border-slate-50">
+                      <MiniDetail label="Transport" value={formatCurrency(Number(selectedBill.order.transportCost))} />
+                      <MiniDetail label="Water" value={formatCurrency(Number((selectedBill.order as any).waterBottlesCost || 0))} />
+                      <MiniDetail label="Discount" value={formatCurrency(Number(selectedBill.order.discount))} accent="red" />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Payment History */}
+                {selectedBill.paymentHistory && (selectedBill.paymentHistory as any[]).length > 0 && (
+                  <div>
+                    <h3 className="text-sm font-bold text-slate-400 uppercase tracking-wider mb-4">Payment History</h3>
+                    <div className="space-y-3">
+                      {(selectedBill.paymentHistory as any[]).slice().reverse().map((p, idx) => (
+                        <div key={idx} className="flex items-center justify-between p-3 bg-slate-50 rounded-xl border-l-4 border-emerald-500">
+                          <div>
+                            <p className="text-sm font-bold text-slate-800">+{formatCurrency(p.amount)}</p>
+                            <p className="text-[10px] text-slate-500 uppercase tracking-tight">{p.method} · {formatDateTime(p.date)}</p>
+                          </div>
+                          {p.notes && (
+                            <div className="max-w-[150px] truncate text-xs text-slate-400 italic">
+                              {p.notes}
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Footer Actions */}
+              <div className="p-6 border-t border-slate-100 bg-slate-50 flex gap-3">
+                <button className="flex-1 flex items-center justify-center gap-2 py-3 bg-slate-900 text-white rounded-xl font-bold hover:bg-slate-800 transition-all shadow-lg active:scale-95">
+                  <FaPrint /> Generate PDF
+                </button>
+                <button className="flex-1 flex items-center justify-center gap-2 py-3 bg-white border border-slate-200 text-slate-700 rounded-xl font-bold hover:bg-slate-50 transition-all shadow-sm active:scale-95">
+                  <FaWhatsapp className="text-emerald-500" /> Share Bill
+                </button>
+              </div>
             </div>
           </div>
-        </div>
-      )}
+        )
+      }
 
       {/* Payment Modal */}
-      {isPaymentModalOpen && (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
-          <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-md" onClick={() => setIsPaymentModalOpen(false)} />
-          <div className="relative bg-white rounded-3xl w-full max-w-md shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200">
-            <div className="p-8 space-y-6">
-              <div className="text-center">
-                <div className="w-16 h-16 bg-emerald-50 rounded-full flex items-center justify-center text-emerald-600 text-2xl mx-auto mb-4">
-                  <FaWallet />
-                </div>
-                <h3 className="text-2xl font-black text-slate-900">Record Payment</h3>
-                <p className="text-slate-500">Updating ledger for {selectedBill?.customer?.name}</p>
-              </div>
-
-              <div className="space-y-4">
-                <div>
-                  <label className="text-xs font-bold text-slate-400 uppercase mb-1.5 block">Amount Received (₹)</label>
-                  <input
-                    type="number"
-                    value={paymentData.amount || ''}
-                    onChange={(e) => setPaymentData({ ...paymentData, amount: parseFloat(e.target.value) || 0 })}
-                    className="w-full text-3xl font-black px-4 py-4 bg-slate-50 border-2 border-slate-100 rounded-2xl focus:border-indigo-500 focus:bg-white outline-none transition-all text-center placeholder:text-slate-200"
-                    placeholder="0.00"
-                  />
+      {
+        isPaymentModalOpen && (
+          <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
+            <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-md" onClick={() => setIsPaymentModalOpen(false)} />
+            <div className="relative bg-white rounded-3xl w-full max-w-md shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200">
+              <div className="p-8 space-y-6">
+                <div className="text-center">
+                  <div className="w-16 h-16 bg-emerald-50 rounded-full flex items-center justify-center text-emerald-600 text-2xl mx-auto mb-4">
+                    <FaWallet />
+                  </div>
+                  <h3 className="text-2xl font-black text-slate-900">Record Payment</h3>
+                  <p className="text-slate-500">Updating ledger for {selectedBill?.order.customer.name}</p>
                 </div>
 
-                <div className="grid grid-cols-2 gap-3">
-                  <PaymentMethod
-                    active={paymentData.method === 'cash'}
-                    onClick={() => setPaymentData({ ...paymentData, method: 'cash' })}
-                    label="Cash"
-                  />
-                  <PaymentMethod
-                    active={paymentData.method === 'upi'}
-                    onClick={() => setPaymentData({ ...paymentData, method: 'upi' })}
-                    label="UPI / Bank"
-                  />
+                <div className="space-y-4">
+                  <div>
+                    <label className="text-xs font-bold text-slate-400 uppercase mb-1.5 block">Amount Received (₹)</label>
+                    <input
+                      type="number"
+                      value={paymentData.amount || ''}
+                      onChange={(e) => setPaymentData({ ...paymentData, amount: parseFloat(e.target.value) || 0 })}
+                      className="w-full text-3xl font-black px-4 py-4 bg-slate-50 border-2 border-slate-100 rounded-2xl focus:border-indigo-500 focus:bg-white outline-none transition-all text-center placeholder:text-slate-200"
+                      placeholder="0.00"
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3">
+                    <PaymentMethod
+                      active={paymentData.method === 'cash'}
+                      onClick={() => setPaymentData({ ...paymentData, method: 'cash' })}
+                      label="Cash"
+                    />
+                    <PaymentMethod
+                      active={paymentData.method === 'upi'}
+                      onClick={() => setPaymentData({ ...paymentData, method: 'upi' })}
+                      label="UPI / Bank"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="text-xs font-bold text-slate-400 uppercase mb-1.5 block">Notes (Optional)</label>
+                    <textarea
+                      value={paymentData.notes}
+                      onChange={(e) => setPaymentData({ ...paymentData, notes: e.target.value })}
+                      className="w-full px-4 py-3 bg-slate-50 border border-slate-100 rounded-xl focus:border-indigo-500 focus:bg-white outline-none transition-all resize-none text-sm"
+                      rows={2}
+                      placeholder="e.g., Final payment settled..."
+                    />
+                  </div>
                 </div>
 
-                <div>
-                  <label className="text-xs font-bold text-slate-400 uppercase mb-1.5 block">Notes (Optional)</label>
-                  <textarea
-                    value={paymentData.notes}
-                    onChange={(e) => setPaymentData({ ...paymentData, notes: e.target.value })}
-                    className="w-full px-4 py-3 bg-slate-50 border border-slate-100 rounded-xl focus:border-indigo-500 focus:bg-white outline-none transition-all resize-none text-sm"
-                    rows={2}
-                    placeholder="e.g., Final payment settled..."
-                  />
+                <div className="flex gap-3 pt-2">
+                  <button
+                    onClick={() => setIsPaymentModalOpen(false)}
+                    className="flex-1 py-4 bg-slate-100 text-slate-600 rounded-2xl font-bold hover:bg-slate-200 transition-all"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={handleRecordPayment}
+                    className="flex-1 py-4 bg-indigo-600 text-white rounded-2xl font-black shadow-lg shadow-indigo-200 hover:bg-indigo-700 transition-all active:scale-95"
+                  >
+                    Confirm Payment
+                  </button>
                 </div>
-              </div>
-
-              <div className="flex gap-3 pt-2">
-                <button
-                  onClick={() => setIsPaymentModalOpen(false)}
-                  className="flex-1 py-4 bg-slate-100 text-slate-600 rounded-2xl font-bold hover:bg-slate-200 transition-all"
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={handleRecordPayment}
-                  className="flex-1 py-4 bg-indigo-600 text-white rounded-2xl font-black shadow-lg shadow-indigo-200 hover:bg-indigo-700 transition-all active:scale-95"
-                >
-                  Confirm Payment
-                </button>
               </div>
             </div>
           </div>
-        </div>
-      )}
-    </div>
+        )
+      }
+    </div >
   )
 }
 
@@ -519,20 +440,6 @@ function StatCard({ title, value, icon, subtitle, color }: { title: string, valu
   )
 }
 
-function TabButton({ active, onClick, label, count }: { active: boolean, onClick: () => void, label: string, count: number }) {
-  return (
-    <button
-      onClick={onClick}
-      className={`px-5 py-2 rounded-lg text-sm font-bold flex items-center gap-2 transition-all ${active ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'
-        }`}
-    >
-      {label}
-      <span className={`px-2 py-0.5 rounded-full text-[10px] ${active ? 'bg-indigo-100 text-indigo-600' : 'bg-slate-200 text-slate-500'}`}>
-        {count}
-      </span>
-    </button>
-  )
-}
 
 function BillCard({ bill, onOpen }: { bill: ExtendedBill, onOpen: () => void }) {
   const total = Number(bill.totalAmount)
@@ -550,8 +457,8 @@ function BillCard({ bill, onOpen }: { bill: ExtendedBill, onOpen: () => void }) 
             <FaUser />
           </div>
           <div>
-            <h3 className="font-black text-slate-900 text-lg leading-tight">{bill.customer?.name}</h3>
-            <p className="text-slate-400 text-sm mt-0.5">{bill.customer?.phone}</p>
+            <h3 className="font-black text-slate-900 text-lg leading-tight">{bill.order.customer.name}</h3>
+            <p className="text-slate-400 text-sm mt-0.5">{bill.order.customer.phone}</p>
           </div>
         </div>
         <div className={`px-3 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-wider ${bill.status === 'paid' ? 'bg-emerald-100 text-emerald-700' :
@@ -564,11 +471,10 @@ function BillCard({ bill, onOpen }: { bill: ExtendedBill, onOpen: () => void }) 
       <div className="space-y-4">
         <div className="flex justify-between items-end">
           <div>
-            <p className="text-[10px] text-slate-400 uppercase font-bold tracking-widest mb-1">Ledger Period</p>
+            <p className="text-[10px] text-slate-400 uppercase font-bold tracking-widest mb-1">Event Date</p>
             <p className="text-sm font-bold text-slate-700 flex items-center gap-1.5">
               <FaCalendarAlt className="text-slate-300" />
-              {bill.startDate ? formatDate(bill.startDate as any) : formatDate(bill.createdAt as any)}
-              {bill.endDate && ` - ${formatDate(bill.endDate as any)}`}
+              {bill.order.eventDate ? formatDate(bill.order.eventDate as any) : formatDate(bill.createdAt as any)}
             </p>
           </div>
           <div className="text-right">
@@ -593,11 +499,6 @@ function BillCard({ bill, onOpen }: { bill: ExtendedBill, onOpen: () => void }) 
         </div>
 
         <div className="flex items-center gap-3 pt-2">
-          {bill.orders.length > 1 && (
-            <div className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-50 text-slate-500 rounded-lg text-xs font-bold border border-slate-100">
-              <FaHistory /> {bill.orders.length} Orders
-            </div>
-          )}
           <div className="flex-1" />
           <div className="flex -space-x-2">
             {[1, 2, 3].map(i => (

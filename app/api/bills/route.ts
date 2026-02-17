@@ -9,7 +9,7 @@ export async function GET(request: NextRequest) {
   const auth = await requireAuth(request);
   if (auth.response) return auth.response;
   try {
-    // WORKAROUND: Sequential fetch to avoid Prisma crash with text[] columns in nested relations
+    // Sequential fetch to avoid Prisma crash with text[] columns
     const billIds = await prisma.bill.findMany({
       select: { id: true },
       orderBy: { createdAt: "desc" },
@@ -20,9 +20,9 @@ export async function GET(request: NextRequest) {
       const bill = await prisma.bill.findUnique({
         where: { id },
         include: {
-          customer: true,
-          orders: {
+          order: {
             include: {
+              customer: true,
               items: {
                 include: {
                   menuItem: true,
@@ -30,7 +30,7 @@ export async function GET(request: NextRequest) {
               },
             },
           },
-        } as any,
+        },
       });
       if (bill) bills.push(bill);
     }

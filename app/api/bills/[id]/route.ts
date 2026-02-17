@@ -11,9 +11,9 @@ export async function GET(
     const bill = await prisma.bill.findUnique({
       where: { id },
       include: {
-        customer: true,
-        orders: {
+        order: {
           include: {
+            customer: true,
             items: {
               include: {
                 menuItem: true,
@@ -21,7 +21,7 @@ export async function GET(
             },
           },
         },
-      } as any,
+      },
     });
     if (!bill)
       return NextResponse.json({ error: "Bill not found" }, { status: 404 });
@@ -121,16 +121,12 @@ export async function PUT(
       },
     });
 
-    // Update ALL associated orders with the financial status if needed
-    // In consolidated billing, we might just update the bill totals.
-    // But for now, let's keep it simple.
-
     const updatedBill = await prisma.bill.findUnique({
       where: { id },
       include: {
-        customer: true,
-        orders: {
+        order: {
           include: {
+            customer: true,
             items: {
               include: {
                 menuItem: true,
@@ -138,7 +134,7 @@ export async function PUT(
             },
           },
         },
-      } as any,
+      },
     });
 
     return NextResponse.json(updatedBill);
