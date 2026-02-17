@@ -41,6 +41,7 @@ export default function OrdersPage() {
     eventName: '',
     mealTypes: [] as Array<{
       id: string
+      eventName: string // NEW: Event name like "Mehendi Day", "Wedding Day"
       menuType: string
       selectedMenuItems: string[]
       pricingMethod: 'manual' | 'plate-based'
@@ -231,6 +232,7 @@ export default function OrdersPage() {
           const custQtKey = customizationsByItemAndType[lookupKey] ? lookupKey : (Object.keys(customizationsByItemAndType).find(k => k.trim().toLowerCase() === keyNorm.toLowerCase()) || lookupKey)
           return {
             id: key,
+            eventName: (mealTypeData && typeof mealTypeData === 'object' && (mealTypeData as any).eventName) || '', // NEW: Support multi-event orders, backward compatible
             menuType: menuTypeName,
             selectedMenuItems,
             itemCustomizations: customizationsByItemAndType[custQtKey] || customizationsByItemAndType[key] || customizationsByItemAndType[menuTypeName] || {},
@@ -318,6 +320,7 @@ export default function OrdersPage() {
       ...prev,
       mealTypes: [...prev.mealTypes, {
         id: newId,
+        eventName: '',
         menuType: '',
         selectedMenuItems: [],
         pricingMethod: 'manual',
@@ -343,6 +346,7 @@ export default function OrdersPage() {
       ...prev,
       mealTypes: [...prev.mealTypes, {
         id: newId,
+        eventName: '',
         menuType: '',
         selectedMenuItems: [],
         pricingMethod: 'manual',
@@ -1087,8 +1091,20 @@ export default function OrdersPage() {
 
                             {!isCollapsed && (
                               <div className="p-4 md:p-6 space-y-4">
-                                {/* Menu Type Selector and Date */}
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                {/* Event Name, Menu Type, and Date */}
+                                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                  <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                                      Event Name
+                                    </label>
+                                    <input
+                                      type="text"
+                                      placeholder="e.g., Mehendi Day"
+                                      value={mealType.eventName}
+                                      onChange={(e: any) => handleUpdateMealType(mealType.id, 'eventName', e.target.value)}
+                                      className="w-full px-4 py-3 md:py-2 min-h-[48px] md:min-h-0 border border-gray-300 rounded-xl md:rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 text-base md:text-sm touch-manipulation"
+                                    />
+                                  </div>
                                   <div>
                                     <label className="block text-sm font-medium text-gray-700 mb-1">
                                       Menu Type *

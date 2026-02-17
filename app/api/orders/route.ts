@@ -147,6 +147,10 @@ export async function POST(request: NextRequest) {
         data.mealTypeAmounts && Object.keys(data.mealTypeAmounts).length > 0
           ? data.mealTypeAmounts
           : null,
+      events:
+        data.mealTypeAmounts && Object.keys(data.mealTypeAmounts).length > 0
+          ? data.mealTypeAmounts
+          : null, // Store in events field for multi-event support
       stalls:
         data.stalls && Array.isArray(data.stalls) && data.stalls.length > 0
           ? data.stalls
