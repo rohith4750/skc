@@ -169,8 +169,8 @@ export function buildOrderPdfHtml(
       ? formatDate(dateKey)
       : dateKey;
     menuItemsHtml += `
-      <div style="grid-column: span 4; font-weight: 700; font-size: 12px; margin-top: 12px; margin-bottom: 4px; color: #444; text-transform: uppercase; padding-bottom: 2px; border-bottom: 1px solid #ddd; font-family: 'Poppins', sans-serif;">
-        \uD83D\uDCC5 ${dateDisplay}
+      <div style="width: 100%; font-weight: 700; font-size: 12px; margin-top: 12px; margin-bottom: 4px; color: #444; text-transform: uppercase; padding-bottom: 2px; border-bottom: 1px solid #ddd; font-family: 'Poppins', sans-serif;">
+        Date: ${dateDisplay}
       </div>
     `;
     sessions.forEach((session) => {
@@ -186,7 +186,7 @@ export function buildOrderPdfHtml(
             .join(", ")}`
         : "";
       menuItemsHtml += `
-      <div style="grid-column: span 4; font-weight: 700; font-size: 14px; margin-top: 6px; margin-bottom: 3px; color: #222; text-transform: uppercase; padding-bottom: 2px; font-family: 'Poppins', sans-serif;">
+      <div style="width: 100%; font-weight: 700; font-size: 14px; margin-top: 6px; margin-bottom: 3px; color: #222; text-transform: uppercase; padding-bottom: 2px; font-family: 'Poppins', sans-serif;">
         ${sanitizeMealLabel(session.menuType)}${memberInfo}${servicesLabel}
       </div>
     `;
@@ -195,7 +195,7 @@ export function buildOrderPdfHtml(
           ? item.menuItem?.name || item.menuItem?.nameTelugu || "Unknown Item"
           : item.menuItem?.nameTelugu || item.menuItem?.name || "Unknown Item";
         menuItemsHtml += `
-        <div style="padding: 2px 4px; font-family: 'Poppins', sans-serif; line-height: 1.3; font-weight: 600; font-size: 14px;">
+        <div style="display: inline-block; width: 24%; padding: 2px 4px; font-family: 'Poppins', sans-serif; line-height: 1.3; font-weight: 600; font-size: 13px;">
           ${index + 1}. ${itemName}${item.customization ? ` (${item.customization})` : ""}
         </div>
       `;
@@ -217,24 +217,26 @@ export function buildOrderPdfHtml(
 
   let financialsHtml = "";
   if (showFinancials) {
-    const total = order.totalAmount || 0;
-    const advance = order.advancePaid || 0;
-    const remaining = order.remainingAmount || 0;
-    const paymentHistory = bill?.paymentHistory || [];
+    const total = Number(order.totalAmount) || 0;
+    const advance = Number(order.advancePaid) || 0;
+    const remaining = Number(order.remainingAmount) || 0;
+    const paymentHistory = Array.isArray(bill?.paymentHistory)
+      ? bill.paymentHistory
+      : [];
 
     financialsHtml = `
       <div class="section" style="margin-top: 30px; border-top: 2px solid #333; padding-top: 20px;">
         <div class="section-title" style="font-size: 18px; color: #1a1a1a;">Financial Summary & Bills</div>
-        <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; margin-bottom: 20px;">
-          <div style="background: #f8fafc; padding: 15px; border-radius: 12px; border: 1px solid #e2e8f0;">
+        <div style="display: flex; gap: 20px; margin-bottom: 20px;">
+          <div style="flex: 1; background: #f8fafc; padding: 15px; border-radius: 12px; border: 1px solid #e2e8f0;">
             <div style="font-size: 10px; font-weight: 700; color: #64748b; text-transform: uppercase; margin-bottom: 4px;">Total Amount</div>
             <div style="font-size: 20px; font-weight: 800; color: #1a1a1a;">${formatCurrency(total)}</div>
           </div>
-          <div style="background: #f0fdf4; padding: 15px; border-radius: 12px; border: 1px solid #dcfce7;">
+          <div style="flex: 1; background: #f0fdf4; padding: 15px; border-radius: 12px; border: 1px solid #dcfce7;">
             <div style="font-size: 10px; font-weight: 700; color: #166534; text-transform: uppercase; margin-bottom: 4px;">Paid (Advance)</div>
             <div style="font-size: 20px; font-weight: 800; color: #15803d;">${formatCurrency(advance)}</div>
           </div>
-          <div style="background: #fff1f2; padding: 15px; border-radius: 12px; border: 1px solid #ffe4e6;">
+          <div style="flex: 1; background: #fff1f2; padding: 15px; border-radius: 12px; border: 1px solid #ffe4e6;">
             <div style="font-size: 10px; font-weight: 700; color: #9f1239; text-transform: uppercase; margin-bottom: 4px;">Balance Due</div>
             <div style="font-size: 20px; font-weight: 800; color: #be123c;">${remaining === 0 ? "PAID" : formatCurrency(remaining)}</div>
           </div>
@@ -260,11 +262,11 @@ export function buildOrderPdfHtml(
                   <tr>
                     <td style="padding: 8px; border-bottom: 1px solid #f1f5f9;">${formatDate(p.date)}</td>
                     <td style="padding: 8px; border-bottom: 1px solid #f1f5f9;">
-                      <div style="font-weight: 600;">${p.notes || (p.amount > 0 ? `Payment via ${p.method || "Cash"}` : "Update")}</div>
+                      <div style="font-weight: 600;">${p.notes || (Number(p.amount) > 0 ? `Payment via ${p.method || "Cash"}` : "Update")}</div>
                       <div style="font-size: 9px; color: #666; text-transform: capitalize;">Source: ${p.source}</div>
                     </td>
                     <td style="padding: 8px; text-align: right; border-bottom: 1px solid #f1f5f9; font-weight: 700;">
-                      ${p.amount > 0 ? formatCurrency(p.amount) : "-"}
+                      ${Number(p.amount) > 0 ? formatCurrency(Number(p.amount)) : "-"}
                     </td>
                   </tr>
                 `,
@@ -285,16 +287,16 @@ export function buildOrderPdfHtml(
     <style>
       * { font-family: 'Poppins', sans-serif !important; }
       .header { text-align: center; margin-bottom: 25px; padding-bottom: 15px; border-bottom: 2px solid #333; }
-      .header-top { display: flex; justify-content: space-between; font-size: 10px; margin-bottom: 10px; color: #555; font-family: 'Poppins', sans-serif; }
-      .header-main { font-size: 32px; font-weight: 700; margin: 15px 0 8px 0; letter-spacing: 2px; color: #1a1a1a; font-family: 'Poppins', sans-serif; }
-      .header-subtitle { font-size: 14px; color: #666; margin-bottom: 12px; font-style: italic; font-family: 'Poppins', sans-serif; }
-      .header-details { font-size: 9px; line-height: 1.6; color: #444; margin-top: 10px; font-family: 'Poppins', sans-serif; }
+      .header-top { display: flex; justify-content: space-between; font-size: 10px; margin-bottom: 10px; color: #555; }
+      .header-main { font-size: 28px; font-weight: 700; margin: 15px 0 8px 0; letter-spacing: 1px; color: #1a1a1a; }
+      .header-subtitle { font-size: 14px; color: #666; margin-bottom: 12px; font-style: italic; }
+      .header-details { font-size: 9px; line-height: 1.6; color: #444; margin-top: 10px; }
       .header-details div { margin-bottom: 3px; }
-      .section { margin-bottom: 15px; font-family: 'Poppins', sans-serif; }
-      .section-title { font-size: 14px; font-weight: 600; margin-bottom: 8px; padding-bottom: 4px; border-bottom: 2px solid #ddd; color: #222; font-family: 'Poppins', sans-serif; }
-      .info-row { margin-bottom: 6px; font-family: 'Poppins', sans-serif; }
-      .info-label { font-weight: 600; display: inline-block; width: 120px; font-family: 'Poppins', sans-serif; }
-      .menu-item { padding: 2px 4px; font-family: 'Poppins', sans-serif; font-size: 11px; line-height: 1.3; font-weight: 600; }
+      .section { margin-bottom: 15px; }
+      .section-title { font-size: 14px; font-weight: 600; margin-bottom: 8px; padding-bottom: 4px; border-bottom: 2px solid #ddd; color: #222; }
+      .info-row { margin-bottom: 6px; }
+      .info-label { font-weight: 600; display: inline-block; width: 120px; }
+      .menu-item { padding: 2px 4px; font-size: 11px; line-height: 1.3; font-weight: 600; }
     </style>
     <div class="header">
       <div class="header-top">
@@ -309,30 +311,30 @@ export function buildOrderPdfHtml(
         <div>Email: pujyasri1989cya@gmail.com, Cell: 9866525102, 9963691393, 9390015302</div>
       </div>
     </div>
-    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 25px;">
-      <div class="section">
+    <div style="display: flex; gap: 20px; margin-bottom: 25px;">
+      <div class="section" style="flex: 1;">
         <div class="section-title">Customer Details</div>
         <div class="info-row"><span class="info-label">Name:</span> ${customer?.name || "N/A"}</div>
         <div class="info-row"><span class="info-label">Phone:</span> ${customer?.phone || "N/A"}</div>
         <div class="info-row"><span class="info-label">Email:</span> ${customer?.email || "N/A"}</div>
         <div class="info-row"><span class="info-label">Address:</span> ${customer?.address || "N/A"}</div>
       </div>
-      <div class="section">
+      <div class="section" style="flex: 1;">
         <div class="section-title">Order Information</div>
         <div class="info-row"><span class="info-label">Event Date:</span> ${eventDateDisplay}</div>
         <div class="info-row"><span class="info-label">Order ID:</span> SKC-ORDER-${(order as any).serialNumber || order.id.slice(0, 8).toUpperCase()}</div>
       </div>
     </div>
-    <div class="section" style="overflow: visible;">
+    <div class="section">
       <div class="section-title">Menu Items</div>
-      <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; font-size: 11px; overflow: visible;">
+      <div style="width: 100%;">
         ${menuItemsHtml}
       </div>
     </div>
     ${stallsHtml}
     ${financialsHtml}
     <div style="margin-top: 25px; display: flex; justify-content: flex-end;">
-      <img src="/images/stamp.png" alt="Business Stamp" width="220" height="120" style="width: 220px; height: 120px; transform: rotate(-90deg); object-fit: contain;" crossorigin="anonymous" />
+      <img src="/images/stamp.png" alt="Business Stamp" width="200" height="100" style="width: 200px; height: 100px; object-fit: contain;" crossorigin="anonymous" />
     </div>
   `;
 }

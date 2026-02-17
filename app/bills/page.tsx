@@ -274,7 +274,8 @@ export default function BillsPage() {
     tempDiv.innerHTML = htmlContent
     tempDiv.style.overflow = 'visible'
     document.body.appendChild(tempDiv)
-    await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)))
+    // Wait for styles and fonts to load
+    await new Promise(r => setTimeout(r, 500))
 
     try {
       const w = tempDiv.scrollWidth
