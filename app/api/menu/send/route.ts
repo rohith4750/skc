@@ -31,7 +31,7 @@ function generateMenuPDF(
   menuItems: {
     name: string;
     nameTelugu?: string | null;
-    type: string;
+    type: string | string[];
     description?: string | null;
   }[],
 ): Buffer {

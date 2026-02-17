@@ -35,9 +35,9 @@ const menuItems = [
   { href: '/alerts', icon: FaBell, label: 'Alerts', section: 'core' },
   { href: '/customers', icon: FaUsers, label: 'Customers', section: 'core' },
   { href: '/menu', icon: FaUtensils, label: 'Menu', section: 'core' },
-  { href: '/orders/center', icon: FaShoppingCart, label: 'Order Center', section: 'core' },
-  { href: '/orders/history', icon: FaHistory, label: 'Order History', section: 'core' },
-  { href: '/orders/overview', icon: FaChartLine, label: 'Order Calendar', section: 'core' },
+  { href: '/orders/center', icon: FaShoppingCart, label: 'Order Hub', section: 'core' },
+  { href: '/orders/history', icon: FaHistory, label: 'Past Events', section: 'core' },
+  { href: '/orders/overview', icon: FaChartLine, label: 'Event Planner', section: 'core' },
   { href: '/bills', icon: FaFileInvoiceDollar, label: 'Bills', section: 'core' },
 
   // 2. Financial Management

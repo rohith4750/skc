@@ -178,7 +178,7 @@ export default function OrdersOverviewPage() {
       <div className="flex flex-col gap-4 mb-6">
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
           <div>
-            <h1 className="text-3xl font-bold text-gray-800">Order Center</h1>
+            <h1 className="text-3xl font-bold text-gray-800">Event Planner</h1>
             <p className="text-sm text-gray-500">View orders in table or calendar format.</p>
           </div>
 

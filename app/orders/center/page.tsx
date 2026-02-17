@@ -710,7 +710,7 @@ export default function OrderCenterPage() {
   return (
     <div className="p-4 md:p-6">
       <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 md:gap-0 mb-6">
-        <h1 className="text-2xl md:text-3xl font-bold text-gray-800">Order Center</h1>
+        <h1 className="text-2xl md:text-3xl font-bold text-gray-800">Order Hub</h1>
         <div className="flex flex-wrap items-center gap-2 md:gap-3">
           {selectedOrderIds.length > 1 && (
             <button
