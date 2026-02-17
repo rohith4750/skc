@@ -350,6 +350,9 @@ export default function BillsPage() {
               key={bill.id}
               bill={bill}
               onOpen={() => handleOpenDrawer(bill)}
+              onDownload={() => handleDownloadBillPDF(bill)}
+              onWhatsApp={() => handleSendBillWhatsApp(bill)}
+              onEmail={() => handleSendBillEmail(bill)}
             />
           ))}
 
@@ -620,7 +623,13 @@ function StatCard({ title, value, icon, subtitle, color }: { title: string, valu
 }
 
 
-function BillCard({ bill, onOpen }: { bill: ExtendedBill, onOpen: () => void }) {
+function BillCard({ bill, onOpen, onDownload, onWhatsApp, onEmail }: {
+  bill: ExtendedBill,
+  onOpen: () => void,
+  onDownload: () => void,
+  onWhatsApp: () => void,
+  onEmail: () => void
+}) {
   const total = Number(bill.totalAmount)
   const paid = Number(bill.paidAmount)
   const progress = total > 0 ? (paid / total) * 100 : 0
@@ -645,6 +654,31 @@ function BillCard({ bill, onOpen }: { bill: ExtendedBill, onOpen: () => void }) 
           }`}>
           {bill.status}
         </div>
+      </div>
+
+      {/* Action Buttons */}
+      <div className="flex justify-end gap-2 mb-4">
+        <button
+          onClick={(e) => { e.stopPropagation(); onDownload(); }}
+          className="p-2 bg-slate-50 rounded-lg text-slate-500 hover:text-indigo-600 hover:bg-white border border-transparent hover:border-slate-200 transition-all"
+          title="Download PDF"
+        >
+          <FaFileInvoiceDollar />
+        </button>
+        <button
+          onClick={(e) => { e.stopPropagation(); onWhatsApp(); }}
+          className="p-2 bg-slate-50 rounded-lg text-slate-500 hover:text-emerald-600 hover:bg-white border border-transparent hover:border-slate-200 transition-all"
+          title="Send via WhatsApp"
+        >
+          <FaWhatsapp />
+        </button>
+        <button
+          onClick={(e) => { e.stopPropagation(); onEmail(); }}
+          className="p-2 bg-slate-50 rounded-lg text-slate-500 hover:text-blue-600 hover:bg-white border border-transparent hover:border-slate-200 transition-all"
+          title="Send via Email"
+        >
+          <FaEnvelope />
+        </button>
       </div>
 
       <div className="space-y-4">
