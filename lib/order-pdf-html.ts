@@ -269,9 +269,10 @@ export function buildOrderPdfHtml(
 
         <!-- SIGNATURES -->
         <div style="margin-top: 60px; display: flex; justify-content: space-between; align-items: flex-end;">
-            <div style="text-align: left;">
-                <div style="border-top: 1px dashed #999; width: 200px; margin-bottom: 5px;"></div>
-                <div style="font-size: 11px; font-weight: 600;">Authorized Signature</div>
+            <div style="text-align: left; position: relative; width: 200px;">
+                 <img src="${window.location.origin}/images/billstamp.png" alt="Stamp" style="position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%); width: 120px; height: auto; opacity: 0.9;" />
+                <div style="border-top: 1px dashed #999; width: 100%; margin-bottom: 5px;"></div>
+                <div style="font-size: 11px; font-weight: 600; text-align: center;">Authorized Signature</div>
             </div>
             <div style="text-align: right;">
                  <div style="border-top: 1px dashed #999; width: 200px; margin-bottom: 5px; margin-left: auto;"></div>
@@ -279,10 +280,7 @@ export function buildOrderPdfHtml(
             </div>
         </div>
 
-        <!-- FOOTER STAMP -->
-        <div style="margin-top: 20px; text-align: center;">
-            <img src="/images/stamp.png" alt="Stamp" style="width: 300px; max-width: 90%; height: auto; display: block; margin: 0 auto;" />
-        </div>
+
 
     </div>
   `;
