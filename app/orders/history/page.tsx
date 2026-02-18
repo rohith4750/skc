@@ -539,7 +539,7 @@ export default function OrdersHistoryPage() {
     // Add Footer Stamp
     htmlContent += `
       <div style="margin-top: 30px; text-align: center; width: 100%;">
-        <img src="${window.location.origin}/images/stamp.png" style="width: 80%; height: auto; max-height: 120px; object-fit: contain; display: inline-block;" alt="Stamp" />
+        <img src="${window.location.origin}/images/stamp.png" style="width: 40%; height: auto; max-height: 120px; object-fit: contain; display: inline-block;" alt="Stamp" />
       </div>
     `
 
