@@ -145,6 +145,44 @@ export default function StoreCalculatorPage() {
     }, 0), [baseFilteredEntries])
     const totalPending = totalAmount - totalPaid
 
+    const { visibleTotal, visibleTotalLabel } = useMemo(() => {
+        if (statusFilter === 'all') {
+            return {
+                visibleTotal: totalAmount,
+                visibleTotalLabel: 'Grand Total'
+            }
+        }
+
+        const total = filteredEntries.reduce((sum, e) => {
+            if (statusFilter === 'pending') {
+                const amount = e.amount || 0
+                const paid = e.paidAmount || 0
+                const status = (e.paymentStatus || 'pending').toLowerCase()
+
+                if (status === 'paid') return sum
+                if (status === 'pending') return sum + amount
+                // partial
+                return sum + (amount - paid)
+            }
+            if (statusFilter === 'paid') {
+                const amount = e.amount || 0
+                const paid = e.paidAmount || 0
+                const status = (e.paymentStatus || 'pending').toLowerCase()
+
+                if (status === 'pending') return sum
+                if (status === 'paid') return sum + amount
+                // partial
+                return sum + paid
+            }
+            return sum + (e.amount || 0)
+        }, 0)
+
+        return {
+            visibleTotal: total,
+            visibleTotalLabel: statusFilter === 'pending' ? 'Total Pending' : 'Total Paid'
+        }
+    }, [filteredEntries, statusFilter, totalAmount])
+
     // Monthly breakdown (based on status filter or base? Usually base context is better)
     const monthlyBreakdown = useMemo(() => {
         const monthly: Record<string, number> = {}
@@ -671,8 +709,8 @@ export default function StoreCalculatorPage() {
                             </span>
                         </h2>
                         <div className="text-right">
-                            <span className="text-xs text-gray-500">Grand Total</span>
-                            <p className="text-sm sm:text-base font-bold text-indigo-700">{formatCurrency(totalAmount)}</p>
+                            <span className="text-xs text-gray-500">{visibleTotalLabel}</span>
+                            <p className="text-sm sm:text-base font-bold text-indigo-700">{formatCurrency(visibleTotal)}</p>
                         </div>
                     </div>
                 </div>
@@ -766,10 +804,10 @@ export default function StoreCalculatorPage() {
                                 <tfoot>
                                     <tr className="bg-indigo-50 border-t-2 border-indigo-200">
                                         <td colSpan={3} className="px-4 py-3 text-sm font-bold text-indigo-900">
-                                            Grand Total ({filteredEntries.length} entries)
+                                            {visibleTotalLabel} ({filteredEntries.length} entries)
                                         </td>
                                         <td className="px-4 py-3 text-right text-base font-bold text-indigo-700">
-                                            {formatCurrency(totalAmount)}
+                                            {formatCurrency(visibleTotal)}
                                         </td>
                                         <td colSpan={2}></td>
                                     </tr>
@@ -833,8 +871,8 @@ export default function StoreCalculatorPage() {
                             {/* Mobile Total */}
                             <div className="p-4 bg-indigo-50 border-t-2 border-indigo-200">
                                 <div className="flex justify-between items-center">
-                                    <span className="text-sm font-bold text-indigo-900">Grand Total</span>
-                                    <span className="text-base font-bold text-indigo-700">{formatCurrency(totalAmount)}</span>
+                                    <span className="text-sm font-bold text-indigo-900">{visibleTotalLabel}</span>
+                                    <span className="text-base font-bold text-indigo-700">{formatCurrency(visibleTotal)}</span>
                                 </div>
                             </div>
                         </div>
