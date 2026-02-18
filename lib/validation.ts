@@ -17,8 +17,11 @@ export const isPhone = (value: unknown) => {
   return /^[0-9+\-() ]{8,15}$/.test(value)
 }
 
+export const isNonEmptyValue = (value: unknown): boolean =>
+  isNonEmptyString(value) || (Array.isArray(value) && value.length > 0)
+
 export const validateRequiredFields = (data: Record<string, unknown>, fields: string[]) => {
-  const missing = fields.filter(field => !isNonEmptyString(data[field]))
+  const missing = fields.filter(field => !isNonEmptyValue(data[field]))
   return missing.length > 0 ? missing : null
 }
 

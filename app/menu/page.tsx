@@ -603,7 +603,7 @@ export default function MenuPage() {
           <div className="bg-white rounded-lg shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
             <div className="p-4 sm:p-6 border-b border-gray-200">
               <h2 className="text-xl sm:text-2xl font-bold text-gray-800">
-                {editingItem ? 'Edit Menu Item' : 'Add New Menu Item'}
+                {editingItem ? 'Edit Item' : 'Add New Item'}
               </h2>
             </div>
             <form onSubmit={handleSubmit} className="p-4 sm:p-6">
@@ -611,7 +611,7 @@ export default function MenuPage() {
               <div className="space-y-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Menu Name *
+                    Item Name *
                   </label>
                   <input
                     type="text"
@@ -619,12 +619,12 @@ export default function MenuPage() {
                     value={formData.name}
                     onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                     className="w-full px-3 sm:px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm sm:text-base"
-                    placeholder="e.g., Biryani, Pulao, Dessert"
+                    placeholder="e.g., Biryani, Pulao, Water Bottle"
                   />
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Menu Types *
+                    Item Types *
                   </label>
                   <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 bg-slate-50 p-4 rounded-xl border border-slate-100">
                     {[
@@ -659,14 +659,14 @@ export default function MenuPage() {
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Description
+                    Item Description
                   </label>
                   <textarea
                     value={formData.description}
                     onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                     rows={4}
                     className="w-full px-3 sm:px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm sm:text-base"
-                    placeholder="Enter menu item description..."
+                    placeholder="Enter item description..."
                   />
                 </div>
                 <div className="grid grid-cols-2 gap-4">
@@ -721,7 +721,7 @@ export default function MenuPage() {
                   type="submit"
                   className="px-4 sm:px-6 py-2 bg-primary-500 text-white rounded-lg hover:bg-primary-600 transition-colors text-sm sm:text-base"
                 >
-                  {editingItem ? 'Update' : 'Create'} Menu Item
+                  {editingItem ? 'Update' : 'Create'} Item
                 </button>
               </div>
             </form>

@@ -1083,17 +1083,8 @@ export default function OrdersPage() {
                               <h4 className="text-md font-semibold text-gray-800">
                                 Meal Type #{index + 1} {mealType.menuType && `- ${mealType.menuType.charAt(0).toUpperCase() + mealType.menuType.slice(1)}`}
                               </h4>
-                              <div className="flex items-center gap-2">
-                                {!isCollapsed && (
-                                  <button
-                                    type="button"
-                                    onClick={() => handleCollapseMealType(mealType.id)}
-                                    className="px-4 py-1.5 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors text-sm font-medium"
-                                  >
-                                    OK
-                                  </button>
-                                )}
-                                {isCollapsed && (
+                              {isCollapsed && (
+                                <div className="flex items-center gap-2">
                                   <button
                                     type="button"
                                     onClick={() => handleExpandMealType(mealType.id)}
@@ -1101,15 +1092,15 @@ export default function OrdersPage() {
                                   >
                                     Edit
                                   </button>
-                                )}
-                                <button
-                                  type="button"
-                                  onClick={() => handleRemoveMealType(mealType.id)}
-                                  className="text-red-600 hover:text-red-800 text-sm font-medium"
-                                >
-                                  Remove
-                                </button>
-                              </div>
+                                  <button
+                                    type="button"
+                                    onClick={() => handleRemoveMealType(mealType.id)}
+                                    className="text-red-600 hover:text-red-800 text-sm font-medium"
+                                  >
+                                    Remove
+                                  </button>
+                                </div>
+                              )}
                             </div>
 
                             {!isCollapsed && (
@@ -1481,6 +1472,24 @@ export default function OrdersPage() {
                                       />
                                     </div>
                                   )}
+                                </div>
+
+                                {/* OK and Remove buttons at the bottom */}
+                                <div className="border-t border-gray-200 pt-4 mt-4 flex items-center justify-end gap-3">
+                                  <button
+                                    type="button"
+                                    onClick={() => handleRemoveMealType(mealType.id)}
+                                    className="px-4 py-2 text-red-600 hover:text-red-800 hover:bg-red-50 rounded-lg text-sm font-medium transition-colors"
+                                  >
+                                    Remove
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => handleCollapseMealType(mealType.id)}
+                                    className="px-6 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors text-sm font-medium"
+                                  >
+                                    OK
+                                  </button>
                                 </div>
                               </div>
                             )}

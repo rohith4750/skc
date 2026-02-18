@@ -1,7 +1,7 @@
 // Session & auth constants
 
-/** Idle timeout: logout after this many ms with no activity (15 minutes) */
-export const IDLE_TIMEOUT_MS = 15 * 60 * 1000
+/** Idle timeout: logout after this many ms with no activity (1 hour) */
+export const IDLE_TIMEOUT_MS = 60 * 60 * 1000
 
 /** Grace period after init: do not trigger expiry in first 5 seconds */
 export const GRACE_PERIOD_MS = 5 * 1000
