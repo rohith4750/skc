@@ -44,6 +44,7 @@ export default function StoreCalculatorPage() {
     const [searchTerm, setSearchTerm] = useState('')
     const [dateRange, setDateRange] = useState({ start: '', end: '' })
     const [showFilters, setShowFilters] = useState(false)
+    const [statusFilter, setStatusFilter] = useState<'all' | 'paid' | 'pending'>('all')
 
     // Form state
     const [showForm, setShowForm] = useState(false)
@@ -98,7 +99,7 @@ export default function StoreCalculatorPage() {
         }
     }
 
-    const filteredEntries = useMemo(() => {
+    const baseFilteredEntries = useMemo(() => {
         let filtered = entries
 
         if (searchTerm) {
@@ -122,23 +123,32 @@ export default function StoreCalculatorPage() {
                 return true
             })
         }
-
         return filtered
     }, [entries, searchTerm, dateRange])
 
-    const totalAmount = useMemo(() => filteredEntries.reduce((sum, e) => sum + e.amount, 0), [filteredEntries])
-    const totalPaid = useMemo(() => filteredEntries.reduce((sum, e) => sum + e.paidAmount, 0), [filteredEntries])
+    const filteredEntries = useMemo(() => {
+        if (statusFilter === 'all') return baseFilteredEntries
+
+        return baseFilteredEntries.filter(e => {
+            if (statusFilter === 'paid') return e.paymentStatus === 'paid'
+            if (statusFilter === 'pending') return e.paymentStatus === 'pending' || e.paymentStatus === 'partial'
+            return true
+        })
+    }, [baseFilteredEntries, statusFilter])
+
+    const totalAmount = useMemo(() => baseFilteredEntries.reduce((sum, e) => sum + e.amount, 0), [baseFilteredEntries])
+    const totalPaid = useMemo(() => baseFilteredEntries.reduce((sum, e) => sum + e.paidAmount, 0), [baseFilteredEntries])
     const totalPending = totalAmount - totalPaid
 
-    // Monthly breakdown
+    // Monthly breakdown (based on status filter or base? Usually base context is better)
     const monthlyBreakdown = useMemo(() => {
         const monthly: Record<string, number> = {}
-        filteredEntries.forEach(e => {
+        baseFilteredEntries.forEach(e => {
             const month = new Date(e.paymentDate).toLocaleDateString('en-US', { year: 'numeric', month: 'short' })
             monthly[month] = (monthly[month] || 0) + e.amount
         })
         return Object.entries(monthly).slice(0, 6)
-    }, [filteredEntries])
+    }, [baseFilteredEntries])
 
     const resetForm = () => {
         setFormData({
@@ -338,19 +348,25 @@ export default function StoreCalculatorPage() {
             {/* Summary Cards */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-4 sm:mb-6">
                 {/* Total Store Expenses */}
-                <div className="bg-gradient-to-br from-indigo-500 to-indigo-600 rounded-xl shadow-lg p-4 sm:p-5 text-white relative overflow-hidden">
+                <div
+                    onClick={() => setStatusFilter('all')}
+                    className={`bg-gradient-to-br from-indigo-500 to-indigo-600 rounded-xl shadow-lg p-4 sm:p-5 text-white relative overflow-hidden cursor-pointer transition-all transform hover:scale-[1.02] active:scale-[0.98] ${statusFilter === 'all' ? 'ring-4 ring-indigo-200 ring-offset-2' : ''}`}
+                >
                     <div className="bg-white bg-opacity-20 absolute top-0 right-0 p-3 rounded-bl-2xl">
                         <FaStore className="w-5 h-5" />
                     </div>
                     <div className="relative pr-12">
                         <p className="text-indigo-100 text-xs font-medium mb-2">Total Store Expenses</p>
                         <p className="text-lg sm:text-xl lg:text-2xl font-bold break-words leading-tight">{formatCurrency(totalAmount)}</p>
-                        <p className="text-indigo-200 text-xs mt-1.5">{filteredEntries.length} entries</p>
+                        <p className="text-indigo-200 text-xs mt-1.5">{baseFilteredEntries.length} entries</p>
                     </div>
                 </div>
 
                 {/* Total Paid */}
-                <div className="bg-gradient-to-br from-green-500 to-green-600 rounded-xl shadow-lg p-4 sm:p-5 text-white relative overflow-hidden">
+                <div
+                    onClick={() => setStatusFilter('paid')}
+                    className={`bg-gradient-to-br from-green-500 to-green-600 rounded-xl shadow-lg p-4 sm:p-5 text-white relative overflow-hidden cursor-pointer transition-all transform hover:scale-[1.02] active:scale-[0.98] ${statusFilter === 'paid' ? 'ring-4 ring-green-200 ring-offset-2' : ''}`}
+                >
                     <div className="bg-white bg-opacity-20 absolute top-0 right-0 p-3 rounded-bl-2xl">
                         <FaCheckCircle className="w-5 h-5" />
                     </div>
@@ -361,7 +377,10 @@ export default function StoreCalculatorPage() {
                 </div>
 
                 {/* Pending */}
-                <div className="bg-gradient-to-br from-amber-500 to-orange-500 rounded-xl shadow-lg p-4 sm:p-5 text-white relative overflow-hidden">
+                <div
+                    onClick={() => setStatusFilter('pending')}
+                    className={`bg-gradient-to-br from-amber-500 to-orange-500 rounded-xl shadow-lg p-4 sm:p-5 text-white relative overflow-hidden cursor-pointer transition-all transform hover:scale-[1.02] active:scale-[0.98] ${statusFilter === 'pending' ? 'ring-4 ring-orange-200 ring-offset-2' : ''}`}
+                >
                     <div className="bg-white bg-opacity-20 absolute top-0 right-0 p-3 rounded-bl-2xl">
                         <FaClock className="w-5 h-5" />
                     </div>
@@ -403,8 +422,8 @@ export default function StoreCalculatorPage() {
                             Filters
                         </h3>
                         <div className="flex items-center gap-2">
-                            {(searchTerm || dateRange.start || dateRange.end) && (
-                                <button onClick={clearFilters} className="text-xs text-indigo-600 hover:text-indigo-700 font-medium">
+                            {(searchTerm || dateRange.start || dateRange.end || statusFilter !== 'all') && (
+                                <button onClick={() => { clearFilters(); setStatusFilter('all'); }} className="text-xs text-indigo-600 hover:text-indigo-700 font-medium">
                                     Clear All
                                 </button>
                             )}

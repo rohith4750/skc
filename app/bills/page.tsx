@@ -6,7 +6,7 @@ import { Bill, Order, Customer } from '@/types'
 import {
   FaPrint, FaCheck, FaEdit, FaFilter, FaChartLine, FaWallet,
   FaPercent, FaCalendarAlt, FaEnvelope, FaWhatsapp, FaFileImage,
-  FaChevronLeft, FaChevronRight, FaHistory, FaPlus, FaUser, FaInfoCircle, FaFileInvoiceDollar, FaTimes
+  FaChevronLeft, FaChevronRight, FaHistory, FaPlus, FaUser, FaUsers, FaInfoCircle, FaFileInvoiceDollar, FaTimes
 } from 'react-icons/fa'
 import toast from 'react-hot-toast'
 import { fetchWithLoader } from '@/lib/fetch-with-loader'
@@ -27,6 +27,19 @@ interface ExtendedBill {
   createdAt: string;
   updatedAt: string;
   order: Order & { items: any[], customer: Customer };
+}
+
+const getGuestCount = (order: Order) => {
+  if (order.numberOfMembers) return Number(order.numberOfMembers);
+  const mealTypeAmounts = order.mealTypeAmounts as Record<string, any>;
+  if (!mealTypeAmounts || typeof mealTypeAmounts !== 'object') return 0;
+
+  const counts = Object.values(mealTypeAmounts).map((mt: any) => {
+    // Check for plate count or member count
+    return Number(mt?.numberOfPlates || mt?.numberOfMembers || 0);
+  });
+
+  return counts.length > 0 ? Math.max(...counts) : 0;
 }
 
 export default function BillsPage() {
@@ -473,10 +486,16 @@ export default function BillsPage() {
                     <div className="flex justify-between items-start mb-2">
                       <div>
                         <p className="font-bold text-slate-800">{selectedBill.order.eventName || 'Unnamed Event'}</p>
-                        <p className="text-xs text-slate-500 flex items-center gap-1 mt-0.5">
-                          <FaCalendarAlt className="text-[10px]" />
-                          {selectedBill.order.eventDate ? formatDate(selectedBill.order.eventDate as any) : 'No date'}
-                        </p>
+                        <div className="flex gap-4">
+                          <p className="text-xs text-slate-500 flex items-center gap-1 mt-0.5">
+                            <FaCalendarAlt className="text-[10px]" />
+                            {selectedBill.order.eventDate ? formatDate(selectedBill.order.eventDate as any) : 'No date'}
+                          </p>
+                          <p className="text-xs text-slate-500 flex items-center gap-1 mt-0.5">
+                            <FaUsers className="text-[10px]" />
+                            {getGuestCount(selectedBill.order)} Plates
+                          </p>
+                        </div>
                       </div>
                       <p className="font-black text-slate-900">{formatCurrency(selectedBill.order.totalAmount)}</p>
                     </div>
@@ -701,6 +720,13 @@ function BillCard({ bill, onOpen, onDownload, onWhatsApp, onEmail }: {
                 }
                 return formatDate(bill.createdAt as any);
               })()}
+            </p>
+          </div>
+          <div className="text-center">
+            <p className="text-[10px] text-slate-400 uppercase font-bold tracking-widest mb-1">Plates</p>
+            <p className="text-sm font-bold text-slate-700 flex items-center gap-1.5 justify-center">
+              <FaUsers className="text-slate-300" />
+              {getGuestCount(bill.order) || '-'}
             </p>
           </div>
           <div className="text-right">
