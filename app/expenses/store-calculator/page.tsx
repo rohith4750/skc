@@ -137,7 +137,11 @@ export default function StoreCalculatorPage() {
     }, [baseFilteredEntries, statusFilter])
 
     const totalAmount = useMemo(() => baseFilteredEntries.reduce((sum, e) => sum + e.amount, 0), [baseFilteredEntries])
-    const totalPaid = useMemo(() => baseFilteredEntries.reduce((sum, e) => sum + e.paidAmount, 0), [baseFilteredEntries])
+    const totalPaid = useMemo(() => baseFilteredEntries.reduce((sum, e) => {
+        if (e.paymentStatus === 'pending') return sum
+        if (e.paymentStatus === 'paid') return sum + e.amount
+        return sum + (e.paidAmount || 0)
+    }, 0), [baseFilteredEntries])
     const totalPending = totalAmount - totalPaid
 
     // Monthly breakdown (based on status filter or base? Usually base context is better)
@@ -190,12 +194,22 @@ export default function StoreCalculatorPage() {
 
         setSaving(true)
         try {
-            const paidAmount = formData.paidAmount ? parseFloat(formData.paidAmount) : amount
+            // Logic to determine final paid amount
+            let finalPaidAmount = 0
+            if (formData.paymentStatus === 'pending') {
+                finalPaidAmount = 0
+            } else if (formData.paymentStatus === 'paid') {
+                finalPaidAmount = amount // Full amount
+            } else {
+                // Partial
+                finalPaidAmount = formData.paidAmount ? parseFloat(formData.paidAmount) : 0
+            }
+
             const expenseData = {
                 orderId: null,
                 category: 'store',
                 amount: amount,
-                paidAmount: paidAmount,
+                paidAmount: finalPaidAmount,
                 paymentStatus: formData.paymentStatus,
                 description: formData.description.trim(),
                 recipient: formData.recipient.trim() || null,
