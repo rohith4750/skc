@@ -270,7 +270,7 @@ export function buildOrderPdfHtml(
         <!-- SIGNATURES -->
         <div style="margin-top: 60px; display: flex; justify-content: space-between; align-items: flex-end;">
             <div style="text-align: left; position: relative; width: 200px;">
-                 <img src="${window.location.origin}/images/billstamp.png" alt="Stamp" style="position: absolute; bottom: 10px; left: 0; width: 100%; height: auto; max-height: 120px; object-fit: contain; opacity: 0.9;" />
+                 <img src="${window.location.origin}/images/billstamp.png" alt="Stamp" style="position: absolute; bottom: 50px; left: 0; width: 100%; height: auto; max-height: 120px; object-fit: contain; opacity: 0.9;" />
                 <div style="border-top: 1px dashed #999; width: 100%; margin-bottom: 5px;"></div>
                 <div style="font-size: 11px; font-weight: 600; text-align: center;">Authorized Signature</div>
             </div>
