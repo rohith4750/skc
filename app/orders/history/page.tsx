@@ -539,20 +539,33 @@ export default function OrdersHistoryPage() {
     // Add Footer Stamp
     htmlContent += `
       <div style="margin-top: 30px; text-align: center; width: 100%;">
-        <img src="${window.location.origin}/images/stamp.png" style="width: 40%; height: auto; max-height: 120px; object-fit: contain; display: inline-block;" alt="Stamp" />
+        <img src="${window.location.origin}/images/stamp.png" style="width: 300px; max-width: 90%; height: auto; display: block; margin: 0 auto;" alt="Stamp" />
       </div>
     `
 
     tempDiv.innerHTML = htmlContent
     tempDiv.style.overflow = 'visible'
     document.body.appendChild(tempDiv)
-    await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)))
+
+    // Wait for images to load
+    const images = tempDiv.getElementsByTagName('img')
+    if (images.length > 0) {
+      await Promise.all(Array.from(images).map(img => {
+        if (img.complete) return Promise.resolve()
+        return new Promise((resolve, reject) => {
+          img.onload = resolve
+          img.onerror = resolve // Resolve anyway to avoid hanging
+        })
+      }))
+    }
+    // Small buffer for layout
+    await new Promise(r => setTimeout(r, 200))
 
     try {
       const w = tempDiv.scrollWidth
       const h = Math.max(tempDiv.scrollHeight + 20, 1)
       const canvas = await html2canvas(tempDiv, {
-        scale: 1.5,
+        scale: 2, // Increased scale for better quality
         useCORS: true,
         logging: false,
         backgroundColor: '#ffffff',
@@ -566,7 +579,8 @@ export default function OrdersHistoryPage() {
       document.body.removeChild(tempDiv)
 
       // Create PDF from canvas (JPEG for smaller size - avoids 413 on email send)
-      const imgData = canvas.toDataURL('image/jpeg', 0.85)
+      const imgData = canvas.toDataURL('image/jpeg', 0.9) // Increased quality
+
       const pdf = new jsPDF('p', 'mm', 'a4')
       const imgWidth = 210 // A4 width in mm
       const pageHeight = 297 // A4 height in mm
@@ -615,13 +629,26 @@ export default function OrdersHistoryPage() {
     tempDiv.innerHTML = htmlContent
     tempDiv.style.overflow = 'visible'
     document.body.appendChild(tempDiv)
-    // Wait for styles and fonts to load
-    await new Promise(r => setTimeout(r, 500))
+
+    // Wait for images to load
+    const images = tempDiv.getElementsByTagName('img')
+    if (images.length > 0) {
+      await Promise.all(Array.from(images).map(img => {
+        if (img.complete) return Promise.resolve()
+        return new Promise((resolve, reject) => {
+          img.onload = resolve
+          img.onerror = resolve
+        })
+      }))
+    }
+    // Small buffer for layout
+    await new Promise(r => setTimeout(r, 200))
+
     try {
       const w = tempDiv.scrollWidth
       const h = Math.max(tempDiv.scrollHeight + 20, 1)
       const canvas = await html2canvas(tempDiv, {
-        scale: 1.5,
+        scale: 2.5, // High quality for images
         useCORS: true,
         logging: false,
         backgroundColor: '#ffffff',

@@ -555,7 +555,7 @@ export default function OrderCenterPage() {
     // Add Footer Stamp
     htmlContent += `
       <div style="margin-top: 30px; text-align: center; width: 100%;">
-        <img src="${window.location.origin}/images/stamp.png" style="width: 80%; height: auto; max-height: 120px; object-fit: contain; display: inline-block;" alt="Stamp" />
+        <img src="${window.location.origin}/images/stamp.png" style="width: 300px; max-width: 90%; height: auto; display: block; margin: 0 auto;" alt="Stamp" />
       </div>
     `
 
@@ -580,13 +580,25 @@ export default function OrderCenterPage() {
     tempDiv.innerHTML = htmlContent
     tempDiv.style.overflow = 'visible'
     document.body.appendChild(tempDiv)
-    await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)))
+
+    // Wait for images to load
+    const images = tempDiv.getElementsByTagName('img')
+    if (images.length > 0) {
+      await Promise.all(Array.from(images).map(img => {
+        if (img.complete) return Promise.resolve()
+        return new Promise((resolve, reject) => {
+          img.onload = resolve
+          img.onerror = resolve
+        })
+      }))
+    }
+    await new Promise(r => setTimeout(r, 200)) // Layout buffer
 
     try {
       const w = tempDiv.scrollWidth
       const h = Math.max(tempDiv.scrollHeight + 20, 1)
       const canvas = await html2canvas(tempDiv, {
-        scale: 1.5,
+        scale: 2.5, // High quality
         useCORS: true,
         logging: false,
         backgroundColor: '#ffffff',
@@ -646,13 +658,25 @@ export default function OrderCenterPage() {
     tempDiv.innerHTML = htmlContent
     tempDiv.style.overflow = 'visible'
     document.body.appendChild(tempDiv)
-    // Wait for styles and fonts to load
-    await new Promise(r => setTimeout(r, 500))
+
+    // Wait for images
+    const images = tempDiv.getElementsByTagName('img')
+    if (images.length > 0) {
+      await Promise.all(Array.from(images).map(img => {
+        if (img.complete) return Promise.resolve()
+        return new Promise((resolve, reject) => {
+          img.onload = resolve
+          img.onerror = resolve
+        })
+      }))
+    }
+    await new Promise(r => setTimeout(r, 200)) // Layout buffer
+
     try {
       const w = tempDiv.scrollWidth
       const h = Math.max(tempDiv.scrollHeight + 20, 1)
       const canvas = await html2canvas(tempDiv, {
-        scale: 1.5,
+        scale: 2.5, // High quality
         useCORS: true,
         logging: false,
         backgroundColor: '#ffffff',

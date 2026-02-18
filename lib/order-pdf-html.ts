@@ -281,7 +281,7 @@ export function buildOrderPdfHtml(
 
         <!-- FOOTER STAMP -->
         <div style="margin-top: 20px; text-align: center;">
-            <img src="/images/stamp.png" alt="Stamp" style="width: 80%; height: auto; max-height: 120px; object-fit: contain; display: inline-block;" />
+            <img src="/images/stamp.png" alt="Stamp" style="width: 300px; max-width: 90%; height: auto; display: block; margin: 0 auto;" />
         </div>
 
     </div>
