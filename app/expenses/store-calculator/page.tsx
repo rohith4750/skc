@@ -81,12 +81,12 @@ export default function StoreCalculatorPage() {
                 .map((e: any) => ({
                     id: e.id,
                     description: e.description || 'Store Expense',
-                    amount: e.amount,
+                    amount: typeof e.amount === 'string' ? parseFloat(e.amount) : Number(e.amount || 0),
                     recipient: e.recipient,
                     notes: e.notes,
                     paymentDate: e.paymentDate,
-                    paymentStatus: e.paymentStatus || 'pending',
-                    paidAmount: e.paidAmount || 0,
+                    paymentStatus: (e.paymentStatus || 'pending').toLowerCase(),
+                    paidAmount: typeof e.paidAmount === 'string' ? parseFloat(e.paidAmount) : Number(e.paidAmount || 0),
                     createdAt: e.createdAt,
                 }))
                 .sort((a: StoreEntry, b: StoreEntry) => new Date(b.paymentDate).getTime() - new Date(a.paymentDate).getTime())
@@ -138,8 +138,9 @@ export default function StoreCalculatorPage() {
 
     const totalAmount = useMemo(() => baseFilteredEntries.reduce((sum, e) => sum + e.amount, 0), [baseFilteredEntries])
     const totalPaid = useMemo(() => baseFilteredEntries.reduce((sum, e) => {
-        if (e.paymentStatus === 'pending') return sum
-        if (e.paymentStatus === 'paid') return sum + e.amount
+        const status = (e.paymentStatus || 'pending').toLowerCase()
+        if (status === 'pending') return sum
+        if (status === 'paid') return sum + e.amount
         return sum + (e.paidAmount || 0)
     }, 0), [baseFilteredEntries])
     const totalPending = totalAmount - totalPaid
