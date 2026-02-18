@@ -137,7 +137,7 @@ export default function BillsPage() {
       tempDiv.style.position = 'absolute'
       tempDiv.style.left = '-9999px'
       tempDiv.style.width = '210mm'
-      tempDiv.style.padding = '15mm'
+      tempDiv.style.padding = '10mm'
       tempDiv.style.fontFamily = 'Poppins, sans-serif'
       tempDiv.style.fontSize = '11px'
       tempDiv.style.lineHeight = '1.6'

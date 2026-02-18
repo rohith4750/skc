@@ -12,7 +12,7 @@ const REFRESH_DAYS_REMEMBER = 30
 // Parse user agent to get device info
 function parseUserAgent(userAgent: string | null) {
   if (!userAgent) return { device: 'Unknown', browser: 'Unknown', os: 'Unknown' }
-  
+
   // Detect device type
   let device = 'Desktop'
   if (/Mobile|Android|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(userAgent)) {
@@ -22,7 +22,7 @@ function parseUserAgent(userAgent: string | null) {
       device = 'Mobile'
     }
   }
-  
+
   // Detect browser
   let browser = 'Unknown'
   if (userAgent.includes('Firefox')) browser = 'Firefox'
@@ -31,7 +31,7 @@ function parseUserAgent(userAgent: string | null) {
   else if (userAgent.includes('Safari')) browser = 'Safari'
   else if (userAgent.includes('Opera') || userAgent.includes('OPR')) browser = 'Opera'
   else if (userAgent.includes('MSIE') || userAgent.includes('Trident')) browser = 'Internet Explorer'
-  
+
   // Detect OS
   let os = 'Unknown'
   if (userAgent.includes('Windows NT 10')) os = 'Windows 10/11'
@@ -40,7 +40,7 @@ function parseUserAgent(userAgent: string | null) {
   else if (userAgent.includes('Android')) os = 'Android'
   else if (userAgent.includes('iPhone') || userAgent.includes('iPad')) os = 'iOS'
   else if (userAgent.includes('Linux')) os = 'Linux'
-  
+
   return { device, browser, os }
 }
 
@@ -50,9 +50,9 @@ export async function POST(request: NextRequest) {
   const forwardedFor = request.headers.get('x-forwarded-for')
   const realIp = request.headers.get('x-real-ip')
   const ipAddress = forwardedFor?.split(',')[0] || realIp || 'Unknown'
-  
+
   const { device, browser, os } = parseUserAgent(userAgent)
-  
+
   try {
     const { username, password, rememberMe } = await request.json()
 
@@ -93,7 +93,7 @@ export async function POST(request: NextRequest) {
       } catch (e) {
         // Ignore if table doesn't exist yet
       }
-      
+
       return NextResponse.json(
         { error: 'Invalid username or password' },
         { status: 401 }
@@ -122,7 +122,7 @@ export async function POST(request: NextRequest) {
       } catch (e) {
         // Ignore if table doesn't exist yet
       }
-      
+
       return NextResponse.json(
         { error: 'Invalid username or password' },
         { status: 401 }
@@ -182,7 +182,7 @@ export async function POST(request: NextRequest) {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax',
-      maxAge: 60 * 60, // 1 hour (60 minutes)
+      maxAge: 2.5 * 60 * 60, // 2.5 hours
       path: '/',
     })
 

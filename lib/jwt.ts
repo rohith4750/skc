@@ -6,7 +6,7 @@
 
 import * as jose from 'jose'
 
-const ACCESS_TOKEN_DEFAULT_MS = 60 * 60 * 1000 // 1 hour (60 minutes)
+const ACCESS_TOKEN_DEFAULT_MS = 2.5 * 60 * 60 * 1000 // 2.5 hours
 const REFRESH_TOKEN_DAYS = 7
 const REFRESH_TOKEN_DAYS_REMEMBER = 30
 
