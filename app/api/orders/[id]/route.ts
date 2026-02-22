@@ -62,22 +62,22 @@ export async function PUT(
         const initialPaymentHistory =
           Number(order.advancePaid) > 0
             ? [
-              {
-                amount: order.advancePaid,
-                totalPaid: order.advancePaid,
-                remainingAmount: order.remainingAmount,
-                status:
-                  Number(order.remainingAmount) > 0
-                    ? Number(order.advancePaid) > 0
-                      ? "partial"
-                      : "pending"
-                    : "paid",
-                date: order.createdAt.toISOString(),
-                source: "booking",
-                method: "cash", // Default for initial advance if not specified
-                notes: "Initial advance taken at order creation",
-              },
-            ]
+                {
+                  amount: order.advancePaid,
+                  totalPaid: order.advancePaid,
+                  remainingAmount: order.remainingAmount,
+                  status:
+                    Number(order.remainingAmount) > 0
+                      ? Number(order.advancePaid) > 0
+                        ? "partial"
+                        : "pending"
+                      : "paid",
+                  date: order.createdAt.toISOString(),
+                  source: "booking",
+                  method: "cash", // Default for initial advance if not specified
+                  notes: "Initial advance taken at order creation",
+                },
+              ]
             : [];
 
         const billCreateData: any = {
@@ -100,14 +100,8 @@ export async function PUT(
         });
       }
 
-      // If order reverted to pending -> we no longer delete the bill to preserve the serial number.
-      // The bills page will filter out bills for pending orders.
-      if (bill && status === "pending") {
-        // Do nothing - preserve bill record and its serialNumber
-      }
-
-      // If order is cancelled -> delete the bill
-      if (bill && status === "cancelled") {
+      // If order reverted to pending or cancelled -> delete the bill
+      if (bill && ["pending", "cancelled"].includes(status)) {
         await prisma.bill.delete({
           where: { id: bill.id },
         });
@@ -253,13 +247,13 @@ export async function PUT(
     const recalculatedTotal = Math.max(
       0,
       recalculatedMealTypesTotal +
-      transportCost +
-      (parseFloat(data.waterBottlesCost) || 0) +
-      (data.stalls || []).reduce(
-        (sum: number, s: any) => sum + (parseFloat(s.cost) || 0),
-        0,
-      ) -
-      discount,
+        transportCost +
+        (parseFloat(data.waterBottlesCost) || 0) +
+        (data.stalls || []).reduce(
+          (sum: number, s: any) => sum + (parseFloat(s.cost) || 0),
+          0,
+        ) -
+        discount,
     );
 
     // Use recalculated total if the provided total is 0 but we have amounts elsewhere
@@ -282,19 +276,19 @@ export async function PUT(
       eventDate: data.eventDate
         ? new Date(data.eventDate)
         : (() => {
-          if (newMealTypeAmounts) {
-            const dates = Object.values(newMealTypeAmounts)
-              .map((mt: any) => mt.date)
-              .filter((d) => !!d)
-              .sort((a, b) => new Date(a).getTime() - new Date(b).getTime());
-            if (dates.length > 0) return new Date(dates[0]);
-          }
-          return null;
-        })(),
+            if (newMealTypeAmounts) {
+              const dates = Object.values(newMealTypeAmounts)
+                .map((mt: any) => mt.date)
+                .filter((d) => !!d)
+                .sort((a, b) => new Date(a).getTime() - new Date(b).getTime());
+              if (dates.length > 0) return new Date(dates[0]);
+            }
+            return null;
+          })(),
       services:
         data.services &&
-          Array.isArray(data.services) &&
-          data.services.length > 0
+        Array.isArray(data.services) &&
+        data.services.length > 0
           ? data.services
           : null,
       numberOfMembers: data.numberOfMembers || null,
@@ -378,7 +372,7 @@ export async function PUT(
             date: new Date().toISOString(),
             source:
               Number(existingOrder.advancePaid || 0) === 0 &&
-                baseAdvanceDelta === 0
+              baseAdvanceDelta === 0
                 ? "booking"
                 : "payment",
             method: paymentMethod,

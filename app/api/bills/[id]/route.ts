@@ -145,3 +145,33 @@ export async function PUT(
     );
   }
 }
+
+export async function DELETE(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> },
+) {
+  try {
+    const { id } = await params;
+
+    // Find the bill first to ensure it exists
+    const bill = await prisma.bill.findUnique({
+      where: { id },
+    });
+
+    if (!bill) {
+      return NextResponse.json({ error: "Bill not found" }, { status: 404 });
+    }
+
+    // Delete the bill
+    await prisma.bill.delete({
+      where: { id },
+    });
+
+    return NextResponse.json({ message: "Bill deleted successfully" });
+  } catch (error: any) {
+    return NextResponse.json(
+      { error: "Failed to delete bill", details: error.message },
+      { status: 500 },
+    );
+  }
+}

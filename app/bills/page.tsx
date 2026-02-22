@@ -6,7 +6,7 @@ import { Bill, Order, Customer } from '@/types'
 import {
   FaPrint, FaCheck, FaEdit, FaFilter, FaChartLine, FaWallet,
   FaPercent, FaCalendarAlt, FaEnvelope, FaWhatsapp, FaFileImage,
-  FaChevronLeft, FaChevronRight, FaHistory, FaPlus, FaUser, FaUsers, FaInfoCircle, FaFileInvoiceDollar, FaTimes
+  FaChevronLeft, FaChevronRight, FaHistory, FaPlus, FaUser, FaUsers, FaInfoCircle, FaFileInvoiceDollar, FaTimes, FaTrash
 } from 'react-icons/fa'
 import toast from 'react-hot-toast'
 import { fetchWithLoader } from '@/lib/fetch-with-loader'
@@ -131,6 +131,32 @@ export default function BillsPage() {
     }
   }
 
+  const handleDeleteBill = async (billId: string) => {
+    if (!window.confirm('Are you sure you want to delete this bill? This action cannot be undone.')) return
+
+    const toastId = toast.loading('Deleting bill...')
+    try {
+      const response = await fetchWithLoader(`/api/bills/${billId}`, {
+        method: 'DELETE',
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to delete bill');
+      }
+
+      setBills(prev => prev.filter(b => b.id !== billId))
+      if (selectedBill?.id === billId) {
+        setIsDrawerOpen(false)
+        setSelectedBill(null)
+      }
+      toast.success('Bill deleted successfully', { id: toastId })
+    } catch (error: any) {
+      toast.error(error.message || 'Failed to delete bill', { id: toastId })
+    }
+  }
+
+
   // PDF Generation for Bills
   const renderBillToPdf = async (bill: ExtendedBill): Promise<string | null> => {
     if (!bill?.order) return null
@@ -206,7 +232,63 @@ export default function BillsPage() {
     }
   }
 
+  const renderBillToImage = async (bill: ExtendedBill): Promise<string | null> => {
+    if (!bill?.order) return null
+
+    let tempDiv: HTMLDivElement | null = null;
+
+    try {
+      const htmlContent = buildOrderPdfHtml(bill.order, {
+        useEnglish: true,
+        formatDate,
+        showFinancials: true,
+        formatCurrency,
+        bill: bill
+      })
+
+      tempDiv = document.createElement('div')
+      tempDiv.style.position = 'absolute'
+      tempDiv.style.left = '-9999px'
+      tempDiv.style.width = '210mm'
+      tempDiv.style.padding = '10mm'
+      tempDiv.style.fontFamily = 'Poppins, sans-serif'
+      tempDiv.style.fontSize = '11px'
+      tempDiv.style.lineHeight = '1.6'
+      tempDiv.style.background = 'white'
+      tempDiv.style.color = '#333'
+      tempDiv.innerHTML = htmlContent
+      tempDiv.style.overflow = 'visible'
+      document.body.appendChild(tempDiv)
+
+      await new Promise(r => setTimeout(r, 500))
+
+      const w = tempDiv.scrollWidth
+      const h = Math.max(tempDiv.scrollHeight + 20, 1)
+      const canvas = await html2canvas(tempDiv, {
+        scale: 2,
+        useCORS: true,
+        logging: false,
+        backgroundColor: '#ffffff',
+        width: w,
+        height: h,
+        windowWidth: w,
+        windowHeight: h,
+      })
+
+      if (document.body.contains(tempDiv)) document.body.removeChild(tempDiv)
+      tempDiv = null;
+
+      return canvas.toDataURL('image/png')
+    } catch (e: any) {
+      if (tempDiv && document.body.contains(tempDiv)) document.body.removeChild(tempDiv)
+      console.error('Image Generation Error:', e)
+      toast.error(`Failed to generate image: ${e.message || e}`)
+      return null
+    }
+  }
+
   const handleDownloadBillPDF = async (bill: ExtendedBill) => {
+
     const toastId = toast.loading('Generating PDF...')
     try {
       const pdfBase64 = await renderBillToPdf(bill)
@@ -229,7 +311,31 @@ export default function BillsPage() {
     }
   }
 
+  const handleDownloadBillImage = async (bill: ExtendedBill) => {
+    const toastId = toast.loading('Generating Image...')
+    try {
+      const imageDataUrl = await renderBillToImage(bill)
+
+      if (imageDataUrl) {
+        const billNumber = bill.serialNumber?.toString() || bill.id.slice(0, 8).toUpperCase()
+        const link = document.createElement('a')
+        link.href = imageDataUrl
+        link.download = `SKC-Bill-${billNumber}.png`
+        document.body.appendChild(link)
+        link.click()
+        document.body.removeChild(link)
+        toast.success('Image downloaded successfully', { id: toastId })
+      } else {
+        toast.error('Failed to generate image', { id: toastId })
+      }
+    } catch (error) {
+      console.error(error)
+      toast.error('Error downloading image', { id: toastId })
+    }
+  }
+
   const handleSendBillEmail = async (bill: ExtendedBill) => {
+
     if (!bill.order.customer.email) {
       toast.error('Customer email not found')
       return
@@ -366,9 +472,12 @@ export default function BillsPage() {
               bill={bill}
               onOpen={() => handleOpenDrawer(bill)}
               onDownload={() => handleDownloadBillPDF(bill)}
+              onDownloadImage={() => handleDownloadBillImage(bill)}
               onWhatsApp={() => handleSendBillWhatsApp(bill)}
               onEmail={() => handleSendBillEmail(bill)}
+              onDelete={() => handleDeleteBill(bill.id)}
             />
+
           ))}
 
           {filteredBills.length === 0 && !loading && (
@@ -433,7 +542,15 @@ export default function BillsPage() {
                         <FaFileInvoiceDollar />
                       </button>
                       <button
+                        onClick={() => handleDownloadBillImage(selectedBill)}
+                        className="p-2 bg-white rounded-lg text-slate-600 hover:text-indigo-600 border border-slate-200 shadow-sm transition-all"
+                        title="Download Image"
+                      >
+                        <FaFileImage />
+                      </button>
+                      <button
                         onClick={() => handleSendBillWhatsApp(selectedBill)}
+
                         className="p-2 bg-white rounded-lg text-slate-600 hover:text-indigo-600 border border-slate-200 shadow-sm transition-all"
                         title="Send via WhatsApp"
                       >
@@ -446,9 +563,17 @@ export default function BillsPage() {
                       >
                         <FaEnvelope />
                       </button>
+                      <button
+                        onClick={() => handleDeleteBill(selectedBill.id)}
+                        className="p-2 bg-white rounded-lg text-slate-600 hover:text-rose-600 border border-slate-200 shadow-sm transition-all"
+                        title="Delete Bill"
+                      >
+                        <FaTrash />
+                      </button>
                     </div>
                   </div>
                 </div>
+
 
                 {/* Financial Summary */}
                 <div>
@@ -644,13 +769,17 @@ function StatCard({ title, value, icon, subtitle, color }: { title: string, valu
 }
 
 
-function BillCard({ bill, onOpen, onDownload, onWhatsApp, onEmail }: {
+function BillCard({ bill, onOpen, onDownload, onDownloadImage, onWhatsApp, onEmail, onDelete }: {
   bill: ExtendedBill,
   onOpen: () => void,
   onDownload: () => void,
+  onDownloadImage: () => void,
   onWhatsApp: () => void,
-  onEmail: () => void
+  onEmail: () => void,
+  onDelete: () => void
 }) {
+
+
   const total = Number(bill.totalAmount)
   const paid = Number(bill.paidAmount)
   const progress = total > 0 ? (paid / total) * 100 : 0
@@ -687,7 +816,15 @@ function BillCard({ bill, onOpen, onDownload, onWhatsApp, onEmail }: {
           <FaFileInvoiceDollar />
         </button>
         <button
+          onClick={(e) => { e.stopPropagation(); onDownloadImage(); }}
+          className="p-2 bg-slate-50 rounded-lg text-slate-500 hover:text-indigo-600 hover:bg-white border border-transparent hover:border-slate-200 transition-all"
+          title="Download Image"
+        >
+          <FaFileImage />
+        </button>
+        <button
           onClick={(e) => { e.stopPropagation(); onWhatsApp(); }}
+
           className="p-2 bg-slate-50 rounded-lg text-slate-500 hover:text-emerald-600 hover:bg-white border border-transparent hover:border-slate-200 transition-all"
           title="Send via WhatsApp"
         >
@@ -700,7 +837,15 @@ function BillCard({ bill, onOpen, onDownload, onWhatsApp, onEmail }: {
         >
           <FaEnvelope />
         </button>
+        <button
+          onClick={(e) => { e.stopPropagation(); onDelete(); }}
+          className="p-2 bg-slate-50 rounded-lg text-slate-500 hover:text-rose-600 hover:bg-white border border-transparent hover:border-slate-200 transition-all"
+          title="Delete Bill"
+        >
+          <FaTrash />
+        </button>
       </div>
+
 
       <div className="space-y-4">
         <div className="flex justify-between items-end">
