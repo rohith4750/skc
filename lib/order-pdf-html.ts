@@ -25,12 +25,12 @@ export function buildOrderPdfHtml(
   const mealTypeAmounts = order.mealTypeAmounts as Record<
     string,
     | {
-      amount?: number;
-      date?: string;
-      numberOfMembers?: number;
-      services?: string[];
-      menuType?: string;
-    }
+        amount?: number;
+        date?: string;
+        numberOfMembers?: number;
+        services?: string[];
+        menuType?: string;
+      }
     | number
   > | null;
 
@@ -196,14 +196,15 @@ export function buildOrderPdfHtml(
                     <div style="width: 120px; font-weight: 600;">Contact No:</div>
                     <div style="font-weight: 500;">${safeString(customer?.phone)}</div>
                 </div>
-                ${!isMultiEvent
-      ? `
+                ${
+                  !isMultiEvent
+                    ? `
                 <div style="display: flex; margin-bottom: 2px;">
                     <div style="width: 120px; font-weight: 600;">Function Date:</div>
                     <div style="font-weight: 500;">${sortedDates.length > 0 ? formatDate(sortedDates[0]) : "N/A"}</div>
                 </div>`
-      : ""
-    }
+                    : ""
+                }
             </div>
         </div>
 
@@ -235,19 +236,27 @@ export function buildOrderPdfHtml(
 
             <!-- TOTALS (Bottom of Box) -->
             <div style="border-top: 2px solid #000;">
-                 <div style="display: flex; justify-content: space-between; padding: 5px 12px; font-size: 11px; font-weight: 700;">
-                    <div>Water Bottles:</div>
-                    <div>${order.waterBottlesPrice ? formatCurrency(order.waterBottlesPrice) : "-"}</div>
+                 <div style="display: flex; justify-content: space-between; padding: 4px 12px; font-size: 11px; font-weight: 700;">
+                    <div>Transport Cost:</div>
+                    <div>${order.transportCost && Number(order.transportCost) > 0 ? formatCurrency(Number(order.transportCost)) : "-"}</div>
                  </div>
-                 <div style="display: flex; justify-content: space-between; padding: 5px 12px; font-size: 11px; font-weight: 700;">
+                 <div style="display: flex; justify-content: space-between; padding: 4px 12px; font-size: 11px; font-weight: 700;">
+                    <div>Water Bottles:</div>
+                    <div>${order.waterBottlesCost && Number(order.waterBottlesCost) > 0 ? formatCurrency(Number(order.waterBottlesCost)) : "-"}</div>
+                 </div>
+                 <div style="display: flex; justify-content: space-between; padding: 4px 12px; font-size: 11px; font-weight: 700; color: #d32f2f;">
+                    <div>Discount:</div>
+                    <div>${order.discount && Number(order.discount) > 0 ? `-${formatCurrency(Number(order.discount))}` : "-"}</div>
+                 </div>
+                 <div style="display: flex; justify-content: space-between; padding: 4px 12px; font-size: 11px; font-weight: 700;">
                     <div>Advance Paid:</div>
                     <div>${formatCurrency(finalPaid)}</div>
                  </div>
-                 <div style="display: flex; justify-content: space-between; padding: 5px 12px; font-size: 12px; font-weight: 800; border-top: 1px solid #ddd;">
+                 <div style="display: flex; justify-content: space-between; padding: 6px 12px; font-size: 13px; font-weight: 800; border-top: 2px solid #000; background-color: #f9f9f9;">
                     <div>Grand Total:</div>
                     <div>${formatCurrency(finalTotal)}</div>
                  </div>
-                 <div style="display: flex; justify-content: space-between; padding: 5px 12px; font-size: 12px; font-weight: 800;">
+                 <div style="display: flex; justify-content: space-between; padding: 5px 12px; font-size: 12px; font-weight: 800; color: #2e7d32;">
                     <div>Balance Amount:</div>
                     <div>${formatCurrency(finalRemaining)}</div>
                  </div>
