@@ -280,9 +280,9 @@ export default function Dashboard() {
       title: 'Financial Summary',
       icon: FaMoneyBillWave,
       items: [
-        { label: 'Revenue', value: formatCurrency(stats.totalRevenue), color: 'text-green-600', icon: FaArrowUp },
-        { label: 'Expenses', value: formatCurrency(stats.totalExpenses), color: 'text-red-600', icon: FaArrowDown },
-        { label: 'Net Profit', value: formatCurrency(stats.totalRevenue - stats.totalExpenses), color: stats.totalRevenue - stats.totalExpenses >= 0 ? 'text-green-600' : 'text-red-600' },
+        { label: 'Total Billed', value: formatCurrency(stats.totalBilled), color: 'text-green-600', icon: FaArrowUp },
+        { label: 'Total Expenses', value: formatCurrency(stats.totalExpenses), color: 'text-red-600', icon: FaArrowDown },
+        { label: 'Net Profit', value: formatCurrency(stats.totalBilled - stats.totalExpenses), color: stats.totalBilled - stats.totalExpenses >= 0 ? 'text-green-600' : 'text-red-600' },
       ],
     },
   ]
