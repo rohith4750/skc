@@ -48,7 +48,21 @@ export async function DELETE(
       where: { id: params.id },
     });
     return NextResponse.json({ success: true });
-  } catch (error) {
+  } catch (error: any) {
+    console.error("Delete menu item error:", error);
+
+    // Check for Prisma foreign key constraint violation (P2003)
+    if (error.code === "P2003") {
+      return NextResponse.json(
+        {
+          error: "Cannot delete item",
+          details:
+            "This item is part of existing order history. Please deactivate it instead of deleting it to preserve records.",
+        },
+        { status: 400 },
+      );
+    }
+
     return NextResponse.json(
       { error: "Failed to delete menu item" },
       { status: 500 },
