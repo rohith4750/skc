@@ -2,11 +2,11 @@
 
 import { useEffect, useState, useMemo } from 'react'
 import { formatCurrency, formatDate, formatDateTime } from '@/lib/utils'
-import { 
-  FaPlus, 
-  FaEdit, 
-  FaTrash, 
-  FaFilter, 
+import {
+  FaPlus,
+  FaEdit,
+  FaTrash,
+  FaFilter,
   FaSearch,
   FaCircle,
   FaUtensils,
@@ -17,11 +17,14 @@ import {
   FaCheckCircle,
   FaTimes,
   FaTools,
+  FaFileInvoiceDollar,
 } from 'react-icons/fa'
 import toast from 'react-hot-toast'
 import Link from 'next/link'
 import Table from '@/components/Table'
 import ConfirmModal from '@/components/ConfirmModal'
+import jsPDF from 'jspdf'
+import html2canvas from 'html2canvas'
 
 const INVENTORY_CATEGORIES = ['glasses', 'vessels', 'cooking_utensils', 'serving_items', 'storage', 'other']
 
@@ -102,28 +105,28 @@ export default function InventoryPage() {
 
   const filteredInventory = useMemo(() => {
     let filtered = inventory
-    
+
     // Category filter
     if (selectedCategory !== 'all') {
       filtered = filtered.filter(item => item.category === selectedCategory)
     }
-    
+
     // Condition filter
     if (selectedCondition !== 'all') {
       filtered = filtered.filter(item => item.condition === selectedCondition)
     }
-    
+
     // Search filter
     if (searchTerm) {
       const searchLower = searchTerm.toLowerCase()
-      filtered = filtered.filter(item => 
+      filtered = filtered.filter(item =>
         item.name.toLowerCase().includes(searchLower) ||
         item.supplier?.toLowerCase().includes(searchLower) ||
         item.location?.toLowerCase().includes(searchLower) ||
         item.description?.toLowerCase().includes(searchLower)
       )
     }
-    
+
     return filtered.sort((a, b) => a.name.localeCompare(b.name))
   }, [inventory, selectedCategory, selectedCondition, searchTerm])
 
@@ -187,6 +190,112 @@ export default function InventoryPage() {
     setSelectedCondition('all')
     setSearchTerm('')
     setCurrentPage(1)
+  }
+
+  const handleDownloadReport = async () => {
+    const toastId = toast.loading('Generating Inventory Report...')
+    try {
+      const tempDiv = document.createElement('div')
+      tempDiv.style.position = 'absolute'
+      tempDiv.style.left = '-9999px'
+      tempDiv.style.width = '210mm'
+      tempDiv.style.padding = '20mm'
+      tempDiv.style.background = 'white'
+      tempDiv.style.fontFamily = 'Arial, sans-serif'
+
+      const dateStr = new Date().toLocaleDateString('en-IN', {
+        day: '2-digit',
+        month: 'long',
+        year: 'numeric'
+      })
+
+      tempDiv.innerHTML = `
+        <div style="text-align: center; border-bottom: 2px solid #3366ff; padding-bottom: 20px; margin-bottom: 30px;">
+          <h1 style="color: #3366ff; margin: 0; font-size: 28px;">SKC CATERERS</h1>
+          <p style="margin: 5px 0; color: #666;">Inventory Report - ${dateStr}</p>
+        </div>
+        
+        <div style="margin-bottom: 30px;">
+          <h2 style="font-size: 18px; color: #333; margin-bottom: 15px;">Summary by Category</h2>
+          <table style="width: 100%; border-collapse: collapse;">
+            <thead>
+              <tr style="background-color: #f8fafc; text-align: left;">
+                <th style="padding: 10px; border: 1px solid #e2e8f0;">Category</th>
+                <th style="padding: 10px; border: 1px solid #e2e8f0;">Items</th>
+                <th style="padding: 10px; border: 1px solid #e2e8f0;">Total Quantity</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${INVENTORY_CATEGORIES.map(cat => {
+        const total = categoryTotals[cat] || { count: 0, totalQuantity: 0 }
+        if (total.count === 0) return ''
+        return `
+                  <tr>
+                    <td style="padding: 10px; border: 1px solid #e2e8f0; text-transform: capitalize;">${cat.replace('_', ' ')}</td>
+                    <td style="padding: 10px; border: 1px solid #e2e8f0;">${total.count}</td>
+                    <td style="padding: 10px; border: 1px solid #e2e8f0;">${total.totalQuantity}</td>
+                  </tr>
+                `
+      }).join('')}
+            </tbody>
+          </table>
+        </div>
+
+        <div>
+          <h2 style="font-size: 18px; color: #333; margin-bottom: 15px;">Detailed Inventory List</h2>
+          <table style="width: 100%; border-collapse: collapse; font-size: 12px;">
+            <thead>
+              <tr style="background-color: #f8fafc; text-align: left;">
+                <th style="padding: 8px; border: 1px solid #e2e8f0;">Item Name</th>
+                <th style="padding: 8px; border: 1px solid #e2e8f0;">Category</th>
+                <th style="padding: 8px; border: 1px solid #e2e8f0;">Qty</th>
+                <th style="padding: 8px; border: 1px solid #e2e8f0;">Condition</th>
+                <th style="padding: 8px; border: 1px solid #e2e8f0;">Location</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${filteredInventory.map(item => `
+                <tr>
+                  <td style="padding: 8px; border: 1px solid #e2e8f0;">${item.name}</td>
+                  <td style="padding: 8px; border: 1px solid #e2e8f0; text-transform: capitalize;">${item.category.replace('_', ' ')}</td>
+                  <td style="padding: 8px; border: 1px solid #e2e8f0;">${item.quantity} ${item.unit}</td>
+                  <td style="padding: 8px; border: 1px solid #e2e8f0; text-transform: capitalize;">${item.condition}</td>
+                  <td style="padding: 8px; border: 1px solid #e2e8f0;">${item.location || '-'}</td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        </div>
+
+        <div style="margin-top: 50px; text-align: right; font-style: italic; color: #888; font-size: 10px;">
+          Generated on ${new Date().toLocaleString()}
+        </div>
+      `
+
+      document.body.appendChild(tempDiv)
+
+      const canvas = await html2canvas(tempDiv, {
+        scale: 2,
+        useCORS: true,
+        logging: false,
+        backgroundColor: '#ffffff'
+      })
+
+      document.body.removeChild(tempDiv)
+
+      const imgData = canvas.toDataURL('image/jpeg', 0.95)
+      const pdf = new jsPDF('p', 'mm', 'a4')
+      const imgWidth = 210
+      const imgHeight = (canvas.height * imgWidth) / canvas.width
+
+      pdf.addImage(imgData, 'JPEG', 0, 0, imgWidth, imgHeight)
+      pdf.save(`Inventory-Report-${dateStr.replace(/ /g, '-')}.pdf`)
+
+      toast.success('Inventory report downloaded!', { id: toastId })
+    } catch (error) {
+      console.error('PDF generation error:', error)
+      toast.error('Failed to generate PDF report', { id: toastId })
+    }
   }
 
   const columns = [
@@ -275,11 +384,10 @@ export default function InventoryPage() {
       key: 'status',
       header: 'Status',
       accessor: (row: InventoryItem) => (
-        <span className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${
-          row.isActive 
-            ? 'bg-green-100 text-green-800' 
-            : 'bg-gray-100 text-gray-800'
-        }`}>
+        <span className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${row.isActive
+          ? 'bg-green-100 text-green-800'
+          : 'bg-gray-100 text-gray-800'
+          }`}>
           {row.isActive ? 'Active' : 'Inactive'}
         </span>
       ),
@@ -297,7 +405,7 @@ export default function InventoryPage() {
       {/* Header */}
       <div className="mb-6 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-        <h1 className="text-3xl font-bold text-gray-900">Inventory Management</h1>
+          <h1 className="text-3xl font-bold text-gray-900">Inventory Management</h1>
           <p className="text-gray-600 mt-1">Track and manage kitchen equipment and utensils</p>
         </div>
         <div className="flex items-center gap-3">
@@ -312,6 +420,13 @@ export default function InventoryPage() {
                 {activeFiltersCount}
               </span>
             )}
+          </button>
+          <button
+            onClick={handleDownloadReport}
+            className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors shadow-sm"
+          >
+            <FaFileInvoiceDollar className="text-primary-500" />
+            Download Report
           </button>
           <Link
             href="/inventory/create"
@@ -390,7 +505,7 @@ export default function InventoryPage() {
               </button>
             </div>
           </div>
-          
+
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             {/* Search */}
             <div className="md:col-span-2">
@@ -444,11 +559,10 @@ export default function InventoryPage() {
                     setSelectedCategory('all')
                     setCurrentPage(1)
                   }}
-                  className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-                    selectedCategory === 'all'
-                      ? 'bg-primary-500 text-white shadow-md'
-                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                  }`}
+                  className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${selectedCategory === 'all'
+                    ? 'bg-primary-500 text-white shadow-md'
+                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                    }`}
                 >
                   All Categories
                 </button>
@@ -461,11 +575,10 @@ export default function InventoryPage() {
                         setSelectedCategory(category)
                         setCurrentPage(1)
                       }}
-                      className={`inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-                        selectedCategory === category
-                          ? `${CATEGORY_COLORS[category]} border-2`
-                          : 'bg-white border border-gray-300 text-gray-700 hover:bg-gray-50'
-                      }`}
+                      className={`inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${selectedCategory === category
+                        ? `${CATEGORY_COLORS[category]} border-2`
+                        : 'bg-white border border-gray-300 text-gray-700 hover:bg-gray-50'
+                        }`}
                     >
                       <Icon className="text-xs" />
                       {category.replace('_', ' ').split(' ').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ')}

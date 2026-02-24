@@ -643,12 +643,20 @@ export default function OrdersPage() {
         // Update existing order
         await Storage.updateOrder(editOrderId, orderData)
         toast.success('Order updated successfully!')
-        router.push('/orders/history')
+
+        // Redirect based on status: active orders to Hub, finished to History
+        if (orderData.status === 'completed' || orderData.status === 'cancelled') {
+          router.push('/orders/history')
+        } else {
+          router.push('/orders/center')
+        }
       } else {
         // Create new order
         await Storage.saveOrder(orderData)
         resetForm()
         toast.success('Order created successfully!')
+        // New orders are always 'pending', so go to Order Hub
+        router.push('/orders/center')
       }
     } catch (error) {
       console.error('Failed to create order:', error)

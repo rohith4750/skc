@@ -47,6 +47,8 @@ export default function BillsPage() {
   const [bills, setBills] = useState<ExtendedBill[]>([])
   const [loading, setLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState('')
+  const [selectedMonth, setSelectedMonth] = useState<number>(new Date().getMonth() + 1)
+  const [selectedYear, setSelectedYear] = useState<number>(new Date().getFullYear())
   const [selectedBill, setSelectedBill] = useState<ExtendedBill | null>(null)
   const [isDrawerOpen, setIsDrawerOpen] = useState(false)
   const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false)
@@ -84,17 +86,23 @@ export default function BillsPage() {
       const phone = bill.order?.customer?.phone || ''
       const query = searchQuery.toLowerCase()
 
-      return customerName.includes(query) || phone.includes(query)
-    })
-  }, [bills, searchQuery])
+      const matchesSearch = customerName.includes(query) || phone.includes(query)
 
-  // Metrics
+      // Month/Year filter based on order eventDate or bill creation
+      const billDate = new Date(bill.order?.eventDate || bill.createdAt)
+      const matchesMonth = (billDate.getMonth() + 1) === selectedMonth && billDate.getFullYear() === selectedYear
+
+      return matchesSearch && matchesMonth
+    })
+  }, [bills, searchQuery, selectedMonth, selectedYear])
+
+  // Metrics (based on filtered bills)
   const metrics = useMemo(() => {
-    const total = bills.reduce((sum, b) => sum + Number(b.totalAmount), 0)
-    const paid = bills.reduce((sum, b) => sum + Number(b.paidAmount), 0)
-    const pending = bills.reduce((sum, b) => sum + Number(b.remainingAmount), 0)
-    return { total, paid, pending, count: bills.length }
-  }, [bills])
+    const total = filteredBills.reduce((sum, b) => sum + Number(b.totalAmount), 0)
+    const paid = filteredBills.reduce((sum, b) => sum + Number(b.paidAmount), 0)
+    const pending = filteredBills.reduce((sum, b) => sum + Number(b.remainingAmount), 0)
+    return { total, paid, pending, count: filteredBills.length }
+  }, [filteredBills])
 
   const handleOpenDrawer = (bill: ExtendedBill) => {
     setSelectedBill(bill)
@@ -422,13 +430,32 @@ export default function BillsPage() {
           </div>
 
           <div className="flex items-center gap-3">
-            <button className="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 rounded-xl text-slate-700 font-semibold hover:bg-slate-50 transition-all shadow-sm">
-              <FaFilter className="text-slate-400" />
-              Advanced Filters
-            </button>
+            {/* Month/Year Selector */}
+            <div className="flex items-center gap-2 bg-white px-3 py-1.5 rounded-xl border border-slate-200 shadow-sm">
+              <select
+                value={selectedMonth}
+                onChange={(e) => setSelectedMonth(parseInt(e.target.value))}
+                className="bg-transparent text-sm font-bold text-slate-700 outline-none cursor-pointer"
+              >
+                {['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'].map((m, i) => (
+                  <option key={m} value={i + 1}>{m}</option>
+                ))}
+              </select>
+              <div className="w-px h-4 bg-slate-200"></div>
+              <select
+                value={selectedYear}
+                onChange={(e) => setSelectedYear(parseInt(e.target.value))}
+                className="bg-transparent text-sm font-bold text-slate-700 outline-none cursor-pointer"
+              >
+                {[2024, 2025, 2026].map(y => (
+                  <option key={y} value={y}>{y}</option>
+                ))}
+              </select>
+            </div>
+
             <button
               onClick={loadBills}
-              className="p-2 bg-indigo-50 text-indigo-600 rounded-xl hover:bg-indigo-100 transition-all"
+              className="p-2 bg-indigo-50 text-indigo-600 rounded-xl hover:bg-indigo-100 transition-all shadow-sm"
             >
               <FaHistory className={loading ? 'animate-spin' : ''} />
             </button>

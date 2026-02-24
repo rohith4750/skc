@@ -78,7 +78,8 @@ export default function ExpensesPage() {
   const [selectedOrder, setSelectedOrder] = useState<string>('all')
   const [selectedCategory, setSelectedCategory] = useState<string>('all')
   const [searchTerm, setSearchTerm] = useState('')
-  const [dateRange, setDateRange] = useState({ start: '', end: '' })
+  const [selectedMonth, setSelectedMonth] = useState<number>(new Date().getMonth() + 1)
+  const [selectedYear, setSelectedYear] = useState<number>(new Date().getFullYear())
   const [currentPage, setCurrentPage] = useState(1)
   const [itemsPerPage, setItemsPerPage] = useState<number>(10)
   const [showFilters, setShowFilters] = useState(false)
@@ -142,25 +143,14 @@ export default function ExpensesPage() {
       )
     }
 
-    // Date range filter
-    if (dateRange.start || dateRange.end) {
-      filtered = filtered.filter(expense => {
-        const paymentDate = new Date(expense.paymentDate)
-        if (dateRange.start) {
-          const start = new Date(dateRange.start)
-          if (paymentDate < start) return false
-        }
-        if (dateRange.end) {
-          const end = new Date(dateRange.end)
-          end.setHours(23, 59, 59, 999)
-          if (paymentDate > end) return false
-        }
-        return true
-      })
-    }
+    // Month/Year filter
+    filtered = filtered.filter(expense => {
+      const paymentDate = new Date(expense.paymentDate)
+      return (paymentDate.getMonth() + 1) === selectedMonth && paymentDate.getFullYear() === selectedYear
+    })
 
     return filtered.sort((a, b) => new Date(b.paymentDate).getTime() - new Date(a.paymentDate).getTime())
-  }, [expenses, selectedOrder, selectedCategory, searchTerm, dateRange])
+  }, [expenses, selectedOrder, selectedCategory, searchTerm, selectedMonth, selectedYear])
 
   const totalExpenses = useMemo(() => {
     return filteredExpenses.reduce((sum, expense) => sum + expense.amount, 0)
@@ -250,7 +240,8 @@ export default function ExpensesPage() {
     setSelectedOrder('all')
     setSelectedCategory('all')
     setSearchTerm('')
-    setDateRange({ start: '', end: '' })
+    setSelectedMonth(new Date().getMonth() + 1)
+    setSelectedYear(new Date().getFullYear())
     setCurrentPage(1)
   }
 
@@ -520,7 +511,7 @@ export default function ExpensesPage() {
     selectedOrder !== 'all',
     selectedCategory !== 'all',
     searchTerm !== '',
-    dateRange.start !== '' || dateRange.end !== '',
+    true, // Month/Year filter is always active
   ].filter(Boolean).length
 
   return (
@@ -658,35 +649,38 @@ export default function ExpensesPage() {
               </div>
             </div>
 
-            {/* Date Range */}
+            {/* Month Filter */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Start Date
-              </label>
-              <input
-                type="date"
-                value={dateRange.start}
+              <label className="block text-sm font-medium text-gray-700 mb-2">Month</label>
+              <select
+                value={selectedMonth}
                 onChange={(e) => {
-                  setDateRange({ ...dateRange, start: e.target.value })
+                  setSelectedMonth(parseInt(e.target.value))
                   setCurrentPage(1)
                 }}
                 className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-              />
+              >
+                {['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'].map((m, i) => (
+                  <option key={m} value={i + 1}>{m}</option>
+                ))}
+              </select>
             </div>
 
+            {/* Year Filter */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                End Date
-              </label>
-              <input
-                type="date"
-                value={dateRange.end}
+              <label className="block text-sm font-medium text-gray-700 mb-2">Year</label>
+              <select
+                value={selectedYear}
                 onChange={(e) => {
-                  setDateRange({ ...dateRange, end: e.target.value })
+                  setSelectedYear(parseInt(e.target.value))
                   setCurrentPage(1)
                 }}
                 className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-              />
+              >
+                {[2024, 2025, 2026].map(y => (
+                  <option key={y} value={y}>{y}</option>
+                ))}
+              </select>
             </div>
 
             {/* Order Filter */}
@@ -723,8 +717,8 @@ export default function ExpensesPage() {
                     setCurrentPage(1)
                   }}
                   className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${selectedCategory === 'all'
-                      ? 'bg-primary-500 text-white shadow-md'
-                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                    ? 'bg-primary-500 text-white shadow-md'
+                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                     }`}
                 >
                   All Categories
@@ -739,8 +733,8 @@ export default function ExpensesPage() {
                         setCurrentPage(1)
                       }}
                       className={`inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors capitalize ${selectedCategory === category
-                          ? `${CATEGORY_COLORS[category] || CATEGORY_COLORS.other} border-2`
-                          : 'bg-white border border-gray-300 text-gray-700 hover:bg-gray-50'
+                        ? `${CATEGORY_COLORS[category] || CATEGORY_COLORS.other} border-2`
+                        : 'bg-white border border-gray-300 text-gray-700 hover:bg-gray-50'
                         }`}
                     >
                       <Icon className="text-xs" />

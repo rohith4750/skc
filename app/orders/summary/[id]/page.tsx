@@ -130,7 +130,7 @@ export default function OrderSummaryPage() {
         {/* Top Navigation */}
         <div className="mb-8 flex items-center justify-between">
           <Link
-            href="/orders/history"
+            href={order.status === 'completed' || order.status === 'cancelled' ? '/orders/history' : '/orders/center'}
             className="group flex items-center text-slate-500 hover:text-primary-600 transition-all font-semibold text-sm"
           >
             <div className="w-8 h-8 rounded-full bg-white shadow-sm flex items-center justify-center mr-3 group-hover:bg-primary-50 group-hover:text-primary-600 transition-all">

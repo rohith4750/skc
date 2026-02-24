@@ -35,7 +35,8 @@ export default function OrdersHistoryPage() {
   const [showFilters, setShowFilters] = useState(false)
   const [statusFilter, setStatusFilter] = useState<string>('all')
   const [customerSearch, setCustomerSearch] = useState<string>('')
-  const [dateRange, setDateRange] = useState({ start: '', end: '' })
+  const [selectedMonth, setSelectedMonth] = useState<number>(new Date().getMonth() + 1)
+  const [selectedYear, setSelectedYear] = useState<number>(new Date().getFullYear())
   const [pdfLanguageModal, setPdfLanguageModal] = useState<{ isOpen: boolean; order: any | null }>({
     isOpen: false,
     order: null,
@@ -100,44 +101,14 @@ export default function OrdersHistoryPage() {
       )
     }
 
-    // Date range filter
-    if (dateRange.start || dateRange.end) {
-      filtered = filtered.filter(order => {
-        const mealTypeAmounts = order.mealTypeAmounts as Record<string, { date?: string } | number> | null
-        if (!mealTypeAmounts) return false
-
-        const eventDates = Object.values(mealTypeAmounts)
-          .map(v => typeof v === 'object' && v !== null ? v.date : null)
-          .filter(Boolean) as string[]
-
-        if (eventDates.length === 0) return false
-
-        return eventDates.some(dateStr => {
-          const eventDate = new Date(dateStr)
-          eventDate.setHours(0, 0, 0, 0)
-
-          if (dateRange.start && dateRange.end) {
-            const start = new Date(dateRange.start)
-            const end = new Date(dateRange.end)
-            start.setHours(0, 0, 0, 0)
-            end.setHours(23, 59, 59, 999)
-            return eventDate >= start && eventDate <= end
-          } else if (dateRange.start) {
-            const start = new Date(dateRange.start)
-            start.setHours(0, 0, 0, 0)
-            return eventDate >= start
-          } else if (dateRange.end) {
-            const end = new Date(dateRange.end)
-            end.setHours(23, 59, 59, 999)
-            return eventDate <= end
-          }
-          return true
-        })
-      })
-    }
+    // Month/Year filter
+    filtered = filtered.filter(order => {
+      const orderDate = new Date(order.eventDate || order.createdAt)
+      return (orderDate.getMonth() + 1) === selectedMonth && orderDate.getFullYear() === selectedYear
+    })
 
     return filtered.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
-  }, [orders, statusFilter, customerSearch, dateRange])
+  }, [orders, statusFilter, customerSearch, selectedMonth, selectedYear])
 
   const statusSummary = useMemo(() => {
     const totalOrders = filteredOrders.length
@@ -828,23 +799,32 @@ export default function OrdersHistoryPage() {
               />
             </div>
 
-            {/* Date Range */}
+            {/* Month Filter */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Date Range</label>
-              <div className="flex flex-col sm:flex-row gap-2">
-                <input
-                  type="date"
-                  value={dateRange.start}
-                  onChange={(e) => setDateRange({ ...dateRange, start: e.target.value })}
-                  className="flex-1 px-3 py-2.5 sm:py-2 min-h-[44px] sm:min-h-0 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-                />
-                <input
-                  type="date"
-                  value={dateRange.end}
-                  onChange={(e) => setDateRange({ ...dateRange, end: e.target.value })}
-                  className="flex-1 px-3 py-2.5 sm:py-2 min-h-[44px] sm:min-h-0 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-                />
-              </div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Month</label>
+              <select
+                value={selectedMonth}
+                onChange={(e) => setSelectedMonth(parseInt(e.target.value))}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+              >
+                {['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'].map((m, i) => (
+                  <option key={m} value={i + 1}>{m}</option>
+                ))}
+              </select>
+            </div>
+
+            {/* Year Filter */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Year</label>
+              <select
+                value={selectedYear}
+                onChange={(e) => setSelectedYear(parseInt(e.target.value))}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+              >
+                {[2024, 2025, 2026].map(y => (
+                  <option key={y} value={y}>{y}</option>
+                ))}
+              </select>
             </div>
           </div>
           <div className="mt-4 flex justify-end">
@@ -852,7 +832,8 @@ export default function OrdersHistoryPage() {
               onClick={() => {
                 setStatusFilter('all')
                 setCustomerSearch('')
-                setDateRange({ start: '', end: '' })
+                setSelectedMonth(new Date().getMonth() + 1)
+                setSelectedYear(new Date().getFullYear())
                 setCurrentPage(1)
               }}
               className="px-4 py-2 text-sm text-gray-600 hover:text-gray-800 underline"

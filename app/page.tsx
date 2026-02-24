@@ -31,6 +31,9 @@ export default function Dashboard() {
   useEffect(() => {
     setUserRole(getUserRole())
   }, [])
+
+  const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth() + 1)
+  const [selectedYear, setSelectedYear] = useState(new Date().getFullYear())
   const [stats, setStats] = useState({
     customers: 0,
     menuItems: 0,
@@ -66,13 +69,24 @@ export default function Dashboard() {
   useEffect(() => {
     const loadStats = async () => {
       try {
-        const [customers, menuItems, orders, bills, expenses] = await Promise.all([
+        const [customers, menuItems, rawOrders, rawBills, rawExpenses] = await Promise.all([
           Storage.getCustomers(),
           Storage.getMenuItems(),
           Storage.getOrders(),
           Storage.getBills(),
           Storage.getExpenses(),
         ])
+
+        // Filter by catering date (eventDate)
+        const filterByMonthYear = (itemDate: string | Date | null) => {
+          if (!itemDate) return false
+          const d = new Date(itemDate)
+          return (d.getMonth() + 1) === selectedMonth && d.getFullYear() === selectedYear
+        }
+
+        const orders = rawOrders.filter((o: any) => filterByMonthYear(o.eventDate))
+        const bills = rawBills.filter((b: any) => filterByMonthYear(b.order?.eventDate))
+        const expenses = rawExpenses.filter((e: any) => filterByMonthYear(e.eventDate))
 
         // Calculate financial stats
         const totalCollected = bills.reduce((sum: number, bill: any) => sum + (parseFloat(bill.paidAmount) || 0), 0)
@@ -174,7 +188,7 @@ export default function Dashboard() {
       }
     }
     loadStats()
-  }, [isSuperAdminUser])
+  }, [isSuperAdminUser, selectedMonth, selectedYear])
 
   const mainStatCards = [
     {
@@ -426,11 +440,35 @@ export default function Dashboard() {
 
   return (
     <div className="p-3 sm:p-4 md:p-5 lg:p-5 xl:p-6 pt-12 sm:pt-14 lg:pt-5 xl:pt-6">
-      <div className="mb-4 sm:mb-5 md:mb-6 lg:mb-8">
-        <h1 className="text-xl sm:text-2xl md:text-3xl font-bold text-gray-800 text-center sm:text-left">Dashboard</h1>
-        <p className="text-gray-600 mt-1 sm:mt-1.5 md:mt-2 text-xs sm:text-sm md:text-base text-center sm:text-left">
-          {isSuperAdminUser ? 'Complete Business Analytics & Management Overview' : 'Business Overview'}
-        </p>
+      <div className="mb-4 sm:mb-5 md:mb-6 lg:mb-8 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <h1 className="text-xl sm:text-2xl md:text-3xl font-bold text-gray-800 text-center sm:text-left">Dashboard</h1>
+          <p className="text-gray-600 mt-1 sm:mt-1.5 md:mt-2 text-xs sm:text-sm md:text-base text-center sm:text-left">
+            {isSuperAdminUser ? 'Complete Business Analytics & Management Overview' : 'Business Overview'}
+          </p>
+        </div>
+
+        {/* Month Selector */}
+        <div className="flex items-center justify-center sm:justify-end gap-2 bg-white p-1.5 rounded-2xl shadow-sm border border-gray-100">
+          <select
+            value={selectedMonth}
+            onChange={(e) => setSelectedMonth(parseInt(e.target.value))}
+            className="bg-transparent text-sm font-bold text-gray-700 outline-none px-2 py-1 cursor-pointer"
+          >
+            {['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'].map((m, i) => (
+              <option key={m} value={i + 1}>{m}</option>
+            ))}
+          </select>
+          <select
+            value={selectedYear}
+            onChange={(e) => setSelectedYear(parseInt(e.target.value))}
+            className="bg-transparent text-sm font-bold text-gray-700 outline-none px-2 py-1 cursor-pointer"
+          >
+            {[2024, 2025, 2026].map(y => (
+              <option key={y} value={y}>{y}</option>
+            ))}
+          </select>
+        </div>
       </div>
 
       {/* Main Statistics Cards */}
