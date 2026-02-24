@@ -17,6 +17,7 @@ import {
   FaCheckCircle,
   FaTimes,
   FaTools,
+  FaFilePdf,
   FaFileInvoiceDollar,
 } from 'react-icons/fa'
 import toast from 'react-hot-toast'
@@ -25,6 +26,7 @@ import Table from '@/components/Table'
 import ConfirmModal from '@/components/ConfirmModal'
 import jsPDF from 'jspdf'
 import html2canvas from 'html2canvas'
+import { generatePDFTemplate, PDFTemplateData } from '@/lib/pdf-template'
 
 const INVENTORY_CATEGORIES = ['glasses', 'vessels', 'cooking_utensils', 'serving_items', 'storage', 'other']
 
@@ -195,83 +197,38 @@ export default function InventoryPage() {
   const handleDownloadReport = async () => {
     const toastId = toast.loading('Generating Inventory Report...')
     try {
-      const tempDiv = document.createElement('div')
-      tempDiv.style.position = 'absolute'
-      tempDiv.style.left = '-9999px'
-      tempDiv.style.width = '210mm'
-      tempDiv.style.padding = '20mm'
-      tempDiv.style.background = 'white'
-      tempDiv.style.fontFamily = 'Arial, sans-serif'
+      // Prepare report data
+      const pdfData: PDFTemplateData = {
+        type: 'inventory',
+        date: new Date().toISOString(),
+        inventoryDetails: {
+          items: filteredInventory.map(item => ({
+            name: item.name,
+            category: item.category,
+            quantity: item.quantity,
+            unit: item.unit,
+            condition: item.condition,
+            location: item.location || undefined,
+            pricePerUnit: item.purchasePrice || undefined,
+            totalValue: item.purchasePrice ? item.purchasePrice * item.quantity : undefined
+          })),
+          grandTotalValue: filteredInventory.reduce((sum, item) => sum + ((item.purchasePrice || 0) * item.quantity), 0)
+        }
+      }
 
+      const htmlContent = generatePDFTemplate(pdfData)
       const dateStr = new Date().toLocaleDateString('en-IN', {
         day: '2-digit',
         month: 'long',
         year: 'numeric'
       })
 
-      tempDiv.innerHTML = `
-        <div style="text-align: center; border-bottom: 2px solid #3366ff; padding-bottom: 20px; margin-bottom: 30px;">
-          <h1 style="color: #3366ff; margin: 0; font-size: 28px;">SKC CATERERS</h1>
-          <p style="margin: 5px 0; color: #666;">Inventory Report - ${dateStr}</p>
-        </div>
-        
-        <div style="margin-bottom: 30px;">
-          <h2 style="font-size: 18px; color: #333; margin-bottom: 15px;">Summary by Category</h2>
-          <table style="width: 100%; border-collapse: collapse;">
-            <thead>
-              <tr style="background-color: #f8fafc; text-align: left;">
-                <th style="padding: 10px; border: 1px solid #e2e8f0;">Category</th>
-                <th style="padding: 10px; border: 1px solid #e2e8f0;">Items</th>
-                <th style="padding: 10px; border: 1px solid #e2e8f0;">Total Quantity</th>
-              </tr>
-            </thead>
-            <tbody>
-              ${INVENTORY_CATEGORIES.map(cat => {
-        const total = categoryTotals[cat] || { count: 0, totalQuantity: 0 }
-        if (total.count === 0) return ''
-        return `
-                  <tr>
-                    <td style="padding: 10px; border: 1px solid #e2e8f0; text-transform: capitalize;">${cat.replace('_', ' ')}</td>
-                    <td style="padding: 10px; border: 1px solid #e2e8f0;">${total.count}</td>
-                    <td style="padding: 10px; border: 1px solid #e2e8f0;">${total.totalQuantity}</td>
-                  </tr>
-                `
-      }).join('')}
-            </tbody>
-          </table>
-        </div>
-
-        <div>
-          <h2 style="font-size: 18px; color: #333; margin-bottom: 15px;">Detailed Inventory List</h2>
-          <table style="width: 100%; border-collapse: collapse; font-size: 12px;">
-            <thead>
-              <tr style="background-color: #f8fafc; text-align: left;">
-                <th style="padding: 8px; border: 1px solid #e2e8f0;">Item Name</th>
-                <th style="padding: 8px; border: 1px solid #e2e8f0;">Category</th>
-                <th style="padding: 8px; border: 1px solid #e2e8f0;">Qty</th>
-                <th style="padding: 8px; border: 1px solid #e2e8f0;">Condition</th>
-                <th style="padding: 8px; border: 1px solid #e2e8f0;">Location</th>
-              </tr>
-            </thead>
-            <tbody>
-              ${filteredInventory.map(item => `
-                <tr>
-                  <td style="padding: 8px; border: 1px solid #e2e8f0;">${item.name}</td>
-                  <td style="padding: 8px; border: 1px solid #e2e8f0; text-transform: capitalize;">${item.category.replace('_', ' ')}</td>
-                  <td style="padding: 8px; border: 1px solid #e2e8f0;">${item.quantity} ${item.unit}</td>
-                  <td style="padding: 8px; border: 1px solid #e2e8f0; text-transform: capitalize;">${item.condition}</td>
-                  <td style="padding: 8px; border: 1px solid #e2e8f0;">${item.location || '-'}</td>
-                </tr>
-              `).join('')}
-            </tbody>
-          </table>
-        </div>
-
-        <div style="margin-top: 50px; text-align: right; font-style: italic; color: #888; font-size: 10px;">
-          Generated on ${new Date().toLocaleString()}
-        </div>
-      `
-
+      const tempDiv = document.createElement('div')
+      tempDiv.style.position = 'absolute'
+      tempDiv.style.left = '-9999px'
+      tempDiv.style.width = '210mm'
+      tempDiv.style.background = 'white'
+      tempDiv.innerHTML = htmlContent
       document.body.appendChild(tempDiv)
 
       const canvas = await html2canvas(tempDiv, {
@@ -295,6 +252,60 @@ export default function InventoryPage() {
     } catch (error) {
       console.error('PDF generation error:', error)
       toast.error('Failed to generate PDF report', { id: toastId })
+    }
+  }
+
+  const handleDownloadItemPDF = async (item: InventoryItem) => {
+    const toastId = toast.loading(`Generating PDF for ${item.name}...`)
+    try {
+      const pdfData: PDFTemplateData = {
+        type: 'inventory',
+        date: new Date().toISOString(),
+        inventoryDetails: {
+          items: [{
+            name: item.name,
+            category: item.category,
+            quantity: item.quantity,
+            unit: item.unit,
+            condition: item.condition,
+            location: item.location || undefined,
+            pricePerUnit: item.purchasePrice || undefined,
+            totalValue: item.purchasePrice ? item.purchasePrice * item.quantity : undefined
+          }],
+          grandTotalValue: (item.purchasePrice || 0) * item.quantity
+        }
+      }
+
+      const htmlContent = generatePDFTemplate(pdfData)
+      const tempDiv = document.createElement('div')
+      tempDiv.style.position = 'absolute'
+      tempDiv.style.left = '-9999px'
+      tempDiv.style.width = '210mm'
+      tempDiv.style.background = 'white'
+      tempDiv.innerHTML = htmlContent
+      document.body.appendChild(tempDiv)
+
+      const canvas = await html2canvas(tempDiv, {
+        scale: 2,
+        useCORS: true,
+        logging: false,
+        backgroundColor: '#ffffff'
+      })
+
+      document.body.removeChild(tempDiv)
+
+      const imgData = canvas.toDataURL('image/jpeg', 0.95)
+      const pdf = new jsPDF('p', 'mm', 'a4')
+      const imgWidth = 210
+      const imgHeight = (canvas.height * imgWidth) / canvas.width
+
+      pdf.addImage(imgData, 'JPEG', 0, 0, imgWidth, imgHeight)
+      pdf.save(`Inventory-${item.name.replace(/ /g, '-')}.pdf`)
+
+      toast.success('Inventory item PDF downloaded!', { id: toastId })
+    } catch (error) {
+      console.error('PDF generation error:', error)
+      toast.error('Failed to generate item PDF', { id: toastId })
     }
   }
 
@@ -425,7 +436,7 @@ export default function InventoryPage() {
             onClick={handleDownloadReport}
             className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors shadow-sm"
           >
-            <FaFileInvoiceDollar className="text-primary-500" />
+            <FaFilePdf className="text-primary-500" />
             Download Report
           </button>
           <Link
@@ -606,6 +617,13 @@ export default function InventoryPage() {
           getItemId={(item: InventoryItem) => item.id}
           renderActions={(item: InventoryItem) => (
             <div className="flex items-center gap-2">
+              <button
+                onClick={() => handleDownloadItemPDF(item)}
+                className="p-2 text-primary-600 hover:bg-primary-50 rounded-lg transition-colors"
+                title="Download PDF"
+              >
+                <FaFilePdf />
+              </button>
               <Link
                 href={`/inventory/create?id=${item.id}`}
                 className="p-2 text-primary-600 hover:bg-primary-50 rounded-lg transition-colors"

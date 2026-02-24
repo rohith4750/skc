@@ -1,7 +1,7 @@
 import { formatCurrency, formatDate, formatDateTime, sanitizeMealLabel } from './utils'
 
 export interface PDFTemplateData {
-  type: 'bill' | 'expense' | 'workforce' | 'statement'
+  type: 'bill' | 'expense' | 'workforce' | 'statement' | 'inventory'
   billNumber?: string
   date: string
   customer?: {
@@ -82,6 +82,19 @@ export interface PDFTemplateData {
     grandTotal: number
     totalPaid: number
     totalBalance: number
+  }
+  inventoryDetails?: {
+    items: Array<{
+      name: string
+      category: string
+      quantity: number
+      unit: string
+      condition: string
+      location?: string
+      pricePerUnit?: number
+      totalValue?: number
+    }>
+    grandTotalValue?: number
   }
 }
 
@@ -314,6 +327,7 @@ export function generatePDFTemplate(data: PDFTemplateData): string {
         ${data.type === 'expense' ? generateExpenseContent(data) : ''}
         ${data.type === 'workforce' ? generateWorkforceContent(data) : ''}
         ${data.type === 'statement' ? generateStatementContent(data) : ''}
+        ${data.type === 'inventory' ? generateInventoryContent(data) : ''}
 
         <!-- Terms & Conditions -->
         ${generateTermsAndConditions(data.type)}
@@ -323,9 +337,11 @@ export function generatePDFTemplate(data: PDFTemplateData): string {
           <div class="signature-box">
             <div class="signature-line">Authorized Signature</div>
           </div>
+          ${data.type !== 'inventory' ? `
           <div class="signature-box">
             <div class="signature-line">Customer Signature</div>
           </div>
+          ` : ''}
         </div>
       </div>
     </body>
@@ -699,7 +715,7 @@ function generateWorkforceContent(data: PDFTemplateData): string {
   `
 }
 
-function generateTermsAndConditions(type: 'bill' | 'expense' | 'workforce' | 'statement'): string {
+function generateTermsAndConditions(type: 'bill' | 'expense' | 'workforce' | 'statement' | 'inventory'): string {
   if (type === 'bill' || type === 'statement') {
     return `
       <div class="terms-section">
@@ -736,6 +752,18 @@ function generateTermsAndConditions(type: 'bill' | 'expense' | 'workforce' | 'st
           <li>In case of any discrepancy, please contact the accounts department within 7 days.</li>
           <li>This is a computer-generated receipt and does not require a physical signature.</li>
           <li>Please retain this receipt for your records and future reference.</li>
+        </ol>
+      </div>
+    `
+  } else if (type === 'inventory') {
+    return `
+      <div class="terms-section">
+        <div class="terms-title">REPORT NOTES</div>
+        <ol class="terms-list">
+          <li>This is a computer-generated inventory report of current physical stock.</li>
+          <li>In case of any discrepancy between physical stock and this report, please inform management immediately.</li>
+          <li>All kitchen equipment and items listed are the property of SKC Caterers.</li>
+          <li>Authorized personnel only should handle the movement of inventory items.</li>
         </ol>
       </div>
     `
@@ -791,6 +819,60 @@ function generateStatementContent(data: PDFTemplateData): string {
     <div style="margin-top: 30px; border-top: 1px dashed #ccc; padding-top: 20px;">
       <div style="font-size: 10px; color: #666; font-style: italic;">
         * This statement summarizes the selected outstanding and paid bills for the customer listed above.
+      </div>
+    </div>
+  `
+}
+
+function generateInventoryContent(data: PDFTemplateData): string {
+  const details = data.inventoryDetails
+  if (!details) return ''
+
+  return `
+    <div class="section-title">INVENTORY REPORT</div>
+    
+    <div style="margin-bottom: 25px;">
+      <div style="font-size: 11px;">Reporting Date: ${formatDate(data.date)}</div>
+    </div>
+
+    <table style="width: 100%; border-collapse: collapse; margin-top: 20px;">
+      <thead>
+        <tr style="background-color: #f8fafc; border-bottom: 2px solid #000;">
+          <th style="text-align: left; padding: 10px; font-weight: bold; border: 1px solid #000;">Item Name</th>
+          <th style="text-align: center; padding: 10px; font-weight: bold; border: 1px solid #000;">Quantity</th>
+          <th style="text-align: right; padding: 10px; font-weight: bold; border: 1px solid #000;">Price/Unit</th>
+          <th style="text-align: right; padding: 10px; font-weight: bold; border: 1px solid #000;">Total Value</th>
+          <th style="text-align: left; padding: 10px; font-weight: bold; border: 1px solid #000;">Condition</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${details.items.map(item => `
+          <tr style="border-bottom: 1px solid #eee;">
+            <td style="padding: 10px; border: 1px solid #000;">
+              <div style="font-weight: bold;">${item.name}</div>
+              <div style="font-size: 9px; color: #666; text-transform: capitalize;">${item.category.replace('_', ' ')} | ${item.location || '-'}</div>
+            </td>
+            <td style="padding: 10px; border: 1px solid #000; text-align: center; font-weight: bold;">${item.quantity} ${item.unit}</td>
+            <td style="padding: 10px; border: 1px solid #000; text-align: right;">${item.pricePerUnit ? formatCurrency(item.pricePerUnit) : '-'}</td>
+            <td style="padding: 10px; border: 1px solid #000; text-align: right; font-weight: bold;">${item.totalValue ? formatCurrency(item.totalValue) : '-'}</td>
+            <td style="padding: 10px; border: 1px solid #000; text-transform: capitalize; font-size: 10px;">${item.condition}</td>
+          </tr>
+        `).join('')}
+      </tbody>
+      ${details.grandTotalValue ? `
+      <tfoot>
+        <tr style="background-color: #f8fafc; font-weight: bold;">
+          <td colspan="3" style="text-align: right; padding: 10px; border: 1px solid #000;">GRAND TOTAL VALUE:</td>
+          <td style="text-align: right; padding: 10px; border: 1px solid #000; font-size: 14px; color: #3366ff;">${formatCurrency(details.grandTotalValue)}</td>
+          <td style="border: 1px solid #000;"></td>
+        </tr>
+      </tfoot>
+      ` : ''}
+    </table>
+
+    <div style="margin-top: 30px; border-top: 1px dashed #ccc; padding-top: 20px;">
+      <div style="font-size: 10px; color: #666; font-style: italic;">
+        * This report contains details of ${details.items.length} items currently in inventory.
       </div>
     </div>
   `
