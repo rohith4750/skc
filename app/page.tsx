@@ -84,9 +84,9 @@ export default function Dashboard() {
           return (d.getMonth() + 1) === selectedMonth && d.getFullYear() === selectedYear
         }
 
-        const orders = rawOrders.filter((o: any) => filterByMonthYear(o.eventDate))
-        const bills = rawBills.filter((b: any) => filterByMonthYear(b.order?.eventDate))
-        const expenses = rawExpenses.filter((e: any) => filterByMonthYear(e.eventDate))
+        const orders = rawOrders.filter((o: any) => filterByMonthYear(o.eventDate || o.createdAt))
+        const bills = rawBills.filter((b: any) => filterByMonthYear(b.order?.eventDate || b.createdAt))
+        const expenses = rawExpenses.filter((e: any) => filterByMonthYear(e.paymentDate))
 
         // Calculate financial stats
         const totalCollected = bills.reduce((sum: number, bill: any) => sum + (parseFloat(bill.paidAmount) || 0), 0)
