@@ -1,43 +1,48 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
+import { requireAuth } from '@/lib/require-auth'
 
 export async function GET(request: NextRequest) {
+  const auth = await requireAuth(request)
+  if (auth.response) return auth.response
   try {
     const alerts: any[] = []
     const now = new Date()
 
-    // 1. LOW STOCK WARNINGS
+    // 1. LOW STOCK WARNINGS (Using Stock model which has minStock)
     try {
-      // Get all inventory and filter by minQuantity threshold
-      const allInventory = await prisma.inventory.findMany()
-      const lowStock = allInventory.filter(item => {
-        const minQty = item.minQuantity ?? 10 // Default threshold: 10 if not set
-        return item.quantity <= minQty
+      const allStock = await prisma.stock.findMany({
+        where: { isActive: true }
       })
-      
+      const lowStock = allStock.filter(item => item.minStock && Number(item.currentStock) <= Number(item.minStock))
+
       lowStock.forEach(item => {
-        const minQty = item.minQuantity ?? 10 // Default threshold: 10 if not set
-        const severity = item.quantity === 0 ? 'critical' : item.quantity <= 5 ? 'high' : 'medium'
+        const currentStock = Number(item.currentStock)
+        const minStock = Number(item.minStock || 0)
+        const severity = currentStock === 0 ? 'critical' : currentStock <= minStock / 2 ? 'high' : 'medium'
         alerts.push({
           id: `stock-${item.id}`,
           type: 'low_stock',
-          title: item.quantity === 0 ? 'Out of Stock!' : 'Low Stock Warning',
-          message: `${item.name}: ${item.quantity} ${item.unit} remaining (Min: ${minQty})`,
+          title: currentStock === 0 ? 'Out of Stock!' : 'Low Stock Warning',
+          message: `${item.name}: ${currentStock} ${item.unit} remaining (Min: ${minStock})`,
           severity,
           entityId: item.id,
-          entityType: 'inventory',
+          entityType: 'stock',
           createdAt: now.toISOString(),
           data: {
             itemName: item.name,
-            currentQty: item.quantity,
-            minQty: minQty,
-            unit: item.unit
+            currentQty: currentStock,
+            minQty: minStock,
+            unit: item.unit,
+            category: item.category
           }
         })
       })
     } catch (e) {
-      console.log('Could not fetch inventory alerts:', e)
+      console.log('Could not fetch stock alerts:', e)
     }
+
+    // Inventory low stock alerts removed as minQuantity tracking was disabled
 
     // 2. PAYMENT REMINDERS (Unpaid/Partial Bills)
     try {
@@ -60,10 +65,10 @@ export async function GET(request: NextRequest) {
       })
 
       unpaidBills.forEach(bill => {
-        const pendingAmount = bill.totalAmount - (bill.paidAmount || 0)
+        const pendingAmount = Number(bill.totalAmount) - Number(bill.paidAmount || 0)
         const daysSinceCreated = Math.floor((now.getTime() - new Date(bill.createdAt).getTime()) / (1000 * 60 * 60 * 24))
         const severity = daysSinceCreated > 30 ? 'critical' : daysSinceCreated > 14 ? 'high' : daysSinceCreated > 7 ? 'medium' : 'low'
-        
+
         alerts.push({
           id: `payment-${bill.id}`,
           type: 'payment_reminder',
@@ -89,11 +94,60 @@ export async function GET(request: NextRequest) {
       console.log('Could not fetch payment alerts:', e)
     }
 
-    // 3. FAILED LOGIN ATTEMPTS (Last 24 hours)
+    // 3. UPCOMING EVENT ALERTS (Based on recent pending orders)
+    try {
+      // Get pending/confirmed orders from last 30 days (since there's no eventDate field)
+      const thirtyDaysAgo = new Date(now)
+      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30)
+
+      const recentOrders = await prisma.order.findMany({
+        where: {
+          status: {
+            in: ['pending', 'in_progress'] // Updated to use Enum values if possible, or string mapping
+          },
+          createdAt: {
+            gte: thirtyDaysAgo
+          }
+        },
+        include: {
+          customer: true
+        },
+        orderBy: { createdAt: 'desc' },
+        take: 20
+      })
+
+      recentOrders.forEach(order => {
+        const daysSinceCreated = Math.floor((now.getTime() - new Date(order.createdAt).getTime()) / (1000 * 60 * 60 * 24))
+        const severity = daysSinceCreated <= 1 ? 'critical' : daysSinceCreated <= 3 ? 'high' : 'medium'
+
+        alerts.push({
+          id: `event-${order.id}`,
+          type: 'upcoming_event',
+          title: daysSinceCreated <= 1 ? '🔔 Recent Order!' : '📅 Pending Order',
+          message: `${order.eventName || 'Order'} - ${order.customer?.name || 'Unknown'} (${order.numberOfMembers || 0} guests)`,
+          severity,
+          entityId: order.id,
+          entityType: 'order',
+          createdAt: order.createdAt.toISOString(),
+          data: {
+            eventName: order.eventName,
+            customerName: order.customer?.name,
+            createdAt: order.createdAt,
+            numberOfMembers: order.numberOfMembers,
+            totalAmount: order.totalAmount,
+            status: order.status
+          }
+        })
+      })
+    } catch (e) {
+      console.log('Could not fetch event alerts:', e)
+    }
+
+    // 4. FAILED LOGIN ATTEMPTS (Last 24 hours)
     try {
       const yesterday = new Date(now)
       yesterday.setDate(yesterday.getDate() - 1)
-      
+
       const failedLogins = await (prisma as any).loginAuditLog.findMany({
         where: {
           success: false,
@@ -117,12 +171,12 @@ export async function GET(request: NextRequest) {
       Object.entries(failuresByUser).forEach(([username, failures]) => {
         const severity = failures.length >= 5 ? 'critical' : failures.length >= 3 ? 'high' : 'medium'
         const latestFailure = failures[0]
-        
+
         alerts.push({
           id: `login-fail-${username}-${latestFailure.id}`,
           type: 'failed_login',
           title: failures.length >= 5 ? '🚨 Multiple Failed Logins!' : 'Failed Login Attempt',
-          message: `${username}: ${failures.length} failed attempt(s) in last 24h from ${latestFailure.device} (${latestFailure.browser})`,
+          message: `${username}: ${failures.length} failed attempt(s) in last 24h from ${latestFailure.device || 'Unknown'} (${latestFailure.browser || 'Unknown'})`,
           severity,
           entityId: latestFailure.id,
           entityType: 'login_audit',
@@ -168,11 +222,10 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ alerts, summary })
   } catch (error: any) {
     console.error('Error fetching alerts:', error)
-    return NextResponse.json({ 
-      alerts: [], 
+    return NextResponse.json({
+      alerts: [],
       summary: { total: 0, critical: 0, high: 0, medium: 0, low: 0, byType: {} },
-      error: 'Failed to fetch alerts' 
+      error: 'Failed to fetch alerts'
     })
   }
 }
-

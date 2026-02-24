@@ -5,11 +5,11 @@ import { Storage } from '@/lib/storage-api'
 import { fetchWithLoader } from '@/lib/fetch-with-loader'
 import { formatCurrency, formatDateTime } from '@/lib/utils'
 import Link from 'next/link'
-import { 
-  FaUsers, 
-  FaUtensils, 
-  FaShoppingCart, 
-  FaFileInvoiceDollar, 
+import {
+  FaUsers,
+  FaUtensils,
+  FaShoppingCart,
+  FaFileInvoiceDollar,
   FaMoneyBillWave,
   FaUserShield,
   FaUserTie,
@@ -75,16 +75,16 @@ export default function Dashboard() {
         ])
 
         // Calculate revenue from paid bills
-        const totalRevenue = bills.reduce((sum: number, bill: any) => sum + (bill.paidAmount || 0), 0)
-        const totalExpenses = expenses.reduce((sum: number, expense: any) => sum + (expense.amount || 0), 0)
-        const totalBilled = bills.reduce((sum: number, bill: any) => sum + (bill.totalAmount || 0), 0)
-        const totalReceivable = bills.reduce((sum: number, bill: any) => sum + (bill.remainingAmount || 0), 0)
-        const avgOrderValue = orders.length > 0 ? totalRevenue / orders.length : 0
-        const profitMargin = totalRevenue > 0 ? ((totalRevenue - totalExpenses) / totalRevenue) * 100 : 0
+        const totalRevenue = bills.reduce((sum: number, bill: any) => sum + (parseFloat(bill.paidAmount) || 0), 0)
+        const totalExpenses = expenses.reduce((sum: number, expense: any) => sum + (parseFloat(expense.amount) || 0), 0)
+        const totalBilled = bills.reduce((sum: number, bill: any) => sum + (parseFloat(bill.totalAmount) || 0), 0)
+        const totalReceivable = bills.reduce((sum: number, bill: any) => sum + (parseFloat(bill.remainingAmount) || 0), 0)
+        const avgOrderValue = orders.length > 0 ? totalBilled / orders.length : 0
+        const profitMargin = totalBilled > 0 ? ((totalBilled - totalExpenses) / totalBilled) * 100 : 0
         const collectionRate = totalBilled > 0 ? (totalRevenue / totalBilled) * 100 : 0
-        
+
         // Order status counts
-        const pendingOrders = orders.filter((o: any) => o.status === 'pending' || o.status === 'in-progress').length
+        const pendingOrders = orders.filter((o: any) => o.status === 'pending' || o.status === 'in_progress').length
         const completedOrders = orders.filter((o: any) => o.status === 'completed').length
 
         // Bill status counts
@@ -94,12 +94,12 @@ export default function Dashboard() {
           if (expense.paymentStatus) {
             return expense.paymentStatus !== 'paid'
           }
-          return (expense.paidAmount || 0) < (expense.amount || 0)
+          return (parseFloat(expense.paidAmount) || 0) < (parseFloat(expense.amount) || 0)
         })
         const pendingExpenses = pendingExpensesList.length
         const outstandingExpenses = pendingExpensesList.reduce((sum: number, expense: any) => {
-          const amount = expense.amount || 0
-          const paidAmount = expense.paidAmount || 0
+          const amount = parseFloat(expense.amount) || 0
+          const paidAmount = parseFloat(expense.paidAmount) || 0
           return sum + Math.max(0, amount - paidAmount)
         }, 0)
 
@@ -181,14 +181,16 @@ export default function Dashboard() {
       title: 'Total Customers',
       value: stats.customers,
       icon: FaUsers,
-      color: 'bg-primary-500',
+      color: 'text-primary-600',
+      bgColor: 'bg-primary-50',
       href: '/customers',
     },
     {
       title: 'Total Orders',
       value: stats.orders,
       icon: FaShoppingCart,
-      color: 'bg-accent-500',
+      color: 'text-accent-600',
+      bgColor: 'bg-accent-50',
       href: '/orders/history',
       subValue: `${stats.pendingOrders} pending`,
     },
@@ -196,7 +198,8 @@ export default function Dashboard() {
       title: 'Total Revenue',
       value: formatCurrency(stats.totalRevenue),
       icon: FaFileInvoiceDollar,
-      color: 'bg-green-500',
+      color: 'text-green-600',
+      bgColor: 'bg-green-50',
       href: '/bills',
       subValue: `${stats.paidBills} paid bills`,
     },
@@ -204,7 +207,8 @@ export default function Dashboard() {
       title: 'Total Expenses',
       value: formatCurrency(stats.totalExpenses),
       icon: FaMoneyBillWave,
-      color: 'bg-secondary-500',
+      color: 'text-red-600',
+      bgColor: 'bg-red-50',
       href: '/expenses',
     },
   ]
@@ -214,36 +218,41 @@ export default function Dashboard() {
       title: 'Menu Items',
       value: stats.menuItems,
       icon: FaUtensils,
-      color: 'bg-primary-600',
+      color: 'text-primary-600',
+      bgColor: 'bg-primary-50',
       href: '/menu',
     },
     {
       title: 'Users',
       value: stats.users,
       icon: FaUserShield,
-      color: 'bg-purple-500',
+      color: 'text-purple-600',
+      bgColor: 'bg-purple-50',
       href: '/users',
     },
     {
       title: 'Workforce',
       value: stats.workforce,
       icon: FaUserTie,
-      color: 'bg-blue-500',
+      color: 'text-blue-600',
+      bgColor: 'bg-blue-50',
       href: '/workforce',
     },
     {
-      title: 'Stock Management',
+      title: 'Stock',
       value: stats.stockItems,
       icon: FaBox,
-      color: 'bg-yellow-500',
+      color: 'text-yellow-600',
+      bgColor: 'bg-yellow-50',
       href: '/stock',
       subValue: `${stats.lowStockItems} low stock`,
     },
     {
-      title: 'Inventory Items',
+      title: 'Inventory',
       value: stats.inventoryItems,
       icon: FaWarehouse,
-      color: 'bg-gray-600',
+      color: 'text-gray-600',
+      bgColor: 'bg-gray-100',
       href: '/inventory',
     },
   ] : []
@@ -374,7 +383,7 @@ export default function Dashboard() {
   // Simple landing page for admin users
   if (userRole === 'admin' && !isSuperAdminUser) {
     return (
-      <div className="p-3 sm:p-4 md:p-5 lg:p-6 xl:p-8 pt-14 sm:pt-16 lg:pt-6 xl:pt-8 min-h-screen bg-gray-50">
+      <div className="p-3 sm:p-4 md:p-5 lg:p-5 xl:p-6 pt-12 sm:pt-14 lg:pt-5 xl:pt-6 min-h-screen bg-gray-50">
         <div className="mb-4 sm:mb-5 md:mb-6 lg:mb-8">
           <h1 className="text-xl sm:text-2xl md:text-3xl font-bold text-gray-800 text-center sm:text-left">Welcome</h1>
           <p className="text-gray-600 mt-1 sm:mt-1.5 md:mt-2 text-sm sm:text-base text-center sm:text-left">Select an option to continue</p>
@@ -405,7 +414,7 @@ export default function Dashboard() {
   }
 
   return (
-    <div className="p-3 sm:p-4 md:p-5 lg:p-6 xl:p-8 pt-14 sm:pt-16 lg:pt-6 xl:pt-8">
+    <div className="p-3 sm:p-4 md:p-5 lg:p-5 xl:p-6 pt-12 sm:pt-14 lg:pt-5 xl:pt-6">
       <div className="mb-4 sm:mb-5 md:mb-6 lg:mb-8">
         <h1 className="text-xl sm:text-2xl md:text-3xl font-bold text-gray-800 text-center sm:text-left">Dashboard</h1>
         <p className="text-gray-600 mt-1 sm:mt-1.5 md:mt-2 text-xs sm:text-sm md:text-base text-center sm:text-left">
@@ -414,27 +423,26 @@ export default function Dashboard() {
       </div>
 
       {/* Main Statistics Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-4 gap-3 sm:gap-4 md:gap-5 lg:gap-6 mb-4 sm:mb-5 md:mb-6 lg:mb-8">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-5 mb-6 lg:mb-8">
         {mainStatCards.map((stat) => {
           const Icon = stat.icon
           return (
             <Link
               key={stat.title}
               href={stat.href}
-              className="bg-white rounded-lg shadow-md p-4 sm:p-5 md:p-6 hover:shadow-lg active:scale-[0.98] transition-all relative overflow-hidden"
+              className="bg-white rounded-xl shadow-sm border border-gray-100 p-5 hover:shadow-md hover:border-primary-100 transition-all duration-300 group"
             >
-              {/* Icon at top right corner */}
-              <div className={`${stat.color} absolute top-0 right-0 p-3 sm:p-4 rounded-bl-2xl`}>
-                <Icon className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
-              </div>
-              
-              {/* Content */}
-              <div className="relative pr-12 sm:pr-16">
-                <p className="text-gray-600 text-xs sm:text-sm font-medium mb-3">{stat.title}</p>
-                <p className="text-lg sm:text-xl lg:text-2xl font-bold text-gray-800 break-words leading-tight">{stat.value}</p>
-                {stat.subValue && (
-                  <p className="text-xs text-gray-500 mt-2">{stat.subValue}</p>
-                )}
+              <div className="flex items-start justify-between">
+                <div>
+                  <p className="text-gray-500 text-sm font-medium mb-1">{stat.title}</p>
+                  <p className="text-2xl font-bold text-gray-900">{stat.value}</p>
+                  {stat.subValue && (
+                    <p className="text-xs font-medium text-gray-400 mt-1">{stat.subValue}</p>
+                  )}
+                </div>
+                <div className={`${stat.bgColor} p-3 rounded-xl group-hover:scale-110 transition-transform duration-300`}>
+                  <Icon className={`w-6 h-6 ${stat.color}`} />
+                </div>
               </div>
             </Link>
           )
@@ -443,27 +451,23 @@ export default function Dashboard() {
 
       {/* Admin Statistics Cards */}
       {isSuperAdminUser && adminStatCards.length > 0 && (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-4 gap-3 sm:gap-4 md:gap-5 lg:gap-6 mb-4 sm:mb-5 md:mb-6 lg:mb-8">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4 sm:gap-5 mb-6 lg:mb-8">
           {adminStatCards.map((stat) => {
             const Icon = stat.icon
             return (
               <Link
                 key={stat.title}
                 href={stat.href}
-                className="bg-white rounded-lg shadow-md p-4 sm:p-5 md:p-6 hover:shadow-lg active:scale-[0.98] transition-all relative overflow-hidden"
+                className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 hover:shadow-md hover:border-primary-100 transition-all duration-300 group"
               >
-                {/* Icon at top right corner */}
-                <div className={`${stat.color} absolute top-0 right-0 p-3 sm:p-4 rounded-bl-2xl`}>
-                  <Icon className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
-                </div>
-                
-                {/* Content */}
-                <div className="relative pr-12 sm:pr-16">
-                  <p className="text-gray-600 text-xs sm:text-sm font-medium mb-3">{stat.title}</p>
-                  <p className="text-lg sm:text-xl lg:text-2xl font-bold text-gray-800 break-words leading-tight">{stat.value}</p>
-                  {'subValue' in stat && stat.subValue && (
-                    <p className="text-xs text-gray-500 mt-2">{stat.subValue}</p>
-                  )}
+                <div className="flex items-center gap-4">
+                  <div className={`${stat.bgColor} p-3 rounded-xl group-hover:scale-110 transition-transform duration-300`}>
+                    <Icon className={`w-5 h-5 ${stat.color}`} />
+                  </div>
+                  <div>
+                    <p className="text-gray-500 text-xs font-medium">{stat.title}</p>
+                    <p className="text-lg font-bold text-gray-900">{stat.value}</p>
+                  </div>
                 </div>
               </Link>
             )
@@ -472,26 +476,26 @@ export default function Dashboard() {
       )}
 
       {/* Analytics Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 md:gap-5 lg:gap-6 mb-4 sm:mb-5 md:mb-6 lg:mb-8">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
         {analyticsCards.map((card) => {
           const Icon = card.icon
           return (
-            <div key={card.title} className="bg-white rounded-lg shadow-md p-4 sm:p-5 md:p-6">
-              <div className="flex items-center gap-3 mb-4">
-                <div className="bg-primary-100 p-2 rounded-lg">
-                  <Icon className="w-5 h-5 text-primary-600" />
+            <div key={card.title} className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+              <div className="flex items-center gap-3 mb-6">
+                <div className="bg-blue-50 p-2.5 rounded-xl">
+                  <Icon className="w-5 h-5 text-blue-600" />
                 </div>
                 <h2 className="text-lg font-bold text-gray-800">{card.title}</h2>
               </div>
-              <div className="space-y-3">
+              <div className="space-y-4">
                 {card.items.map((item, idx) => {
                   const ItemIcon = 'icon' in item ? item.icon : null
                   return (
-                    <div key={idx} className="flex items-center justify-between py-2 border-b border-gray-100 last:border-0">
-                      <span className="text-sm text-gray-600">{item.label}</span>
+                    <div key={idx} className="flex items-center justify-between group">
+                      <span className="text-sm font-medium text-gray-500">{item.label}</span>
                       <div className="flex items-center gap-2">
-                        {ItemIcon && <ItemIcon className={`w-4 h-4 ${item.color}`} />}
-                        <span className={`text-sm font-semibold ${item.color}`}>{item.value}</span>
+                        {ItemIcon && <ItemIcon className={`w-3.5 h-3.5 ${item.color}`} />}
+                        <span className={`text-sm font-bold ${item.color}`}>{item.value}</span>
                       </div>
                     </div>
                   )
@@ -503,17 +507,24 @@ export default function Dashboard() {
       </div>
 
       {isSuperAdminUser && superAdminHighlights.length > 0 && (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 md:gap-5 lg:gap-6 mb-4 sm:mb-5 md:mb-6 lg:mb-8">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 mb-8">
           {superAdminHighlights.map((card) => {
             const Icon = card.icon
             return (
-              <div key={card.title} className="bg-white rounded-lg shadow-md p-4 sm:p-5 md:p-6">
-                <div className="flex items-center justify-between mb-3">
-                  <h3 className="text-sm font-medium text-gray-600">{card.title}</h3>
-                  <Icon className={`w-5 h-5 ${card.color}`} />
+              <div key={card.title} className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 flex flex-col justify-between">
+                <div>
+                  <div className="flex items-center justify-between mb-4">
+                    <h3 className="text-sm font-bold text-gray-400 uppercase tracking-wider">{card.title}</h3>
+                    <div className="bg-gray-50 p-2 rounded-lg">
+                      <Icon className={`w-4 h-4 ${card.color}`} />
+                    </div>
+                  </div>
+                  <p className={`text-2xl font-black ${card.color}`}>{card.value}</p>
                 </div>
-                <p className={`text-lg sm:text-xl font-bold ${card.color}`}>{card.value}</p>
-                <p className="text-xs text-gray-500 mt-2">{card.note}</p>
+                <p className="text-xs font-medium text-gray-400 mt-4 flex items-center gap-1.5">
+                  <span className="w-1.5 h-1.5 rounded-full bg-gray-200"></span>
+                  {card.note}
+                </p>
               </div>
             )
           })}
@@ -521,16 +532,18 @@ export default function Dashboard() {
       )}
 
       {isSuperAdminUser && superAdminAlerts.length > 0 && (
-        <div className="bg-white rounded-lg shadow-md p-4 sm:p-5 md:p-6 mb-4 sm:mb-5 md:mb-6 lg:mb-8">
-          <div className="flex items-center gap-2 mb-4">
-            <FaExclamationTriangle className="text-orange-500" />
-            <h2 className="text-base sm:text-lg font-bold text-gray-800">Operational Alerts</h2>
+        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 mb-8">
+          <div className="flex items-center gap-3 mb-6">
+            <div className="bg-orange-50 p-2 rounded-xl">
+              <FaExclamationTriangle className="w-5 h-5 text-orange-500" />
+            </div>
+            <h2 className="text-lg font-bold text-gray-800">Operational Alerts</h2>
           </div>
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
             {superAdminAlerts.map((alert) => (
-              <div key={alert.label} className="bg-gray-50 rounded-lg p-3 text-center">
-                <p className="text-xs text-gray-500 mb-1">{alert.label}</p>
-                <p className={`text-sm font-semibold ${alert.color}`}>{alert.value}</p>
+              <div key={alert.label} className="bg-gray-50/50 rounded-xl p-4 border border-gray-50">
+                <p className="text-xs font-bold text-gray-400 uppercase mb-2 tracking-tight">{alert.label}</p>
+                <p className={`text-lg font-bold ${alert.color}`}>{alert.value}</p>
               </div>
             ))}
           </div>
@@ -538,50 +551,50 @@ export default function Dashboard() {
       )}
 
       {/* Quick Links */}
-      <div className="bg-white rounded-lg shadow-md p-4 sm:p-5 md:p-6">
-        <h2 className="text-base sm:text-lg md:text-xl font-bold text-gray-800 mb-3 sm:mb-4">Quick Actions</h2>
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2 sm:gap-3 md:gap-4">
-          <Link href="/customers" className="p-3 sm:p-4 bg-primary-50 rounded-lg hover:bg-primary-100 active:scale-95 transition-all text-center touch-manipulation">
-            <FaUsers className="w-5 h-5 sm:w-6 sm:h-6 text-primary-600 mx-auto mb-1.5 sm:mb-2" />
-            <p className="text-xs sm:text-sm font-medium text-gray-700">Customers</p>
+      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+        <h2 className="text-lg font-bold text-gray-800 mb-6 font-display">Quick Actions</h2>
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-4">
+          <Link href="/customers" className="p-4 bg-primary-50/50 rounded-2xl hover:bg-primary-50 transition-all text-center border border-transparent hover:border-primary-100 group">
+            <FaUsers className="w-6 h-6 text-primary-600 mx-auto mb-2 group-hover:scale-110 transition-transform" />
+            <p className="text-sm font-bold text-gray-700">Customers</p>
           </Link>
-          <Link href="/orders" className="p-3 sm:p-4 bg-accent-50 rounded-lg hover:bg-accent-100 active:scale-95 transition-all text-center touch-manipulation">
-            <FaShoppingCart className="w-5 h-5 sm:w-6 sm:h-6 text-accent-600 mx-auto mb-1.5 sm:mb-2" />
-            <p className="text-xs sm:text-sm font-medium text-gray-700">New Order</p>
+          <Link href="/orders" className="p-4 bg-accent-50/50 rounded-2xl hover:bg-accent-50 transition-all text-center border border-transparent hover:border-accent-100 group">
+            <FaShoppingCart className="w-6 h-6 text-accent-600 mx-auto mb-2 group-hover:scale-110 transition-transform" />
+            <p className="text-sm font-bold text-gray-700">New Order</p>
           </Link>
-          <Link href="/orders/history" className="p-3 sm:p-4 bg-blue-50 rounded-lg hover:bg-blue-100 active:scale-95 transition-all text-center touch-manipulation">
-            <FaFileInvoiceDollar className="w-5 h-5 sm:w-6 sm:h-6 text-blue-600 mx-auto mb-1.5 sm:mb-2" />
-            <p className="text-xs sm:text-sm font-medium text-gray-700">Orders</p>
+          <Link href="/orders/history" className="p-4 bg-blue-50/50 rounded-2xl hover:bg-blue-50 transition-all text-center border border-transparent hover:border-blue-100 group">
+            <FaFileInvoiceDollar className="w-6 h-6 text-blue-600 mx-auto mb-2 group-hover:scale-110 transition-transform" />
+            <p className="text-sm font-bold text-gray-700">Orders</p>
           </Link>
-          <Link href="/bills" className="p-3 sm:p-4 bg-green-50 rounded-lg hover:bg-green-100 active:scale-95 transition-all text-center touch-manipulation">
-            <FaFileInvoiceDollar className="w-5 h-5 sm:w-6 sm:h-6 text-green-600 mx-auto mb-1.5 sm:mb-2" />
-            <p className="text-xs sm:text-sm font-medium text-gray-700">Bills</p>
+          <Link href="/bills" className="p-4 bg-green-50/50 rounded-2xl hover:bg-green-50 transition-all text-center border border-transparent hover:border-green-100 group">
+            <FaFileInvoiceDollar className="w-6 h-6 text-green-600 mx-auto mb-2 group-hover:scale-110 transition-transform" />
+            <p className="text-sm font-bold text-gray-700">Bills</p>
           </Link>
-          <Link href="/expenses" className="p-3 sm:p-4 bg-red-50 rounded-lg hover:bg-red-100 active:scale-95 transition-all text-center touch-manipulation">
-            <FaMoneyBillWave className="w-5 h-5 sm:w-6 sm:h-6 text-red-600 mx-auto mb-1.5 sm:mb-2" />
-            <p className="text-xs sm:text-sm font-medium text-gray-700">Expenses</p>
+          <Link href="/expenses" className="p-4 bg-red-50/50 rounded-2xl hover:bg-red-50 transition-all text-center border border-transparent hover:border-red-100 group">
+            <FaMoneyBillWave className="w-6 h-6 text-red-600 mx-auto mb-2 group-hover:scale-110 transition-transform" />
+            <p className="text-sm font-bold text-gray-700">Expenses</p>
           </Link>
           {isSuperAdminUser && (
             <>
-              <Link href="/users" className="p-3 sm:p-4 bg-purple-50 rounded-lg hover:bg-purple-100 active:scale-95 transition-all text-center touch-manipulation">
-                <FaUserShield className="w-5 h-5 sm:w-6 sm:h-6 text-purple-600 mx-auto mb-1.5 sm:mb-2" />
-                <p className="text-xs sm:text-sm font-medium text-gray-700">Users</p>
+              <Link href="/users" className="p-4 bg-purple-50/50 rounded-2xl hover:bg-purple-50 transition-all text-center border border-transparent hover:border-purple-100 group">
+                <FaUserShield className="w-6 h-6 text-purple-600 mx-auto mb-2 group-hover:scale-110 transition-transform" />
+                <p className="text-sm font-bold text-gray-700">Users</p>
               </Link>
-              <Link href="/workforce" className="p-3 sm:p-4 bg-blue-50 rounded-lg hover:bg-blue-100 active:scale-95 transition-all text-center touch-manipulation">
-                <FaUserTie className="w-5 h-5 sm:w-6 sm:h-6 text-blue-600 mx-auto mb-1.5 sm:mb-2" />
-                <p className="text-xs sm:text-sm font-medium text-gray-700">Workforce</p>
+              <Link href="/workforce" className="p-4 bg-blue-50/50 rounded-2xl hover:bg-blue-50 transition-all text-center border border-transparent hover:border-blue-100 group">
+                <FaUserTie className="w-6 h-6 text-blue-600 mx-auto mb-2 group-hover:scale-110 transition-transform" />
+                <p className="text-sm font-bold text-gray-700">Workforce</p>
               </Link>
-              <Link href="/stock" className="p-3 sm:p-4 bg-yellow-50 rounded-lg hover:bg-yellow-100 active:scale-95 transition-all text-center touch-manipulation">
-                <FaBox className="w-5 h-5 sm:w-6 sm:h-6 text-yellow-600 mx-auto mb-1.5 sm:mb-2" />
-                <p className="text-xs sm:text-sm font-medium text-gray-700">Stock</p>
+              <Link href="/stock" className="p-4 bg-yellow-50/50 rounded-2xl hover:bg-yellow-50 transition-all text-center border border-transparent hover:border-yellow-100 group">
+                <FaBox className="w-6 h-6 text-yellow-600 mx-auto mb-2 group-hover:scale-110 transition-transform" />
+                <p className="text-sm font-bold text-gray-700">Stock</p>
               </Link>
-              <Link href="/inventory" className="p-3 sm:p-4 bg-gray-50 rounded-lg hover:bg-gray-100 active:scale-95 transition-all text-center touch-manipulation">
-                <FaWarehouse className="w-5 h-5 sm:w-6 sm:h-6 text-gray-600 mx-auto mb-1.5 sm:mb-2" />
-                <p className="text-xs sm:text-sm font-medium text-gray-700">Inventory</p>
+              <Link href="/inventory" className="p-4 bg-gray-50/50 rounded-2xl hover:bg-gray-50 transition-all text-center border border-transparent hover:border-gray-200 group">
+                <FaWarehouse className="w-6 h-6 text-gray-600 mx-auto mb-2 group-hover:scale-110 transition-transform" />
+                <p className="text-sm font-bold text-gray-700">Inventory</p>
               </Link>
-              <Link href="/analytics" className="p-3 sm:p-4 bg-primary-50 rounded-lg hover:bg-primary-100 active:scale-95 transition-all text-center touch-manipulation">
-                <FaChartLine className="w-5 h-5 sm:w-6 sm:h-6 text-primary-600 mx-auto mb-1.5 sm:mb-2" />
-                <p className="text-xs sm:text-sm font-medium text-gray-700">Analytics</p>
+              <Link href="/analytics" className="p-4 bg-blue-50/50 rounded-2xl hover:bg-blue-50 transition-all text-center border border-transparent hover:border-blue-100 group">
+                <FaChartLine className="w-6 h-6 text-blue-600 mx-auto mb-2 group-hover:scale-110 transition-transform" />
+                <p className="text-sm font-bold text-gray-700">Analytics</p>
               </Link>
             </>
           )}

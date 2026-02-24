@@ -2,8 +2,11 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import bcrypt from 'bcryptjs'
 import { isEmail, isNonEmptyString, validateRequiredFields } from '@/lib/validation'
+import { requireAuth } from '@/lib/require-auth'
 
-export async function GET() {
+export async function GET(request: NextRequest) {
+  const auth = await requireAuth(request)
+  if (auth.response) return auth.response
   try {
     const users = await prisma.user.findMany({
       orderBy: { createdAt: 'desc' },
@@ -29,6 +32,8 @@ export async function GET() {
 }
 
 export async function POST(request: NextRequest) {
+  const auth = await requireAuth(request)
+  if (auth.response) return auth.response
   try {
     const data = await request.json()
 

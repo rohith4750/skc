@@ -1,7 +1,7 @@
-import { formatCurrency, formatDate, formatDateTime } from './utils'
+import { formatCurrency, formatDate, formatDateTime, sanitizeMealLabel } from './utils'
 
 export interface PDFTemplateData {
-  type: 'bill' | 'expense' | 'workforce'
+  type: 'bill' | 'expense' | 'workforce' | 'statement'
   billNumber?: string
   date: string
   customer?: {
@@ -29,6 +29,7 @@ export interface PDFTemplateData {
   financial?: {
     sariAmount?: number
     transport?: number
+    waterBottlesCost?: number
     extra?: number
     totalAmount: number
     advancePaid?: number
@@ -64,6 +65,24 @@ export interface PDFTemplateData {
   }
   orderId?: string
   supervisor?: string
+  options?: {
+    splitByDate?: boolean
+  }
+  statementDetails?: {
+    customerName: string
+    customerPhone?: string
+    bills: Array<{
+      serialNumber: string
+      date: string
+      eventName: string
+      total: number
+      paid: number
+      balance: number
+    }>
+    grandTotal: number
+    totalPaid: number
+    totalBalance: number
+  }
 }
 
 export function generatePDFTemplate(data: PDFTemplateData): string {
@@ -71,7 +90,7 @@ export function generatePDFTemplate(data: PDFTemplateData): string {
   const subtitle = '(Pure Vegetarian)'
   const regdNo = 'Regd. No. 236190310003331'
   const address = 'Plot No. 115, Padmavathi Nagar, Bank Colony, Saheb Nagar. Varsthalipuram, Hyderabad - 500070.'
-  const contact = 'Email: pujayasri1989cya@gmail.com, Cell: 9866525102, 9396631933, 91933133'
+  const contact = 'Email: pujyasri1989cya@gmail.com, Cell: 9866525102, 9963691393, 9390015302'
   const topLeft = 'Telidevara Rajendraprasad'
   const topRight = 'ART FOOD ZONE'
 
@@ -109,10 +128,11 @@ export function generatePDFTemplate(data: PDFTemplateData): string {
           width: 100%;
           max-width: 100%;
           margin: 0 auto;
-          border-left: 2px solid #ffb6c1;
-          border-right: 2px solid #ffb6c1;
+          border-left: 2px solid #000;
+          border-right: 2px solid #000;
           padding: 0 15mm;
           min-height: 277mm;
+          overflow: visible;
         }
         .header {
           text-align: center;
@@ -147,7 +167,6 @@ export function generatePDFTemplate(data: PDFTemplateData): string {
           margin-bottom: 3px;
         }
         .divider {
-          border-top: 1px solid #000;
           margin: 15px 0;
         }
         .section-title {
@@ -172,13 +191,11 @@ export function generatePDFTemplate(data: PDFTemplateData): string {
         }
         .form-value {
           flex: 1;
-          border-bottom: 1px dotted #000;
           padding-bottom: 2px;
           min-height: 16px;
         }
         .form-value-inline {
           display: inline-block;
-          border-bottom: 1px dotted #000;
           padding-bottom: 2px;
           min-width: 100px;
           margin-left: 5px;
@@ -197,7 +214,6 @@ export function generatePDFTemplate(data: PDFTemplateData): string {
         }
         .financial-value {
           font-weight: bold;
-          border-bottom: 1px dotted #000;
           min-width: 120px;
           text-align: right;
           padding-bottom: 2px;
@@ -255,15 +271,15 @@ export function generatePDFTemplate(data: PDFTemplateData): string {
           font-weight: bold;
         }
         .expense-details {
-          background: #f9f9f9;
+          background: #fff;
           padding: 10px;
-          border-radius: 5px;
+          border: 1px solid #000;
           margin: 10px 0;
         }
         .workforce-summary {
-          background: #f9f9f9;
+          background: #fff;
           padding: 10px;
-          border-radius: 5px;
+          border: 1px solid #000;
           margin: 10px 0;
         }
         .expense-item {
@@ -297,6 +313,7 @@ export function generatePDFTemplate(data: PDFTemplateData): string {
         ${data.type === 'bill' ? generateBillContent(data) : ''}
         ${data.type === 'expense' ? generateExpenseContent(data) : ''}
         ${data.type === 'workforce' ? generateWorkforceContent(data) : ''}
+        ${data.type === 'statement' ? generateStatementContent(data) : ''}
 
         <!-- Terms & Conditions -->
         ${generateTermsAndConditions(data.type)}
@@ -321,240 +338,224 @@ export function generatePDFTemplate(data: PDFTemplateData): string {
 function generateBillContent(data: PDFTemplateData): string {
   const customer = data.customer || {}
   const eventDetails = data.eventDetails || {}
-  const mealDetails = data.mealDetails || {}
-  const financial = data.financial || { totalAmount: 0 }
   const mealTypeAmounts = data.mealTypeAmounts || {}
   const stalls = data.stalls || []
-  const statusColor = data.status ? {
-    paid: { bg: '#10b981', text: '#ffffff' },
-    partial: { bg: '#f59e0b', text: '#ffffff' },
-    pending: { bg: '#ef4444', text: '#ffffff' },
-  }[data.status] : { bg: '#ef4444', text: '#ffffff' }
+  const financial = data.financial || { totalAmount: 0 }
+  const splitByDate = data.options?.splitByDate || false
 
-  // Process all meal types dynamically from mealTypeAmounts
-  const mealTypeRows: string[] = []
-  if (Object.keys(mealTypeAmounts).length > 0) {
-    Object.entries(mealTypeAmounts).forEach(([mealType, mealData]) => {
-      const dataObj = typeof mealData === 'object' && mealData !== null ? mealData : { amount: typeof mealData === 'number' ? mealData : 0 }
-      const persons = (typeof dataObj === 'object' && 'numberOfMembers' in dataObj) ? (dataObj.numberOfMembers || 0) : 0
-      const amount = (typeof dataObj === 'object' && 'amount' in dataObj) ? dataObj.amount : (typeof mealData === 'number' ? mealData : 0)
-      const rate = persons > 0 ? amount / persons : 0
-      
-      // Format meal type name (capitalize first letter)
-      const mealTypeName = mealType.charAt(0).toUpperCase() + mealType.slice(1).toLowerCase()
-      
-      mealTypeRows.push(`
-        <div class="form-row">
-          <span class="form-label">${mealTypeName} number of Persons:</span>
-          <span class="form-value-inline">${persons || ''}</span>
-          <span style="margin-left: 10px;">Rate per Head:</span>
-          <span class="form-value-inline">${rate > 0 ? formatCurrency(rate) : ''}</span>
-        </div>
-      `)
-    })
-  } else {
-    // Fallback to mealDetails if mealTypeAmounts is not provided
-    if (mealDetails.tiffins?.persons) {
-      mealTypeRows.push(`
-        <div class="form-row">
-          <span class="form-label">Tiffins number of Persons:</span>
-          <span class="form-value-inline">${mealDetails.tiffins.persons}</span>
-          <span style="margin-left: 10px;">Rate per Head:</span>
-          <span class="form-value-inline">${mealDetails.tiffins.rate ? formatCurrency(mealDetails.tiffins.rate) : ''}</span>
-        </div>
-      `)
-    }
-    if (mealDetails.lunchDinner?.persons) {
-      mealTypeRows.push(`
-        <div class="form-row">
-          <span class="form-label">Lunch / Dinner:</span>
-          <span class="form-value-inline">${mealDetails.lunchDinner.type || ''}</span>
-          <span style="margin-left: 10px;">Number of Persons:</span>
-          <span class="form-value-inline">${mealDetails.lunchDinner.persons}</span>
-          <span style="margin-left: 10px;">Rate per Head:</span>
-          <span class="form-value-inline">${mealDetails.lunchDinner.rate ? formatCurrency(mealDetails.lunchDinner.rate) : ''}</span>
-        </div>
-      `)
-    }
-    if (mealDetails.snacks?.persons) {
-      mealTypeRows.push(`
-        <div class="form-row">
-          <span class="form-label">Snacks Number of Persons:</span>
-          <span class="form-value-inline">${mealDetails.snacks.persons}</span>
-          <span style="margin-left: 10px;">Rate per Head:</span>
-          <span class="form-value-inline">${mealDetails.snacks.rate ? formatCurrency(mealDetails.snacks.rate) : ''}</span>
-        </div>
-      `)
-    }
-  }
+  // Group sessions by date
+  const groupedByDate: Record<string, any[]> = {}
+  Object.entries(mealTypeAmounts).forEach(([key, mealData]) => {
+    const dataObj = typeof mealData === 'object' && mealData !== null ? mealData : { amount: typeof mealData === 'number' ? mealData : 0 } as any
+    const date = dataObj.date || 'Other'
+    if (!groupedByDate[date]) groupedByDate[date] = []
+    groupedByDate[date].push({ key, ...dataObj })
+  })
 
-  // Process stalls for extra charges
-  const stallsRows: string[] = []
-  if (stalls.length > 0) {
-    stalls.forEach((stall) => {
-      const cost = typeof stall.cost === 'string' ? parseFloat(stall.cost) : (stall.cost || 0)
-      if (cost > 0) {
-        stallsRows.push(`
-          <div class="form-row">
-            <span class="form-label">${stall.category || 'Stall'}:</span>
-            <span class="form-value">${stall.description || ''} - ${formatCurrency(cost)}</span>
+  const sortedDates = Object.keys(groupedByDate).sort((a, b) => {
+    if (a === 'Other') return 1
+    if (b === 'Other') return -1
+    const da = new Date(a).getTime()
+    const db = new Date(b).getTime()
+    return (isNaN(da) ? Infinity : da) - (isNaN(db) ? Infinity : db)
+  })
+
+  // If we are NOT splitting, we just run the existing logic once for all dates
+  // If we ARE splitting, we loop through dates and generate a full bill section for each.
+
+  const renderDateBill = (targetDate: string | null) => {
+    const mealTypeRows: string[] = []
+    const priorityOrder = ['breakfast', 'tiffins', 'lunch', 'snacks', 'dinner', 'supper'];
+
+    // Filter sessions if we are splitting
+    const datesToRender = targetDate ? [targetDate] : sortedDates;
+
+    datesToRender.forEach(date => {
+      // Add date header if not splitting (grouped view)
+      if (!splitByDate && sortedDates.length > 1) {
+        mealTypeRows.push(`
+          <div class="form-row" style="background: #f9f9f9; padding: 4px; font-weight: bold; font-size: 11px; margin-top: 10px; border-bottom: 1px solid #eee;">
+            Event Date: ${formatDate(date)}
           </div>
         `)
       }
+
+      const sessions = groupedByDate[date].sort((a, b) => {
+        const typeA = (a.menuType || a.key).toLowerCase()
+        const typeB = (b.menuType || b.key).toLowerCase()
+        const indexA = priorityOrder.indexOf(typeA);
+        const indexB = priorityOrder.indexOf(typeB);
+        if (indexA !== -1 && indexB !== -1) return indexA - indexB;
+        if (indexA !== -1) return -1;
+        if (indexB !== -1) return 1;
+        return typeA.localeCompare(typeB);
+      })
+
+      sessions.forEach(session => {
+        const persons = session.numberOfMembers || 0
+        const amount = session.amount || 0
+        const pricingMethod = session.pricingMethod || 'manual'
+        const platePrice = session.platePrice || 0
+        const manualAmount = session.manualAmount || 0
+
+        let displayAmount = amount
+        if (pricingMethod === 'manual' && manualAmount > 0) {
+          displayAmount = manualAmount
+        }
+
+        let rateDisplay = ''
+        if (pricingMethod === 'plate-based' && platePrice > 0) {
+          rateDisplay = formatCurrency(platePrice)
+          if (!displayAmount || displayAmount === 0) {
+            displayAmount = persons * platePrice
+          }
+        }
+
+        const menuType = session.menuType || session.key
+        const mealTypeName = sanitizeMealLabel(menuType)
+
+        mealTypeRows.push(`
+          <div class="form-row">
+            <span class="form-label">${mealTypeName} No of Persons:${(!splitByDate && sortedDates.length > 1) ? `<br><small style="color:#666;font-weight:normal">${formatDate(date)}</small>` : ''}</span>
+            <span class="form-value-inline" style="width: 50px;">${persons || ''}</span>
+            <span style="font-size: 10px; margin-left: 10px;">Rate:</span>
+            <span class="form-value-inline" style="width: 80px;">${rateDisplay}</span>
+            <span style="font-size: 10px; margin-left: 10px;">Total:</span>
+            <span class="form-value-inline" style="width: 100px;">${displayAmount > 0 ? formatCurrency(displayAmount) : ''}</span>
+          </div>
+        `)
+      })
     })
+
+    // Calculate subtotal for this specific bill section
+    let currentTotal = 0
+    if (splitByDate && targetDate) {
+      currentTotal = groupedByDate[targetDate].reduce((sum, s) => sum + (s.amount || 0), 0)
+    } else {
+      currentTotal = financial.totalAmount
+    }
+
+    // Determine what to show for financial footer
+    // If splitting, we show a simplified footer per page
+    // If grouped, we show the full financial breakdown
+    const showFullFinancial = !splitByDate || (splitByDate && sortedDates.length === 1)
+
+    // Stall rows (only on first page if splitting or all if grouped)
+    const stallsRows: string[] = []
+    if (stalls.length > 0 && (!splitByDate || (splitByDate && targetDate === sortedDates[0]))) {
+      stalls.forEach((stall) => {
+        const cost = typeof stall.cost === 'string' ? parseFloat(stall.cost) : (stall.cost || 0)
+        if (cost > 0) {
+          stallsRows.push(`
+            <div class="form-row">
+              <span class="form-label">${stall.category || 'Stall'}:</span>
+              <span class="form-value">${stall.description || ''} - ${formatCurrency(cost)}</span>
+            </div>
+          `)
+        }
+      })
+    }
+
+    return `
+      <div class="bill-page-section" style="${splitByDate && targetDate !== sortedDates[sortedDates.length - 1] ? 'page-break-after: always;' : ''}">
+        <!-- Bill Info -->
+        <div class="bill-info">
+          <div>
+            <div class="bill-number">Bill No: SKC-${data.billNumber || 'N/A'}</div>
+            <div style="font-size: 10px; margin-top: 3px;">Date: ${formatDate(data.date)}</div>
+          </div>
+        </div>
+
+        <!-- Customer Details -->
+        <div class="form-section">
+          <div class="section-title">CUSTOMER DETAILS</div>
+          <div class="form-row">
+            <span class="form-label">Name:</span>
+            <span class="form-value">${customer.name || ''}</span>
+          </div>
+          <div class="form-row" style="margin-bottom: 2px;">
+            <span class="form-label">Address:</span>
+            <span class="form-value" style="font-size: 10px;">${customer.address || ''}</span>
+          </div>
+          <div class="form-row">
+            <span class="form-label">Contact No:</span>
+            <span class="form-value">${customer.phone || ''}</span>
+          </div>
+          <div class="form-row">
+            <span class="form-label">Function Date:</span>
+            <span class="form-value">${splitByDate && targetDate ? formatDate(targetDate) : (eventDetails.functionDate || '')}</span>
+          </div>
+        </div>
+
+        <!-- Bill Summary -->
+        <div class="form-section" style="border: 2px solid #000; padding: 12px; margin: 15px 0; min-height: 120mm; overflow: visible;">
+          <div style="font-weight: bold; font-size: 14px; margin-bottom: 10px; text-transform: uppercase; text-align: center;">
+            ${splitByDate ? 'PARTIAL BILL SUMMARY' : 'BILL SUMMARY'}
+          </div>
+          
+          ${mealTypeRows.length > 0 ? mealTypeRows.join('') : ''}
+          
+          ${stallsRows.length > 0 ? `
+            <div style="margin-top: 10px; border-top: 1px dashed #ccc; padding-top: 5px;">
+              <div style="font-weight: 600; font-size: 11px; margin-bottom: 5px;">STALLS / EXTRAS</div>
+              ${stallsRows.join('')}
+            </div>
+          ` : ''}
+          
+          <div style="margin-top: 15px; border-top: 1px solid #ccc; padding-top: 10px;">
+            ${showFullFinancial && financial.waterBottlesCost ? `
+            <div class="financial-row">
+              <span class="financial-label">Water Bottles:</span>
+              <span class="financial-value">${formatCurrency(financial.waterBottlesCost)}</span>
+            </div>
+            ` : ''}
+            ${showFullFinancial && financial.transport ? `
+            <div class="financial-row">
+              <span class="financial-label">Transport:</span>
+              <span class="financial-value">${formatCurrency(financial.transport)}</span>
+            </div>
+            ` : ''}
+            
+            ${showFullFinancial ? `
+              <div class="financial-row">
+                <span class="financial-label">Advance Paid:</span>
+                <span class="financial-value">${financial.advancePaid ? formatCurrency(financial.advancePaid) : formatCurrency(0)}</span>
+              </div>
+              ${(financial.paidAmount || 0) > (financial.advancePaid || 0) ? `
+              <div class="financial-row">
+                <span class="financial-label">Additional Paid:</span>
+                <span class="financial-value">${formatCurrency((financial.paidAmount || 0) - (financial.advancePaid || 0))}</span>
+              </div>
+              ` : ''}
+            ` : ''}
+
+            <div class="financial-row" style="border-top: 2px solid #000; padding-top: 8px; margin-top: 8px;">
+              <span class="financial-label" style="font-weight: bold;">${splitByDate ? 'Date Total:' : 'Grand Total:'}</span>
+              <span class="financial-value" style="font-weight: bold;">${formatCurrency(currentTotal)}</span>
+            </div>
+            ${showFullFinancial ? `
+              <div class="financial-row">
+                <span class="financial-label">Balance Amount:</span>
+                <span class="financial-value">${formatCurrency(financial.balanceAmount || financial.remainingAmount || 0)}</span>
+              </div>
+            ` : ''}
+          </div>
+        </div>
+      </div>
+    `
   }
 
-  // Services display
-  const servicesDisplay = data.services && data.services.length > 0 
-    ? data.services.join(', ') 
-    : ''
-
-  return `
-    <!-- Bill Info -->
-    <div class="bill-info">
-      <div>
-        <div class="bill-number">Bill No: ${data.billNumber || 'N/A'}</div>
-        <div style="font-size: 10px; margin-top: 3px;">Date: ${formatDate(data.date)}</div>
-      </div>
-      <div class="status-badge" style="background-color: ${statusColor.bg}; color: ${statusColor.text};">
-        ${data.status ? data.status.toUpperCase() : 'PENDING'}
-      </div>
-    </div>
-
-    <!-- Customer Details -->
-    <div class="form-section">
-      <div class="section-title">CUSTOMER DETAILS</div>
-      <div class="form-row">
-        <span class="form-label">Bill No:</span>
-        <span class="form-value">${data.billNumber || ''}</span>
-      </div>
-      <div class="form-row">
-        <span class="form-label">Name:</span>
-        <span class="form-value">${customer.name || ''}</span>
-      </div>
-      <div class="form-row">
-        <span class="form-label">Address:</span>
-        <span class="form-value">${customer.address || ''}</span>
-      </div>
-      <div class="form-row">
-        <span class="form-label">Contact No:</span>
-        <span class="form-value">${customer.phone || ''}</span>
-      </div>
-      <div class="form-row">
-        <span class="form-label">Function Date:</span>
-        <span class="form-value">${eventDetails.functionDate || ''}</span>
-      </div>
-      <div class="form-row">
-        <span class="form-label">Function Time:</span>
-        <span class="form-value">${eventDetails.functionTime || ''}</span>
-      </div>
-      <div class="form-row">
-        <span class="form-label">Function Venue:</span>
-        <span class="form-value">${eventDetails.functionVenue || ''}</span>
-      </div>
-      ${servicesDisplay ? `
-      <div class="form-row">
-        <span class="form-label">Services:</span>
-        <span class="form-value">${servicesDisplay}</span>
-      </div>
-      ` : ''}
-    </div>
-
-    <!-- Members Summary -->
-    <div class="form-section" style="background: #f0fdf4; padding: 12px; border-radius: 8px; margin: 15px 0; border: 1px solid #86efac;">
-      <div style="font-weight: bold; font-size: 14px; color: #166534; margin-bottom: 10px; text-transform: uppercase;">👥 Members / Guests Summary</div>
-      ${data.numberOfMembers ? `
-      <div class="form-row">
-        <span class="form-label" style="font-weight: bold;">Total Members:</span>
-        <span class="form-value" style="font-size: 16px; font-weight: bold; color: #166534;">${data.numberOfMembers}</span>
-      </div>
-      ` : ''}
-      ${Object.keys(mealTypeAmounts).length > 0 ? Object.entries(mealTypeAmounts).map(([mealType, mealData]) => {
-        const dataObj = typeof mealData === 'object' && mealData !== null ? mealData : { amount: 0 }
-        const persons = (typeof dataObj === 'object' && 'numberOfMembers' in dataObj) ? (dataObj.numberOfMembers || 0) : 0
-        if (!persons) return ''
-        const mealTypeName = mealType.charAt(0).toUpperCase() + mealType.slice(1).toLowerCase()
-        return `
-        <div class="form-row" style="margin-top: 5px;">
-          <span class="form-label">${mealTypeName} Members:</span>
-          <span class="form-value" style="font-weight: 600;">${persons}</span>
-        </div>
-        `
-      }).join('') : ''}
-    </div>
-
-    <!-- Meal Details -->
-    ${mealTypeRows.length > 0 ? `
-    <div class="form-section">
-      ${mealTypeRows.join('')}
-    </div>
-    ` : ''}
-
-    ${stallsRows.length > 0 ? `
-    <!-- Stalls/Extra Charges -->
-    <div class="form-section">
-      <div class="section-title">ADDITIONAL CHARGES</div>
-      ${stallsRows.join('')}
-    </div>
-    ` : ''}
-
-    <!-- Financial Summary -->
-    <div class="financial-section">
-      ${financial.sariAmount ? `
-      <div class="form-row">
-        <span class="form-label">Sari Amount:</span>
-        <span class="form-value">${formatCurrency(financial.sariAmount)}</span>
-      </div>
-      ` : ''}
-      ${financial.transport ? `
-      <div class="form-row">
-        <span class="form-label">Transport:</span>
-        <span class="form-value">${formatCurrency(financial.transport)}</span>
-      </div>
-      ` : ''}
-      ${financial.extra ? `
-      <div class="form-row">
-        <span class="form-label">If any Extra:</span>
-        <span class="form-value">${formatCurrency(financial.extra)}</span>
-      </div>
-      ` : ''}
-      ${financial.discount && financial.discount > 0 ? `
-      <div class="form-row">
-        <span class="form-label">Discount:</span>
-        <span class="form-value">${formatCurrency(financial.discount)}</span>
-      </div>
-      ` : ''}
-      <div class="financial-row">
-        <span class="financial-label">Total Amount:</span>
-        <span class="financial-value">${formatCurrency(financial.totalAmount)}</span>
-      </div>
-      <div class="financial-row">
-        <span class="financial-label">Advance Paid:</span>
-        <span class="financial-value">${financial.advancePaid ? formatCurrency(financial.advancePaid) : formatCurrency(0)}</span>
-      </div>
-      ${financial.paidAmount && financial.paidAmount > 0 ? `
-      <div class="financial-row">
-        <span class="financial-label">Amount Paid:</span>
-        <span class="financial-value">${formatCurrency(financial.paidAmount)}</span>
-      </div>
-      ` : ''}
-      <div class="financial-row">
-        <span class="financial-label">Balance Amount:</span>
-        <span class="financial-value">${formatCurrency(financial.balanceAmount || financial.remainingAmount || 0)}</span>
-      </div>
-    </div>
-  `
+  if (splitByDate && sortedDates.length > 1) {
+    return sortedDates.map(date => renderDateBill(date)).join('')
+  } else {
+    return renderDateBill(null)
+  }
 }
 
 function generateExpenseContent(data: PDFTemplateData): string {
   const expense = data.expenseDetails || { amount: 0 }
   const customer = data.customer || {}
   const paymentStatus = expense.paymentStatus || 'pending'
-  const statusColor = {
-    paid: { bg: '#10b981', text: '#ffffff' },
-    partial: { bg: '#f59e0b', text: '#ffffff' },
-    pending: { bg: '#ef4444', text: '#ffffff' },
-  }[paymentStatus] || { bg: '#ef4444', text: '#ffffff' }
 
   return `
     <!-- Expense Info -->
@@ -563,7 +564,7 @@ function generateExpenseContent(data: PDFTemplateData): string {
         <div class="bill-number">Expense Receipt No: ${data.billNumber || 'N/A'}</div>
         <div style="font-size: 10px; margin-top: 3px;">Date: ${formatDate(data.date)}</div>
       </div>
-      <div class="status-badge" style="background-color: ${statusColor.bg}; color: ${statusColor.text};">
+      <div class="status-badge" style="background-color: #fff; color: #000; border: 1px solid #000;">
         ${paymentStatus.toUpperCase()}
       </div>
     </div>
@@ -698,8 +699,8 @@ function generateWorkforceContent(data: PDFTemplateData): string {
   `
 }
 
-function generateTermsAndConditions(type: 'bill' | 'expense' | 'workforce'): string {
-  if (type === 'bill') {
+function generateTermsAndConditions(type: 'bill' | 'expense' | 'workforce' | 'statement'): string {
+  if (type === 'bill' || type === 'statement') {
     return `
       <div class="terms-section">
         <div class="terms-title">TERMS & CONDITIONS</div>
@@ -740,4 +741,57 @@ function generateTermsAndConditions(type: 'bill' | 'expense' | 'workforce'): str
     `
   }
   return ''
+}
+function generateStatementContent(data: PDFTemplateData): string {
+  const details = data.statementDetails
+  if (!details) return ''
+
+  return `
+    <div class="section-title">STATEMENT OF ACCOUNT</div>
+    
+    <div style="margin-bottom: 25px;">
+      <div style="font-weight: bold; font-size: 14px; margin-bottom: 5px;">Customer: ${details.customerName}</div>
+      ${details.customerPhone ? `<div style="font-size: 11px;">Phone: ${details.customerPhone}</div>` : ''}
+      <div style="font-size: 11px; margin-top: 5px;">Date: ${formatDate(new Date().toISOString())}</div>
+    </div>
+
+    <table class="items-table">
+      <thead>
+        <tr>
+          <th style="text-align: left;">Bill ID</th>
+          <th style="text-align: left;">Date</th>
+          <th style="text-align: left;">Event Name</th>
+          <th style="text-align: right;">Total Amount</th>
+          <th style="text-align: right;">Paid</th>
+          <th style="text-align: right;">Balance</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${details.bills.map(bill => `
+          <tr>
+            <td>#${bill.serialNumber}</td>
+            <td>${formatDate(bill.date)}</td>
+            <td>${bill.eventName || 'N/A'}</td>
+            <td style="text-align: right;">${formatCurrency(bill.total)}</td>
+            <td style="text-align: right;">${formatCurrency(bill.paid)}</td>
+            <td style="text-align: right; font-weight: bold;">${formatCurrency(bill.balance)}</td>
+          </tr>
+        `).join('')}
+      </tbody>
+      <tfoot>
+        <tr style="background-color: #f8fafc; font-weight: bold;">
+          <td colspan="3" style="text-align: right; padding: 10px;">GRAND TOTAL:</td>
+          <td style="text-align: right; padding: 10px;">${formatCurrency(details.grandTotal)}</td>
+          <td style="text-align: right; padding: 10px; color: #10b981;">${formatCurrency(details.totalPaid)}</td>
+          <td style="text-align: right; padding: 10px; color: #ef4444; font-size: 16px;">${formatCurrency(details.totalBalance)}</td>
+        </tr>
+      </tfoot>
+    </table>
+
+    <div style="margin-top: 30px; border-top: 1px dashed #ccc; padding-top: 20px;">
+      <div style="font-size: 10px; color: #666; font-style: italic;">
+        * This statement summarizes the selected outstanding and paid bills for the customer listed above.
+      </div>
+    </div>
+  `
 }

@@ -87,11 +87,10 @@ export function getSupervisorTableConfig(): TableConfig<Supervisor> {
             onClick={(e) => {
               e.stopPropagation()
             }}
-            className={`px-3 py-1 rounded-full text-xs font-medium ${
-              supervisor.isActive 
-                ? 'bg-green-100 text-green-800' 
-                : 'bg-red-100 text-red-800'
-            }`}
+            className={`px-3 py-1 rounded-full text-xs font-medium ${supervisor.isActive
+              ? 'bg-green-100 text-green-800'
+              : 'bg-red-100 text-red-800'
+              }`}
           >
             {supervisor.isActive ? 'Active' : 'Inactive'}
           </button>
@@ -125,6 +124,16 @@ export function getMenuItemTableConfig(): TableConfig<MenuItem> {
         className: '',
       },
       {
+        key: 'price',
+        header: 'Price',
+        render: (item) => <div className="text-sm text-gray-900">{item.price ? formatCurrency(item.price) : '-'}</div>,
+      },
+      {
+        key: 'unit',
+        header: 'Unit',
+        render: (item) => <div className="text-sm text-gray-900">{item.unit || '-'}</div>,
+      },
+      {
         key: 'status',
         header: 'Status',
         render: (item) => (
@@ -132,11 +141,10 @@ export function getMenuItemTableConfig(): TableConfig<MenuItem> {
             onClick={(e) => {
               e.stopPropagation()
             }}
-            className={`px-3 py-1 rounded-full text-xs font-medium ${
-              item.isActive 
-                ? 'bg-green-100 text-green-800' 
-                : 'bg-red-100 text-red-800'
-            }`}
+            className={`px-3 py-1 rounded-full text-xs font-medium ${item.isActive
+              ? 'bg-green-100 text-green-800'
+              : 'bg-red-100 text-red-800'
+              }`}
           >
             {item.isActive ? 'Active' : 'Inactive'}
           </button>
@@ -150,6 +158,23 @@ export function getMenuItemTableConfig(): TableConfig<MenuItem> {
 type BillWithOrder = Bill & { order?: Order & { customer?: Customer } }
 
 export function getBillTableConfig(): TableConfig<BillWithOrder> {
+  const getTotalMembers = (bill: BillWithOrder) => {
+    const mealTypeAmounts = bill.order?.mealTypeAmounts as
+      | Record<string, { numberOfMembers?: number } | number>
+      | null
+      | undefined
+    if (!mealTypeAmounts) return bill.order?.numberOfMembers || null
+
+    let total = 0
+    Object.values(mealTypeAmounts).forEach((value) => {
+      if (typeof value === 'object' && value !== null && (value as any).numberOfMembers) {
+        total += Number((value as any).numberOfMembers) || 0
+      }
+    })
+
+    return total > 0 ? total : bill.order?.numberOfMembers || null
+  }
+
   const getEventDate = (bill: BillWithOrder) => {
     const mealTypeAmounts = bill.order?.mealTypeAmounts as
       | Record<string, { date?: string } | number>
@@ -164,8 +189,27 @@ export function getBillTableConfig(): TableConfig<BillWithOrder> {
 
   const getServicesSummary = (bill: BillWithOrder) => {
     const services = bill.order?.services as string[] | undefined
-    if (!services || services.length === 0) return 'No services'
-    return services.map((service) => service.charAt(0).toUpperCase() + service.slice(1)).join(', ')
+    if (services && services.length > 0) {
+      return services.map((service) => service.charAt(0).toUpperCase() + service.slice(1)).join(', ')
+    }
+
+    const mealTypeAmounts = bill.order?.mealTypeAmounts as
+      | Record<string, { services?: string[] } | number>
+      | null
+      | undefined
+    if (!mealTypeAmounts) return 'No services'
+
+    const mergedServices = new Set<string>()
+    Object.values(mealTypeAmounts).forEach((value) => {
+      if (typeof value === 'object' && value !== null && Array.isArray(value.services)) {
+        value.services.forEach((service) => mergedServices.add(service))
+      }
+    })
+
+    if (mergedServices.size === 0) return 'No services'
+    return Array.from(mergedServices)
+      .map((service) => service.charAt(0).toUpperCase() + service.slice(1))
+      .join(', ')
   }
 
   return {
@@ -206,15 +250,18 @@ export function getBillTableConfig(): TableConfig<BillWithOrder> {
       },
       {
         key: 'createdAt',
-        header: 'Date',
-        render: (bill) => <div className="text-sm text-gray-900">{formatDateTime(bill.createdAt)}</div>,
+        header: 'Event Date',
+        render: (bill) => {
+          const eventDate = getEventDate(bill)
+          return <div className="text-sm text-gray-900">{eventDate || formatDateTime(bill.createdAt)}</div>
+        },
       },
       {
         key: 'details',
         header: 'Details',
         render: (bill) => (
           <div className="text-xs text-gray-600 space-y-1">
-            <div>Members: {bill.order?.numberOfMembers || 'N/A'}</div>
+            <div>Members: {getTotalMembers(bill) || 'N/A'}</div>
             <div>Services: {getServicesSummary(bill)}</div>
           </div>
         ),
@@ -266,11 +313,10 @@ export function getBillTableConfig(): TableConfig<BillWithOrder> {
         key: 'status',
         header: 'Status',
         render: (bill) => (
-          <span className={`px-3 py-1 rounded-full text-xs font-medium ${
-            bill.status === 'paid' ? 'bg-green-100 text-green-800' :
+          <span className={`px-3 py-1 rounded-full text-xs font-medium ${bill.status === 'paid' ? 'bg-green-100 text-green-800' :
             bill.status === 'partial' ? 'bg-yellow-100 text-yellow-800' :
-            'bg-red-100 text-red-800'
-          }`}>
+              'bg-red-100 text-red-800'
+            }`}>
             {bill.status.charAt(0).toUpperCase() + bill.status.slice(1)}
           </span>
         ),

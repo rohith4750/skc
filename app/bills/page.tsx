@@ -3,72 +3,71 @@
 import { useEffect, useState, useMemo } from 'react'
 import { formatCurrency, formatDateTime, formatDate, sendWhatsAppMessage } from '@/lib/utils'
 import { Bill, Order, Customer } from '@/types'
-import { FaPrint, FaCheck, FaEdit, FaFilter, FaChartLine, FaWallet, FaPercent, FaCalendarAlt, FaEnvelope, FaWhatsapp } from 'react-icons/fa'
+import {
+  FaPrint, FaCheck, FaEdit, FaFilter, FaChartLine, FaWallet,
+  FaPercent, FaCalendarAlt, FaEnvelope, FaWhatsapp, FaFileImage,
+  FaChevronLeft, FaChevronRight, FaHistory, FaPlus, FaUser, FaUsers, FaInfoCircle, FaFileInvoiceDollar, FaTimes, FaTrash
+} from 'react-icons/fa'
 import toast from 'react-hot-toast'
 import { fetchWithLoader } from '@/lib/fetch-with-loader'
-import Table from '@/components/Table'
-import { getBillTableConfig } from '@/components/table-configs'
 import jsPDF from 'jspdf'
 import html2canvas from 'html2canvas'
-import { generatePDFTemplate, PDFTemplateData } from '@/lib/pdf-template'
+import { generatePDFTemplate } from '@/lib/pdf-template'
+import { buildOrderPdfHtml } from '@/lib/order-pdf-html'
+
+interface ExtendedBill {
+  id: string;
+  serialNumber: number;
+  orderId: string;
+  totalAmount: any;
+  paidAmount: any;
+  remainingAmount: any;
+  status: string;
+  paymentHistory: any;
+  createdAt: string;
+  updatedAt: string;
+  order: Order & { items: any[], customer: Customer };
+}
+
+const getGuestCount = (order: Order) => {
+  if (order.numberOfMembers) return Number(order.numberOfMembers);
+  const mealTypeAmounts = order.mealTypeAmounts as Record<string, any>;
+  if (!mealTypeAmounts || typeof mealTypeAmounts !== 'object') return 0;
+
+  const counts = Object.values(mealTypeAmounts).map((mt: any) => {
+    // Check for plate count or member count
+    return Number(mt?.numberOfPlates || mt?.numberOfMembers || 0);
+  });
+
+  return counts.length > 0 ? Math.max(...counts) : 0;
+}
 
 export default function BillsPage() {
-  const [bills, setBills] = useState<Array<Bill & { order?: Order & { customer?: Customer } }>>([])
-  const [currentPage, setCurrentPage] = useState(1)
-  const [itemsPerPage, setItemsPerPage] = useState(10)
-  const [showFilters, setShowFilters] = useState(false)
-  const [statusFilter, setStatusFilter] = useState<string>('all')
-  const [customerSearch, setCustomerSearch] = useState<string>('')
-  const [dateRange, setDateRange] = useState({ start: '', end: '' })
-  const loadBills = async (showToast = false) => {
+  const [bills, setBills] = useState<ExtendedBill[]>([])
+  const [loading, setLoading] = useState(true)
+  const [searchQuery, setSearchQuery] = useState('')
+  const [selectedBill, setSelectedBill] = useState<ExtendedBill | null>(null)
+  const [isDrawerOpen, setIsDrawerOpen] = useState(false)
+  const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false)
+  const [paymentData, setPaymentData] = useState({
+    amount: 0,
+    method: 'cash' as string,
+    notes: ''
+  })
+
+  // Load Bills
+  const loadBills = async () => {
+    setLoading(true)
     try {
-      const timestamp = new Date().getTime()
-      const response = await fetchWithLoader(`/api/bills?t=${timestamp}`, {
-        cache: 'no-store',
-        headers: {
-          'Cache-Control': 'no-cache, no-store, must-revalidate',
-          'Pragma': 'no-cache',
-        },
-      })
+      const response = await fetchWithLoader('/api/bills', { cache: 'no-store' })
       if (!response.ok) throw new Error('Failed to fetch bills')
-      const allBills = await response.json()
-      
-      // Deduplicate bills by orderId (safety check - should not be needed due to unique constraint)
-      const uniqueBillsMap = new Map<string, any>()
-      allBills.forEach((bill: any) => {
-        if (bill.orderId) {
-          const existing = uniqueBillsMap.get(bill.orderId)
-          if (!existing || new Date(bill.createdAt) > new Date(existing.createdAt)) {
-            uniqueBillsMap.set(bill.orderId, bill)
-          }
-        } else {
-          // If no orderId, keep it by id (shouldn't happen, but safety)
-          uniqueBillsMap.set(bill.id, bill)
-        }
-      })
-      
-      const uniqueBills = Array.from(uniqueBillsMap.values())
-      
-      console.log(`[Bills Page] Received ${allBills.length} bills from API, Unique by orderId: ${uniqueBills.length}`)
-      if (allBills.length !== uniqueBills.length) {
-        console.warn(`[Bills Page] ⚠️ Found ${allBills.length - uniqueBills.length} duplicate bills!`)
-        const orderIdCounts = new Map<string, number>()
-        allBills.forEach((bill: any) => {
-          if (bill.orderId) {
-            orderIdCounts.set(bill.orderId, (orderIdCounts.get(bill.orderId) || 0) + 1)
-          }
-        })
-        const duplicates = Array.from(orderIdCounts.entries()).filter(([_, count]) => count > 1)
-        console.warn('[Bills Page] Duplicate orderIds:', duplicates)
-      }
-      
-      setBills(uniqueBills)
-      if (showToast) {
-        toast.success('Bills refreshed')
-      }
+      const data = await response.json()
+      setBills(data)
     } catch (error) {
       console.error('Failed to load bills:', error)
-      toast.error('Failed to load bills. Please try again.')
+      toast.error('Failed to load bills')
+    } finally {
+      setLoading(false)
     }
   }
 
@@ -76,539 +75,858 @@ export default function BillsPage() {
     loadBills()
   }, [])
 
-  // Refresh bills when page becomes visible (user navigates back to bills page)
-  useEffect(() => {
-    const handleVisibilityChange = () => {
-      if (document.visibilityState === 'visible') {
-        console.log('[Bills Page] Page became visible, refreshing bills...')
-        loadBills(false) // Don't show toast on auto-refresh
-      }
-    }
+  const filteredBills = useMemo(() => {
+    return bills.filter(bill => {
+      const customerName = bill.order?.customer?.name?.toLowerCase() || ''
+      const phone = bill.order?.customer?.phone || ''
+      const query = searchQuery.toLowerCase()
 
-    const handleFocus = () => {
-      console.log('[Bills Page] Window focused, refreshing bills...')
-      loadBills(false) // Don't show toast on auto-refresh
-    }
+      return customerName.includes(query) || phone.includes(query)
+    })
+  }, [bills, searchQuery])
 
-    document.addEventListener('visibilitychange', handleVisibilityChange)
-    window.addEventListener('focus', handleFocus)
+  // Metrics
+  const metrics = useMemo(() => {
+    const total = bills.reduce((sum, b) => sum + Number(b.totalAmount), 0)
+    const paid = bills.reduce((sum, b) => sum + Number(b.paidAmount), 0)
+    const pending = bills.reduce((sum, b) => sum + Number(b.remainingAmount), 0)
+    return { total, paid, pending, count: bills.length }
+  }, [bills])
 
-    return () => {
-      document.removeEventListener('visibilitychange', handleVisibilityChange)
-      window.removeEventListener('focus', handleFocus)
-    }
-  }, [])
+  const handleOpenDrawer = (bill: ExtendedBill) => {
+    setSelectedBill(bill)
+    setIsDrawerOpen(true)
+  }
 
-  const handleMarkPaid = async (billId: string) => {
-    const bill = bills.find((b: any) => b.id === billId)
-    if (!bill) return
+  const handleRecordPayment = async () => {
+    if (!selectedBill || paymentData.amount <= 0) return
+
+    const newPaidAmount = Number(selectedBill.paidAmount) + paymentData.amount
+    const newRemainingAmount = Math.max(0, Number(selectedBill.totalAmount) - newPaidAmount)
+    const newStatus = newRemainingAmount <= 0 ? 'paid' : 'partial'
 
     try {
-      const response = await fetchWithLoader(`/api/bills/${billId}`, {
+      const response = await fetchWithLoader(`/api/bills/${selectedBill.id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          paidAmount: bill.totalAmount,
-          remainingAmount: 0,
-          status: 'paid',
+          paidAmount: newPaidAmount,
+          remainingAmount: newRemainingAmount,
+          status: newStatus,
+          paymentMethod: paymentData.method,
+          paymentNotes: paymentData.notes
         }),
       })
 
-      if (!response.ok) {
-        const error = await response.json()
-        throw new Error(error.error || 'Failed to update bill')
-      }
+      if (!response.ok) throw new Error('Failed to record payment')
 
       const updatedBill = await response.json()
-      
-      // Update the specific bill in the list immediately with complete data
-      setBills(prevBills => 
-        prevBills.map((b: any) => 
-          b.id === billId 
-            ? updatedBill  // Replace with complete updated bill (includes all relations)
-            : b
-        )
-      )
-      
-      toast.success('Bill marked as paid successfully!')
-    } catch (error: any) {
-      console.error('Failed to update bill:', error)
-      toast.error(error.message || 'Failed to update bill. Please try again.')
+      setBills(prev => prev.map(b => b.id === selectedBill.id ? updatedBill : b))
+      setSelectedBill(updatedBill)
+      setIsPaymentModalOpen(false)
+      setPaymentData({ amount: 0, method: 'cash', notes: '' })
+      toast.success('Payment recorded successfully')
+    } catch (error) {
+      toast.error('Failed to update payment')
     }
   }
 
-  const handleSendBillEmail = async (bill: any) => {
-    const customerEmail = bill.order?.customer?.email
-    if (!customerEmail) {
-      toast.error('Customer email not available')
-      return
-    }
+  const handleDeleteBill = async (billId: string) => {
+    if (!window.confirm('Are you sure you want to delete this bill? This action cannot be undone.')) return
 
+    const toastId = toast.loading('Deleting bill...')
     try {
-      const response = await fetchWithLoader(`/api/bills/${bill.id}/send`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: customerEmail }),
+      const response = await fetchWithLoader(`/api/bills/${billId}`, {
+        method: 'DELETE',
       })
 
       if (!response.ok) {
-        const error = await response.json()
-        throw new Error(error.error || 'Failed to send bill email')
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to delete bill');
       }
 
-      toast.success(`Bill sent to ${customerEmail}`)
+      setBills(prev => prev.filter(b => b.id !== billId))
+      if (selectedBill?.id === billId) {
+        setIsDrawerOpen(false)
+        setSelectedBill(null)
+      }
+      toast.success('Bill deleted successfully', { id: toastId })
     } catch (error: any) {
-      console.error('Failed to send bill email:', error)
-      toast.error(error.message || 'Failed to send bill email')
+      toast.error(error.message || 'Failed to delete bill', { id: toastId })
     }
   }
 
-  const handleSendBillWhatsApp = (bill: any) => {
-    const customer = bill.order?.customer
-    const customerPhone = customer?.phone
-    if (!customerPhone) {
-      toast.error('Customer phone number not available')
-      return
-    }
-    const eventName = bill.order?.eventName || 'Catering Event'
-    const total = formatCurrency(bill.totalAmount || 0)
-    const paid = formatCurrency(bill.paidAmount || 0)
-    const remaining = formatCurrency(bill.remainingAmount || 0)
 
-    const message = [
-      'srivatsasa and Koundinya Caterers',
-      'Bill Summary',
-      `Customer: ${customer?.name || 'Unknown'}`,
-      `Event: ${eventName}`,
-      `Total: ${total}`,
-      `Paid: ${paid}`,
-      `Remaining: ${remaining}`,
-      `Bill ID: ${bill.id.slice(0, 8).toUpperCase()}`,
-    ].join('\n')
+  // PDF Generation for Bills
+  const renderBillToPdf = async (bill: ExtendedBill): Promise<string | null> => {
+    if (!bill?.order) return null
 
-    sendWhatsAppMessage(customerPhone, message)
-  }
+    let tempDiv: HTMLDivElement | null = null;
 
-  const handleGeneratePDF = async (bill: any) => {
-    const order = bill.order
-    const customer = order?.customer
-    
-    // Extract meal type amounts and organize meal details
-    const mealTypeAmounts = order?.mealTypeAmounts as Record<string, { amount: number; date: string; services?: string[]; numberOfMembers?: number } | number> | null
-    const stalls = order?.stalls as Array<{ category: string; description: string; cost: number }> | null
-    const transportCost = parseFloat(order?.transportCost || '0') || 0
-    
-    // Extract meal details from mealTypeAmounts
-    let tiffinsData: { persons?: number; rate?: number } = {}
-    let lunchDinnerData: { type?: string; persons?: number; rate?: number } = {}
-    let snacksData: { persons?: number; rate?: number } = {}
-    
-    if (mealTypeAmounts) {
-      Object.entries(mealTypeAmounts).forEach(([mealType, data]) => {
-        const mealData = typeof data === 'object' && data !== null ? data : { amount: typeof data === 'number' ? data : 0 }
-        const persons = (typeof mealData === 'object' && mealData !== null && 'numberOfMembers' in mealData) ? (mealData.numberOfMembers || 0) : 0
-        const amount = typeof mealData === 'object' && mealData !== null && 'amount' in mealData ? mealData.amount : (typeof data === 'number' ? data : 0)
-        const rate = persons > 0 ? amount / persons : 0
-        
-        if (mealType.toLowerCase().includes('tiffin') || mealType.toLowerCase().includes('breakfast')) {
-          tiffinsData = { persons, rate }
-        } else if (mealType.toLowerCase().includes('lunch') || mealType.toLowerCase().includes('dinner')) {
-          lunchDinnerData = { 
-            type: mealType.toLowerCase().includes('lunch') ? 'Lunch' : 'Dinner',
-            persons, 
-            rate 
-          }
-        } else if (mealType.toLowerCase().includes('snack')) {
-          snacksData = { persons, rate }
-        }
-      })
-    }
-    
-    // Calculate extra amount from stalls
-    const extraAmount = stalls?.reduce((sum, stall) => sum + (parseFloat(stall.cost?.toString() || '0') || 0), 0) || 0
-    
-    // Get first event date from mealTypeAmounts
-    let functionDate = ''
-    let functionTime = ''
-    if (mealTypeAmounts) {
-      const firstDate = Object.values(mealTypeAmounts).find(d => 
-        typeof d === 'object' && d !== null && d.date
-      ) as { date?: string } | undefined
-      if (firstDate?.date) {
-        functionDate = formatDate(firstDate.date)
-        // Extract time if available (assuming format includes time)
-        const dateObj = new Date(firstDate.date)
-        if (!isNaN(dateObj.getTime())) {
-          functionTime = dateObj.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })
-        }
-      }
-    }
-    
-    // Prepare PDF template data
-    const pdfData: PDFTemplateData = {
-      type: 'bill',
-      billNumber: `BILL-${bill.id.slice(0, 8).toUpperCase()}`,
-      date: bill.createdAt,
-      customer: {
-        name: customer?.name,
-        phone: customer?.phone,
-        email: customer?.email,
-        address: customer?.address,
-      },
-      eventDetails: {
-        eventName: order?.eventName || '',
-        functionDate: functionDate,
-        functionTime: functionTime,
-        functionVenue: '', // Not stored in order, can be added later
-      },
-      mealDetails: {
-        tiffins: tiffinsData.persons ? tiffinsData : undefined,
-        lunchDinner: lunchDinnerData.persons ? lunchDinnerData : undefined,
-        snacks: snacksData.persons ? snacksData : undefined,
-      },
-      mealTypeAmounts: mealTypeAmounts || undefined,
-      stalls: stalls || undefined,
-      discount: order?.discount || undefined,
-      services: order?.services && Array.isArray(order.services) ? order.services : undefined,
-      numberOfMembers: order?.numberOfMembers || undefined,
-      financial: {
-        transport: transportCost || undefined,
-        extra: extraAmount > 0 ? extraAmount : undefined,
-        totalAmount: bill.totalAmount,
-        advancePaid: bill.advancePaid,
-        balanceAmount: bill.remainingAmount,
-        remainingAmount: bill.remainingAmount,
-        paidAmount: bill.paidAmount,
-        discount: order?.discount || undefined,
-      },
-      status: bill.status,
-      orderId: order?.id,
-      supervisor: order?.supervisor?.name,
-    }
-    
-    // Generate HTML using template
-    const htmlContent = generatePDFTemplate(pdfData)
-    
-    // Create a temporary HTML element to render properly
-    const tempDiv = document.createElement('div')
-    tempDiv.style.position = 'absolute'
-    tempDiv.style.left = '-9999px'
-    tempDiv.style.width = '210mm' // A4 width
-    tempDiv.style.padding = '0'
-    tempDiv.style.background = 'white'
-    tempDiv.style.color = '#000'
-    
-    tempDiv.innerHTML = htmlContent
-    document.body.appendChild(tempDiv)
-    
     try {
-      // Convert HTML to canvas
+      const htmlContent = buildOrderPdfHtml(bill.order, {
+        useEnglish: true,
+        formatDate,
+        showFinancials: true,
+        formatCurrency,
+        bill: bill
+      })
+
+      tempDiv = document.createElement('div')
+      tempDiv.style.position = 'absolute'
+      tempDiv.style.left = '-9999px'
+      tempDiv.style.width = '210mm'
+      tempDiv.style.padding = '10mm'
+      tempDiv.style.fontFamily = 'Poppins, sans-serif'
+      tempDiv.style.fontSize = '11px'
+      tempDiv.style.lineHeight = '1.6'
+      tempDiv.style.background = 'white'
+      tempDiv.style.color = '#333'
+      tempDiv.innerHTML = htmlContent
+      tempDiv.style.overflow = 'visible'
+      document.body.appendChild(tempDiv)
+
+      await new Promise(r => setTimeout(r, 500))
+
+      const w = tempDiv.scrollWidth
+      const h = Math.max(tempDiv.scrollHeight + 20, 1)
+      const canvas = await html2canvas(tempDiv, {
+        scale: 1.5,
+        useCORS: true,
+        logging: false,
+        backgroundColor: '#ffffff',
+        width: w,
+        height: h,
+        windowWidth: w,
+        windowHeight: h,
+      })
+
+      if (document.body.contains(tempDiv)) document.body.removeChild(tempDiv)
+      tempDiv = null;
+
+      const imgData = canvas.toDataURL('image/jpeg', 0.85)
+      const pdf = new jsPDF('p', 'mm', 'a4')
+      const imgWidth = 210
+      const pageHeight = 297
+      const imgHeight = (canvas.height * imgWidth) / canvas.width
+      let heightLeft = imgHeight
+      let position = 0
+
+      pdf.addImage(imgData, 'JPEG', 0, position, imgWidth, imgHeight)
+      heightLeft -= pageHeight
+
+      while (heightLeft >= 0) {
+        position = heightLeft - imgHeight
+        pdf.addPage()
+        pdf.addImage(imgData, 'JPEG', 0, position, imgWidth, imgHeight)
+        heightLeft -= pageHeight
+      }
+
+      const output = pdf.output('dataurlstring')
+      return output.split(',')[1] || output
+    } catch (e: any) {
+      if (tempDiv && document.body.contains(tempDiv)) document.body.removeChild(tempDiv)
+      console.error('PDF Generation Error:', e)
+      toast.error(`Failed to generate PDF: ${e.message || e}`)
+      return null
+    }
+  }
+
+  const renderBillToImage = async (bill: ExtendedBill): Promise<string | null> => {
+    if (!bill?.order) return null
+
+    let tempDiv: HTMLDivElement | null = null;
+
+    try {
+      const htmlContent = buildOrderPdfHtml(bill.order, {
+        useEnglish: true,
+        formatDate,
+        showFinancials: true,
+        formatCurrency,
+        bill: bill
+      })
+
+      tempDiv = document.createElement('div')
+      tempDiv.style.position = 'absolute'
+      tempDiv.style.left = '-9999px'
+      tempDiv.style.width = '210mm'
+      tempDiv.style.padding = '10mm'
+      tempDiv.style.fontFamily = 'Poppins, sans-serif'
+      tempDiv.style.fontSize = '11px'
+      tempDiv.style.lineHeight = '1.6'
+      tempDiv.style.background = 'white'
+      tempDiv.style.color = '#333'
+      tempDiv.innerHTML = htmlContent
+      tempDiv.style.overflow = 'visible'
+      document.body.appendChild(tempDiv)
+
+      await new Promise(r => setTimeout(r, 500))
+
+      const w = tempDiv.scrollWidth
+      const h = Math.max(tempDiv.scrollHeight + 20, 1)
       const canvas = await html2canvas(tempDiv, {
         scale: 2,
         useCORS: true,
         logging: false,
         backgroundColor: '#ffffff',
-        width: tempDiv.scrollWidth,
-        height: tempDiv.scrollHeight,
+        width: w,
+        height: h,
+        windowWidth: w,
+        windowHeight: h,
       })
-      
-      // Remove temporary element
-      document.body.removeChild(tempDiv)
-      
-      // Create PDF from canvas
-      const imgData = canvas.toDataURL('image/png')
-      const pdf = new jsPDF('p', 'mm', 'a4')
-      const imgWidth = 210 // A4 width in mm
-      const pageHeight = 297 // A4 height in mm
-      const imgHeight = (canvas.height * imgWidth) / canvas.width
-      let heightLeft = imgHeight
-      
-      let position = 0
-      
-      pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight)
-      heightLeft -= pageHeight
-      
-      while (heightLeft >= 0) {
-        position = heightLeft - imgHeight
-        pdf.addPage()
-        pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight)
-        heightLeft -= pageHeight
-      }
-      
-      pdf.save(`bill-${bill.id.slice(0, 8)}.pdf`)
-      toast.success('Bill PDF generated successfully!')
-    } catch (error) {
-      if (document.body.contains(tempDiv)) {
-        document.body.removeChild(tempDiv)
-      }
-      console.error('Error generating PDF:', error)
-      toast.error('Failed to generate PDF. Please try again.')
+
+      if (document.body.contains(tempDiv)) document.body.removeChild(tempDiv)
+      tempDiv = null;
+
+      return canvas.toDataURL('image/png')
+    } catch (e: any) {
+      if (tempDiv && document.body.contains(tempDiv)) document.body.removeChild(tempDiv)
+      console.error('Image Generation Error:', e)
+      toast.error(`Failed to generate image: ${e.message || e}`)
+      return null
     }
   }
 
-  // Filter bills
-  const filteredBills = useMemo(() => {
-    let filtered = bills
-    
-    // Status filter
-    if (statusFilter !== 'all') {
-      filtered = filtered.filter(bill => bill.status === statusFilter)
+  const handleDownloadBillPDF = async (bill: ExtendedBill) => {
+
+    const toastId = toast.loading('Generating PDF...')
+    try {
+      const pdfBase64 = await renderBillToPdf(bill)
+
+      if (pdfBase64) {
+        const billNumber = bill.serialNumber?.toString() || bill.id.slice(0, 8).toUpperCase()
+        const link = document.createElement('a')
+        link.href = `data:application/pdf;base64,${pdfBase64}`
+        link.download = `SKC-Bill-${billNumber}.pdf`
+        document.body.appendChild(link)
+        link.click()
+        document.body.removeChild(link)
+        toast.success('PDF downloaded successfully', { id: toastId })
+      } else {
+        toast.error('Failed to generate PDF', { id: toastId })
+      }
+    } catch (error) {
+      console.error(error)
+      toast.error('Error downloading PDF', { id: toastId })
     }
-    
-    // Customer search filter
-    if (customerSearch) {
-      const searchLower = customerSearch.toLowerCase()
-      filtered = filtered.filter(bill => 
-        bill.order?.customer?.name?.toLowerCase().includes(searchLower) ||
-        bill.order?.customer?.phone?.includes(customerSearch) ||
-        bill.order?.customer?.email?.toLowerCase().includes(searchLower)
-      )
+  }
+
+  const handleDownloadBillImage = async (bill: ExtendedBill) => {
+    const toastId = toast.loading('Generating Image...')
+    try {
+      const imageDataUrl = await renderBillToImage(bill)
+
+      if (imageDataUrl) {
+        const billNumber = bill.serialNumber?.toString() || bill.id.slice(0, 8).toUpperCase()
+        const link = document.createElement('a')
+        link.href = imageDataUrl
+        link.download = `SKC-Bill-${billNumber}.png`
+        document.body.appendChild(link)
+        link.click()
+        document.body.removeChild(link)
+        toast.success('Image downloaded successfully', { id: toastId })
+      } else {
+        toast.error('Failed to generate image', { id: toastId })
+      }
+    } catch (error) {
+      console.error(error)
+      toast.error('Error downloading image', { id: toastId })
     }
-    
-    // Date range filter
-    if (dateRange.start) {
-      filtered = filtered.filter(bill => {
-        const billDate = new Date(bill.createdAt)
-        const startDate = new Date(dateRange.start)
-        return billDate >= startDate
+  }
+
+  const handleSendBillEmail = async (bill: ExtendedBill) => {
+
+    if (!bill.order.customer.email) {
+      toast.error('Customer email not found')
+      return
+    }
+
+    const toastId = toast.loading('Generating and sending PDF...')
+    try {
+      const pdfBase64 = await renderBillToPdf(bill)
+
+      if (!pdfBase64) {
+        toast.error('Failed to generate PDF', { id: toastId })
+        return
+      }
+
+      const response = await fetch(`/api/bills/${bill.id}/send`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ pdfBase64 })
       })
+
+      if (response.ok) {
+        toast.success(`Bill sent to ${bill.order.customer.email}`, { id: toastId })
+      } else {
+        const error = await response.json()
+        toast.error(error.error || 'Failed to send bill', { id: toastId })
+      }
+    } catch (error) {
+      console.error(error)
+      toast.error('Failed to send bill', { id: toastId })
     }
-    if (dateRange.end) {
-      filtered = filtered.filter(bill => {
-        const billDate = new Date(bill.createdAt)
-        const endDate = new Date(dateRange.end)
-        endDate.setHours(23, 59, 59, 999)
-        return billDate <= endDate
-      })
+  }
+
+  const handleSendBillWhatsApp = async (bill: ExtendedBill) => {
+    if (!bill.order.customer.phone) {
+      toast.error('Customer phone not found')
+      return
     }
-    
-    return filtered.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
-  }, [bills, statusFilter, customerSearch, dateRange])
 
-  const billSummary = useMemo(() => {
-    const totalBilled = filteredBills.reduce((sum, bill) => sum + (bill.totalAmount || 0), 0)
-    const totalCollected = filteredBills.reduce((sum, bill) => sum + (bill.paidAmount || 0), 0)
-    const totalPending = filteredBills.reduce((sum, bill) => sum + (bill.remainingAmount || 0), 0)
-    const collectionRate = totalBilled > 0 ? (totalCollected / totalBilled) * 100 : 0
-    const upcomingEvents = filteredBills.filter((bill) => {
-      const mealTypeAmounts = bill.order?.mealTypeAmounts as
-        | Record<string, { date?: string } | number>
-        | null
-        | undefined
-      if (!mealTypeAmounts) return false
-      const firstDate = Object.values(mealTypeAmounts).find(
-        (value) => typeof value === 'object' && value !== null && value.date
-      ) as { date?: string } | undefined
-      if (!firstDate?.date) return false
-      const eventDate = new Date(firstDate.date)
-      const today = new Date()
-      const diff = eventDate.getTime() - today.setHours(0, 0, 0, 0)
-      return diff >= 0 && diff <= 7 * 24 * 60 * 60 * 1000
-    }).length
+    const toastId = toast.loading('Generating PDF...')
+    try {
+      const pdfBase64 = await renderBillToPdf(bill)
 
-    return { totalBilled, totalCollected, totalPending, collectionRate, upcomingEvents }
-  }, [filteredBills])
+      if (pdfBase64) {
+        const billNumber = bill.serialNumber?.toString() || bill.id.slice(0, 8).toUpperCase()
+        const link = document.createElement('a')
+        link.href = `data:application/pdf;base64,${pdfBase64}`
+        link.download = `SKC-Bill-${billNumber}.pdf`
+        document.body.appendChild(link)
+        link.click()
+        document.body.removeChild(link)
 
-  const tableConfig = getBillTableConfig()
+        const message = `Hi ${bill.order.customer.name}! Here's your bill from SKC Caterers for ${bill.order.eventName || 'your event'}. Bill No: SKC-${billNumber}. Total: ${formatCurrency(bill.totalAmount)}, Remaining: ${formatCurrency(bill.remainingAmount)}.`
+        sendWhatsAppMessage(bill.order.customer.phone, message)
+        toast.success('PDF downloaded. WhatsApp opening...', { id: toastId })
+      } else {
+        toast.error('Failed to generate PDF', { id: toastId })
+      }
+    } catch (error) {
+      console.error(error)
+      toast.error('Error processing WhatsApp request', { id: toastId })
+    }
+  }
+
 
   return (
-    <div className="p-8">
-      <div className="mb-8 flex justify-between items-center">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-800">Bills</h1>
-          <p className="text-gray-600 mt-2">Smart billing overview with event insights</p>
-        </div>
-        <div className="flex items-center gap-3">
-          <div className="flex bg-white border border-gray-200 rounded-lg p-1 shadow-sm">
-            <button
-              onClick={() => { setStatusFilter('all'); setCurrentPage(1); }}
-              className={`px-4 py-1.5 text-sm font-bold rounded-md transition-all ${statusFilter === 'all' ? 'bg-primary-500 text-white shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
-            >
-              All
+    <div className="min-h-screen bg-slate-50/50 p-4 md:p-8">
+      {/* Header & Stats */}
+      <div className="max-w-7xl mx-auto space-y-8">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div>
+            <h1 className="text-3xl font-bold text-slate-900 tracking-tight">Financial Ledger</h1>
+            <p className="text-slate-500 mt-1">Manage customer bills, multi-day orders, and payment records</p>
+          </div>
+
+          <div className="flex items-center gap-3">
+            <button className="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 rounded-xl text-slate-700 font-semibold hover:bg-slate-50 transition-all shadow-sm">
+              <FaFilter className="text-slate-400" />
+              Advanced Filters
             </button>
             <button
-              onClick={() => { setStatusFilter('paid'); setCurrentPage(1); }}
-              className={`px-4 py-1.5 text-sm font-bold rounded-md transition-all ${statusFilter === 'paid' ? 'bg-green-500 text-white shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
+              onClick={loadBills}
+              className="p-2 bg-indigo-50 text-indigo-600 rounded-xl hover:bg-indigo-100 transition-all"
             >
-              Paid Only
+              <FaHistory className={loading ? 'animate-spin' : ''} />
             </button>
           </div>
-          <button
-            onClick={() => setShowFilters(!showFilters)}
-            className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors shadow-sm font-semibold"
-          >
-            <FaFilter />
-            {showFilters ? 'Hide Filters' : 'Filters'}
-          </button>
+        </div>
+
+        {/* Stats Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <StatCard
+            title="Total Receivables"
+            value={formatCurrency(metrics.total)}
+            icon={<FaFileInvoiceDollar className="text-blue-500" />}
+            color="blue"
+            subtitle={`${metrics.count} active ledgers`}
+          />
+          <StatCard
+            title="Successfully Collected"
+            value={formatCurrency(metrics.paid)}
+            icon={<FaWallet className="text-emerald-500" />}
+            color="emerald"
+            subtitle={`${((metrics.paid / (metrics.total || 1)) * 100).toFixed(1)}% collection rate`}
+          />
+          <StatCard
+            title="Outstanding Balance"
+            value={formatCurrency(metrics.pending)}
+            icon={<FaChartLine className="text-orange-500" />}
+            color="orange"
+            subtitle="Follow-up required"
+          />
+        </div>
+
+        {/* Search Bar */}
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div className="relative w-full md:w-96">
+            <input
+              type="text"
+              placeholder="Search customers or phone..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full pl-10 pr-4 py-2 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all shadow-sm"
+            />
+            <FaUser className="absolute left-3.5 top-3 text-slate-400 text-sm" />
+          </div>
+        </div>
+
+        {/* Bills Grid */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6 pb-20">
+
+          {filteredBills.map(bill => (
+            <BillCard
+              key={bill.id}
+              bill={bill}
+              onOpen={() => handleOpenDrawer(bill)}
+              onDownload={() => handleDownloadBillPDF(bill)}
+              onDownloadImage={() => handleDownloadBillImage(bill)}
+              onWhatsApp={() => handleSendBillWhatsApp(bill)}
+              onEmail={() => handleSendBillEmail(bill)}
+              onDelete={() => handleDeleteBill(bill.id)}
+            />
+
+          ))}
+
+          {filteredBills.length === 0 && !loading && (
+            <div className="col-span-full py-20 text-center">
+              <div className="bg-slate-100 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
+                <FaFileInvoiceDollar className="text-slate-400 text-2xl" />
+              </div>
+              <h3 className="text-slate-900 font-bold">No bills found</h3>
+              <p className="text-slate-500">Try adjusting your search or filters</p>
+            </div>
+          )}
         </div>
       </div>
 
-      {/* Filters */}
-      {showFilters && (
-        <div className="bg-white rounded-lg shadow-md p-6 mb-6">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            {/* Status Filter */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Status</label>
-              <select
-                value={statusFilter}
-                onChange={(e) => {
-                  setStatusFilter(e.target.value)
-                  setCurrentPage(1)
-                }}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-              >
-                <option value="all">All Status</option>
-                <option value="pending">Pending</option>
-                <option value="partial">Partial</option>
-                <option value="paid">Paid</option>
-              </select>
-            </div>
+      {/* Drawer */}
+      {
+        isDrawerOpen && selectedBill && (
+          <div className="fixed inset-0 z-50 flex justify-end">
+            <div className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm" onClick={() => setIsDrawerOpen(false)} />
+            <div className="relative w-full max-w-2xl bg-white h-full shadow-2xl flex flex-col animate-in slide-in-from-right duration-300">
+              {/* Drawer Header */}
+              <div className="p-6 border-b border-slate-100 flex items-center justify-between bg-white sticky top-0 z-10">
+                <div>
+                  <h2 className="text-xl font-bold text-slate-900">Ledger Details</h2>
+                  <div className="flex items-center gap-2 mt-1">
+                    <span className="text-sm font-medium text-slate-500">#{selectedBill.serialNumber}</span>
+                    <span className={`px-2 py-0.5 rounded-md text-xs font-bold uppercase ${selectedBill.status === 'paid' ? 'bg-emerald-100 text-emerald-700' :
+                      selectedBill.status === 'partial' ? 'bg-amber-100 text-amber-700' : 'bg-rose-100 text-rose-700'
+                      }`}>
+                      {selectedBill.status}
+                    </span>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setIsDrawerOpen(false)}
+                  className="p-2 hover:bg-slate-100 rounded-full text-slate-400 transition-colors"
+                >
+                  <FaTimes />
+                </button>
+              </div>
 
-            {/* Customer Search */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Customer Search</label>
-              <input
-                type="text"
-                value={customerSearch}
-                onChange={(e) => {
-                  setCustomerSearch(e.target.value)
-                  setCurrentPage(1)
-                }}
-                placeholder="Search by customer name, phone, or email"
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-              />
-            </div>
+              {/* Drawer Content */}
+              <div className="flex-1 overflow-y-auto p-6 space-y-8">
+                {/* Customer Info */}
+                <div className="bg-indigo-50 rounded-2xl p-5 border border-indigo-100">
+                  <div className="flex items-start justify-between">
+                    <div className="flex items-center gap-4">
+                      <div className="w-12 h-12 bg-white rounded-xl shadow-sm flex items-center justify-center text-indigo-600 font-bold text-xl">
+                        {selectedBill.order.customer.name.charAt(0)}
+                      </div>
+                      <div>
+                        <h3 className="font-bold text-slate-900 text-lg">{selectedBill.order.customer.name}</h3>
+                        <p className="text-indigo-600 text-sm font-medium">{selectedBill.order.customer.phone}</p>
+                      </div>
+                    </div>
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => handleDownloadBillPDF(selectedBill)}
+                        className="p-2 bg-white rounded-lg text-slate-600 hover:text-indigo-600 border border-slate-200 shadow-sm transition-all"
+                        title="Download PDF"
+                      >
+                        <FaFileInvoiceDollar />
+                      </button>
+                      <button
+                        onClick={() => handleDownloadBillImage(selectedBill)}
+                        className="p-2 bg-white rounded-lg text-slate-600 hover:text-indigo-600 border border-slate-200 shadow-sm transition-all"
+                        title="Download Image"
+                      >
+                        <FaFileImage />
+                      </button>
+                      <button
+                        onClick={() => handleSendBillWhatsApp(selectedBill)}
 
-            {/* Date Range */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Date Range</label>
-              <div className="flex gap-2">
-                <input
-                  type="date"
-                  value={dateRange.start}
-                  onChange={(e) => {
-                    setDateRange({ ...dateRange, start: e.target.value })
-                    setCurrentPage(1)
-                  }}
-                  className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-                />
-                <input
-                  type="date"
-                  value={dateRange.end}
-                  onChange={(e) => {
-                    setDateRange({ ...dateRange, end: e.target.value })
-                    setCurrentPage(1)
-                  }}
-                  className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-                />
+                        className="p-2 bg-white rounded-lg text-slate-600 hover:text-indigo-600 border border-slate-200 shadow-sm transition-all"
+                        title="Send via WhatsApp"
+                      >
+                        <FaWhatsapp />
+                      </button>
+                      <button
+                        onClick={() => handleSendBillEmail(selectedBill)}
+                        className="p-2 bg-white rounded-lg text-slate-600 hover:text-indigo-600 border border-slate-200 shadow-sm transition-all"
+                        title="Send via Email"
+                      >
+                        <FaEnvelope />
+                      </button>
+                      <button
+                        onClick={() => handleDeleteBill(selectedBill.id)}
+                        className="p-2 bg-white rounded-lg text-slate-600 hover:text-rose-600 border border-slate-200 shadow-sm transition-all"
+                        title="Delete Bill"
+                      >
+                        <FaTrash />
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+
+                {/* Financial Summary */}
+                <div>
+                  <h3 className="text-sm font-bold text-slate-400 uppercase tracking-wider mb-4">Financial Summary</h3>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="p-4 bg-slate-50 rounded-xl border border-slate-200">
+                      <p className="text-xs text-slate-500 mb-1">Total Billable</p>
+                      <p className="text-lg font-bold text-slate-900">{formatCurrency(selectedBill.totalAmount)}</p>
+                    </div>
+                    <div className="p-4 bg-slate-50 rounded-xl border border-slate-200">
+                      <p className="text-xs text-slate-500 mb-1">Paid to Date</p>
+                      <p className="text-lg font-bold text-emerald-600">{formatCurrency(selectedBill.paidAmount)}</p>
+                    </div>
+                    <div className="p-4 bg-rose-50 rounded-xl border border-rose-100 col-span-2">
+                      <p className="text-xs text-rose-500 mb-1 font-semibold">Remaining Balance</p>
+                      <div className="flex items-baseline justify-between">
+                        <p className="text-2xl font-black text-rose-600">{formatCurrency(selectedBill.remainingAmount)}</p>
+                        <button
+                          onClick={() => setIsPaymentModalOpen(true)}
+                          className="px-4 py-2 bg-white text-rose-600 rounded-lg text-sm font-bold border border-rose-200 hover:bg-rose-600 hover:text-white transition-all shadow-sm"
+                        >
+                          Record Payment
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Order Details (Single Order) */}
+                <div>
+                  <div className="flex items-center justify-between mb-4">
+                    <h3 className="text-sm font-bold text-slate-400 uppercase tracking-wider">Order Details</h3>
+                  </div>
+                  <div className="p-4 border border-slate-100 rounded-2xl bg-white hover:border-indigo-200 transition-all shadow-[0_2px_10px_-5px_rgba(0,0,0,0.1)]">
+                    <div className="flex justify-between items-start mb-2">
+                      <div>
+                        <p className="font-bold text-slate-800">{selectedBill.order.eventName || 'Unnamed Event'}</p>
+                        <div className="flex gap-4">
+                          <p className="text-xs text-slate-500 flex items-center gap-1 mt-0.5">
+                            <FaCalendarAlt className="text-[10px]" />
+                            {selectedBill.order.eventDate ? formatDate(selectedBill.order.eventDate as any) : 'No date'}
+                          </p>
+                          <p className="text-xs text-slate-500 flex items-center gap-1 mt-0.5">
+                            <FaUsers className="text-[10px]" />
+                            {getGuestCount(selectedBill.order)} Plates
+                          </p>
+                        </div>
+                      </div>
+                      <p className="font-black text-slate-900">{formatCurrency(selectedBill.order.totalAmount)}</p>
+                    </div>
+
+                    <div className="grid grid-cols-3 gap-2 mt-3 pt-3 border-t border-slate-50">
+                      <MiniDetail label="Transport" value={formatCurrency(Number(selectedBill.order.transportCost))} />
+                      <MiniDetail label="Water" value={formatCurrency(Number((selectedBill.order as any).waterBottlesCost || 0))} />
+                      <MiniDetail label="Discount" value={formatCurrency(Number(selectedBill.order.discount))} accent="red" />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Payment History */}
+                {selectedBill.paymentHistory && (selectedBill.paymentHistory as any[]).length > 0 && (
+                  <div>
+                    <h3 className="text-sm font-bold text-slate-400 uppercase tracking-wider mb-4">Payment History</h3>
+                    <div className="space-y-3">
+                      {(selectedBill.paymentHistory as any[]).slice().reverse().map((p, idx) => (
+                        <div key={idx} className="flex items-center justify-between p-3 bg-slate-50 rounded-xl border-l-4 border-emerald-500">
+                          <div>
+                            <p className="text-sm font-bold text-slate-800">+{formatCurrency(p.amount)}</p>
+                            <p className="text-[10px] text-slate-500 uppercase tracking-tight">{p.method} · {formatDateTime(p.date)}</p>
+                          </div>
+                          {p.notes && (
+                            <div className="max-w-[150px] truncate text-xs text-slate-400 italic">
+                              {p.notes}
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Footer Actions */}
+              <div className="p-6 border-t border-slate-100 bg-slate-50 flex gap-3">
+                <button className="flex-1 flex items-center justify-center gap-2 py-3 bg-slate-900 text-white rounded-xl font-bold hover:bg-slate-800 transition-all shadow-lg active:scale-95">
+                  <FaPrint /> Generate PDF
+                </button>
+                <button className="flex-1 flex items-center justify-center gap-2 py-3 bg-white border border-slate-200 text-slate-700 rounded-xl font-bold hover:bg-slate-50 transition-all shadow-sm active:scale-95">
+                  <FaWhatsapp className="text-emerald-500" /> Share Bill
+                </button>
               </div>
             </div>
           </div>
-          <div className="mt-4 flex justify-end">
-            <button
-              onClick={() => {
-                setStatusFilter('all')
-                setCustomerSearch('')
-                setDateRange({ start: '', end: '' })
-                setCurrentPage(1)
-              }}
-              className="px-4 py-2 text-sm text-gray-600 hover:text-gray-800 underline"
-            >
-              Clear Filters
-            </button>
+        )
+      }
+
+      {/* Payment Modal */}
+      {
+        isPaymentModalOpen && (
+          <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
+            <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-md" onClick={() => setIsPaymentModalOpen(false)} />
+            <div className="relative bg-white rounded-3xl w-full max-w-md shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200">
+              <div className="p-8 space-y-6">
+                <div className="text-center">
+                  <div className="w-16 h-16 bg-emerald-50 rounded-full flex items-center justify-center text-emerald-600 text-2xl mx-auto mb-4">
+                    <FaWallet />
+                  </div>
+                  <h3 className="text-2xl font-black text-slate-900">Record Payment</h3>
+                  <p className="text-slate-500">Updating ledger for {selectedBill?.order.customer.name}</p>
+                </div>
+
+                <div className="space-y-4">
+                  <div>
+                    <label className="text-xs font-bold text-slate-400 uppercase mb-1.5 block">Amount Received (₹)</label>
+                    <input
+                      type="number"
+                      value={paymentData.amount || ''}
+                      onChange={(e) => setPaymentData({ ...paymentData, amount: parseFloat(e.target.value) || 0 })}
+                      className="w-full text-3xl font-black px-4 py-4 bg-slate-50 border-2 border-slate-100 rounded-2xl focus:border-indigo-500 focus:bg-white outline-none transition-all text-center placeholder:text-slate-200"
+                      placeholder="0.00"
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3">
+                    <PaymentMethod
+                      active={paymentData.method === 'cash'}
+                      onClick={() => setPaymentData({ ...paymentData, method: 'cash' })}
+                      label="Cash"
+                    />
+                    <PaymentMethod
+                      active={paymentData.method === 'upi'}
+                      onClick={() => setPaymentData({ ...paymentData, method: 'upi' })}
+                      label="UPI / Bank"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="text-xs font-bold text-slate-400 uppercase mb-1.5 block">Notes (Optional)</label>
+                    <textarea
+                      value={paymentData.notes}
+                      onChange={(e) => setPaymentData({ ...paymentData, notes: e.target.value })}
+                      className="w-full px-4 py-3 bg-slate-50 border border-slate-100 rounded-xl focus:border-indigo-500 focus:bg-white outline-none transition-all resize-none text-sm"
+                      rows={2}
+                      placeholder="e.g., Final payment settled..."
+                    />
+                  </div>
+                </div>
+
+                <div className="flex gap-3 pt-2">
+                  <button
+                    onClick={() => setIsPaymentModalOpen(false)}
+                    className="flex-1 py-4 bg-slate-100 text-slate-600 rounded-2xl font-bold hover:bg-slate-200 transition-all"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={handleRecordPayment}
+                    className="flex-1 py-4 bg-indigo-600 text-white rounded-2xl font-black shadow-lg shadow-indigo-200 hover:bg-indigo-700 transition-all active:scale-95"
+                  >
+                    Confirm Payment
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )
+      }
+    </div >
+  )
+}
+
+function StatCard({ title, value, icon, subtitle, color }: { title: string, value: string, icon: React.ReactNode, subtitle: string, color: string }) {
+  const colorMap: any = {
+    blue: "from-blue-50 to-indigo-50/50 border-blue-100",
+    emerald: "from-emerald-50 to-teal-50/50 border-emerald-100",
+    orange: "from-orange-50 to-amber-50/50 border-orange-100",
+  }
+  return (
+    <div className={`bg-gradient-to-br ${colorMap[color]} border p-6 rounded-3xl shadow-sm hover:shadow-md transition-all duration-300 group`}>
+      <div className="flex items-center justify-between mb-4">
+        <div className="p-3 bg-white rounded-2xl shadow-sm text-xl group-hover:scale-110 transition-transform">
+          {icon}
+        </div>
+        <FaInfoCircle className="text-slate-300 hover:text-slate-400 cursor-pointer" />
+      </div>
+      <h3 className="text-slate-500 text-sm font-semibold tracking-wide uppercase">{title}</h3>
+      <p className="text-3xl font-black text-slate-900 mt-1">{value}</p>
+      <p className="text-xs text-slate-400 mt-2 flex items-center gap-1 font-medium italic">
+        {subtitle}
+      </p>
+    </div>
+  )
+}
+
+
+function BillCard({ bill, onOpen, onDownload, onDownloadImage, onWhatsApp, onEmail, onDelete }: {
+  bill: ExtendedBill,
+  onOpen: () => void,
+  onDownload: () => void,
+  onDownloadImage: () => void,
+  onWhatsApp: () => void,
+  onEmail: () => void,
+  onDelete: () => void
+}) {
+
+
+  const total = Number(bill.totalAmount)
+  const paid = Number(bill.paidAmount)
+  const progress = total > 0 ? (paid / total) * 100 : 0
+
+  return (
+    <div
+      onClick={onOpen}
+      className="bg-white border border-slate-100 rounded-[2rem] p-6 shadow-[0_8px_30px_-15px_rgba(0,0,0,0.1)] hover:shadow-[0_20px_40px_-15px_rgba(0,0,0,0.15)] hover:border-indigo-100 transition-all cursor-pointer group active:scale-[0.98]"
+    >
+      <div className="flex justify-between items-start mb-6">
+        <div className="flex gap-4">
+          <div className="w-14 h-14 bg-slate-50 rounded-2xl flex items-center justify-center text-slate-400 text-2xl group-hover:bg-indigo-50 group-hover:text-indigo-600 transition-colors">
+            <FaUser />
+          </div>
+          <div>
+            <h3 className="font-black text-slate-900 text-lg leading-tight">{bill.order.customer.name}</h3>
+            <p className="text-slate-400 text-sm mt-0.5">{bill.order.customer.phone}</p>
           </div>
         </div>
-      )}
-
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-        <div className="bg-gradient-to-br from-blue-500 to-blue-600 rounded-lg p-5 text-white shadow-md">
-          <div className="flex items-center justify-between mb-2">
-            <h3 className="text-sm font-medium">Total Billed</h3>
-            <FaChartLine />
-          </div>
-          <p className="text-2xl font-bold">{formatCurrency(billSummary.totalBilled)}</p>
-          <p className="text-xs text-blue-100 mt-1">Across filtered bills</p>
-        </div>
-
-        <div className="bg-gradient-to-br from-green-500 to-green-600 rounded-lg p-5 text-white shadow-md">
-          <div className="flex items-center justify-between mb-2">
-            <h3 className="text-sm font-medium">Collected</h3>
-            <FaWallet />
-          </div>
-          <p className="text-2xl font-bold">{formatCurrency(billSummary.totalCollected)}</p>
-          <p className="text-xs text-green-100 mt-1">Paid amount</p>
-        </div>
-
-        <div className="bg-gradient-to-br from-orange-500 to-orange-600 rounded-lg p-5 text-white shadow-md">
-          <div className="flex items-center justify-between mb-2">
-            <h3 className="text-sm font-medium">Pending</h3>
-            <FaWallet />
-          </div>
-          <p className="text-2xl font-bold">{formatCurrency(billSummary.totalPending)}</p>
-          <p className="text-xs text-orange-100 mt-1">Outstanding balance</p>
-        </div>
-
-        <div className="bg-gradient-to-br from-purple-500 to-purple-600 rounded-lg p-5 text-white shadow-md">
-          <div className="flex items-center justify-between mb-2">
-            <h3 className="text-sm font-medium">Collection Rate</h3>
-            <FaPercent />
-          </div>
-          <p className="text-2xl font-bold">{billSummary.collectionRate.toFixed(1)}%</p>
-          <p className="text-xs text-purple-100 mt-1">
-            Upcoming events: {billSummary.upcomingEvents}
-          </p>
+        <div className={`px-3 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-wider ${bill.status === 'paid' ? 'bg-emerald-100 text-emerald-700' :
+          bill.status === 'partial' ? 'bg-amber-100 text-amber-700' : 'bg-rose-100 text-rose-700'
+          }`}>
+          {bill.status}
         </div>
       </div>
 
-      <Table
-        columns={tableConfig.columns}
-        data={filteredBills}
-        emptyMessage={tableConfig.emptyMessage}
-        itemsPerPage={itemsPerPage}
-        currentPage={currentPage}
-        totalItems={filteredBills.length}
-        onPageChange={setCurrentPage}
-        onItemsPerPageChange={setItemsPerPage}
-        itemName={tableConfig.itemName}
-        getItemId={tableConfig.getItemId}
-        renderActions={(bill) => (
-          <div className="flex items-center gap-2">
-            {bill.status !== 'paid' && (
-              <button
-                onClick={() => handleMarkPaid(bill.id)}
-                className="text-green-600 hover:text-green-700 p-2 hover:bg-green-50 rounded transition-all active:scale-90"
-                title="Mark as Paid"
-              >
-                <FaCheck />
-              </button>
-            )}
-            <button
-              onClick={() => handleSendBillEmail(bill)}
-              className="text-slate-600 hover:text-slate-700 p-2 hover:bg-slate-50 rounded transition-all active:scale-90"
-              title={bill.order?.customer?.email ? 'Send bill via email' : 'Customer email not available'}
-              disabled={!bill.order?.customer?.email}
-            >
-              <FaEnvelope />
-            </button>
-            <button
-              onClick={() => handleSendBillWhatsApp(bill)}
-              className="text-emerald-600 hover:text-emerald-700 p-2 hover:bg-emerald-50 rounded transition-all active:scale-90"
-              title={bill.order?.customer?.phone ? 'Send bill via WhatsApp to customer' : 'Customer phone not available'}
-              disabled={!bill.order?.customer?.phone}
-            >
-              <FaWhatsapp />
-            </button>
-            <button
-              onClick={() => handleGeneratePDF(bill)}
-              className="text-primary-600 hover:text-primary-700 p-2 hover:bg-primary-50 rounded transition-all active:scale-90"
-              title="Download PDF Bill"
-            >
-              <FaPrint />
-            </button>
+      {/* Action Buttons */}
+      <div className="flex justify-end gap-2 mb-4">
+        <button
+          onClick={(e) => { e.stopPropagation(); onDownload(); }}
+          className="p-2 bg-slate-50 rounded-lg text-slate-500 hover:text-indigo-600 hover:bg-white border border-transparent hover:border-slate-200 transition-all"
+          title="Download PDF"
+        >
+          <FaFileInvoiceDollar />
+        </button>
+        <button
+          onClick={(e) => { e.stopPropagation(); onDownloadImage(); }}
+          className="p-2 bg-slate-50 rounded-lg text-slate-500 hover:text-indigo-600 hover:bg-white border border-transparent hover:border-slate-200 transition-all"
+          title="Download Image"
+        >
+          <FaFileImage />
+        </button>
+        <button
+          onClick={(e) => { e.stopPropagation(); onWhatsApp(); }}
+
+          className="p-2 bg-slate-50 rounded-lg text-slate-500 hover:text-emerald-600 hover:bg-white border border-transparent hover:border-slate-200 transition-all"
+          title="Send via WhatsApp"
+        >
+          <FaWhatsapp />
+        </button>
+        <button
+          onClick={(e) => { e.stopPropagation(); onEmail(); }}
+          className="p-2 bg-slate-50 rounded-lg text-slate-500 hover:text-blue-600 hover:bg-white border border-transparent hover:border-slate-200 transition-all"
+          title="Send via Email"
+        >
+          <FaEnvelope />
+        </button>
+        <button
+          onClick={(e) => { e.stopPropagation(); onDelete(); }}
+          className="p-2 bg-slate-50 rounded-lg text-slate-500 hover:text-rose-600 hover:bg-white border border-transparent hover:border-slate-200 transition-all"
+          title="Delete Bill"
+        >
+          <FaTrash />
+        </button>
+      </div>
+
+
+      <div className="space-y-4">
+        <div className="flex justify-between items-end">
+          <div>
+            <p className="text-[10px] text-slate-400 uppercase font-bold tracking-widest mb-1">Event Date</p>
+            <p className="text-sm font-bold text-slate-700 flex items-center gap-1.5">
+              <FaCalendarAlt className="text-slate-300" />
+              {(() => {
+                if (bill.order?.eventDate) return formatDate(bill.order.eventDate as any);
+                const mealTypeAmounts = bill.order?.mealTypeAmounts as Record<string, any>;
+                if (mealTypeAmounts && typeof mealTypeAmounts === 'object') {
+                  const dates = Object.values(mealTypeAmounts)
+                    .map(mt => mt?.date)
+                    .filter(d => !!d)
+                    .sort((a, b) => new Date(a).getTime() - new Date(b).getTime());
+                  if (dates.length > 0) return formatDate(dates[0]);
+                }
+                return formatDate(bill.createdAt as any);
+              })()}
+            </p>
           </div>
-        )}
-      />
+          <div className="text-center">
+            <p className="text-[10px] text-slate-400 uppercase font-bold tracking-widest mb-1">Plates</p>
+            <p className="text-sm font-bold text-slate-700 flex items-center gap-1.5 justify-center">
+              <FaUsers className="text-slate-300" />
+              {getGuestCount(bill.order) || '-'}
+            </p>
+          </div>
+          <div className="text-right">
+            <p className="text-[10px] text-slate-400 uppercase font-bold tracking-widest mb-1">Total</p>
+            <p className="text-xl font-black text-slate-900">{formatCurrency(total)}</p>
+          </div>
+        </div>
+
+        {/* Collection Bar */}
+        <div className="space-y-2">
+          <div className="flex justify-between text-xs font-bold">
+            <span className="text-slate-400 italic">{progress.toFixed(0)}% Collected</span>
+            <span className="text-rose-600">-{formatCurrency(Number(bill.remainingAmount))}</span>
+          </div>
+          <div className="h-3 w-full bg-slate-100 rounded-full overflow-hidden p-0.5">
+            <div
+              className={`h-full rounded-full transition-all duration-1000 ${bill.status === 'paid' ? 'bg-emerald-500' : 'bg-indigo-500'
+                }`}
+              style={{ width: `${progress}%` }}
+            />
+          </div>
+        </div>
+
+        <div className="flex items-center gap-3 pt-2">
+          <div className="flex-1" />
+          <div className="flex -space-x-2">
+            {[1, 2, 3].map(i => (
+              <div key={i} className="w-8 h-8 rounded-full border-2 border-white bg-slate-200 flex items-center justify-center text-[10px] font-bold text-slate-500">
+                {i}
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
     </div>
+  )
+}
+
+function MiniDetail({ label, value, accent }: { label: string, value: string, accent?: 'red' | 'default' }) {
+  return (
+    <div>
+      <p className="text-[9px] text-slate-400 uppercase font-bold tracking-tighter mb-0.5">{label}</p>
+      <p className={`text-xs font-bold ${accent === 'red' ? 'text-rose-500' : 'text-slate-700'}`}>{value}</p>
+    </div>
+  )
+}
+
+function PaymentMethod({ active, onClick, label }: { active: boolean, onClick: () => void, label: string }) {
+  return (
+    <button
+      onClick={onClick}
+      className={`py-3 rounded-xl border-2 font-bold transition-all ${active ? 'bg-indigo-50 border-indigo-500 text-indigo-600 shadow-sm' : 'bg-white border-slate-100 text-slate-500 hover:border-slate-200'
+        }`}
+    >
+      {label}
+    </button>
   )
 }

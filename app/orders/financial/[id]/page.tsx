@@ -2,9 +2,10 @@
 
 import { useEffect, useState, useMemo } from 'react'
 import { useParams, useRouter } from 'next/navigation'
-import { formatCurrency, formatDate, formatDateTime } from '@/lib/utils'
+import { formatCurrency, formatDate, formatDateTime, sanitizeMealLabel } from '@/lib/utils'
 import { Order, Bill, PaymentHistoryEntry } from '@/types'
-import { FaArrowLeft, FaMoneyBillWave, FaSave, FaPlus, FaTrash, FaHistory, FaPercentage, FaTruck, FaStore } from 'react-icons/fa'
+import { FaArrowLeft, FaMoneyBillWave, FaSave, FaPlus, FaTrash, FaHistory, FaPercentage, FaTruck, FaStore, FaCalendarAlt } from 'react-icons/fa'
+import { FaBottleWater } from 'react-icons/fa6'
 import { fetchWithLoader } from '@/lib/fetch-with-loader'
 import toast from 'react-hot-toast'
 import Link from 'next/link'
@@ -19,9 +20,10 @@ export default function FinancialTrackingPage() {
   const [loading, setLoading] = useState(true)
   const [formError, setFormError] = useState<string>('')
   const mealTypeOptions = ['breakfast', 'lunch', 'dinner', 'snacks', 'sweets', 'saree']
-  
+
   const [formData, setFormData] = useState({
     transportCost: '0',
+    waterBottlesCost: '0',
     discount: '0',
     stalls: [] as Array<{ category: string; description: string; cost: string }>,
     baseAdvancePaid: '0',
@@ -53,12 +55,13 @@ export default function FinancialTrackingPage() {
       const data = await response.json()
       setOrder(data)
 
-      const mealTypes = Object.entries(data.mealTypeAmounts || {}).map(([menuType, detail]: any) => {
+      const mealTypes = Object.entries(data.mealTypeAmounts || {}).map(([key, detail]: any) => {
         const normalized = typeof detail === 'object' && detail !== null ? detail : { amount: detail || 0 }
         return {
-          menuType,
+          id: key,
+          menuType: normalized.menuType || key,
           pricingMethod: normalized.pricingMethod || 'manual',
-          numberOfPlates: normalized.numberOfPlates?.toString() || '',
+          numberOfPlates: normalized.numberOfPlates?.toString() || (normalized.pricingMethod === 'plate-based' && normalized.numberOfMembers ? normalized.numberOfMembers.toString() : ''),
           platePrice: normalized.platePrice?.toString() || '',
           manualAmount: normalized.manualAmount?.toString() || (normalized.amount?.toString() || '0'),
           numberOfMembers: normalized.numberOfMembers?.toString() || '',
@@ -72,6 +75,7 @@ export default function FinancialTrackingPage() {
       // Initialize form with existing values
       setFormData({
         transportCost: data.transportCost?.toString() || '0',
+        waterBottlesCost: data.waterBottlesCost?.toString() || '0',
         discount: data.discount?.toString() || '0',
         stalls: (data.stalls || []).map((s: any) => ({
           category: s.category || '',
@@ -140,9 +144,41 @@ export default function FinancialTrackingPage() {
     }))
   }
 
+  const handleDiscardByDate = (date: string) => {
+    if (!window.confirm(`Are you sure you want to discard all sessions for ${date || 'Pending Date'}?`)) return
+    setFormData(prev => ({
+      ...prev,
+      mealTypes: prev.mealTypes.filter(mt => mt.date !== date)
+    }))
+    toast.success(`Discarded all sessions for ${date || 'Pending'}!`)
+  }
+
+  const groupedMealTypes = useMemo(() => {
+    const groups: Record<string, { date: string; items: any[] }> = {}
+    formData.mealTypes.forEach((mt, index) => {
+      const dateKey = mt.date || 'Pending'
+      if (!groups[dateKey]) {
+        groups[dateKey] = { date: mt.date, items: [] }
+      }
+      groups[dateKey].items.push({ mt, index })
+    })
+
+    return Object.values(groups).sort((a, b) => {
+      if (!a.date) return 1
+      if (!b.date) return -1
+      return a.date.localeCompare(b.date)
+    })
+  }, [formData.mealTypes])
+
   const getMealTypeAmount = (mealType: any) => {
     if (mealType.pricingMethod === 'plate-based') {
-      const plates = parseFloat(mealType.numberOfPlates) || 0
+      let plates = parseFloat(mealType.numberOfPlates)
+      // Fallback: If plates is 0 or invalid, use the calculated member count
+      // This ensures that loading an existing order with members but no specific 'plates' count works
+      if (!plates) {
+        plates = calculateMembers(mealType)
+      }
+
       const price = parseFloat(mealType.platePrice) || 0
       return plates * price
     }
@@ -167,11 +203,14 @@ export default function FinancialTrackingPage() {
 
   const buildMealTypeAmounts = () => {
     const mealTypeAmounts: Record<string, any> = {}
-    formData.mealTypes.forEach(mealType => {
+    formData.mealTypes.forEach((mealType, index) => {
       if (!mealType.menuType) {
         return
       }
-      mealTypeAmounts[mealType.menuType] = {
+      // Use existing ID or generate one if missing (to ensure unique keys)
+      const sessionKey = (mealType as any).id || `session-${index}-${Date.now()}`
+      mealTypeAmounts[sessionKey] = {
+        menuType: mealType.menuType,
         amount: getMealTypeAmount(mealType),
         date: mealType.date,
         services: mealType.services,
@@ -189,7 +228,7 @@ export default function FinancialTrackingPage() {
   // Calculate new total based on meal type calculation + adjustments
   const calculatedTotals = useMemo(() => {
     if (!order) return { total: 0, paid: 0, remaining: 0 }
-    
+
     // 1. Base amount from meal types (from form)
     let mealTypesTotal = 0
     formData.mealTypes.forEach(mealType => {
@@ -198,16 +237,17 @@ export default function FinancialTrackingPage() {
 
     // 2. Add current adjustments from form
     const transport = parseFloat(formData.transportCost) || 0
+    const waterBottles = parseFloat(formData.waterBottlesCost) || 0
     const discount = parseFloat(formData.discount) || 0
     const stallsTotal = formData.stalls.reduce((sum, s) => sum + (parseFloat(s.cost) || 0), 0)
-    
-    const newTotal = Math.max(0, mealTypesTotal + transport + stallsTotal - discount)
-    
+
+    const newTotal = Math.max(0, mealTypesTotal + transport + waterBottles + stallsTotal - discount)
+
     // 3. Payments
     const basePaid = parseFloat(formData.baseAdvancePaid) || 0
     const newPayment = parseFloat(formData.additionalPayment) || 0
     const totalPaid = basePaid + newPayment
-    
+
     return {
       total: newTotal,
       paid: totalPaid,
@@ -224,7 +264,7 @@ export default function FinancialTrackingPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setFormError('')
-    
+
     try {
       if (formData.mealTypes.some(mealType => !mealType.menuType)) {
         toast.error('Please select menu type for all meal types')
@@ -249,10 +289,11 @@ export default function FinancialTrackingPage() {
       // We send the full update to the existing PUT endpoint
       // but only changing the financial bits. 
       // The API route is generic enough to handle this.
-      
+
       const payload = {
         ...order, // Keep everything else (logistics) same
         transportCost: parseFloat(formData.transportCost) || 0,
+        waterBottlesCost: parseFloat(formData.waterBottlesCost) || 0,
         discount: parseFloat(formData.discount) || 0,
         stalls: formData.stalls,
         mealTypeAmounts: buildMealTypeAmounts(),
@@ -276,7 +317,7 @@ export default function FinancialTrackingPage() {
         setFormError(message)
         throw new Error(message)
       }
-      
+
       toast.success('Financial adjustments saved!')
       router.push(`/orders/summary/${orderId}`)
     } catch (error) {
@@ -300,7 +341,7 @@ export default function FinancialTrackingPage() {
         <div className="flex items-center justify-between mb-8">
           <div>
             <h1 className="text-3xl font-black text-slate-900">Financial Management</h1>
-            <p className="text-slate-600 font-medium">Billing adjustments and payment tracking for <span className="text-primary-600">#{order.id.slice(0,8)}</span></p>
+            <p className="text-slate-600 font-medium">Billing adjustments and payment tracking for <span className="text-primary-600">#SKC-ORDER-{(order as any).serialNumber || order.id.slice(0, 8)}</span></p>
           </div>
           <div className="text-right">
             <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest block mb-1">Current Balance</span>
@@ -323,165 +364,188 @@ export default function FinancialTrackingPage() {
                   </h2>
                   <span className="text-xs font-bold text-slate-500">Update members and pricing here</span>
                 </div>
-                <div className="space-y-4">
-                  {formData.mealTypes.length === 0 ? (
+                <div className="space-y-8">
+                  {groupedMealTypes.length === 0 ? (
                     <div className="text-center py-8 border-2 border-dashed border-slate-100 rounded-2xl">
                       <p className="text-slate-400 text-xs font-bold">No meal types found for this order.</p>
                     </div>
                   ) : (
-                    formData.mealTypes.map((mealType, index) => {
-                      const calculatedAmount = getMealTypeAmount(mealType)
-                      const newMembers = calculateMembers(mealType)
-                      return (
-                        <div key={`${mealType.menuType}-${index}`} className="p-5 bg-slate-50 rounded-2xl border border-slate-200">
-                          <div className="flex flex-col gap-4 mb-4">
-                            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-                              <div className="flex-1">
-                                <label className="block text-[10px] font-black text-slate-600 uppercase tracking-widest mb-2">Menu Type</label>
-                                <select
-                                  value={mealType.menuType}
-                                  onChange={(e) => {
-                                    const updated = [...formData.mealTypes]
-                                    updated[index] = { ...mealType, menuType: e.target.value }
-                                    setFormData({ ...formData, mealTypes: updated })
-                                  }}
-                                  className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl text-sm font-bold text-slate-700 outline-none focus:ring-2 focus:ring-primary-500"
-                                >
-                                  <option value="">Select Menu Type</option>
-                                  {mealTypeOptions.map(option => (
-                                    <option key={option} value={option}>
-                                      {option.charAt(0).toUpperCase() + option.slice(1)}
-                                    </option>
-                                  ))}
-                                </select>
-                              </div>
-                              <div className="w-full md:w-52">
-                                <label className="block text-[10px] font-black text-slate-600 uppercase tracking-widest mb-2">Event Date</label>
-                                <input
-                                  type="date"
-                                  value={mealType.date}
-                                  onChange={(e) => {
-                                    const updated = [...formData.mealTypes]
-                                    updated[index] = { ...mealType, date: e.target.value }
-                                    setFormData({ ...formData, mealTypes: updated })
-                                  }}
-                                  className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl text-sm font-bold text-slate-700 outline-none focus:ring-2 focus:ring-primary-500"
-                                />
-                              </div>
-                            </div>
-                            <div className="bg-white px-4 py-2 rounded-xl border border-slate-100 text-right">
-                              <div className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Amount</div>
-                              <div className="text-lg font-black text-primary-600">{formatCurrency(calculatedAmount)}</div>
-                            </div>
-                            <button
-                              type="button"
-                              onClick={() => handleRemoveMealType(index)}
-                              className="self-start inline-flex items-center gap-2 text-rose-600 text-xs font-black hover:text-rose-700"
-                            >
-                              <FaTrash /> Remove
-                            </button>
-                          </div>
-
-                          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                            <div>
-                              <label className="block text-[10px] font-black text-slate-600 uppercase tracking-widest mb-2">Current Members</label>
-                              <input
-                                type="number"
-                                min="0"
-                                value={mealType.numberOfMembers}
-                                onChange={(e) => {
-                                  const updated = [...formData.mealTypes]
-                                  updated[index] = syncPlateBasedMembers(mealType, { numberOfMembers: e.target.value })
-                                  setFormData({ ...formData, mealTypes: updated })
-                                }}
-                                className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl text-sm font-bold text-slate-700 outline-none focus:ring-2 focus:ring-primary-500"
-                              />
-                            </div>
-                            <div>
-                              <label className="block text-[10px] font-black text-slate-600 uppercase tracking-widest mb-2">Add Members</label>
-                              <input
-                                type="number"
-                                min="0"
-                                value={mealType.addMembers}
-                                onChange={(e) => {
-                                  const updated = [...formData.mealTypes]
-                                  updated[index] = syncPlateBasedMembers(mealType, { addMembers: e.target.value })
-                                  setFormData({ ...formData, mealTypes: updated })
-                                }}
-                                className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl text-sm font-bold text-slate-700 outline-none focus:ring-2 focus:ring-primary-500"
-                                placeholder="0"
-                              />
-                              <p className="mt-1 text-[10px] font-bold text-slate-500">New total: {newMembers}</p>
-                            </div>
-                            <div>
-                              <label className="block text-[10px] font-black text-slate-600 uppercase tracking-widest mb-2">Pricing Method</label>
-                              <select
-                                value={mealType.pricingMethod}
-                                onChange={(e) => {
-                                  const updated = [...formData.mealTypes]
-                                  updated[index] = syncPlateBasedMembers(mealType, { pricingMethod: e.target.value })
-                                  setFormData({ ...formData, mealTypes: updated })
-                                }}
-                                className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl text-sm font-bold text-slate-700 outline-none focus:ring-2 focus:ring-primary-500"
-                              >
-                                <option value="manual">Manual</option>
-                                <option value="plate-based">Plate-based</option>
-                              </select>
-                            </div>
-                          </div>
-
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
-                            {mealType.pricingMethod === 'plate-based' ? (
-                              <>
-                                <div>
-                                  <label className="block text-[10px] font-black text-slate-600 uppercase tracking-widest mb-2">Plates</label>
-                                  <input
-                                    type="number"
-                                    min="0"
-                                    value={mealType.numberOfPlates}
-                                    readOnly={mealType.pricingMethod === 'plate-based'}
-                                    className={`w-full px-4 py-3 rounded-xl text-sm font-bold outline-none ${
-                                      mealType.pricingMethod === 'plate-based'
-                                        ? 'bg-slate-100 border border-slate-200 text-slate-600'
-                                        : 'bg-white border border-slate-200 text-slate-700 focus:ring-2 focus:ring-primary-500'
-                                    }`}
-                                  />
-                                </div>
-                                <div>
-                                  <label className="block text-[10px] font-black text-slate-600 uppercase tracking-widest mb-2">Price per Plate</label>
-                                  <input
-                                    type="number"
-                                    min="0"
-                                    value={mealType.platePrice}
-                                    onChange={(e) => {
-                                      const updated = [...formData.mealTypes]
-                                      updated[index] = { ...mealType, platePrice: e.target.value }
-                                      setFormData({ ...formData, mealTypes: updated })
-                                    }}
-                                    className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl text-sm font-bold text-slate-700 outline-none focus:ring-2 focus:ring-primary-500"
-                                  />
-                                </div>
-                              </>
-                            ) : (
-                              <div>
-                                <label className="block text-[10px] font-black text-slate-600 uppercase tracking-widest mb-2">Manual Amount</label>
-                                <input
-                                  type="number"
-                                  min="0"
-                                  value={mealType.manualAmount}
-                                  onChange={(e) => {
-                                    const updated = [...formData.mealTypes]
-                                    updated[index] = { ...mealType, manualAmount: e.target.value }
-                                    setFormData({ ...formData, mealTypes: updated })
-                                  }}
-                                  className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl text-sm font-bold text-slate-700 outline-none focus:ring-2 focus:ring-primary-500"
-                                />
-                              </div>
-                            )}
-                          </div>
+                    groupedMealTypes.map((group) => (
+                      <div key={group.date || 'pending'} className="space-y-4">
+                        <div className="flex items-center justify-between px-2 bg-slate-50/50 py-2 rounded-xl">
+                          <h3 className="text-xs font-black text-slate-500 uppercase tracking-widest flex items-center gap-2">
+                            <FaCalendarAlt className="text-primary-400" />
+                            {group.date ? formatDate(group.date) : 'Date Pending'}
+                          </h3>
+                          <button
+                            type="button"
+                            onClick={() => handleDiscardByDate(group.date)}
+                            className="flex items-center gap-1.5 px-3 py-1.5 bg-rose-50 text-rose-600 rounded-lg text-[10px] font-black hover:bg-rose-100 transition-all uppercase tracking-tight"
+                          >
+                            <FaTrash className="text-[10px]" /> Discard Date
+                          </button>
                         </div>
-                      )
-                    })
+
+                        <div className="space-y-4">
+                          {group.items.map(({ mt: mealType, index }) => {
+                            const calculatedAmount = getMealTypeAmount(mealType)
+                            const newMembers = calculateMembers(mealType)
+                            return (
+                              <div key={`${mealType.menuType}-${index}`} className="p-5 bg-white rounded-2xl border border-slate-200 shadow-sm">
+                                <div className="flex flex-col gap-4 mb-4">
+                                  <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+                                    <div className="flex-1">
+                                      <label className="block text-[10px] font-black text-slate-600 uppercase tracking-widest mb-2">Menu Type</label>
+                                      <select
+                                        value={mealType.menuType}
+                                        onChange={(e) => {
+                                          const updated = [...formData.mealTypes]
+                                          updated[index] = { ...mealType, menuType: e.target.value }
+                                          setFormData({ ...formData, mealTypes: updated })
+                                        }}
+                                        className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold text-slate-700 outline-none focus:ring-2 focus:ring-primary-500"
+                                      >
+                                        <option value="">Select Menu Type</option>
+                                        {mealTypeOptions.map(option => (
+                                          <option key={option} value={option}>
+                                            {sanitizeMealLabel(option)}
+                                          </option>
+                                        ))}
+                                      </select>
+                                    </div>
+                                    <div className="w-full md:w-52">
+                                      <label className="block text-[10px] font-black text-slate-600 uppercase tracking-widest mb-2">Change Date</label>
+                                      <input
+                                        type="date"
+                                        value={mealType.date}
+                                        onChange={(e) => {
+                                          const updated = [...formData.mealTypes]
+                                          updated[index] = { ...mealType, date: e.target.value }
+                                          setFormData({ ...formData, mealTypes: updated })
+                                        }}
+                                        className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold text-slate-700 outline-none focus:ring-2 focus:ring-primary-500"
+                                      />
+                                    </div>
+                                  </div>
+                                  <div className="bg-slate-50 px-4 py-2 rounded-xl border border-slate-100 flex items-center justify-between">
+                                    <div className="flex items-center gap-4">
+                                      <button
+                                        type="button"
+                                        onClick={() => handleRemoveMealType(index)}
+                                        className="inline-flex items-center gap-2 text-rose-500 text-[10px] font-black hover:text-rose-600 uppercase tracking-widest bg-white px-3 py-1.5 rounded-lg border border-rose-100"
+                                      >
+                                        <FaTrash /> Remove Session
+                                      </button>
+                                    </div>
+                                    <div className="text-right">
+                                      <div className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Amount</div>
+                                      <div className="text-lg font-black text-primary-600">{formatCurrency(calculatedAmount)}</div>
+                                    </div>
+                                  </div>
+                                </div>
+
+                                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                  <div>
+                                    <label className="block text-[10px] font-black text-slate-600 uppercase tracking-widest mb-2">Current Members</label>
+                                    <input
+                                      type="number"
+                                      min="0"
+                                      value={mealType.numberOfMembers}
+                                      onChange={(e) => {
+                                        const updated = [...formData.mealTypes]
+                                        updated[index] = syncPlateBasedMembers(mealType, { numberOfMembers: e.target.value })
+                                        setFormData({ ...formData, mealTypes: updated })
+                                      }}
+                                      className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold text-slate-700 outline-none focus:ring-2 focus:ring-primary-500"
+                                    />
+                                  </div>
+                                  <div>
+                                    <label className="block text-[10px] font-black text-slate-600 uppercase tracking-widest mb-2">Add Members</label>
+                                    <input
+                                      type="number"
+                                      min="0"
+                                      value={mealType.addMembers}
+                                      onChange={(e) => {
+                                        const updated = [...formData.mealTypes]
+                                        updated[index] = syncPlateBasedMembers(mealType, { addMembers: e.target.value })
+                                        setFormData({ ...formData, mealTypes: updated })
+                                      }}
+                                      className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold text-slate-700 outline-none focus:ring-2 focus:ring-primary-500"
+                                      placeholder="0"
+                                    />
+                                    <p className="mt-1 text-[10px] font-bold text-slate-500">New total: {newMembers}</p>
+                                  </div>
+                                  <div>
+                                    <label className="block text-[10px] font-black text-slate-600 uppercase tracking-widest mb-2">Pricing Method</label>
+                                    <select
+                                      value={mealType.pricingMethod}
+                                      onChange={(e) => {
+                                        const updated = [...formData.mealTypes]
+                                        updated[index] = syncPlateBasedMembers(mealType, { pricingMethod: e.target.value })
+                                        setFormData({ ...formData, mealTypes: updated })
+                                      }}
+                                      className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold text-slate-700 outline-none focus:ring-2 focus:ring-primary-500"
+                                    >
+                                      <option value="manual">Manual</option>
+                                      <option value="plate-based">Plate-based</option>
+                                    </select>
+                                  </div>
+                                </div>
+
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+                                  {mealType.pricingMethod === 'plate-based' ? (
+                                    <>
+                                      <div>
+                                        <label className="block text-[10px] font-black text-slate-600 uppercase tracking-widest mb-2">Plates</label>
+                                        <input
+                                          type="number"
+                                          min="0"
+                                          value={mealType.numberOfPlates}
+                                          readOnly={mealType.pricingMethod === 'plate-based'}
+                                          className={`w-full px-4 py-3 rounded-xl text-sm font-bold outline-none ${mealType.pricingMethod === 'plate-based'
+                                            ? 'bg-slate-100 border border-slate-100 text-slate-500'
+                                            : 'bg-white border border-slate-200 text-slate-700 focus:ring-2 focus:ring-primary-500'
+                                            }`}
+                                        />
+                                      </div>
+                                      <div>
+                                        <label className="block text-[10px] font-black text-slate-600 uppercase tracking-widest mb-2">Price per Plate</label>
+                                        <input
+                                          type="number"
+                                          min="0"
+                                          value={mealType.platePrice}
+                                          onChange={(e) => {
+                                            const updated = [...formData.mealTypes]
+                                            updated[index] = { ...mealType, platePrice: e.target.value }
+                                            setFormData({ ...formData, mealTypes: updated })
+                                          }}
+                                          className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold text-slate-700 outline-none focus:ring-2 focus:ring-primary-500"
+                                        />
+                                      </div>
+                                    </>
+                                  ) : (
+                                    <div>
+                                      <label className="block text-[10px] font-black text-slate-600 uppercase tracking-widest mb-2">Manual Amount</label>
+                                      <input
+                                        type="number"
+                                        min="0"
+                                        value={mealType.manualAmount}
+                                        onChange={(e) => {
+                                          const updated = [...formData.mealTypes]
+                                          updated[index] = { ...mealType, manualAmount: e.target.value }
+                                          setFormData({ ...formData, mealTypes: updated })
+                                        }}
+                                        className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold text-slate-700 outline-none focus:ring-2 focus:ring-primary-500"
+                                      />
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                            )
+                          })}
+                        </div>
+                      </div>
+                    ))
                   )}
                 </div>
               </div>
@@ -491,7 +555,7 @@ export default function FinancialTrackingPage() {
                   <div className="w-1.5 h-4 bg-primary-500 rounded-full"></div>
                   Core Adjustments
                 </h2>
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <div>
                     <label className="block text-xs font-black text-slate-600 uppercase tracking-widest mb-2">Transport Cost</label>
                     <div className="relative">
@@ -499,7 +563,7 @@ export default function FinancialTrackingPage() {
                       <input
                         type="number"
                         value={formData.transportCost}
-                        onChange={(e) => setFormData({...formData, transportCost: e.target.value})}
+                        onChange={(e) => setFormData({ ...formData, transportCost: e.target.value })}
                         className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-100 rounded-xl focus:ring-2 focus:ring-primary-500 outline-none font-bold text-slate-700"
                         placeholder="0.00"
                       />
@@ -512,7 +576,7 @@ export default function FinancialTrackingPage() {
                       <input
                         type="number"
                         value={formData.discount}
-                        onChange={(e) => setFormData({...formData, discount: e.target.value})}
+                        onChange={(e) => setFormData({ ...formData, discount: e.target.value })}
                         className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-100 rounded-xl focus:ring-2 focus:ring-primary-500 outline-none font-bold text-slate-700"
                         placeholder="0.00"
                       />
@@ -536,7 +600,7 @@ export default function FinancialTrackingPage() {
                     <FaPlus className="mr-2" /> Add Stall
                   </button>
                 </div>
-                
+
                 <div className="space-y-4">
                   {formData.stalls.length === 0 ? (
                     <div className="text-center py-8 border-2 border-dashed border-slate-100 rounded-2xl">
@@ -615,7 +679,7 @@ export default function FinancialTrackingPage() {
                       min="0"
                       max={remainingAllowed}
                       value={formData.additionalPayment}
-                      onChange={(e) => setFormData({...formData, additionalPayment: e.target.value})}
+                      onChange={(e) => setFormData({ ...formData, additionalPayment: e.target.value })}
                       className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none font-black text-slate-900"
                       placeholder="0.00"
                     />
@@ -627,7 +691,7 @@ export default function FinancialTrackingPage() {
                     <label className="block text-[10px] font-black text-slate-600 uppercase tracking-widest mb-2">Payment Method</label>
                     <select
                       value={formData.paymentMethod}
-                      onChange={(e) => setFormData({...formData, paymentMethod: e.target.value})}
+                      onChange={(e) => setFormData({ ...formData, paymentMethod: e.target.value })}
                       className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none font-bold text-slate-900"
                     >
                       <option value="cash">Cash</option>
@@ -643,7 +707,7 @@ export default function FinancialTrackingPage() {
                   <input
                     type="text"
                     value={formData.paymentNotes}
-                    onChange={(e) => setFormData({...formData, paymentNotes: e.target.value})}
+                    onChange={(e) => setFormData({ ...formData, paymentNotes: e.target.value })}
                     className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none font-medium text-slate-700"
                     placeholder="Transaction ID, specific notes, etc."
                   />
@@ -658,7 +722,7 @@ export default function FinancialTrackingPage() {
                   <div className="w-1.5 h-4 bg-primary-500 rounded-full"></div>
                   Final Impact
                 </h2>
-                
+
                 <div className="space-y-4 mb-8">
                   <div className="flex justify-between items-center text-sm font-bold">
                     <span className="text-slate-600">Projected Total</span>
@@ -687,7 +751,7 @@ export default function FinancialTrackingPage() {
                 >
                   <FaSave /> Save Adjustments
                 </button>
-                
+
                 <p className="mt-4 text-[10px] text-slate-500 font-bold text-center uppercase tracking-tighter">
                   This will update the ledger & bill record
                 </p>

@@ -1,8 +1,14 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import { useRouter, usePathname } from 'next/navigation'
-import { isAuthenticated } from '@/lib/auth'
+import { getToken, isLoggedIn, clearAuth } from '@/lib/auth-storage'
+import { isPublicPath } from '@/lib/constants'
+import {
+  initSessionTimeout,
+  clearSessionTimeout,
+  setupSessionListeners,
+} from '@/lib/session-manager'
 import Sidebar from '@/components/layout/Sidebar'
 import Header from '@/components/layout/Header'
 import Footer from '@/components/layout/Footer'
@@ -11,40 +17,80 @@ export default function AuthGuard({ children }: { children: React.ReactNode }) {
   const router = useRouter()
   const pathname = usePathname()
   const [isLoading, setIsLoading] = useState(true)
+  const [authenticated, setAuthenticated] = useState(false)
+  const sessionCleanupRef = useRef<(() => void) | null>(null)
+
+  const handleTimeout = () => {
+    clearAuth()
+    clearSessionTimeout()
+    router.push('/login?reason=timeout')
+  }
 
   useEffect(() => {
-    const checkAuth = () => {
-      const authenticated = isAuthenticated()
-      
-      // Public pages that don't require authentication
-      const publicPages = ['/login', '/reset-password']
-      const isPublicPage = publicPages.includes(pathname)
-      
-      // If on a public page
-      if (isPublicPage) {
-        // If already authenticated, redirect to dashboard
-        if (authenticated && pathname === '/login') {
-          router.push('/')
-        } else {
-          setIsLoading(false)
+    let cancelled = false
+
+    const run = async () => {
+      const token = getToken()
+      const loggedIn = isLoggedIn()
+      const isPublic = isPublicPath(pathname)
+
+      if (isPublic) {
+        clearSessionTimeout()
+        if (sessionCleanupRef.current) {
+          sessionCleanupRef.current()
+          sessionCleanupRef.current = null
         }
+        if (loggedIn && token && pathname === '/login') {
+          router.push('/')
+          return
+        }
+        setAuthenticated(false)
+        setIsLoading(false)
         return
       }
-      
-      // If not on a public page and not authenticated, redirect to login
-      if (!authenticated) {
+
+      if (!token || !loggedIn) {
+        clearAuth()
         router.push('/login')
         return
       }
-      
-      // Authenticated and not on a public page
-      setIsLoading(false)
+
+      try {
+        const res = await fetch('/api/auth/validate', {
+          headers: { Authorization: `Bearer ${token}` },
+        })
+        if (cancelled) return
+        if (!res.ok) {
+          clearAuth()
+          router.push('/login?reason=session_expired')
+          return
+        }
+        setAuthenticated(true)
+        setIsLoading(false)
+        setTimeout(() => {
+          if (cancelled) return
+          initSessionTimeout(handleTimeout)
+          sessionCleanupRef.current = setupSessionListeners(handleTimeout)
+        }, 100)
+      } catch {
+        if (cancelled) return
+        clearAuth()
+        router.push('/login?reason=session_expired')
+        setIsLoading(false)
+      }
     }
 
-    checkAuth()
+    run()
+    return () => {
+      cancelled = true
+      if (sessionCleanupRef.current) {
+        sessionCleanupRef.current()
+        sessionCleanupRef.current = null
+      }
+      clearSessionTimeout()
+    }
   }, [pathname, router])
 
-  // Show loading state while checking authentication
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-100">
@@ -56,13 +102,14 @@ export default function AuthGuard({ children }: { children: React.ReactNode }) {
     )
   }
 
-  // Public pages - render without sidebar
-  const publicPages = ['/login', '/reset-password']
-  if (publicPages.includes(pathname)) {
+  if (isPublicPath(pathname)) {
     return <>{children}</>
   }
 
-  // Protected pages - render with sidebar, header, and footer
+  if (!authenticated) {
+    return null
+  }
+
   return (
     <div className="flex h-screen bg-gray-100 overflow-hidden">
       <Sidebar />

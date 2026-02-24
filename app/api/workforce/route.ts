@@ -2,15 +2,18 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { isNonEmptyString, validateEnum } from '@/lib/validation'
 import { publishNotification } from '@/lib/notifications'
+import { requireAuth } from '@/lib/require-auth'
 
-export async function GET() {
+export async function GET(request: NextRequest) {
+  const auth = await requireAuth(request)
+  if (auth.response) return auth.response
   try {
-    const workforce = await (prisma as any).workforce.findMany({
+    const workforce = await prisma.workforce.findMany({
       orderBy: { createdAt: 'desc' },
     })
 
     // Fetch all expenses
-    const expenses = await (prisma as any).expense.findMany({
+    const expenses = await prisma.expense.findMany({
       include: {
         order: {
           include: {
@@ -21,6 +24,16 @@ export async function GET() {
       orderBy: { paymentDate: 'desc' }
     })
 
+    // Fetch all workforce payments (bulk payments against outstanding)
+    let workforcePayments: any[] = []
+    try {
+      workforcePayments = await prisma.workforcePayment.findMany({
+        orderBy: { paymentDate: 'desc' }
+      })
+    } catch {
+      // Table may not exist if migration not run yet
+    }
+
     // Map expenses to workforce members
     const workforceWithPayments = workforce.map((member: any) => {
       // Match expenses ONLY by recipient name to ensure each workforce member
@@ -29,10 +42,10 @@ export async function GET() {
         // Match by recipient name (case-insensitive, exact or partial match)
         // This ensures expenses are matched to the specific person, not just by role
         if (!expense.recipient) return false
-        
+
         const recipientName = expense.recipient.toLowerCase().trim()
         const memberName = member.name.toLowerCase().trim()
-        
+
         // Exact match or name contains member name or member name contains recipient name
         return (
           recipientName === memberName ||
@@ -42,15 +55,15 @@ export async function GET() {
       })
 
       // Calculate totals and payment status
-      const totalAmount = matchingExpenses.reduce((sum: number, exp: any) => sum + (exp.amount || 0), 0)
-      const totalPaidAmount = matchingExpenses.reduce((sum: number, exp: any) => sum + (exp.paidAmount || 0), 0)
+      const totalAmount = matchingExpenses.reduce((sum: number, exp: any) => sum + Number(exp.amount || 0), 0)
+      const totalPaidAmount = matchingExpenses.reduce((sum: number, exp: any) => sum + Number(exp.paidAmount || 0), 0)
       const expenseCount = matchingExpenses.length
-      
+
       // Calculate payment status summary
       const pendingExpenses = matchingExpenses.filter((exp: any) => exp.paymentStatus === 'pending').length
       const partialExpenses = matchingExpenses.filter((exp: any) => exp.paymentStatus === 'partial').length
       const paidExpenses = matchingExpenses.filter((exp: any) => exp.paymentStatus === 'paid').length
-      
+
       // Overall payment status for this member
       let overallPaymentStatus = 'paid'
       if (totalPaidAmount === 0) {
@@ -72,7 +85,11 @@ export async function GET() {
       }
     })
 
-    return NextResponse.json(workforceWithPayments)
+    return NextResponse.json({
+      workforce: workforceWithPayments,
+      workforcePayments,
+      totalWorkforcePayments: workforcePayments.reduce((sum: number, p: any) => sum + Number(p.amount || 0), 0),
+    })
   } catch (error: any) {
     console.error('Error fetching workforce:', error)
     return NextResponse.json(
@@ -83,6 +100,8 @@ export async function GET() {
 }
 
 export async function POST(request: NextRequest) {
+  const auth = await requireAuth(request)
+  if (auth.response) return auth.response
   try {
     const data = await request.json()
 
@@ -103,7 +122,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Create workforce member
-    const workforce = await (prisma as any).workforce.create({
+    const workforce = await prisma.workforce.create({
       data: {
         name: data.name,
         role: data.role,

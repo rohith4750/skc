@@ -1,8 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { isNonEmptyString, isNonNegativeNumber } from '@/lib/validation'
+import { requireAuth } from '@/lib/require-auth'
 
-export async function GET() {
+export async function GET(request: NextRequest) {
+  const auth = await requireAuth(request)
+  if (auth.response) return auth.response
   try {
     const inventory = await (prisma as any).inventory.findMany({
       orderBy: { createdAt: 'desc' },
@@ -19,6 +22,8 @@ export async function GET() {
 }
 
 export async function POST(request: NextRequest) {
+  const auth = await requireAuth(request)
+  if (auth.response) return auth.response
   try {
     const data = await request.json()
 
@@ -30,9 +35,6 @@ export async function POST(request: NextRequest) {
     }
     if (data.quantity !== undefined && !isNonNegativeNumber(parseFloat(data.quantity))) {
       return NextResponse.json({ error: 'Quantity must be a valid number' }, { status: 400 })
-    }
-    if (data.minQuantity !== undefined && data.minQuantity !== null && !isNonNegativeNumber(parseFloat(data.minQuantity))) {
-      return NextResponse.json({ error: 'Min quantity must be a valid number' }, { status: 400 })
     }
     if (data.purchasePrice !== undefined && data.purchasePrice !== null && !isNonNegativeNumber(parseFloat(data.purchasePrice))) {
       return NextResponse.json({ error: 'Purchase price must be a valid number' }, { status: 400 })
@@ -56,18 +58,25 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    // Convert date-only string (YYYY-MM-DD) to DateTime for Prisma
+    const purchaseDate = data.purchaseDate
+      ? (() => {
+        const d = new Date(data.purchaseDate)
+        return isNaN(d.getTime()) ? null : d
+      })()
+      : null
+
     // Create inventory item
     const inventory = await (prisma as any).inventory.create({
       data: {
         name: data.name,
         category: data.category,
         quantity: data.quantity || 0,
-        minQuantity: data.minQuantity || null,
         unit: data.unit,
         condition: data.condition || 'good',
         location: data.location || null,
         supplier: data.supplier || null,
-        purchaseDate: data.purchaseDate || null,
+        purchaseDate,
         purchasePrice: data.purchasePrice || null,
         description: data.description || null,
         isActive: data.isActive !== undefined ? data.isActive : true,

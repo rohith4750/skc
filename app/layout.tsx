@@ -4,8 +4,6 @@ import './globals.css'
 import Sidebar from '@/components/layout/Sidebar'
 import { Toaster } from 'react-hot-toast'
 import AuthGuard from '@/components/AuthGuard'
-import GlobalLoader from '@/components/GlobalLoader'
-import GlobalFetchInterceptor from '@/components/GlobalFetchInterceptor'
 
 const poppins = Poppins({ 
   subsets: ['latin'],
@@ -38,20 +36,19 @@ export default function RootLayout({
         <AuthGuard>
           {children}
         </AuthGuard>
-        <GlobalFetchInterceptor />
-        <GlobalLoader />
         <Toaster
           position="top-center"
-          containerClassName="!top-16"
+          containerClassName="!top-14"
           toastOptions={{
             duration: 4000,
             style: {
               background: '#fff',
               color: '#1f2937',
-              padding: '12px 16px',
+              padding: '10px 14px',
               borderRadius: '8px',
               boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
               maxWidth: '90vw',
+              fontSize: '14px',
             },
             success: {
               iconTheme: {

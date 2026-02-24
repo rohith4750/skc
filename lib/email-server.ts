@@ -3,15 +3,21 @@
 // 1. Resend (easy setup, free tier: 100 emails/day)
 // 2. Nodemailer/SMTP (completely free, self-hosted, works with Gmail/Outlook)
 
+export interface EmailAttachment {
+  filename: string
+  content: Buffer | string // Buffer or Base64 string
+}
+
 interface SendEmailOptions {
   to: string
   subject: string
   html: string
   text?: string
+  attachments?: EmailAttachment[]
 }
 
 export async function sendEmail(options: SendEmailOptions): Promise<boolean> {
-  const { to, subject, html, text } = options
+  const { to, subject, html, text, attachments } = options
 
   // Debug: Log which email service is configured
   const hasResend = !!process.env.RESEND_API_KEY
@@ -28,13 +34,19 @@ export async function sendEmail(options: SendEmailOptions): Promise<boolean> {
     try {
       const { Resend } = await import('resend')
       const resend = new Resend(process.env.RESEND_API_KEY)
-    
+
+      const resendAttachments = attachments?.map((att) => ({
+        filename: att.filename,
+        content: Buffer.isBuffer(att.content) ? att.content : Buffer.from(att.content, 'base64'),
+      }))
+
       const result = await resend.emails.send({
         from: process.env.RESEND_FROM_EMAIL || 'onboarding@resend.dev',
         to,
         subject,
         html,
         text: text || html.replace(/<[^>]*>/g, ''), // Strip HTML tags for text version
+        attachments: resendAttachments?.length ? resendAttachments : undefined,
       })
       
       if (result.error) {
@@ -66,12 +78,18 @@ export async function sendEmail(options: SendEmailOptions): Promise<boolean> {
         },
       })
 
+      const nodemailerAttachments = attachments?.map((att) => ({
+        filename: att.filename,
+        content: Buffer.isBuffer(att.content) ? att.content : Buffer.from(att.content, 'base64'),
+      }))
+
       await transporter.sendMail({
         from: process.env.SMTP_FROM || process.env.SMTP_USER,
         to,
         subject,
         html,
         text: text || html.replace(/<[^>]*>/g, ''),
+        attachments: nodemailerAttachments,
       })
 
       console.log(`Email sent successfully to ${to} using SMTP`)

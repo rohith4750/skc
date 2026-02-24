@@ -5,11 +5,11 @@ import { useRouter } from 'next/navigation'
 import { formatCurrency, formatDate, formatDateTime } from '@/lib/utils'
 import { Expense, Order } from '@/types'
 import {
-  FaPlus, 
-  FaEdit, 
-  FaTrash, 
-  FaFilter, 
-  FaDollarSign, 
+  FaPlus,
+  FaEdit,
+  FaTrash,
+  FaFilter,
+  FaDollarSign,
   FaSearch,
   FaCalendarAlt,
   FaChartBar,
@@ -99,15 +99,15 @@ export default function ExpensesPage() {
         fetch('/api/expenses'),
         fetch('/api/orders'),
       ])
-      
+
       if (!expensesRes.ok) throw new Error('Failed to fetch expenses')
       if (!ordersRes.ok) throw new Error('Failed to fetch orders')
-      
+
       const [allExpenses, allOrders] = await Promise.all([
         expensesRes.json(),
         ordersRes.json(),
       ])
-      
+
       setExpenses(allExpenses)
       setOrders(allOrders)
     } catch (error) {
@@ -120,45 +120,45 @@ export default function ExpensesPage() {
 
   const filteredExpenses = useMemo(() => {
     let filtered = expenses
-    
+
     // Order filter
     if (selectedOrder !== 'all') {
       filtered = filtered.filter(expense => expense.orderId === selectedOrder)
     }
-    
+
     // Category filter
     if (selectedCategory !== 'all') {
       filtered = filtered.filter(expense => expense.category === selectedCategory)
     }
-    
+
     // Search filter
     if (searchTerm) {
       const searchLower = searchTerm.toLowerCase()
-      filtered = filtered.filter(expense => 
+      filtered = filtered.filter(expense =>
         expense.recipient?.toLowerCase().includes(searchLower) ||
         expense.description?.toLowerCase().includes(searchLower) ||
         expense.category.toLowerCase().includes(searchLower) ||
         expense.order?.customer?.name.toLowerCase().includes(searchLower)
       )
     }
-    
+
     // Date range filter
-    if (dateRange.start) {
+    if (dateRange.start || dateRange.end) {
       filtered = filtered.filter(expense => {
         const paymentDate = new Date(expense.paymentDate)
-        const startDate = new Date(dateRange.start)
-        return paymentDate >= startDate
+        if (dateRange.start) {
+          const start = new Date(dateRange.start)
+          if (paymentDate < start) return false
+        }
+        if (dateRange.end) {
+          const end = new Date(dateRange.end)
+          end.setHours(23, 59, 59, 999)
+          if (paymentDate > end) return false
+        }
+        return true
       })
     }
-    if (dateRange.end) {
-      filtered = filtered.filter(expense => {
-        const paymentDate = new Date(expense.paymentDate)
-        const endDate = new Date(dateRange.end)
-        endDate.setHours(23, 59, 59, 999)
-        return paymentDate <= endDate
-      })
-    }
-    
+
     return filtered.sort((a, b) => new Date(b.paymentDate).getTime() - new Date(a.paymentDate).getTime())
   }, [expenses, selectedOrder, selectedCategory, searchTerm, dateRange])
 
@@ -256,7 +256,7 @@ export default function ExpensesPage() {
 
   const handleGeneratePDF = async (expense: Expense) => {
     const customer = expense.order?.customer
-    
+
     // Prepare PDF template data
     const pdfData: PDFTemplateData = {
       type: 'expense',
@@ -281,10 +281,10 @@ export default function ExpensesPage() {
         calculationDetails: expense.calculationDetails || undefined,
       },
     }
-    
+
     // Generate HTML using template
     const htmlContent = generatePDFTemplate(pdfData)
-    
+
     // Create a temporary HTML element to render properly
     const tempDiv = document.createElement('div')
     tempDiv.style.position = 'absolute'
@@ -293,10 +293,10 @@ export default function ExpensesPage() {
     tempDiv.style.padding = '0'
     tempDiv.style.background = 'white'
     tempDiv.style.color = '#000'
-    
+
     tempDiv.innerHTML = htmlContent
     document.body.appendChild(tempDiv)
-    
+
     try {
       // Convert HTML to canvas
       const canvas = await html2canvas(tempDiv, {
@@ -307,10 +307,10 @@ export default function ExpensesPage() {
         width: tempDiv.scrollWidth,
         height: tempDiv.scrollHeight,
       })
-      
+
       // Remove temporary element
       document.body.removeChild(tempDiv)
-      
+
       // Create PDF from canvas
       const imgData = canvas.toDataURL('image/png')
       const pdf = new jsPDF('p', 'mm', 'a4')
@@ -318,19 +318,19 @@ export default function ExpensesPage() {
       const pageHeight = 297 // A4 height in mm
       const imgHeight = (canvas.height * imgWidth) / canvas.width
       let heightLeft = imgHeight
-      
+
       let position = 0
-      
+
       pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight)
       heightLeft -= pageHeight
-      
+
       while (heightLeft >= 0) {
         position = heightLeft - imgHeight
         pdf.addPage()
         pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight)
         heightLeft -= pageHeight
       }
-      
+
       pdf.save(`expense-${expense.id.slice(0, 8)}.pdf`)
       toast.success('Expense receipt generated successfully!')
     } catch (error) {
@@ -496,7 +496,7 @@ export default function ExpensesPage() {
         }
         const config = statusConfig[paymentStatus] || statusConfig.pending
         const Icon = config.icon
-        
+
         return (
           <div className="text-right">
             <div className="font-bold text-lg text-green-600">{formatCurrency(row.amount)}</div>
@@ -561,7 +561,7 @@ export default function ExpensesPage() {
           <div className="bg-white bg-opacity-20 absolute top-0 right-0 p-3 sm:p-4 rounded-bl-2xl">
             <FaDollarSign className="w-5 h-5 sm:w-6 sm:h-6" />
           </div>
-          
+
           {/* Content */}
           <div className="relative pr-12 sm:pr-16">
             <p className="text-blue-100 text-xs sm:text-sm font-medium mb-3">Total Expenses</p>
@@ -569,7 +569,7 @@ export default function ExpensesPage() {
             <p className="text-blue-100 text-xs mt-2">{filteredExpenses.length} expense(s)</p>
           </div>
         </div>
-        
+
         {Object.entries(categoryTotals)
           .sort(([, a], [, b]) => b - a)
           .slice(0, 3)
@@ -597,7 +597,7 @@ export default function ExpensesPage() {
                 <div className={`${iconBgColor} absolute top-0 right-0 p-3 sm:p-4 rounded-bl-2xl`}>
                   <Icon className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
                 </div>
-                
+
                 {/* Content */}
                 <div className="relative pr-12 sm:pr-16">
                   <p className="text-gray-600 text-xs sm:text-sm font-medium mb-3 capitalize">{category}</p>
@@ -636,7 +636,7 @@ export default function ExpensesPage() {
               </button>
             </div>
           </div>
-          
+
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
             {/* Search */}
             <div className="lg:col-span-2">
@@ -722,11 +722,10 @@ export default function ExpensesPage() {
                     setSelectedCategory('all')
                     setCurrentPage(1)
                   }}
-                  className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-                    selectedCategory === 'all'
+                  className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${selectedCategory === 'all'
                       ? 'bg-primary-500 text-white shadow-md'
                       : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                  }`}
+                    }`}
                 >
                   All Categories
                 </button>
@@ -739,11 +738,10 @@ export default function ExpensesPage() {
                         setSelectedCategory(category)
                         setCurrentPage(1)
                       }}
-                      className={`inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors capitalize ${
-                        selectedCategory === category
+                      className={`inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors capitalize ${selectedCategory === category
                           ? `${CATEGORY_COLORS[category] || CATEGORY_COLORS.other} border-2`
                           : 'bg-white border border-gray-300 text-gray-700 hover:bg-gray-50'
-                      }`}
+                        }`}
                     >
                       <Icon className="text-xs" />
                       {category}
@@ -772,7 +770,7 @@ export default function ExpensesPage() {
           renderActions={(expense: Expense) => {
             const paymentStatus = expense.paymentStatus || 'pending'
             const isPaid = paymentStatus === 'paid'
-            
+
             return (
               <div className="flex items-center gap-2">
                 <button

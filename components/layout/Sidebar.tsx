@@ -4,19 +4,21 @@ import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
 import { usePathname } from 'next/navigation'
-import { 
-  FaHome, 
-  FaUsers, 
-  FaUtensils, 
-  FaShoppingCart, 
+import {
+  FaHome,
+  FaUsers,
+  FaUtensils,
+  FaShoppingCart,
   FaFileInvoiceDollar,
   FaUserTie,
   FaChevronLeft,
   FaChevronRight,
   FaMoneyBillWave,
+  FaDollarSign,
   FaUserShield,
   FaBox,
   FaWarehouse,
+  FaStore,
   FaHistory,
   FaUserCircle,
   FaChartLine,
@@ -34,28 +36,30 @@ const menuItems = [
   { href: '/alerts', icon: FaBell, label: 'Alerts', section: 'core' },
   { href: '/customers', icon: FaUsers, label: 'Customers', section: 'core' },
   { href: '/menu', icon: FaUtensils, label: 'Menu', section: 'core' },
-  { href: '/orders', icon: FaShoppingCart, label: 'Create Order', section: 'core' },
-  { href: '/orders/history', icon: FaHistory, label: 'Order History', section: 'core' },
-  { href: '/orders/overview', icon: FaChartLine, label: 'Order Center', section: 'core' },
+  { href: '/orders/center', icon: FaShoppingCart, label: 'Order Hub', section: 'core' },
+  { href: '/orders/history', icon: FaHistory, label: 'Past Events', section: 'core' },
+  { href: '/orders/overview', icon: FaChartLine, label: 'Event Planner', section: 'core' },
   { href: '/bills', icon: FaFileInvoiceDollar, label: 'Bills', section: 'core' },
-  
+
   // 2. Financial Management
   { href: '/expenses', icon: FaMoneyBillWave, label: 'Expenses', requiredRole: 'super_admin', section: 'financial' },
+  { href: '/expenses/store-calculator', icon: FaStore, label: 'Store Calculator', requiredRole: 'super_admin', section: 'financial' },
+  { href: '/workforce/outstanding', icon: FaDollarSign, label: 'Outstanding', requiredRole: 'super_admin', section: 'financial' },
   { href: '/workforce', icon: FaUserTie, label: 'Workforce', requiredRole: 'super_admin', section: 'financial' },
   { href: '/analytics', icon: FaChartLine, label: 'Analytics', requiredRole: 'super_admin', section: 'financial' },
-  
+
   // 3. Tax Management
   { href: '/tax', icon: FaFileInvoice, label: 'Income Tax Return', requiredRole: 'super_admin', section: 'tax' },
-  
+
   // 4. Inventory & Stock Management
   { href: '/stock', icon: FaBox, label: 'Stock', hideForRole: 'admin', section: 'inventory' },
   { href: '/inventory', icon: FaWarehouse, label: 'Inventory', hideForRole: 'admin', section: 'inventory' },
-  
+
   // 5. System Administration
   { href: '/users', icon: FaUserShield, label: 'User Management', requiredRole: 'super_admin', section: 'system' },
   { href: '/audit-logs', icon: FaClipboardList, label: 'Login Audit Logs', requiredRole: 'super_admin', section: 'system' },
   { href: '/enquiries', icon: FaEnvelope, label: 'Enquiries', requiredRole: 'super_admin', section: 'system' },
-  
+
   // 6. Profile
   { href: '/profile', icon: FaUserCircle, label: 'Profile', section: 'profile' },
 ]
@@ -116,32 +120,32 @@ export default function Sidebar() {
       <div
         className={`
           fixed lg:static inset-y-0 left-0 z-40
-          w-64 bg-gray-900 text-white shadow-xl
+          w-56 lg:w-72 bg-gray-900 text-white shadow-xl
           transform transition-transform duration-300 ease-in-out
           ${isOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
           flex flex-col h-screen
         `}
       >
         {/* Brand Section - Fixed at top */}
-        <div className="w-full border-b border-gray-800 flex-shrink-0 bg-gray-900 flex flex-col items-center justify-center py-3 px-2">
+        <div className="w-full border-b border-gray-800 flex-shrink-0 bg-gray-900 flex flex-col items-center justify-center py-2 px-2 lg:py-4 lg:px-4">
           <Link href="/" className="flex flex-col items-center">
-            <Image 
-              src="/images/logo-dark.png" 
-              alt="SKC Logo" 
-              width={100} 
-              height={100}
-              className="drop-shadow-lg"
+            <Image
+              src="/images/logo-dark.png"
+              alt="SKC Logo"
+              width={80}
+              height={80}
+              className="drop-shadow-lg w-20 h-20 lg:w-24 lg:h-24"
               priority
             />
-            <div className="text-[9px] text-amber-400/80 mt-1 font-medium tracking-wide">
+            <div className="text-[8px] text-amber-400/80 mt-0.5 font-medium tracking-wide">
               Proprietor: Telidevara Rajendraprasad
             </div>
-          </Link>
-        </div>
-        
+          </Link >
+        </div >
+
         {/* Navigation Menu - Scrollable */}
-        <nav className="flex-1 overflow-y-auto overflow-x-hidden py-4 min-h-0">
-          <div className="space-y-1 px-3">
+        < nav className="flex-1 overflow-y-auto overflow-x-hidden py-3 min-h-0" >
+          <div className="space-y-0.5 px-2">
             {(() => {
               // Filter menu items based on role first
               const filteredItems = menuItems.filter((item) => {
@@ -182,8 +186,8 @@ export default function Sidebar() {
                 return (
                   <div key={sectionKey}>
                     {/* Section Header */}
-                    <div className="px-4 py-2 mb-1">
-                      <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                    <div className="px-3 py-1.5 mb-0.5 lg:px-4 lg:py-2 lg:mb-1">
+                      <span className="text-[10px] lg:text-sm font-semibold text-gray-500 uppercase tracking-wider">
                         {sectionTitles[sectionKey]}
                       </span>
                     </div>
@@ -191,32 +195,31 @@ export default function Sidebar() {
                     {items.map((item) => {
                       const Icon = item.icon
                       const isActive = pathname === item.href
-                      
+
                       return (
                         <Link
                           key={item.href}
                           href={item.href}
-                          className={`flex items-center px-4 py-3 rounded-lg text-gray-300 hover:bg-gray-800 hover:text-white transition-all duration-200 ${
-                            isActive ? 'bg-gray-800 text-white shadow-md border-l-4 border-primary-500 font-semibold' : ''
-                          }`}
+                          className={`flex items-center px-3 py-2 lg:px-4 lg:py-3 rounded-lg text-gray-300 hover:bg-gray-800 hover:text-white transition-all duration-200 ${isActive ? 'bg-gray-800 text-white shadow-md border-l-4 border-primary-500 font-semibold' : ''
+                            }`}
                           onClick={() => setIsOpen(false)}
                         >
-                          <Icon className="w-5 h-5 mr-3 flex-shrink-0" />
-                          <span className="font-medium text-sm">{item.label}</span>
+                          <Icon className="w-4 h-4 mr-2.5 lg:w-6 lg:h-6 lg:mr-3 flex-shrink-0" />
+                          <span className="font-medium text-xs lg:text-base">{item.label}</span>
                         </Link>
                       )
                     })}
                     {/* Section Separator */}
                     {index < sectionOrder.length - 1 && (
-                      <div className="mx-4 my-3 border-t border-gray-800"></div>
+                      <div className="mx-3 my-2 border-t border-gray-800"></div>
                     )}
                   </div>
                 )
               })
             })()}
           </div>
-        </nav>
-      </div>
+        </nav >
+      </div >
     </>
   )
 }

@@ -82,7 +82,7 @@ export default function Logo({
     if (imgClassName && imgClassName.includes('w-full')) {
       return (
         <img
-          src="/logo.png"
+          src="/images/logo.jpg"
           alt="SKC Caterers Logo"
           className={imgClassName}
           onError={() => setImageError(true)}
@@ -93,7 +93,7 @@ export default function Logo({
     return (
       <div className={`${imgClassName} relative`}>
         <Image
-          src="/logo.png"
+          src="/images/logo.jpg"
           alt="SKC Caterers Logo"
           fill
           className="object-contain"

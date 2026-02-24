@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import toast from 'react-hot-toast'
-import { formatCurrency, formatDate, formatDateTime } from '@/lib/utils'
+import { formatCurrency, formatDate, formatDateTime, sanitizeMealLabel } from '@/lib/utils'
 import { Bill, Order, PaymentHistoryEntry } from '@/types'
 import { FaUser, FaCalendarAlt, FaMoneyBillWave, FaHistory, FaUtensils, FaTruck, FaTag, FaArrowLeft, FaEdit, FaCheckCircle, FaExclamationCircle } from 'react-icons/fa'
 
@@ -61,14 +61,53 @@ export default function OrderSummaryPage() {
     ? (order.bill?.paymentHistory as PaymentHistoryEntry[])
     : []
 
-  // Group order items by their menu item type
+  // Group order items by mealType key (session key)
   const itemsByMealType: Record<string, any[]> = {}
   order.items?.forEach((item: any) => {
-    const type = item.menuItem?.type?.toLowerCase() || 'other'
-    if (!itemsByMealType[type]) {
-      itemsByMealType[type] = []
-    }
-    itemsByMealType[type].push(item)
+    const key = item.mealType || 'other'
+    if (!itemsByMealType[key]) itemsByMealType[key] = []
+    itemsByMealType[key].push(item)
+  })
+
+  // Build date-wise structure: date -> sessions (for one customer with many dates)
+  const getMealTypePriority = (type: string) => {
+    const p: Record<string, number> = { breakfast: 1, lunch: 2, dinner: 3, snacks: 4, high_tea: 5 }
+    return p[(type || '').toLowerCase()] || 99
+  }
+  type SessionEntry = { key: string; data: any; detail: any; items: any[] }
+  const byDate: Record<string, SessionEntry[]> = {}
+  const mealTypeAmounts = order.mealTypeAmounts as Record<string, { date?: string; menuType?: string;[k: string]: any } | number> | null
+  if (mealTypeAmounts) {
+    Object.entries(mealTypeAmounts).forEach(([key, data]) => {
+      const detail = typeof data === 'object' && data !== null ? data : null
+      const date = detail?.date ? String(detail.date) : ''
+      const dateKey = date || 'unspecified'
+      if (!byDate[dateKey]) byDate[dateKey] = []
+      // Find items matching this session key or menuType (supports both session keys and type names)
+      const menuType = detail?.menuType || key
+      const matchingItems = itemsByMealType[key] ||
+        itemsByMealType[menuType] ||
+        itemsByMealType[String(menuType).toLowerCase()] ||
+        itemsByMealType[String(key).toLowerCase()] ||
+        []
+
+      byDate[dateKey].push({
+        key,
+        data,
+        detail,
+        items: matchingItems
+      })
+    })
+  }
+  const sortedDates = Object.keys(byDate).sort((a, b) => {
+    if (a === 'unspecified') return 1
+    if (b === 'unspecified') return -1
+    return new Date(a).getTime() - new Date(b).getTime()
+  })
+  sortedDates.forEach(d => {
+    byDate[d].sort((a, b) =>
+      getMealTypePriority(a.detail?.menuType || '') - getMealTypePriority(b.detail?.menuType || '')
+    )
   })
 
   const totalAmount = order.totalAmount || 0
@@ -110,18 +149,17 @@ export default function OrderSummaryPage() {
         {/* Hero Banner Section */}
         <div className="bg-white rounded-[2.5rem] p-8 shadow-xl shadow-slate-200/50 border border-slate-100 mb-8 overflow-hidden relative">
           <div className="absolute top-0 right-0 w-64 h-64 bg-primary-50/50 rounded-full -mr-32 -mt-32 blur-3xl -z-0"></div>
-          
+
           <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
             <div>
               <div className="flex items-center gap-3 mb-3">
-                <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-[0.2em] border ${
-                  order.status === 'completed' ? 'bg-emerald-50 text-emerald-600 border-emerald-100' :
+                <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-[0.2em] border ${order.status === 'completed' ? 'bg-emerald-50 text-emerald-600 border-emerald-100' :
                   order.status === 'cancelled' ? 'bg-rose-50 text-rose-600 border-rose-100' :
-                  'bg-primary-50 text-primary-600 border-primary-100'
-                }`}>
+                    'bg-primary-50 text-primary-600 border-primary-100'
+                  }`}>
                   {order.status}
                 </span>
-                <span className="text-xs font-bold text-slate-400">#{order.id.slice(0, 8).toUpperCase()}</span>
+                <span className="text-xs font-bold text-slate-400">#SKC-ORDER-{(order as any).serialNumber || order.id.slice(0, 8).toUpperCase()}</span>
               </div>
               <h1 className="text-4xl font-black text-slate-900 tracking-tight leading-none mb-2">
                 {order.eventName || 'Premium Catering Event'}
@@ -172,6 +210,10 @@ export default function OrderSummaryPage() {
                   <span className="text-[10px] font-bold text-slate-400 uppercase block mb-1">Transport</span>
                   <span className="text-sm font-black text-slate-900">{formatCurrency(order.transportCost || 0)}</span>
                 </div>
+                <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100">
+                  <span className="text-[10px] font-bold text-slate-400 uppercase block mb-1">Water Bottles</span>
+                  <span className="text-sm font-black text-slate-900">{formatCurrency(order.waterBottlesCost || 0)}</span>
+                </div>
               </div>
               <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100">
                 <span className="text-[10px] font-bold text-slate-400 uppercase block mb-1">Contact Details</span>
@@ -208,7 +250,7 @@ export default function OrderSummaryPage() {
                         {percentPaid}%
                       </span>
                       <div className="w-32 h-2 bg-slate-800 rounded-full overflow-hidden">
-                        <div 
+                        <div
                           className="h-full bg-emerald-500 rounded-full shadow-[0_0_10px_rgba(16,185,129,0.5)] transition-all duration-1000"
                           style={{ width: `${percentPaid}%` }}
                         ></div>
@@ -232,82 +274,109 @@ export default function OrderSummaryPage() {
             <h2 className="text-sm font-black text-slate-900 uppercase tracking-widest">Catering Plans</h2>
             <div className="flex-grow h-px bg-slate-200"></div>
           </div>
-          
-          <div className="grid grid-cols-1 gap-6">
-            {Object.entries(order.mealTypeAmounts || {}).map(([mealType, data]) => {
-              const detail = typeof data === 'object' && data !== null ? data : null;
-              const items = itemsByMealType[mealType.toLowerCase()] || [];
-              
-              return (
-                <div key={mealType} className="bg-white rounded-[2rem] border border-slate-100 shadow-sm hover:shadow-xl hover:border-primary-100 transition-all group overflow-hidden">
-                  <div className="flex flex-col md:flex-row h-full">
-                    {/* Left: Meal Category Header */}
-                    <div className={`w-full md:w-64 p-6 flex flex-col justify-center items-center text-center ${
-                      mealType.toLowerCase() === 'breakfast' ? 'bg-orange-50/50' :
-                      mealType.toLowerCase() === 'lunch' ? 'bg-emerald-50/50' :
-                      mealType.toLowerCase() === 'dinner' ? 'bg-indigo-50/50' :
-                      'bg-slate-50/50'
-                    }`}>
-                      <div className={`w-12 h-12 rounded-2xl flex items-center justify-center shadow-sm mb-3 ${
-                        mealType.toLowerCase() === 'breakfast' ? 'bg-orange-100 text-orange-600' :
-                        mealType.toLowerCase() === 'lunch' ? 'bg-emerald-100 text-emerald-600' :
-                        mealType.toLowerCase() === 'dinner' ? 'bg-indigo-100 text-indigo-600' :
-                        'bg-slate-100 text-slate-600'
-                      }`}>
-                        <FaUtensils className="text-xl" />
-                      </div>
-                      <h3 className="text-xl font-black capitalize text-slate-900 leading-none">{mealType}</h3>
-                      <p className="text-[10px] font-bold text-slate-400 uppercase mt-2 tracking-widest">
-                        {detail?.date ? formatDate(detail.date) : 'Date Pending'}
-                      </p>
-                    </div>
 
-                    {/* Right: Details & Items */}
-                    <div className="flex-grow p-6">
-                      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6 mb-6">
-                        <div className="flex gap-8">
-                          <div>
-                            <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-1">Guest Count</span>
-                            <div className="flex items-center gap-2">
-                              <span className="text-lg font-black text-slate-900">{detail?.numberOfMembers || 'N/A'}</span>
-                              {detail?.originalMembers !== undefined && detail?.numberOfMembers !== undefined && detail.originalMembers !== detail.numberOfMembers && (
-                                <span className={`px-2 py-0.5 rounded-lg text-[10px] font-black ${
-                                  (detail.numberOfMembers ?? 0) > (detail.originalMembers ?? 0) ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-700'
-                                }`}>
-                                  {(detail.numberOfMembers ?? 0) > (detail.originalMembers ?? 0) ? '↑' : '↓'}
-                                  {Math.abs((detail.numberOfMembers ?? 0) - (detail.originalMembers ?? 0))}
+          <div className="grid grid-cols-1 gap-6">
+            {sortedDates.map((date) => (
+              <div key={date} className="space-y-4">
+                <div className="flex items-center gap-2">
+                  <FaCalendarAlt className="text-primary-500" />
+                  <span className="text-sm font-black text-slate-700 uppercase tracking-widest">
+                    {date === 'unspecified' ? 'Date Pending' : formatDate(date)}
+                  </span>
+                </div>
+                <div className="grid grid-cols-1 gap-4 pl-4 border-l-2 border-slate-100">
+                  {byDate[date].map(({ key: mealType, data, detail, items }) => (
+                    <div key={mealType} className="bg-white rounded-[2rem] border border-slate-100 shadow-sm hover:shadow-xl hover:border-primary-100 transition-all group overflow-hidden">
+                      <div className="flex flex-col md:flex-row h-full">
+                        {/* Left: Meal Category Header */}
+                        <div className={`w-full md:w-64 p-6 flex flex-col justify-center items-center text-center ${(detail?.menuType?.toLowerCase() || mealType.toLowerCase()) === 'breakfast' ? 'bg-orange-50/50' :
+                          (detail?.menuType?.toLowerCase() || mealType.toLowerCase()) === 'lunch' ? 'bg-emerald-50/50' :
+                            (detail?.menuType?.toLowerCase() || mealType.toLowerCase()) === 'dinner' ? 'bg-indigo-50/50' :
+                              'bg-slate-50/50'
+                          }`}>
+                          <div className={`w-12 h-12 rounded-2xl flex items-center justify-center shadow-sm mb-3 ${(detail?.menuType?.toLowerCase() || mealType.toLowerCase()) === 'breakfast' ? 'bg-orange-100 text-orange-600' :
+                            (detail?.menuType?.toLowerCase() || mealType.toLowerCase()) === 'lunch' ? 'bg-emerald-100 text-emerald-600' :
+                              (detail?.menuType?.toLowerCase() || mealType.toLowerCase()) === 'dinner' ? 'bg-indigo-100 text-indigo-600' :
+                                'bg-slate-100 text-slate-600'
+                            }`}>
+                            <FaUtensils className="text-xl" />
+                          </div>
+                          <h3 className="text-xl font-black capitalize text-slate-900 leading-none">{sanitizeMealLabel(detail?.menuType || mealType)}</h3>
+                          <p className="text-[10px] font-bold text-slate-400 uppercase mt-2 tracking-widest">
+                            {detail?.date ? formatDate(detail.date) : 'Date Pending'}
+                          </p>
+                        </div>
+
+                        {/* Right: Details & Items */}
+                        <div className="flex-grow p-6">
+                          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6 mb-6">
+                            <div className="flex gap-8">
+                              <div>
+                                <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-1">Guest Count</span>
+                                <div className="flex items-center gap-2">
+                                  <span className="text-lg font-black text-slate-900">{detail?.numberOfMembers || 'N/A'}</span>
+                                  {detail?.originalMembers !== undefined && detail?.numberOfMembers !== undefined && detail.originalMembers !== detail.numberOfMembers && (
+                                    <span className={`px-2 py-0.5 rounded-lg text-[10px] font-black ${(detail.numberOfMembers ?? 0) > (detail.originalMembers ?? 0) ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-700'
+                                      }`}>
+                                      {(detail.numberOfMembers ?? 0) > (detail.originalMembers ?? 0) ? '↑' : '↓'}
+                                      {Math.abs((detail.numberOfMembers ?? 0) - (detail.originalMembers ?? 0))}
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
+                              <div>
+                                <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-1">Pricing</span>
+                                <span className="text-lg font-black text-slate-900 capitalize">{detail?.pricingMethod || 'Manual'}</span>
+                              </div>
+                            </div>
+                            <div className="bg-slate-50 px-6 py-3 rounded-2xl border border-slate-100 text-right">
+                              <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-0.5">Amount</span>
+                              <div className="flex flex-col items-end">
+                                <span className="text-xl font-black text-primary-600">
+                                  {(() => {
+                                    const storedAmount = Number(detail?.amount || (typeof data === 'number' ? data : 0));
+                                    const plates = Number(detail?.numberOfPlates || detail?.numberOfMembers || 0);
+                                    const price = Number(detail?.platePrice || 0);
+
+                                    // Auto-calculate if stored amount is 0 but we have valid plate-based data
+                                    const finalAmount = (detail?.pricingMethod === 'plate-based' && storedAmount === 0 && plates > 0 && price > 0)
+                                      ? plates * price
+                                      : storedAmount;
+
+                                    return formatCurrency(finalAmount);
+                                  })()}
                                 </span>
-                              )}
+                                {detail?.pricingMethod === 'plate-based' && (
+                                  <span className="text-[10px] font-bold text-slate-400 mt-1 bg-white px-2 py-0.5 rounded border border-slate-100">
+                                    {detail.numberOfPlates || detail.numberOfMembers || 0} p × {formatCurrency(detail.platePrice || 0)}
+                                  </span>
+                                )}
+                              </div>
                             </div>
                           </div>
-                          <div>
-                            <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-1">Pricing</span>
-                            <span className="text-lg font-black text-slate-900 capitalize">{detail?.pricingMethod || 'Manual'}</span>
-                          </div>
-                        </div>
-                        <div className="bg-slate-50 px-6 py-3 rounded-2xl border border-slate-100 text-right">
-                          <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-0.5">Amount</span>
-                          <span className="text-xl font-black text-primary-600">
-                            {formatCurrency(detail?.amount || (typeof data === 'number' ? data : 0))}
-                          </span>
-                        </div>
-                      </div>
 
-                      <div>
-                        <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-3">Selected Menu Items</span>
-                        <div className="flex flex-wrap gap-2">
-                          {items.length > 0 ? items.map((item) => (
-                            <span key={item.id} className="px-3 py-1.5 bg-white border border-slate-200 text-slate-700 rounded-xl text-xs font-bold shadow-sm hover:border-primary-300 transition-colors">
-                              {item.menuItem?.name}
-                            </span>
-                          )) : <p className="text-xs text-slate-300 font-bold italic">No menu items added.</p>}
+                          <div>
+                            <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-3">Selected Menu Items</span>
+                            <div className="flex flex-wrap gap-2">
+                              {items.length > 0 ? items.map((item) => (
+                                <span key={item.id} className="px-3 py-1.5 bg-white border border-slate-200 text-slate-700 rounded-xl text-xs font-bold shadow-sm hover:border-primary-300 transition-colors flex items-center gap-1">
+                                  {item.menuItem?.name}
+                                  {item.customization && (
+                                    <span className="text-[10px] text-primary-500 font-medium bg-primary-50 px-1.5 py-0.5 rounded-md">
+                                      {item.customization}
+                                    </span>
+                                  )}
+                                </span>
+                              )) : <p className="text-xs text-slate-300 font-bold italic">No menu items added.</p>}
+                            </div>
+                          </div>
                         </div>
                       </div>
                     </div>
-                  </div>
+                  ))}
                 </div>
-              );
-            })}
+              </div>
+            ))}
           </div>
         </div>
 
@@ -330,7 +399,7 @@ export default function OrderSummaryPage() {
               </span>
             </div>
           </div>
-          
+
           <div className="p-0">
             {paymentHistory.length === 0 ? (
               <div className="p-20 text-center">
@@ -359,11 +428,10 @@ export default function OrderSummaryPage() {
                         <tr key={index} className="hover:bg-slate-50/80 transition-colors group">
                           <td className="px-8 py-5 text-xs font-bold text-slate-500 whitespace-nowrap">{formatDateTime(payment.date)}</td>
                           <td className="px-8 py-5 whitespace-nowrap">
-                            <span className={`px-2.5 py-1 rounded-lg text-[10px] font-black uppercase tracking-tighter ${
-                              isBooking ? 'bg-blue-100 text-blue-700' :
+                            <span className={`px-2.5 py-1 rounded-lg text-[10px] font-black uppercase tracking-tighter ${isBooking ? 'bg-blue-100 text-blue-700' :
                               isRevision ? 'bg-amber-100 text-amber-700' :
-                              'bg-emerald-100 text-emerald-700'
-                            }`}>
+                                'bg-emerald-100 text-emerald-700'
+                              }`}>
                               {isBooking ? 'Booking' : isRevision ? 'Revision' : 'Payment'}
                             </span>
                           </td>

@@ -1,5 +1,6 @@
-import { NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
+import { requireAuth } from '@/lib/require-auth'
 import { isEmail, isNonEmptyString, isPhone, validateRequiredFields } from '@/lib/validation'
 
 const allowedOrigins = new Set([
@@ -7,6 +8,8 @@ const allowedOrigins = new Set([
   'https://skconline.in',
   'https://www.skccaterers.in',
   'https://skccaterers.in',
+  'http://localhost:5173',
+  'http://127.0.0.1:5173',
 ])
 
 const allowedMethods = 'POST, OPTIONS'
@@ -53,7 +56,9 @@ const parseBody = async (req: Request) => {
   }
 }
 
-export async function GET() {
+export async function GET(request: NextRequest) {
+  const auth = await requireAuth(request)
+  if (auth.response) return auth.response
   try {
     const enquiries = await (prisma as any).enquiry.findMany({
       orderBy: { createdAt: 'desc' },
