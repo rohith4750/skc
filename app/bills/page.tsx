@@ -464,27 +464,44 @@ export default function BillsPage() {
 
         {/* Stats Grid */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <StatCard
-            title="Total Receivables"
-            value={formatCurrency(metrics.total)}
-            icon={<FaFileInvoiceDollar className="text-blue-500" />}
-            color="blue"
-            subtitle={`${metrics.count} active ledgers`}
-          />
-          <StatCard
-            title="Successfully Collected"
-            value={formatCurrency(metrics.paid)}
-            icon={<FaWallet className="text-emerald-500" />}
-            color="emerald"
-            subtitle={`${((metrics.paid / (metrics.total || 1)) * 100).toFixed(1)}% collection rate`}
-          />
-          <StatCard
-            title="Outstanding Balance"
-            value={formatCurrency(metrics.pending)}
-            icon={<FaChartLine className="text-orange-500" />}
-            color="orange"
-            subtitle="Follow-up required"
-          />
+          <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-6 flex flex-col justify-between hover:shadow-md transition-all">
+            <div>
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider">Total Receivables</h3>
+                <div className="bg-blue-50 p-2.5 rounded-xl">
+                  <FaFileInvoiceDollar className="w-5 h-5 text-blue-600" />
+                </div>
+              </div>
+              <p className="text-2xl font-black text-blue-600">{formatCurrency(metrics.total)}</p>
+              <p className="text-xs text-slate-400 mt-2 font-medium italic">{metrics.count} active ledgers</p>
+            </div>
+          </div>
+
+          <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-6 flex flex-col justify-between hover:shadow-md transition-all">
+            <div>
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider">Collected</h3>
+                <div className="bg-emerald-50 p-2.5 rounded-xl">
+                  <FaWallet className="w-5 h-5 text-emerald-600" />
+                </div>
+              </div>
+              <p className="text-2xl font-black text-emerald-600">{formatCurrency(metrics.paid)}</p>
+              <p className="text-xs text-slate-400 mt-2 font-medium italic">{((metrics.paid / (metrics.total || 1)) * 100).toFixed(1)}% collection rate</p>
+            </div>
+          </div>
+
+          <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-6 flex flex-col justify-between hover:shadow-md transition-all">
+            <div>
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider">Outstanding</h3>
+                <div className="bg-orange-50 p-2.5 rounded-xl">
+                  <FaChartLine className="w-5 h-5 text-orange-600" />
+                </div>
+              </div>
+              <p className="text-2xl font-black text-orange-600">{formatCurrency(metrics.pending)}</p>
+              <p className="text-xs text-slate-400 mt-2 font-medium italic">Follow-up required</p>
+            </div>
+          </div>
         </div>
 
         {/* Search Bar */}
@@ -796,28 +813,6 @@ export default function BillsPage() {
   )
 }
 
-function StatCard({ title, value, icon, subtitle, color }: { title: string, value: string, icon: React.ReactNode, subtitle: string, color: string }) {
-  const colorMap: any = {
-    blue: "from-blue-50 to-indigo-50/50 border-blue-100",
-    emerald: "from-emerald-50 to-teal-50/50 border-emerald-100",
-    orange: "from-orange-50 to-amber-50/50 border-orange-100",
-  }
-  return (
-    <div className={`bg-gradient-to-br ${colorMap[color]} border p-6 rounded-3xl shadow-sm hover:shadow-md transition-all duration-300 group`}>
-      <div className="flex items-center justify-between mb-4">
-        <div className="p-3 bg-white rounded-2xl shadow-sm text-xl group-hover:scale-110 transition-transform">
-          {icon}
-        </div>
-        <FaInfoCircle className="text-slate-300 hover:text-slate-400 cursor-pointer" />
-      </div>
-      <h3 className="text-slate-500 text-sm font-semibold tracking-wide uppercase">{title}</h3>
-      <p className="text-3xl font-black text-slate-900 mt-1">{value}</p>
-      <p className="text-xs text-slate-400 mt-2 flex items-center gap-1 font-medium italic">
-        {subtitle}
-      </p>
-    </div>
-  )
-}
 
 
 function BillCard({ bill, onOpen, onDownload, onDownloadImage, onWhatsApp, onEmail, onDelete }: {
@@ -838,72 +833,65 @@ function BillCard({ bill, onOpen, onDownload, onDownloadImage, onWhatsApp, onEma
   return (
     <div
       onClick={onOpen}
-      className="bg-white border border-slate-100 rounded-[2rem] p-6 shadow-[0_8px_30px_-15px_rgba(0,0,0,0.1)] hover:shadow-[0_20px_40px_-15px_rgba(0,0,0,0.15)] hover:border-indigo-100 transition-all cursor-pointer group active:scale-[0.98]"
+      className="bg-white border border-slate-100 rounded-[2rem] p-6 shadow-sm hover:shadow-xl hover:border-indigo-100 transition-all cursor-pointer group active:scale-[0.98] relative overflow-hidden"
     >
-      <div className="flex justify-between items-start mb-6">
+      <div className="absolute top-0 right-0 w-24 h-24 bg-slate-50 rounded-full -mr-12 -mt-12 group-hover:bg-indigo-50/50 transition-colors" />
+
+      <div className="flex justify-between items-start mb-6 relative z-10">
         <div className="flex gap-4">
-          <div className="w-14 h-14 bg-slate-50 rounded-2xl flex items-center justify-center text-slate-400 text-2xl group-hover:bg-indigo-50 group-hover:text-indigo-600 transition-colors">
+          <div className="w-14 h-14 bg-slate-50 rounded-2xl flex items-center justify-center text-slate-400 text-2xl group-hover:bg-indigo-600 group-hover:text-white transition-all shadow-sm">
             <FaUser />
           </div>
           <div>
-            <h3 className="font-black text-slate-900 text-lg leading-tight">{bill.order.customer.name}</h3>
-            <p className="text-slate-400 text-sm mt-0.5">{bill.order.customer.phone}</p>
+            <h3 className="font-bold text-slate-900 text-lg leading-tight group-hover:text-indigo-600 transition-colors">{bill.order.customer.name}</h3>
+            <p className="text-slate-400 text-xs font-bold uppercase tracking-widest mt-1">{bill.order.customer.phone}</p>
           </div>
         </div>
-        <div className={`px-3 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-wider ${bill.status === 'paid' ? 'bg-emerald-100 text-emerald-700' :
-          bill.status === 'partial' ? 'bg-amber-100 text-amber-700' : 'bg-rose-100 text-rose-700'
+        <div className={`px-3 py-1 rounded-xl text-[10px] font-black uppercase tracking-widest shadow-sm ${bill.status === 'paid' ? 'bg-emerald-500 text-white' :
+          bill.status === 'partial' ? 'bg-amber-500 text-white' : 'bg-rose-500 text-white'
           }`}>
           {bill.status}
         </div>
       </div>
 
       {/* Action Buttons */}
-      <div className="flex justify-end gap-2 mb-4">
+      <div className="flex justify-end gap-1.5 mb-6 relative z-10">
         <button
           onClick={(e) => { e.stopPropagation(); onDownload(); }}
-          className="p-2 bg-slate-50 rounded-lg text-slate-500 hover:text-indigo-600 hover:bg-white border border-transparent hover:border-slate-200 transition-all"
+          className="p-2.5 bg-slate-50 rounded-xl text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 transition-all active:scale-90"
           title="Download PDF"
         >
-          <FaFileInvoiceDollar />
+          <FaFileInvoiceDollar className="w-4 h-4" />
         </button>
         <button
           onClick={(e) => { e.stopPropagation(); onDownloadImage(); }}
-          className="p-2 bg-slate-50 rounded-lg text-slate-500 hover:text-indigo-600 hover:bg-white border border-transparent hover:border-slate-200 transition-all"
+          className="p-2.5 bg-slate-50 rounded-xl text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 transition-all active:scale-90"
           title="Download Image"
         >
-          <FaFileImage />
+          <FaFileImage className="w-4 h-4" />
         </button>
         <button
           onClick={(e) => { e.stopPropagation(); onWhatsApp(); }}
-
-          className="p-2 bg-slate-50 rounded-lg text-slate-500 hover:text-emerald-600 hover:bg-white border border-transparent hover:border-slate-200 transition-all"
+          className="p-2.5 bg-slate-50 rounded-xl text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 transition-all active:scale-90"
           title="Send via WhatsApp"
         >
-          <FaWhatsapp />
-        </button>
-        <button
-          onClick={(e) => { e.stopPropagation(); onEmail(); }}
-          className="p-2 bg-slate-50 rounded-lg text-slate-500 hover:text-blue-600 hover:bg-white border border-transparent hover:border-slate-200 transition-all"
-          title="Send via Email"
-        >
-          <FaEnvelope />
+          <FaWhatsapp className="w-4 h-4" />
         </button>
         <button
           onClick={(e) => { e.stopPropagation(); onDelete(); }}
-          className="p-2 bg-slate-50 rounded-lg text-slate-500 hover:text-rose-600 hover:bg-white border border-transparent hover:border-slate-200 transition-all"
+          className="p-2.5 bg-slate-50 rounded-xl text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-all active:scale-90"
           title="Delete Bill"
         >
-          <FaTrash />
+          <FaTrash className="w-4 h-4" />
         </button>
       </div>
 
-
-      <div className="space-y-4">
-        <div className="flex justify-between items-end">
+      <div className="space-y-5 relative z-10">
+        <div className="grid grid-cols-3 gap-2">
           <div>
-            <p className="text-[10px] text-slate-400 uppercase font-bold tracking-widest mb-1">Event Date</p>
-            <p className="text-sm font-bold text-slate-700 flex items-center gap-1.5">
-              <FaCalendarAlt className="text-slate-300" />
+            <p className="text-[10px] text-slate-400 uppercase font-black tracking-widest mb-1.5">Event Date</p>
+            <p className="text-xs font-bold text-slate-700 flex items-center gap-1.5 bg-slate-50 px-2 py-1.5 rounded-lg border border-slate-100">
+              <FaCalendarAlt className="text-slate-400 text-[10px]" />
               {(() => {
                 if (bill.order?.eventDate) return formatDate(bill.order.eventDate as any);
                 const mealTypeAmounts = bill.order?.mealTypeAmounts as Record<string, any>;
@@ -919,41 +907,35 @@ function BillCard({ bill, onOpen, onDownload, onDownloadImage, onWhatsApp, onEma
             </p>
           </div>
           <div className="text-center">
-            <p className="text-[10px] text-slate-400 uppercase font-bold tracking-widest mb-1">Plates</p>
-            <p className="text-sm font-bold text-slate-700 flex items-center gap-1.5 justify-center">
-              <FaUsers className="text-slate-300" />
+            <p className="text-[10px] text-slate-400 uppercase font-black tracking-widest mb-1.5">Guests</p>
+            <p className="text-xs font-bold text-slate-700 flex items-center gap-1.5 justify-center bg-slate-50 px-2 py-1.5 rounded-lg border border-slate-100">
+              <FaUsers className="text-slate-400 text-[10px]" />
               {getGuestCount(bill.order) || '-'}
             </p>
           </div>
           <div className="text-right">
-            <p className="text-[10px] text-slate-400 uppercase font-bold tracking-widest mb-1">Total</p>
-            <p className="text-xl font-black text-slate-900">{formatCurrency(total)}</p>
+            <p className="text-[10px] text-slate-400 uppercase font-black tracking-widest mb-1.5">Bill Amount</p>
+            <p className="text-xs font-bold text-slate-700 flex items-center gap-1.5 justify-end bg-slate-50 px-2 py-1.5 rounded-lg border border-slate-100">
+              {formatCurrency(bill.totalAmount)}
+            </p>
           </div>
         </div>
 
-        {/* Collection Bar */}
-        <div className="space-y-2">
-          <div className="flex justify-between text-xs font-bold">
-            <span className="text-slate-400 italic">{progress.toFixed(0)}% Collected</span>
-            <span className="text-rose-600">-{formatCurrency(Number(bill.remainingAmount))}</span>
-          </div>
-          <div className="h-3 w-full bg-slate-100 rounded-full overflow-hidden p-0.5">
-            <div
-              className={`h-full rounded-full transition-all duration-1000 ${bill.status === 'paid' ? 'bg-emerald-500' : 'bg-indigo-500'
-                }`}
-              style={{ width: `${progress}%` }}
-            />
-          </div>
+        <div className="relative h-2 bg-slate-100 rounded-full overflow-hidden">
+          <div
+            className="absolute inset-y-0 left-0 bg-indigo-500 rounded-full transition-all"
+            style={{ width: `${progress}%` }}
+          />
         </div>
 
-        <div className="flex items-center gap-3 pt-2">
-          <div className="flex-1" />
-          <div className="flex -space-x-2">
-            {[1, 2, 3].map(i => (
-              <div key={i} className="w-8 h-8 rounded-full border-2 border-white bg-slate-200 flex items-center justify-center text-[10px] font-bold text-slate-500">
-                {i}
-              </div>
-            ))}
+        <div className="flex justify-between items-center">
+          <div>
+            <p className="text-[10px] text-slate-400 uppercase font-black tracking-widest">Paid</p>
+            <p className="text-sm font-bold text-slate-700">{formatCurrency(bill.paidAmount)}</p>
+          </div>
+          <div className="text-right">
+            <p className="text-[10px] text-slate-400 uppercase font-black tracking-widest">Remaining</p>
+            <p className="text-sm font-bold text-rose-600">{formatCurrency(bill.remainingAmount)}</p>
           </div>
         </div>
       </div>
@@ -961,23 +943,32 @@ function BillCard({ bill, onOpen, onDownload, onDownloadImage, onWhatsApp, onEma
   )
 }
 
-function MiniDetail({ label, value, accent }: { label: string, value: string, accent?: 'red' | 'default' }) {
+function MiniDetail({ label, value, accent }: { label: string, value: string, accent?: 'red' }) {
   return (
-    <div>
-      <p className="text-[9px] text-slate-400 uppercase font-bold tracking-tighter mb-0.5">{label}</p>
-      <p className={`text-xs font-bold ${accent === 'red' ? 'text-rose-500' : 'text-slate-700'}`}>{value}</p>
+    <div className="text-center">
+      <p className="text-[10px] text-slate-400 uppercase font-black tracking-widest mb-1">{label}</p>
+      <p className={`text-xs font-bold ${accent === 'red' ? 'text-rose-600' : 'text-slate-700'}`}>{value}</p>
     </div>
   )
 }
 
-function PaymentMethod({ active, onClick, label }: { active: boolean, onClick: () => void, label: string }) {
+interface PaymentMethodProps {
+  active: boolean;
+  onClick: () => void;
+  label: string;
+}
+
+function PaymentMethod({ active, onClick, label }: PaymentMethodProps) {
   return (
     <button
+      type="button"
       onClick={onClick}
-      className={`py-3 rounded-xl border-2 font-bold transition-all ${active ? 'bg-indigo-50 border-indigo-500 text-indigo-600 shadow-sm' : 'bg-white border-slate-100 text-slate-500 hover:border-slate-200'
+      className={`flex-1 py-3 rounded-xl font-bold transition-all ${active
+        ? 'bg-indigo-600 text-white shadow-md shadow-indigo-200'
+        : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
         }`}
     >
       {label}
     </button>
-  )
+  );
 }

@@ -63,8 +63,8 @@ export default function Table<T>({
   const endIndex = startIndex + effectiveItemsPerPage
   // If totalItems is provided and equals data.length, we're doing client-side pagination (slice the data)
   // If totalItems is not provided, assume server-side pagination (use data as-is)
-  const paginatedData = (totalItems !== undefined && totalItems === data.length) 
-    ? data.slice(startIndex, endIndex) 
+  const paginatedData = (totalItems !== undefined && totalItems === data.length)
+    ? data.slice(startIndex, endIndex)
     : data
   const showPagination = totalItemsCount > effectiveItemsPerPage && onPageChange
 
@@ -97,119 +97,119 @@ export default function Table<T>({
 
   return (
     <>
-      <div className={`bg-white rounded-lg shadow-md overflow-hidden ${className}`}>
+      <div className={`bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden ${className}`}>
         <div className="overflow-x-auto">
           <table className="w-full min-w-[640px]">
-          <thead className="bg-gray-50 border-b border-gray-200">
-            <tr>
-              {showCheckbox && (
-                <th className="px-3 lg:px-6 py-3 lg:py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  {onSelectAll && (
-                    <input
-                      type="checkbox"
-                      checked={selectedItems.length === data.length && data.length > 0}
-                      onChange={onSelectAll}
-                      className="w-4 h-4 text-primary-600 border-gray-300 rounded focus:ring-primary-500"
-                    />
-                  )}
-                </th>
-              )}
-              {columns.map((column) => (
-                <th
-                  key={column.key}
-                  className={`px-3 lg:px-6 py-3 lg:py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider ${column.headerClassName || ''}`}
-                >
-                  {column.header}
-                </th>
-              ))}
-              {renderActions && (
-                <th className="px-3 lg:px-6 py-3 lg:py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Actions
-                </th>
-              )}
-            </tr>
-          </thead>
-          <tbody className="bg-white divide-y divide-gray-200">
-            {paginatedData.length === 0 ? (
+            <thead className="bg-slate-50/50 border-b border-slate-100">
               <tr>
-                <td colSpan={colSpan} className="px-4 lg:px-6 py-6 lg:py-8 text-center text-gray-500">
-                  {emptyMessage}
-                </td>
-              </tr>
-            ) : renderRow ? (
-              paginatedData.map((row, index) => (
-                <tr key={getItemId ? getItemId(row) : index} className="hover:bg-gray-50">
-                  {renderRow(row, columns)}
-                </tr>
-              ))
-            ) : (
-              paginatedData.map((row, index) => {
-                const itemId = getItemId ? getItemId(row) : index.toString()
-                return (
-                  <tr key={itemId} className="hover:bg-gray-50">
-                    {showCheckbox && (
-                      <td className="px-3 lg:px-6 py-3 lg:py-4 whitespace-nowrap">
-                        {onSelectItem && (
-                          <input
-                            type="checkbox"
-                            checked={selectedItems.includes(itemId)}
-                            onChange={() => onSelectItem(itemId)}
-                            className="w-4 h-4 text-primary-600 border-gray-300 rounded focus:ring-primary-500"
-                          />
-                        )}
-                      </td>
+                {showCheckbox && (
+                  <th className="px-3 lg:px-6 py-3 lg:py-4 text-left text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+                    {onSelectAll && (
+                      <input
+                        type="checkbox"
+                        checked={selectedItems.length === data.length && data.length > 0}
+                        onChange={onSelectAll}
+                        className="w-4 h-4 text-indigo-600 border-slate-300 rounded focus:ring-indigo-500"
+                      />
                     )}
-                    {columns.map((column) => {
-                      const content = column.render
-                        ? column.render(row)
-                        : column.accessor
-                        ? column.accessor(row)
-                        : (row as any)[column.key]
-
-                      return (
-                        <td
-                          key={column.key}
-                          className={`px-3 lg:px-6 py-3 lg:py-4 ${column.className || ''}`}
-                        >
-                          {typeof content === 'string' || typeof content === 'number' ? (
-                            <div className="text-sm text-gray-900">{content}</div>
-                          ) : (
-                            content
+                  </th>
+                )}
+                {columns.map((column) => (
+                  <th
+                    key={column.key}
+                    className={`px-3 lg:px-6 py-3 lg:py-4 text-left text-[10px] font-bold text-slate-400 uppercase tracking-widest ${column.headerClassName || ''}`}
+                  >
+                    {column.header}
+                  </th>
+                ))}
+                {renderActions && (
+                  <th className="px-3 lg:px-6 py-3 lg:py-4 text-left text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+                    Actions
+                  </th>
+                )}
+              </tr>
+            </thead>
+            <tbody className="bg-white divide-y divide-slate-100">
+              {paginatedData.length === 0 ? (
+                <tr>
+                  <td colSpan={colSpan} className="px-4 lg:px-6 py-6 lg:py-8 text-center text-gray-500">
+                    {emptyMessage}
+                  </td>
+                </tr>
+              ) : renderRow ? (
+                paginatedData.map((row, index) => (
+                  <tr key={getItemId ? getItemId(row) : index} className="hover:bg-slate-50/50 transition-colors">
+                    {renderRow(row, columns)}
+                  </tr>
+                ))
+              ) : (
+                paginatedData.map((row, index) => {
+                  const itemId = getItemId ? getItemId(row) : index.toString()
+                  return (
+                    <tr key={itemId} className="hover:bg-slate-50/50 transition-colors">
+                      {showCheckbox && (
+                        <td className="px-3 lg:px-6 py-3 lg:py-4 whitespace-nowrap">
+                          {onSelectItem && (
+                            <input
+                              type="checkbox"
+                              checked={selectedItems.includes(itemId)}
+                              onChange={() => onSelectItem(itemId)}
+                              className="w-4 h-4 text-indigo-600 border-slate-300 rounded focus:ring-indigo-500"
+                            />
                           )}
                         </td>
-                      )
-                    })}
-                    {renderActions && (
-                      <td className="px-3 lg:px-6 py-3 lg:py-4 whitespace-nowrap text-sm font-medium">
-                        {renderActions(row)}
-                      </td>
-                    )}
-                  </tr>
-                )
-              })
-            )}
-          </tbody>
-        </table>
+                      )}
+                      {columns.map((column) => {
+                        const content = column.render
+                          ? column.render(row)
+                          : column.accessor
+                            ? column.accessor(row)
+                            : (row as any)[column.key]
+
+                        return (
+                          <td
+                            key={column.key}
+                            className={`px-3 lg:px-6 py-3 lg:py-4 ${column.className || ''}`}
+                          >
+                            {typeof content === 'string' || typeof content === 'number' ? (
+                              <div className="text-sm font-medium text-slate-600">{content}</div>
+                            ) : (
+                              content
+                            )}
+                          </td>
+                        )
+                      })}
+                      {renderActions && (
+                        <td className="px-3 lg:px-6 py-3 lg:py-4 whitespace-nowrap text-sm font-medium">
+                          {renderActions(row)}
+                        </td>
+                      )}
+                    </tr>
+                  )
+                })
+              )}
+            </tbody>
+          </table>
         </div>
       </div>
 
       {/* Pagination Controls */}
       {(showPagination || onItemsPerPageChange) && (
-        <div className="mt-4 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 sm:gap-4 bg-white px-3 sm:px-4 py-3 rounded-lg shadow-md">
+        <div className="mt-6 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 sm:gap-4 bg-white px-6 py-4 rounded-2xl shadow-sm border border-slate-100">
           <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 sm:gap-4">
-            <div className="text-xs sm:text-sm text-gray-700 whitespace-nowrap">
-              Showing {startIndex + 1} to {Math.min(endIndex, totalItemsCount)} of {totalItemsCount} {itemName}
+            <div className="text-xs sm:text-sm font-medium text-slate-500 whitespace-nowrap">
+              Showing <span className="text-slate-900 font-bold">{startIndex + 1}</span> to <span className="text-slate-900 font-bold">{Math.min(endIndex, totalItemsCount)}</span> of <span className="text-slate-900 font-bold">{totalItemsCount}</span> {itemName}
             </div>
             {onItemsPerPageChange && (
               <div className="flex items-center gap-2">
-                <label htmlFor="itemsPerPage" className="text-xs sm:text-sm text-gray-700 whitespace-nowrap">
+                <label htmlFor="itemsPerPage" className="text-xs sm:text-sm font-medium text-slate-500 whitespace-nowrap">
                   Show:
                 </label>
                 <select
                   id="itemsPerPage"
                   value={effectiveItemsPerPage >= totalItemsCount ? 'all' : itemsPerPage}
                   onChange={handleItemsPerPageChange}
-                  className="px-2 sm:px-3 py-1.5 border border-gray-300 rounded-lg text-xs sm:text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white"
+                  className="px-3 py-1.5 border border-slate-200 rounded-xl text-xs sm:text-sm font-bold text-slate-700 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 bg-slate-50/50 outline-none transition-all"
                 >
                   {itemsPerPageOptions.map((option) => (
                     <option key={option} value={option}>
@@ -223,54 +223,51 @@ export default function Table<T>({
           </div>
           {showPagination && (
             <div className="flex items-center justify-center gap-1 sm:gap-2">
-            <button
-              onClick={() => handlePageChange(currentPage - 1)}
-              disabled={currentPage === 1}
-              className={`px-2 sm:px-3 py-2 rounded-lg text-xs sm:text-sm font-medium transition-colors ${
-                currentPage === 1
-                  ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
-                  : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-              }`}
-            >
-              <FaChevronLeft />
-            </button>
-            <div className="flex gap-0.5 sm:gap-1">
-              {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => {
-                if (
-                  page === 1 ||
-                  page === totalPages ||
-                  (page >= currentPage - 1 && page <= currentPage + 1)
-                ) {
-                  return (
-                    <button
-                      key={page}
-                      onClick={() => handlePageChange(page)}
-                      className={`px-2 sm:px-3 py-2 rounded-lg text-xs sm:text-sm font-medium transition-colors ${
-                        currentPage === page
-                          ? 'bg-primary-500 text-white'
-                          : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-                      }`}
-                    >
-                      {page}
-                    </button>
-                  )
-                } else if (page === currentPage - 2 || page === currentPage + 2) {
-                  return <span key={page} className="px-1 sm:px-2 text-gray-400 text-xs sm:text-sm">...</span>
-                }
-                return null
-              })}
-            </div>
-            <button
-              onClick={() => handlePageChange(currentPage + 1)}
-              disabled={currentPage === totalPages}
-              className={`px-2 sm:px-3 py-2 rounded-lg text-xs sm:text-sm font-medium transition-colors ${
-                currentPage === totalPages
-                  ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
-                  : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-              }`}
-            >
-              <FaChevronRight />
-            </button>
+              <button
+                onClick={() => handlePageChange(currentPage - 1)}
+                disabled={currentPage === 1}
+                className={`p-2 rounded-xl text-xs sm:text-sm font-bold transition-all ${currentPage === 1
+                    ? 'bg-slate-50 text-slate-300 cursor-not-allowed'
+                    : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-50 active:scale-90 shadow-sm'
+                  }`}
+              >
+                <FaChevronLeft className="w-3 h-3" />
+              </button>
+              <div className="flex gap-1">
+                {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => {
+                  if (
+                    page === 1 ||
+                    page === totalPages ||
+                    (page >= currentPage - 1 && page <= currentPage + 1)
+                  ) {
+                    return (
+                      <button
+                        key={page}
+                        onClick={() => handlePageChange(page)}
+                        className={`w-8 h-8 sm:w-10 sm:h-10 flex items-center justify-center rounded-xl text-xs sm:text-sm font-bold transition-all ${currentPage === page
+                            ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-200 scale-110'
+                            : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-50 active:scale-90 shadow-sm'
+                          }`}
+                      >
+                        {page}
+                      </button>
+                    )
+                  } else if (page === currentPage - 2 || page === currentPage + 2) {
+                    return <span key={page} className="w-8 flex items-center justify-center text-slate-300 font-bold">...</span>
+                  }
+                  return null
+                })}
+              </div>
+              <button
+                onClick={() => handlePageChange(currentPage + 1)}
+                disabled={currentPage === totalPages}
+                className={`p-2 rounded-xl text-xs sm:text-sm font-bold transition-all ${currentPage === totalPages
+                    ? 'bg-slate-50 text-slate-300 cursor-not-allowed'
+                    : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-50 active:scale-90 shadow-sm'
+                  }`}
+              >
+                <FaChevronRight className="w-3 h-3" />
+              </button>
             </div>
           )}
         </div>

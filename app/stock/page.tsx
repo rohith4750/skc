@@ -2,11 +2,11 @@
 
 import { useEffect, useState, useMemo } from 'react'
 import { formatCurrency, formatDate, formatDateTime } from '@/lib/utils'
-import { 
-  FaPlus, 
-  FaEdit, 
-  FaTrash, 
-  FaFilter, 
+import {
+  FaPlus,
+  FaEdit,
+  FaTrash,
+  FaFilter,
   FaSearch,
   FaBox,
   FaStore,
@@ -33,10 +33,10 @@ const CATEGORY_ICONS: Record<string, any> = {
 }
 
 const CATEGORY_COLORS: Record<string, string> = {
-  gas: 'bg-red-100 text-red-800 border-red-200',
-  store: 'bg-indigo-100 text-indigo-800 border-indigo-200',
-  vegetables: 'bg-green-100 text-green-800 border-green-200',
-  disposables: 'bg-yellow-100 text-yellow-800 border-yellow-200',
+  gas: 'bg-red-50 text-red-600 border-red-100',
+  store: 'bg-indigo-50 text-indigo-600 border-indigo-100',
+  vegetables: 'bg-emerald-50 text-emerald-600 border-emerald-100',
+  disposables: 'bg-amber-50 text-amber-600 border-amber-100',
 }
 
 interface StockItem {
@@ -54,18 +54,6 @@ interface StockItem {
   isActive: boolean
   createdAt: string
   updatedAt: string
-}
-
-interface StockTransaction {
-  id: string
-  stockId: string
-  type: 'in' | 'out'
-  quantity: number
-  price?: number | null
-  totalAmount?: number | null
-  reference?: string | null
-  notes?: string | null
-  createdAt: string
 }
 
 export default function StockPage() {
@@ -102,23 +90,23 @@ export default function StockPage() {
 
   const filteredStock = useMemo(() => {
     let filtered = stock
-    
+
     // Category filter
     if (selectedCategory !== 'all') {
       filtered = filtered.filter(item => item.category === selectedCategory)
     }
-    
+
     // Search filter
     if (searchTerm) {
       const searchLower = searchTerm.toLowerCase()
-      filtered = filtered.filter(item => 
+      filtered = filtered.filter(item =>
         item.name.toLowerCase().includes(searchLower) ||
         item.supplier?.toLowerCase().includes(searchLower) ||
         item.location?.toLowerCase().includes(searchLower) ||
         item.description?.toLowerCase().includes(searchLower)
       )
     }
-    
+
     return filtered.sort((a, b) => a.name.localeCompare(b.name))
   }, [stock, selectedCategory, searchTerm])
 
@@ -185,9 +173,9 @@ export default function StockPage() {
       header: 'Item Name',
       accessor: (row: StockItem) => (
         <div>
-          <div className="font-medium text-gray-900">{row.name}</div>
+          <div className="font-medium text-slate-900">{row.name}</div>
           {row.description && (
-            <div className="text-xs text-gray-500 truncate max-w-xs">{row.description}</div>
+            <div className="text-xs text-slate-400 truncate max-w-xs">{row.description}</div>
           )}
         </div>
       ),
@@ -200,43 +188,41 @@ export default function StockPage() {
         return (
           <span className={`inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-semibold border ${CATEGORY_COLORS[row.category] || CATEGORY_COLORS.disposables}`}>
             <Icon className="text-xs" />
-            {row.category.charAt(0).toUpperCase() + row.category.slice(1)}
+            <span className="capitalize">{row.category}</span>
           </span>
         )
       },
     },
     {
       key: 'currentStock',
-      header: 'Current Stock',
+      header: 'Stock Level',
       accessor: (row: StockItem) => {
         const isLowStock = row.minStock && row.currentStock <= row.minStock
         return (
           <div className="space-y-1.5">
             <div className="flex items-baseline gap-1.5">
-              <span className={`font-bold text-2xl ${isLowStock ? 'text-red-600' : 'text-gray-900'}`}>
+              <span className={`font-black text-2xl ${isLowStock ? 'text-rose-600 animate-pulse' : 'text-slate-900'}`}>
                 {row.currentStock}
               </span>
-              <span className="text-sm text-gray-600 font-normal">
+              <span className="text-[10px] text-slate-400 font-black uppercase tracking-widest">
                 {row.unit}
               </span>
             </div>
             {row.minStock !== null && row.minStock !== undefined && (
-              <div className="flex items-center gap-2 text-xs text-gray-500">
-                <span className="font-medium text-gray-600">Min:</span>
-                <span>{row.minStock} {row.unit}</span>
+              <div className="flex items-center gap-2 text-[10px] text-slate-400 font-bold uppercase tracking-wider">
+                <span>Min: {row.minStock}</span>
                 {row.maxStock !== null && row.maxStock !== undefined && (
                   <>
-                    <span className="text-gray-300 mx-1">•</span>
-                    <span className="font-medium text-gray-600">Max:</span>
-                    <span>{row.maxStock} {row.unit}</span>
+                    <span>/</span>
+                    <span>Max: {row.maxStock}</span>
                   </>
                 )}
               </div>
             )}
             {isLowStock && (
-              <div className="inline-flex items-center gap-1.5 px-2 py-0.5 bg-red-50 border border-red-200 rounded text-xs text-red-700 font-medium mt-1">
-                <FaExclamationTriangle className="text-xs" />
-                Low Stock Alert
+              <div className="inline-flex items-center gap-1.5 px-2 py-0.5 bg-rose-50 border border-rose-100 rounded text-[9px] text-rose-600 font-black uppercase tracking-widest">
+                <FaExclamationTriangle className="text-[10px]" />
+                Low Stock
               </div>
             )}
           </div>
@@ -245,35 +231,32 @@ export default function StockPage() {
     },
     {
       key: 'price',
-      header: 'Price/Unit',
+      header: 'Valuation',
       accessor: (row: StockItem) => (
         <div>
           {row.price ? (
             <>
-              <div className="font-medium text-gray-900">{formatCurrency(row.price)}</div>
-              <div className="text-xs text-gray-500">
+              <div className="font-bold text-slate-900">{formatCurrency(row.price)} / {row.unit}</div>
+              <div className="text-[10px] font-black text-slate-400 uppercase tracking-widest mt-0.5">
                 Total: {formatCurrency((row.price || 0) * row.currentStock)}
               </div>
             </>
           ) : (
-            <span className="text-gray-400">-</span>
+            <span className="text-slate-300">-</span>
           )}
         </div>
       ),
     },
     {
       key: 'supplier',
-      header: 'Supplier/Location',
+      header: 'Source',
       accessor: (row: StockItem) => (
         <div className="max-w-xs">
           {row.supplier && (
-            <div className="text-sm text-gray-900">{row.supplier}</div>
+            <div className="text-sm font-bold text-slate-700">{row.supplier}</div>
           )}
           {row.location && (
-            <div className="text-xs text-gray-500">{row.location}</div>
-          )}
-          {!row.supplier && !row.location && (
-            <span className="text-gray-400 text-sm">-</span>
+            <div className="text-xs text-slate-400">{row.location}</div>
           )}
         </div>
       ),
@@ -282,11 +265,10 @@ export default function StockPage() {
       key: 'status',
       header: 'Status',
       accessor: (row: StockItem) => (
-        <span className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${
-          row.isActive 
-            ? 'bg-green-100 text-green-800' 
-            : 'bg-gray-100 text-gray-800'
-        }`}>
+        <span className={`px-2 py-1 inline-flex text-[10px] font-black uppercase tracking-widest rounded-lg ${row.isActive
+          ? 'bg-emerald-50 text-emerald-600'
+          : 'bg-slate-100 text-slate-400'
+          }`}>
           {row.isActive ? 'Active' : 'Inactive'}
         </span>
       ),
@@ -299,206 +281,192 @@ export default function StockPage() {
   ].filter(Boolean).length
 
   return (
-    <div className="p-4 sm:p-6 lg:p-8 bg-gray-50 min-h-screen">
+    <div className="min-h-screen bg-slate-50/50 p-4 md:p-8">
       {/* Header */}
-      <div className="mb-6 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900">Stock Management</h1>
-          <p className="text-gray-600 mt-1">Track and manage your inventory items</p>
+      <div className="max-w-7xl mx-auto space-y-8">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div>
+            <h1 className="text-3xl font-bold text-slate-900 tracking-tight">Stock Management</h1>
+            <p className="text-slate-500 mt-1">Real-time inventory tracking and replenishment alerts</p>
+          </div>
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => setShowFilters(!showFilters)}
+              className={`flex items-center gap-2 px-4 py-2 rounded-xl border transition-all shadow-sm ${showFilters ? 'bg-indigo-50 border-indigo-200 text-indigo-600' : 'bg-white border-slate-200 text-slate-600 hover:border-slate-300'}`}
+            >
+              <FaFilter className={activeFiltersCount > 0 ? 'text-indigo-600' : 'text-slate-400'} />
+              <span className="text-sm font-bold">Filters</span>
+              {activeFiltersCount > 0 && (
+                <span className="bg-indigo-600 text-white text-[10px] font-black rounded-full w-5 h-5 flex items-center justify-center">
+                  {activeFiltersCount}
+                </span>
+              )}
+            </button>
+            <Link
+              href="/stock/create"
+              className="flex items-center gap-2 px-6 py-2 bg-slate-900 text-white rounded-xl hover:bg-slate-800 transition-all shadow-lg active:scale-95 font-bold text-sm"
+            >
+              <FaPlus />
+              Add Stock Item
+            </Link>
+          </div>
         </div>
-        <div className="flex items-center gap-3">
-          <button
-            onClick={() => setShowFilters(!showFilters)}
-            className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors shadow-sm"
-          >
-            <FaFilter />
-            Filters
-            {activeFiltersCount > 0 && (
-              <span className="bg-primary-500 text-white text-xs rounded-full px-2 py-0.5">
-                {activeFiltersCount}
-              </span>
-            )}
-          </button>
-          <Link
-            href="/stock/create"
-            className="flex items-center gap-2 px-4 py-2 bg-primary-500 text-white rounded-lg hover:bg-primary-600 transition-colors shadow-md"
-          >
-            <FaPlus />
-            Add Stock Item
-          </Link>
-        </div>
-      </div>
 
-      {/* Low Stock Alert */}
-      {lowStockItems.length > 0 && (
-        <div className="mb-6 bg-red-50 border-l-4 border-red-400 p-4 rounded-lg">
-          <div className="flex items-center gap-2">
-            <FaExclamationTriangle className="text-red-400 text-xl" />
-            <div className="flex-1">
-              <h3 className="text-red-800 font-semibold">Low Stock Alert</h3>
-              <p className="text-red-700 text-sm">
-                {lowStockItems.length} item(s) are below minimum stock level
+        {/* Low Stock Alert */}
+        {lowStockItems.length > 0 && (
+          <div className="bg-rose-50 border border-rose-100 p-4 rounded-2xl flex items-center gap-4 animate-in fade-in slide-in-from-top-2">
+            <div className="w-10 h-10 bg-rose-500 rounded-full flex items-center justify-center text-white shadow-lg shadow-rose-200">
+              <FaExclamationTriangle />
+            </div>
+            <div>
+              <h3 className="text-rose-900 font-bold text-sm">Action Required: Low Stock</h3>
+              <p className="text-rose-600 text-xs font-medium">
+                {lowStockItems.length} item(s) are currently below their minimum threshold and need replenishment.
               </p>
             </div>
           </div>
-        </div>
-      )}
+        )}
 
-      {/* Summary Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-        {STOCK_CATEGORIES.map(category => {
-          const Icon = CATEGORY_ICONS[category]
-          const total = categoryTotals[category] || { count: 0, totalValue: 0 }
-          return (
-            <div key={category} className="bg-white rounded-xl shadow-md p-6 border border-gray-100">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-gray-600 text-sm font-medium mb-1 capitalize">{category}</p>
-                  <p className="text-2xl font-bold text-gray-900">{total.count} items</p>
+        {/* Summary Cards */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          {STOCK_CATEGORIES.map(category => {
+            const Icon = CATEGORY_ICONS[category]
+            const total = categoryTotals[category] || { count: 0, totalValue: 0 }
+
+            const categoryMeta: any = {
+              gas: { color: 'rose', label: 'Gas Fuel' },
+              store: { color: 'indigo', label: 'Store Items' },
+              vegetables: { color: 'emerald', label: 'Fresh Produce' },
+              disposables: { color: 'amber', label: 'Disposables' }
+            }
+            const meta = categoryMeta[category]
+
+            return (
+              <div key={category} className="bg-white rounded-2xl shadow-sm p-6 border border-slate-100 hover:shadow-md transition-all group overflow-hidden relative">
+                <div className={`absolute top-0 right-0 w-16 h-16 opacity-10 rounded-full -mr-8 -mt-8 bg-${meta.color}-500 group-hover:scale-150 transition-transform`} />
+                <div className="relative z-10 text-center sm:text-left">
+                  <div className={`w-12 h-12 rounded-2xl bg-${meta.color}-50 text-${meta.color}-600 flex items-center justify-center mx-auto sm:mx-0 mb-4 group-hover:bg-${meta.color}-600 group-hover:text-white transition-all`}>
+                    <Icon className="text-xl" />
+                  </div>
+                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">{meta.label}</p>
+                  <p className="text-2xl font-black text-slate-900">{total.count} <span className="text-xs font-medium text-slate-400">SKUs</span></p>
                   {total.totalValue > 0 && (
-                    <p className="text-gray-500 text-xs mt-2">{formatCurrency(total.totalValue)}</p>
+                    <p className="text-xs font-bold text-slate-500 mt-2">{formatCurrency(total.totalValue)} Val.</p>
                   )}
                 </div>
-                <div className={`${CATEGORY_COLORS[category]} rounded-full p-3`}>
-                  <Icon className="text-xl" />
+              </div>
+            )
+          })}
+        </div>
+
+        {/* Filters Panel */}
+        {showFilters && (
+          <div className="bg-white rounded-2xl shadow-sm p-6 border border-slate-200 animate-in fade-in slide-in-from-top-4 duration-300">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {/* Search */}
+              <div>
+                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 block">
+                  Search SKU
+                </label>
+                <div className="relative">
+                  <FaSearch className="absolute left-3.5 top-3.5 text-slate-300" />
+                  <input
+                    type="text"
+                    value={searchTerm}
+                    onChange={(e) => {
+                      setSearchTerm(e.target.value)
+                      setCurrentPage(1)
+                    }}
+                    placeholder="Search by name, supplier, location..."
+                    className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-100 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:bg-white outline-none transition-all placeholder:text-slate-300 text-sm font-medium"
+                  />
+                </div>
+              </div>
+
+              {/* Category Filter */}
+              <div>
+                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3 block">
+                  Filter by Category
+                </label>
+                <div className="flex flex-wrap gap-2">
+                  <button
+                    onClick={() => {
+                      setSelectedCategory('all')
+                      setCurrentPage(1)
+                    }}
+                    className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${selectedCategory === 'all'
+                      ? 'bg-slate-900 text-white shadow-md'
+                      : 'bg-slate-50 text-slate-600 hover:bg-slate-100'
+                      }`}
+                  >
+                    All SKU
+                  </button>
+                  {STOCK_CATEGORIES.map(category => {
+                    const Icon = CATEGORY_ICONS[category]
+                    const isActive = selectedCategory === category
+                    return (
+                      <button
+                        key={category}
+                        onClick={() => {
+                          setSelectedCategory(category)
+                          setCurrentPage(1)
+                        }}
+                        className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all capitalize ${isActive
+                          ? 'bg-indigo-600 text-white shadow-md'
+                          : 'bg-slate-50 text-slate-600 hover:bg-slate-100'
+                          }`}
+                      >
+                        <Icon className="text-[10px]" />
+                        {category}
+                      </button>
+                    )
+                  })}
                 </div>
               </div>
             </div>
-          )
-        })}
-      </div>
-
-      {/* Filters Panel */}
-      {showFilters && (
-        <div className="mb-6 bg-white rounded-xl shadow-md p-6 border border-gray-200">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
-              <FaFilter className="text-primary-500" />
-              Filters
-            </h3>
-            <div className="flex items-center gap-2">
-              {activeFiltersCount > 0 && (
-                <button
-                  onClick={clearFilters}
-                  className="text-sm text-primary-600 hover:text-primary-700 font-medium"
-                >
-                  Clear All
-                </button>
-              )}
-              <button
-                onClick={() => setShowFilters(false)}
-                className="text-gray-400 hover:text-gray-600"
-              >
-                <FaTimes />
-              </button>
-            </div>
           </div>
-          
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {/* Search */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Search
-              </label>
-              <div className="relative">
-                <FaSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
-                <input
-                  type="text"
-                  value={searchTerm}
-                  onChange={(e) => {
-                    setSearchTerm(e.target.value)
-                    setCurrentPage(1)
-                  }}
-                  placeholder="Search by name, supplier, location..."
-                  className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-                />
-              </div>
-            </div>
+        )}
 
-            {/* Category Filter */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Category
-              </label>
-              <div className="flex flex-wrap gap-2">
+        {/* Stock Table Container */}
+        <div className="bg-white rounded-3xl shadow-sm border border-slate-100 overflow-hidden">
+          <Table
+            columns={columns}
+            data={filteredStock}
+            emptyMessage="No stock items found. Click 'Add Stock Item' to start tracking."
+            itemsPerPage={itemsPerPage}
+            currentPage={currentPage}
+            totalItems={filteredStock.length}
+            onPageChange={setCurrentPage}
+            onItemsPerPageChange={setItemsPerPage}
+            itemName="stock item"
+            getItemId={(item: StockItem) => item.id}
+            renderActions={(item: StockItem) => (
+              <div className="flex items-center gap-1">
                 <button
-                  onClick={() => {
-                    setSelectedCategory('all')
-                    setCurrentPage(1)
-                  }}
-                  className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-                    selectedCategory === 'all'
-                      ? 'bg-primary-500 text-white shadow-md'
-                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                  }`}
+                  onClick={() => handleTransactionClick(item)}
+                  className="p-2 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-xl transition-all"
+                  title="Stock In/Out"
                 >
-                  All Categories
+                  {item.currentStock > 0 ? <FaArrowUp /> : <FaArrowDown />}
                 </button>
-                {STOCK_CATEGORIES.map(category => {
-                  const Icon = CATEGORY_ICONS[category]
-                  return (
-                    <button
-                      key={category}
-                      onClick={() => {
-                        setSelectedCategory(category)
-                        setCurrentPage(1)
-                      }}
-                      className={`inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors capitalize ${
-                        selectedCategory === category
-                          ? `${CATEGORY_COLORS[category]} border-2`
-                          : 'bg-white border border-gray-300 text-gray-700 hover:bg-gray-50'
-                      }`}
-                    >
-                      <Icon className="text-xs" />
-                      {category}
-                    </button>
-                  )
-                })}
+                <Link
+                  href={`/stock/create?id=${item.id}`}
+                  className="p-2 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-xl transition-all"
+                  title="Edit"
+                >
+                  <FaEdit />
+                </Link>
+                <button
+                  onClick={() => handleDelete(item.id)}
+                  className="p-2 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-xl transition-all"
+                  title="Delete"
+                >
+                  <FaTrash />
+                </button>
               </div>
-            </div>
-          </div>
+            )}
+          />
         </div>
-      )}
-
-      {/* Stock Table */}
-      <div className="bg-white rounded-xl shadow-md border border-gray-200 overflow-hidden">
-        <Table
-          columns={columns}
-          data={filteredStock}
-          emptyMessage="No stock items found. Click 'Add Stock Item' to add your first item."
-          itemsPerPage={itemsPerPage}
-          currentPage={currentPage}
-          totalItems={filteredStock.length}
-          onPageChange={setCurrentPage}
-          onItemsPerPageChange={setItemsPerPage}
-          itemName="stock item"
-          getItemId={(item: StockItem) => item.id}
-          renderActions={(item: StockItem) => (
-            <div className="flex items-center gap-2">
-              <button
-                onClick={() => handleTransactionClick(item)}
-                className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
-                title="Stock In/Out"
-              >
-                {item.currentStock > 0 ? <FaArrowUp /> : <FaArrowDown />}
-              </button>
-              <Link
-                href={`/stock/create?id=${item.id}`}
-                className="p-2 text-primary-600 hover:bg-primary-50 rounded-lg transition-colors"
-                title="Edit"
-              >
-                <FaEdit />
-              </Link>
-              <button
-                onClick={() => handleDelete(item.id)}
-                className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                title="Delete"
-              >
-                <FaTrash />
-              </button>
-            </div>
-          )}
-        />
       </div>
 
 
@@ -508,6 +476,7 @@ export default function StockPage() {
         onConfirm={confirmDelete}
         title="Delete Stock Item"
         message="Are you sure you want to delete this stock item? This action cannot be undone."
+        confirmText="Delete"
         variant="danger"
       />
     </div>

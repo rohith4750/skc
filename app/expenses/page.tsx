@@ -515,50 +515,52 @@ export default function ExpensesPage() {
   ].filter(Boolean).length
 
   return (
-    <div className="p-3 sm:p-4 md:p-5 lg:p-6 xl:p-8 bg-gray-50 min-h-screen">
+    <div className="p-4 sm:p-6 md:p-8 bg-slate-50/50 min-h-screen">
       {/* Header */}
-      <div className="mb-4 sm:mb-5 md:mb-6 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 sm:gap-4">
+      <div className="max-w-7xl mx-auto mb-8 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
-          <h1 className="text-xl sm:text-2xl md:text-3xl font-bold text-gray-900">Expense Management</h1>
-          <p className="text-gray-600 mt-1 text-xs sm:text-sm md:text-base">Track and manage all expenses efficiently</p>
+          <h1 className="text-3xl font-bold text-slate-900 tracking-tight">Expense Registry</h1>
+          <p className="text-slate-500 mt-1">Track and manage business expenditures with precision</p>
         </div>
-        <div className="flex items-center gap-2 sm:gap-3 w-full sm:w-auto">
+        <div className="flex items-center gap-3 w-full md:w-auto">
           <button
             onClick={() => setShowFilters(!showFilters)}
-            className="flex items-center gap-2 px-3 sm:px-4 py-2 bg-white border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 active:scale-95 transition-all shadow-sm touch-manipulation text-sm sm:text-base"
+            className="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 text-slate-700 rounded-xl hover:bg-slate-50 active:scale-95 transition-all shadow-sm text-sm"
           >
-            <FaFilter className="w-4 h-4" />
-            <span className="hidden sm:inline">Filters</span>
+            <FaFilter className="w-4 h-4 text-slate-400" />
+            <span>Filters</span>
             {activeFiltersCount > 0 && (
-              <span className="bg-primary-500 text-white text-xs rounded-full px-2 py-0.5">
+              <span className="bg-indigo-600 text-white text-[10px] rounded-full px-1.5 py-0.5 min-w-[18px] text-center">
                 {activeFiltersCount}
               </span>
             )}
           </button>
           <Link
             href="/expenses/create"
-            className="flex items-center justify-center gap-2 px-3 sm:px-4 py-2 bg-primary-500 text-white rounded-lg hover:bg-primary-600 active:scale-95 transition-all shadow-md touch-manipulation text-sm sm:text-base flex-1 sm:flex-initial"
+            className="flex items-center justify-center gap-2 px-4 py-2 bg-slate-900 text-white rounded-xl hover:bg-slate-800 active:scale-95 transition-all shadow-lg text-sm flex-1 md:flex-initial font-bold"
           >
-            <FaPlus className="w-4 h-4" />
+            <FaPlus className="w-3.5 h-3.5" />
             Add Expense
           </Link>
         </div>
       </div>
 
       {/* Summary Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-4 gap-3 sm:gap-4 md:gap-5 lg:gap-6 mb-4 sm:mb-5 md:mb-6">
-        <div className="bg-gradient-to-br from-blue-500 to-blue-600 rounded-lg shadow-md p-4 sm:p-5 md:p-6 text-white relative overflow-hidden">
-          {/* Icon at top right corner */}
-          <div className="bg-white bg-opacity-20 absolute top-0 right-0 p-3 sm:p-4 rounded-bl-2xl">
-            <FaDollarSign className="w-5 h-5 sm:w-6 sm:h-6" />
+      <div className="max-w-7xl mx-auto grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+        <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-6 flex flex-col justify-between hover:shadow-md transition-all">
+          <div>
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-sm font-bold text-slate-400 uppercase tracking-wider">Total Expenses</h3>
+              <div className="bg-blue-50 p-2.5 rounded-xl">
+                <FaDollarSign className="w-5 h-5 text-blue-600" />
+              </div>
+            </div>
+            <p className="text-2xl font-black text-blue-600">{formatCurrency(totalExpenses)}</p>
           </div>
-
-          {/* Content */}
-          <div className="relative pr-12 sm:pr-16">
-            <p className="text-blue-100 text-xs sm:text-sm font-medium mb-3">Total Expenses</p>
-            <p className="text-lg sm:text-xl lg:text-2xl font-bold break-words leading-tight">{formatCurrency(totalExpenses)}</p>
-            <p className="text-blue-100 text-xs mt-2">{filteredExpenses.length} expense(s)</p>
-          </div>
+          <p className="text-xs font-medium text-slate-400 mt-4 flex items-center gap-1.5">
+            <span className="w-1.5 h-1.5 rounded-full bg-blue-400"></span>
+            {filteredExpenses.length} records found
+          </p>
         </div>
 
         {Object.entries(categoryTotals)
@@ -567,36 +569,23 @@ export default function ExpensesPage() {
           .map(([category, total]) => {
             const Icon = CATEGORY_ICONS[category] || FaBox
             const categoryColor = CATEGORY_COLORS[category] || CATEGORY_COLORS.other
-            // Extract background color class for icon container (e.g., 'bg-blue-100' from 'bg-blue-100 text-blue-800 border-blue-200')
-            const bgColorClass = categoryColor.split(' ')[0]
-            // Map to appropriate icon background color (use darker shade for better contrast)
-            const iconBgColors: Record<string, string> = {
-              'bg-blue-100': 'bg-blue-500',
-              'bg-orange-100': 'bg-orange-500',
-              'bg-purple-100': 'bg-purple-500',
-              'bg-green-100': 'bg-green-500',
-              'bg-yellow-100': 'bg-yellow-500',
-              'bg-red-100': 'bg-red-500',
-              'bg-pink-100': 'bg-pink-500',
-              'bg-indigo-100': 'bg-indigo-500',
-              'bg-gray-100': 'bg-gray-500',
-            }
-            const iconBgColor = iconBgColors[bgColorClass] || 'bg-primary-500'
-            return (
-              <div key={category} className="bg-white rounded-lg shadow-md p-4 sm:p-5 md:p-6 border border-gray-100 relative overflow-hidden">
-                {/* Icon at top right corner */}
-                <div className={`${iconBgColor} absolute top-0 right-0 p-3 sm:p-4 rounded-bl-2xl`}>
-                  <Icon className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
-                </div>
+            const colorName = categoryColor.split('-')[1] // blue, orange, purple, etc.
 
-                {/* Content */}
-                <div className="relative pr-12 sm:pr-16">
-                  <p className="text-gray-600 text-xs sm:text-sm font-medium mb-3 capitalize">{category}</p>
-                  <p className="text-lg sm:text-xl lg:text-2xl font-bold text-gray-900 break-words leading-tight">{formatCurrency(total)}</p>
-                  <p className="text-gray-500 text-xs mt-2">
-                    {filteredExpenses.filter(e => e.category === category).length} expense(s)
-                  </p>
+            return (
+              <div key={category} className="bg-white rounded-2xl shadow-sm border border-slate-100 p-6 flex flex-col justify-between hover:shadow-md transition-all">
+                <div>
+                  <div className="flex items-center justify-between mb-4">
+                    <h3 className="text-sm font-bold text-slate-400 uppercase tracking-wider capitalize">{category}</h3>
+                    <div className={`bg-${colorName}-50 p-2.5 rounded-xl`}>
+                      <Icon className={`w-5 h-5 text-${colorName}-600`} />
+                    </div>
+                  </div>
+                  <p className={`text-2xl font-black text-slate-800`}>{formatCurrency(total)}</p>
                 </div>
+                <p className="text-xs font-medium text-slate-400 mt-4 flex items-center gap-1.5">
+                  <span className={`w-1.5 h-1.5 rounded-full bg-${colorName}-400`}></span>
+                  {filteredExpenses.filter(e => e.category === category).length} items
+                </p>
               </div>
             )
           })}
@@ -604,24 +593,24 @@ export default function ExpensesPage() {
 
       {/* Filters Panel */}
       {showFilters && (
-        <div className="mb-6 bg-white rounded-xl shadow-md p-6 border border-gray-200">
+        <div className="max-w-7xl mx-auto mb-6 bg-white rounded-2xl shadow-sm border border-slate-100 p-6">
           <div className="flex items-center justify-between mb-4">
-            <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
-              <FaFilter className="text-primary-500" />
-              Filters
+            <h3 className="text-lg font-bold text-slate-800 flex items-center gap-2">
+              <FaFilter className="text-indigo-500" />
+              Search & Filters
             </h3>
             <div className="flex items-center gap-2">
               {activeFiltersCount > 0 && (
                 <button
                   onClick={clearFilters}
-                  className="text-sm text-primary-600 hover:text-primary-700 font-medium"
+                  className="text-xs text-indigo-600 hover:text-indigo-700 font-bold uppercase tracking-wider"
                 >
                   Clear All
                 </button>
               )}
               <button
                 onClick={() => setShowFilters(false)}
-                className="text-gray-400 hover:text-gray-600"
+                className="p-1.5 hover:bg-slate-50 rounded-lg text-slate-400 hover:text-slate-600 transition-colors"
               >
                 <FaTimes />
               </button>

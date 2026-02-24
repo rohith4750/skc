@@ -4,14 +4,18 @@ import { useEffect, useState, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import { formatDateTime, formatDate, formatCurrency, sanitizeMealLabel } from '@/lib/utils'
 import { Order } from '@/types'
-import { FaTrash, FaFilePdf, FaFileImage, FaChevronLeft, FaChevronRight, FaEdit, FaFilter, FaChartLine, FaClock, FaCheckCircle, FaTimesCircle, FaEnvelope, FaCalendarAlt, FaPlus } from 'react-icons/fa'
+import {
+  FaPlus, FaEdit, FaTrash, FaSearch, FaFilter, FaFilePdf, FaFileImage,
+  FaEnvelope, FaChartLine, FaCheckCircle, FaClock, FaTimesCircle,
+  FaLayerGroup, FaCalendarAlt, FaHistory, FaMapMarkerAlt, FaUsers,
+  FaBars, FaTimes, FaUtensils, FaChevronLeft, FaChevronRight
+} from 'react-icons/fa'
 import Link from 'next/link'
 import jsPDF from 'jspdf'
 import html2canvas from 'html2canvas'
 import toast from 'react-hot-toast'
 import ConfirmModal from '@/components/ConfirmModal'
 import MergeOrdersModal from '@/components/MergeOrdersModal'
-import { FaLayerGroup } from 'react-icons/fa'
 import { buildOrderPdfHtml } from '@/lib/order-pdf-html'
 
 export default function OrderCenterPage() {
@@ -740,87 +744,118 @@ export default function OrderCenterPage() {
   }
 
   return (
-    <div className="p-4 md:p-6">
-      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 md:gap-0 mb-6">
-        <h1 className="text-2xl md:text-3xl font-bold text-gray-800">Order Hub</h1>
-        <div className="flex flex-wrap items-center gap-2 md:gap-3">
-          {selectedOrderIds.length > 1 && (
-            <button
-              onClick={() => setIsMergeModalOpen(true)}
-              className="flex items-center gap-2 px-6 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-all shadow-md animate-in slide-in-from-right-4"
-            >
-              <FaLayerGroup />
-              Merge Selected ({selectedOrderIds.length})
-            </button>
-          )}
-          <button
-            onClick={() => router.push('/orders')}
-            className="flex items-center gap-2 px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors shadow-md font-semibold"
-          >
-            <FaPlus />
-            Create Order
-          </button>
+    <div className="p-4 sm:p-6 md:p-8 bg-slate-50/50 min-h-screen pt-16 lg:pt-8">
+      {/* Header */}
+      <div className="max-w-7xl mx-auto mb-8 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+        <div>
+          <h1 className="text-3xl font-bold text-slate-900 tracking-tight">Order Hub</h1>
+          <p className="text-slate-500 mt-1">Operational command center for all catering events</p>
+        </div>
+        <div className="flex flex-wrap items-center gap-3 w-full md:w-auto">
           <button
             onClick={() => setShowFilters(!showFilters)}
-            className="flex items-center gap-2 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors"
+            className="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 text-slate-700 rounded-xl hover:bg-slate-50 active:scale-95 transition-all shadow-sm text-sm"
           >
-            <FaFilter />
-            {showFilters ? 'Hide Filters' : 'Show Filters'}
+            <FaFilter className="w-4 h-4 text-slate-400" />
+            <span>Filters</span>
           </button>
+
+          <Link
+            href="/orders"
+            className="flex items-center justify-center gap-2 px-4 py-2 bg-white border border-slate-200 text-slate-700 rounded-xl hover:bg-slate-50 active:scale-95 transition-all shadow-sm text-sm font-bold"
+          >
+            <FaPlus className="w-3 h-3 text-indigo-500" />
+            New Order
+          </Link>
+
+          {selectedOrderIds.length > 0 && (
+            <button
+              onClick={() => setIsMergeModalOpen(true)}
+              className="flex items-center justify-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 active:scale-95 transition-all shadow-lg text-sm font-bold"
+            >
+              Merge {selectedOrderIds.length} Orders
+            </button>
+          )}
         </div>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 mb-6">
-        <div className="bg-white rounded-lg shadow-md p-4 border border-gray-100">
-          <div className="flex items-center justify-between mb-1">
-            <p className="text-xs font-medium text-gray-500 uppercase">Total</p>
-            <FaChartLine className="text-primary-500" />
+      {/* Status Summary */}
+      <div className="max-w-7xl mx-auto grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+        <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-6 flex flex-col justify-between hover:shadow-md transition-all">
+          <div>
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider">Pending</h3>
+              <div className="bg-orange-50 p-2 rounded-xl">
+                <FaClock className="w-5 h-5 text-orange-500" />
+              </div>
+            </div>
+            <p className="text-2xl font-black text-orange-500">{statusSummary.pending}</p>
           </div>
-          <p className="text-2xl font-bold text-gray-800">{statusSummary.totalOrders}</p>
         </div>
-        <div className="bg-white rounded-lg shadow-md p-4 border border-gray-100">
-          <div className="flex items-center justify-between mb-1">
-            <p className="text-xs font-medium text-gray-500 uppercase">Pending</p>
-            <FaClock className="text-yellow-500" />
+
+        <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-6 flex flex-col justify-between hover:shadow-md transition-all">
+          <div>
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider">In Progress</h3>
+              <div className="bg-blue-50 p-2 rounded-xl">
+                <FaUtensils className="w-5 h-5 text-blue-500" />
+              </div>
+            </div>
+            <p className="text-2xl font-black text-blue-500">{statusSummary.inProgress}</p>
           </div>
-          <p className="text-2xl font-bold text-yellow-600">{statusSummary.pending}</p>
         </div>
-        <div className="bg-white rounded-lg shadow-md p-4 border border-gray-100">
-          <div className="flex items-center justify-between mb-1">
-            <p className="text-xs font-medium text-gray-500 uppercase">In Progress</p>
-            <FaClock className="text-blue-500" />
+
+        <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-6 flex flex-col justify-between hover:shadow-md transition-all">
+          <div>
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider">Completed</h3>
+              <div className="bg-emerald-50 p-2 rounded-xl">
+                <FaCheckCircle className="w-5 h-5 text-emerald-500" />
+              </div>
+            </div>
+            <p className="text-2xl font-black text-emerald-500">{statusSummary.completed}</p>
           </div>
-          <p className="text-2xl font-bold text-blue-600">{statusSummary.inProgress}</p>
         </div>
-        <div className="bg-white rounded-lg shadow-md p-4 border border-gray-100">
-          <div className="flex items-center justify-between mb-1">
-            <p className="text-xs font-medium text-gray-500 uppercase">Completed</p>
-            <FaCheckCircle className="text-green-500" />
+
+        <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-6 flex flex-col justify-between hover:shadow-md transition-all">
+          <div>
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider">Cancelled</h3>
+              <div className="bg-red-50 p-2 rounded-xl">
+                <FaTimesCircle className="w-5 h-5 text-red-500" />
+              </div>
+            </div>
+            <p className="text-2xl font-black text-red-500">{statusSummary.cancelled}</p>
           </div>
-          <p className="text-2xl font-bold text-green-600">{statusSummary.completed}</p>
-        </div>
-        <div className="bg-white rounded-lg shadow-md p-4 border border-gray-100">
-          <div className="flex items-center justify-between mb-1">
-            <p className="text-xs font-medium text-gray-500 uppercase">Cancelled</p>
-            <FaTimesCircle className="text-red-500" />
-          </div>
-          <p className="text-2xl font-bold text-red-600">{statusSummary.cancelled}</p>
         </div>
       </div>
 
       {/* Filters */}
       {showFilters && (
-        <div className="bg-white rounded-lg shadow-md p-6 mb-6">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="max-w-7xl mx-auto mb-8 bg-white rounded-2xl shadow-sm border border-slate-100 p-6">
+          <div className="flex items-center justify-between mb-6">
+            <h3 className="text-lg font-bold text-slate-800 flex items-center gap-2">
+              <FaFilter className="text-indigo-500" />
+              Operational Filters
+            </h3>
+            <button
+              onClick={() => setShowFilters(false)}
+              className="p-1.5 hover:bg-slate-50 rounded-lg text-slate-400 hover:text-slate-600 transition-colors"
+            >
+              <FaTimes />
+            </button>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
             {/* Status Filter */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Status</label>
+              <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Status</label>
               <select
                 value={statusFilter}
                 onChange={(e) => setStatusFilter(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-700 font-bold text-sm focus:ring-2 focus:ring-indigo-500 outline-none transition-all"
               >
-                <option value="all">Active Orders</option>
+                <option value="all">All Active Orders</option>
                 <option value="pending">Pending</option>
                 <option value="in_progress">In Progress</option>
                 <option value="completed">Completed (Archived)</option>
@@ -830,23 +865,26 @@ export default function OrderCenterPage() {
 
             {/* Customer Search */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Customer/Event Search</label>
-              <input
-                type="text"
-                value={customerSearch}
-                onChange={(e) => setCustomerSearch(e.target.value)}
-                placeholder="Search by customer name, phone, email, or event name"
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-              />
+              <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Search</label>
+              <div className="relative">
+                <FaSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 w-3.5 h-3.5" />
+                <input
+                  type="text"
+                  value={customerSearch}
+                  onChange={(e) => setCustomerSearch(e.target.value)}
+                  placeholder="Customer, phone, event..."
+                  className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-700 font-bold text-sm focus:ring-2 focus:ring-indigo-500 outline-none transition-all placeholder:text-slate-400"
+                />
+              </div>
             </div>
 
             {/* Month Filter */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Month</label>
+              <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Month</label>
               <select
                 value={selectedMonth}
                 onChange={(e) => setSelectedMonth(parseInt(e.target.value))}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-700 font-bold text-sm focus:ring-2 focus:ring-indigo-500 outline-none transition-all"
               >
                 {['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'].map((m, i) => (
                   <option key={m} value={i + 1}>{m}</option>
@@ -856,11 +894,11 @@ export default function OrderCenterPage() {
 
             {/* Year Filter */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Year</label>
+              <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Year</label>
               <select
                 value={selectedYear}
                 onChange={(e) => setSelectedYear(parseInt(e.target.value))}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-700 font-bold text-sm focus:ring-2 focus:ring-indigo-500 outline-none transition-all"
               >
                 {[2024, 2025, 2026].map(y => (
                   <option key={y} value={y}>{y}</option>
@@ -868,7 +906,8 @@ export default function OrderCenterPage() {
               </select>
             </div>
           </div>
-          <div className="mt-4 flex justify-end">
+
+          <div className="mt-6 flex justify-end border-t border-slate-50 pt-4">
             <button
               onClick={() => {
                 setStatusFilter('all')
@@ -877,9 +916,9 @@ export default function OrderCenterPage() {
                 setSelectedYear(new Date().getFullYear())
                 setCurrentPage(1)
               }}
-              className="px-4 py-2 text-sm text-gray-600 hover:text-gray-800 underline"
+              className="text-xs text-indigo-600 hover:text-indigo-700 font-bold uppercase tracking-wider transition-colors"
             >
-              Clear Filters
+              Reset All Filters
             </button>
           </div>
         </div>
@@ -908,28 +947,28 @@ export default function OrderCenterPage() {
               const firstDate = eventDates[0] ? new Date(eventDates[0]).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }) : null
 
               return (
-                <div key={order.id} className="bg-white rounded-xl shadow-md border border-gray-100 overflow-hidden">
-                  <div className="p-4">
-                    <div className="flex items-start justify-between gap-3 mb-3">
+                <div key={order.id} className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden mb-4">
+                  <div className="p-5">
+                    <div className="flex items-start justify-between gap-4 mb-4">
                       <div className="flex-1 min-w-0">
-                        <div className="font-semibold text-gray-900 truncate">{order.customer?.name || 'Unknown'}</div>
-                        <div className="text-sm text-gray-500">{order.customer?.phone || ''}</div>
+                        <div className="font-bold text-slate-900 truncate">{order.customer?.name || 'Unknown'}</div>
+                        <div className="text-xs font-medium text-slate-400 mt-0.5">{order.customer?.phone || ''}</div>
                         {(order as any).eventName && (
-                          <div className="text-sm text-gray-700 mt-0.5 truncate">{(order as any).eventName}</div>
+                          <div className="text-sm font-bold text-indigo-600 mt-1 truncate">{(order as any).eventName}</div>
                         )}
                       </div>
                       <input
                         type="checkbox"
                         checked={selectedOrderIds.includes(order.id)}
                         onChange={() => toggleOrderSelection(order.id)}
-                        className="w-5 h-5 rounded border-gray-300 text-primary-600 focus:ring-primary-500 flex-shrink-0 mt-0.5"
+                        className="w-5 h-5 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 flex-shrink-0 mt-0.5"
                       />
                     </div>
-                    <div className="flex flex-wrap items-center gap-2 mb-3">
+                    <div className="flex flex-wrap items-center gap-3 mb-4">
                       {firstDate && (
-                        <span className="inline-flex items-center gap-1 px-2 py-1 bg-slate-100 rounded-lg text-xs font-medium text-slate-700">
-                          <FaCalendarAlt className="text-slate-500" /> {firstDate}
-                          {eventDates.length > 1 && <span className="text-slate-500">+{eventDates.length - 1}</span>}
+                        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-slate-50 border border-slate-100 rounded-lg text-[10px] font-bold text-slate-600 uppercase tracking-wider">
+                          <FaCalendarAlt className="text-slate-400" /> {firstDate}
+                          {eventDates.length > 1 && <span className="text-slate-400">+{eventDates.length - 1}</span>}
                         </span>
                       )}
                       <select
@@ -938,7 +977,7 @@ export default function OrderCenterPage() {
                           if (e.target.value === order.status) return
                           setStatusConfirm({ isOpen: true, id: order.id, newStatus: e.target.value, oldStatus: order.status })
                         }}
-                        className={`px-3 py-1.5 text-xs font-semibold rounded-full border-0 cursor-pointer touch-manipulation ${order.status === 'completed' ? 'bg-green-100 text-green-800' : order.status === 'in_progress' ? 'bg-yellow-100 text-yellow-800' : order.status === 'cancelled' ? 'bg-red-100 text-red-800' : 'bg-gray-100 text-gray-800'}`}
+                        className={`px-3 py-1 text-[10px] font-bold rounded-full border-0 cursor-pointer uppercase tracking-widest ${order.status === 'completed' ? 'bg-emerald-100 text-emerald-700' : order.status === 'in_progress' ? 'bg-blue-100 text-blue-700' : order.status === 'cancelled' ? 'bg-red-100 text-red-700' : 'bg-orange-100 text-orange-700'}`}
                       >
                         <option value="pending">Pending</option>
                         <option value="in_progress">In Progress</option>
@@ -946,13 +985,13 @@ export default function OrderCenterPage() {
                         <option value="cancelled">Cancelled</option>
                       </select>
                     </div>
-                    <div className="flex flex-wrap gap-2 pt-3 border-t border-gray-100">
-                      <button onClick={() => handleOpenPreview(order)} className="p-2.5 bg-blue-50 text-blue-600 rounded-lg touch-manipulation" title="Preview Summary"><FaChartLine /></button>
-                      <Link href={`/orders?edit=${order.id}`} className="p-2.5 bg-yellow-50 text-yellow-600 rounded-lg touch-manipulation" title="Edit"><FaEdit /></Link>
-                      <button onClick={() => setPdfLanguageModal({ isOpen: true, order })} className="p-2.5 bg-secondary-50 text-secondary-600 rounded-lg touch-manipulation" title="PDF"><FaFilePdf /></button>
-                      <button onClick={() => handleGenerateImage(order, 'english')} className="p-2.5 bg-indigo-50 text-indigo-600 rounded-lg touch-manipulation" title="Image"><FaFileImage /></button>
-                      <button onClick={() => order.customer?.email ? setEmailModal({ isOpen: true, order }) : toast.error('Customer email not available')} className="p-2.5 bg-green-50 text-green-600 rounded-lg touch-manipulation" title="Email"><FaEnvelope /></button>
-                      <button onClick={() => handleDelete(order.id)} className="p-2.5 bg-red-50 text-red-600 rounded-lg touch-manipulation" title="Delete"><FaTrash /></button>
+                    <div className="flex flex-wrap gap-2 pt-4 border-t border-slate-50">
+                      <button onClick={() => handleOpenPreview(order)} className="p-2.5 bg-indigo-50 text-indigo-600 rounded-xl hover:bg-indigo-100 transition-colors" title="Preview Summary"><FaChartLine /></button>
+                      <Link href={`/orders?edit=${order.id}`} className="p-2.5 bg-slate-50 text-slate-600 rounded-xl hover:bg-slate-100 transition-colors" title="Edit"><FaEdit /></Link>
+                      <button onClick={() => setPdfLanguageModal({ isOpen: true, order })} className="p-2.5 bg-slate-50 text-slate-600 rounded-xl hover:bg-slate-100 transition-colors" title="PDF"><FaFilePdf /></button>
+                      <button onClick={() => handleGenerateImage(order, 'english')} className="p-2.5 bg-slate-50 text-slate-600 rounded-xl hover:bg-slate-100 transition-colors" title="Image"><FaFileImage /></button>
+                      <button onClick={() => order.customer?.email ? setEmailModal({ isOpen: true, order }) : toast.error('Customer email not available')} className="p-2.5 bg-slate-50 text-slate-600 rounded-xl hover:bg-slate-100 transition-colors" title="Email"><FaEnvelope /></button>
+                      <button onClick={() => handleDelete(order.id)} className="p-2.5 bg-red-50 text-red-600 rounded-xl hover:bg-red-100 transition-colors" title="Delete"><FaTrash /></button>
                     </div>
                   </div>
                 </div>
@@ -961,12 +1000,12 @@ export default function OrderCenterPage() {
           </div>
 
           {/* Desktop Table - visible only md and up */}
-          <div className="hidden md:block bg-white rounded-lg shadow-md overflow-hidden">
+          <div className="hidden md:block bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
             <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gray-50">
+              <table className="min-w-full divide-y divide-slate-100">
+                <thead className="bg-slate-50/50">
                   <tr>
-                    <th className="px-6 py-3 text-left">
+                    <th className="px-6 py-4 text-left">
                       <input
                         type="checkbox"
                         checked={selectedOrderIds.length === paginatedOrders.length && paginatedOrders.length > 0}
@@ -977,20 +1016,20 @@ export default function OrderCenterPage() {
                             setSelectedOrderIds([])
                           }
                         }}
-                        className="w-4 h-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500"
+                        className="w-4 h-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
                       />
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Customer</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Event Name</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Event Type</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Venue</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Event Dates / Guests</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Created</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                    <th className="px-6 py-4 text-left text-[10px] font-bold text-slate-400 uppercase tracking-widest">Customer</th>
+                    <th className="px-6 py-4 text-left text-[10px] font-bold text-slate-400 uppercase tracking-widest">Event Name</th>
+                    <th className="px-6 py-4 text-left text-[10px] font-bold text-slate-400 uppercase tracking-widest">Type</th>
+                    <th className="px-6 py-4 text-left text-[10px] font-bold text-slate-400 uppercase tracking-widest">Venue</th>
+                    <th className="px-6 py-4 text-left text-[10px] font-bold text-slate-400 uppercase tracking-widest">Dates / Guests</th>
+                    <th className="px-6 py-4 text-left text-[10px] font-bold text-slate-400 uppercase tracking-widest">Status</th>
+                    <th className="px-6 py-4 text-left text-[10px] font-bold text-slate-400 uppercase tracking-widest">Created</th>
+                    <th className="px-6 py-4 text-left text-[10px] font-bold text-slate-400 uppercase tracking-widest text-right">Actions</th>
                   </tr>
                 </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
+                <tbody className="bg-white divide-y divide-slate-100">
                   {paginatedOrders.map((order: any) => {
                     // Extract all event dates from meal types
                     const mealTypeAmounts = order.mealTypeAmounts as Record<string, { amount: number; date: string; numberOfMembers?: number } | number> | null
@@ -1052,22 +1091,22 @@ export default function OrderCenterPage() {
                           />
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="text-sm font-medium text-gray-900">{order.customer?.name || 'Unknown'}</div>
-                          <div className="text-sm text-gray-500">{order.customer?.phone || ''}</div>
+                          <div className="text-sm font-bold text-slate-900">{order.customer?.name || 'Unknown'}</div>
+                          <div className="text-xs font-medium text-slate-400 mt-0.5">{order.customer?.phone || ''}</div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="text-sm font-medium text-gray-900">
-                            {(order as any).eventName || <span className="text-gray-400">-</span>}
+                          <div className="text-sm font-bold text-indigo-600">
+                            {(order as any).eventName || <span className="text-slate-300 font-normal italic">No Name</span>}
                           </div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="text-sm text-gray-900">
-                            {(order as any).eventType || <span className="text-gray-400">-</span>}
+                          <div className="text-xs font-medium text-slate-600">
+                            {(order as any).eventType || <span className="text-slate-300 font-normal">-</span>}
                           </div>
                         </td>
                         <td className="px-6 py-4">
-                          <div className="text-sm text-gray-900 max-w-[200px] truncate" title={(order as any).venue || ''}>
-                            {(order as any).venue || <span className="text-gray-400">-</span>}
+                          <div className="text-xs font-medium text-slate-500 max-w-[180px] truncate" title={(order as any).venue || ''}>
+                            {(order as any).venue || <span className="text-slate-300 font-normal">-</span>}
                           </div>
                         </td>
                         <td className="px-6 py-4">
@@ -1234,62 +1273,60 @@ export default function OrderCenterPage() {
         </>
       )}
 
-      {/* Pagination Controls */}
-      {orders.length > itemsPerPage && (
-        <div className="mt-4 flex items-center justify-between bg-white px-4 py-3 rounded-lg shadow-md">
-          <div className="text-sm text-gray-700">
-            Showing {startIndex + 1} to {Math.min(endIndex, orders.length)} of {orders.length} orders
-          </div>
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
-              disabled={currentPage === 1}
-              className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${currentPage === 1
-                ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
-                : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-                }`}
-            >
-              <FaChevronLeft />
-            </button>
-            <div className="flex gap-1">
-              {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => {
-                if (
-                  page === 1 ||
-                  page === totalPages ||
-                  (page >= currentPage - 1 && page <= currentPage + 1)
-                ) {
-                  return (
-                    <button
-                      key={page}
-                      onClick={() => setCurrentPage(page)}
-                      className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${currentPage === page
-                        ? 'bg-blue-600 text-white'
-                        : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-                        }`}
-                    >
-                      {page}
-                    </button>
-                  )
-                } else if (page === currentPage - 2 || page === currentPage + 2) {
-                  return <span key={page} className="px-2 text-gray-400">...</span>
-                }
-                return null
-              })}
-            </div>
-            <button
-              onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
-              disabled={currentPage === totalPages}
-              className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${currentPage === totalPages
-                ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
-                : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-                }`}
-            >
-              <FaChevronRight />
-            </button>
-          </div>
+      {/* Pagination */}
+      <div className="mt-8 flex flex-col md:flex-row items-center justify-between gap-4 bg-white px-6 py-4 rounded-2xl shadow-sm border border-slate-100">
+        <div className="text-xs sm:text-sm font-medium text-slate-500 whitespace-nowrap">
+          Showing <span className="text-slate-900 font-bold">{startIndex + 1}</span> to <span className="text-slate-900 font-bold">{Math.min(endIndex, filteredOrders.length)}</span> of <span className="text-slate-900 font-bold">{filteredOrders.length}</span> orders
         </div>
-      )}
-
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+            disabled={currentPage === 1}
+            className={`p-2 rounded-xl text-xs font-bold transition-all ${currentPage === 1
+              ? 'bg-slate-50 text-slate-300 cursor-not-allowed'
+              : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-50 active:scale-90 shadow-sm'
+              }`}
+          >
+            <FaChevronLeft className="w-3 h-3" />
+          </button>
+          <div className="flex gap-1.5">
+            {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => {
+              if (
+                totalPages <= 7 ||
+                page === 1 ||
+                page === totalPages ||
+                (page >= currentPage - 1 && page <= currentPage + 1)
+              ) {
+                return (
+                  <button
+                    key={page}
+                    onClick={() => setCurrentPage(page)}
+                    className={`w-8 h-8 sm:w-10 sm:h-10 flex items-center justify-center rounded-xl text-xs sm:text-sm font-bold transition-all ${currentPage === page
+                      ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-200 scale-110'
+                      : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-50 active:scale-90 shadow-sm'
+                      }`}
+                  >
+                    {page}
+                  </button>
+                )
+              } else if (page === currentPage - 2 || page === currentPage + 2) {
+                return <span key={page} className="w-8 flex items-center justify-center text-slate-300 font-bold">...</span>
+              }
+              return null
+            })}
+          </div>
+          <button
+            onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+            disabled={currentPage === totalPages}
+            className={`p-2 rounded-xl text-xs font-bold transition-all ${currentPage === totalPages
+              ? 'bg-slate-50 text-slate-300 cursor-not-allowed'
+              : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-50 active:scale-90 shadow-sm'
+              }`}
+          >
+            <FaChevronRight className="w-3 h-3" />
+          </button>
+        </div>
+      </div>
       <ConfirmModal
         isOpen={deleteConfirm.isOpen}
         title="Delete Order"
@@ -1319,77 +1356,81 @@ export default function OrderCenterPage() {
       />
 
       {/* PDF Language Selection Modal */}
-      {pdfLanguageModal.isOpen && pdfLanguageModal.order && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-xl shadow-xl p-6 max-w-sm w-full mx-4">
-            <h3 className="text-lg font-semibold text-gray-800 mb-2">Download Order PDF</h3>
-            <p className="text-sm text-gray-600 mb-4">Do you want the menu items in English or Telugu?</p>
-            <div className="flex gap-3">
+      {
+        pdfLanguageModal.isOpen && pdfLanguageModal.order && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+            <div className="bg-white rounded-xl shadow-xl p-6 max-w-sm w-full mx-4">
+              <h3 className="text-lg font-semibold text-gray-800 mb-2">Download Order PDF</h3>
+              <p className="text-sm text-gray-600 mb-4">Do you want the menu items in English or Telugu?</p>
+              <div className="flex gap-3">
+                <button
+                  onClick={() => {
+                    handleGeneratePDF(pdfLanguageModal.order, 'english')
+                    setPdfLanguageModal({ isOpen: false, order: null })
+                  }}
+                  className="flex-1 px-4 py-2.5 bg-primary-500 text-white rounded-lg font-medium hover:bg-primary-600 transition-colors"
+                >
+                  English
+                </button>
+                <button
+                  onClick={() => {
+                    handleGeneratePDF(pdfLanguageModal.order, 'telugu')
+                    setPdfLanguageModal({ isOpen: false, order: null })
+                  }}
+                  className="flex-1 px-4 py-2.5 bg-primary-500 text-white rounded-lg font-medium hover:bg-primary-600 transition-colors"
+                >
+                  α░ñα▒åα░▓α▒üα░ùα▒ü (Telugu)
+                </button>
+              </div>
               <button
-                onClick={() => {
-                  handleGeneratePDF(pdfLanguageModal.order, 'english')
-                  setPdfLanguageModal({ isOpen: false, order: null })
-                }}
-                className="flex-1 px-4 py-2.5 bg-primary-500 text-white rounded-lg font-medium hover:bg-primary-600 transition-colors"
+                onClick={() => setPdfLanguageModal({ isOpen: false, order: null })}
+                className="mt-3 w-full px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-lg text-sm font-medium transition-colors"
               >
-                English
-              </button>
-              <button
-                onClick={() => {
-                  handleGeneratePDF(pdfLanguageModal.order, 'telugu')
-                  setPdfLanguageModal({ isOpen: false, order: null })
-                }}
-                className="flex-1 px-4 py-2.5 bg-primary-500 text-white rounded-lg font-medium hover:bg-primary-600 transition-colors"
-              >
-                α░ñα▒åα░▓α▒üα░ùα▒ü (Telugu)
+                Cancel
               </button>
             </div>
-            <button
-              onClick={() => setPdfLanguageModal({ isOpen: false, order: null })}
-              className="mt-3 w-full px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-lg text-sm font-medium transition-colors"
-            >
-              Cancel
-            </button>
           </div>
-        </div>
-      )}
+        )
+      }
 
       {/* Email Order Modal */}
-      {emailModal.isOpen && emailModal.order && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-xl shadow-xl p-6 max-w-sm w-full mx-4">
-            <h3 className="text-lg font-semibold text-gray-800 mb-2">Email Order to Customer</h3>
-            <p className="text-sm text-gray-600 mb-4">
-              Send order (menu + event details) to{' '}
-              <span className="font-medium text-gray-800">{emailModal.order.customer?.email}</span>
-            </p>
-            <p className="text-xs text-gray-500 mb-4">Menu items in:</p>
-            <div className="flex gap-3">
+      {
+        emailModal.isOpen && emailModal.order && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+            <div className="bg-white rounded-xl shadow-xl p-6 max-w-sm w-full mx-4">
+              <h3 className="text-lg font-semibold text-gray-800 mb-2">Email Order to Customer</h3>
+              <p className="text-sm text-gray-600 mb-4">
+                Send order (menu + event details) to{' '}
+                <span className="font-medium text-gray-800">{emailModal.order.customer?.email}</span>
+              </p>
+              <p className="text-xs text-gray-500 mb-4">Menu items in:</p>
+              <div className="flex gap-3">
+                <button
+                  onClick={() => handleSendOrderEmail(emailModal.order, 'english')}
+                  disabled={emailSending}
+                  className="flex-1 px-4 py-2.5 bg-green-600 text-white rounded-lg font-medium hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                >
+                  {emailSending ? 'Sending...' : 'English'}
+                </button>
+                <button
+                  onClick={() => handleSendOrderEmail(emailModal.order, 'telugu')}
+                  disabled={emailSending}
+                  className="flex-1 px-4 py-2.5 bg-green-600 text-white rounded-lg font-medium hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                >
+                  {emailSending ? 'Sending...' : 'α░ñα▒åα░▓α▒üα░ùα▒ü'}
+                </button>
+              </div>
               <button
-                onClick={() => handleSendOrderEmail(emailModal.order, 'english')}
+                onClick={() => setEmailModal({ isOpen: false, order: null })}
                 disabled={emailSending}
-                className="flex-1 px-4 py-2.5 bg-green-600 text-white rounded-lg font-medium hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                className="mt-3 w-full px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-lg text-sm font-medium transition-colors disabled:opacity-50"
               >
-                {emailSending ? 'Sending...' : 'English'}
-              </button>
-              <button
-                onClick={() => handleSendOrderEmail(emailModal.order, 'telugu')}
-                disabled={emailSending}
-                className="flex-1 px-4 py-2.5 bg-green-600 text-white rounded-lg font-medium hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-              >
-                {emailSending ? 'Sending...' : 'α░ñα▒åα░▓α▒üα░ùα▒ü'}
+                Cancel
               </button>
             </div>
-            <button
-              onClick={() => setEmailModal({ isOpen: false, order: null })}
-              disabled={emailSending}
-              className="mt-3 w-full px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-lg text-sm font-medium transition-colors disabled:opacity-50"
-            >
-              Cancel
-            </button>
           </div>
-        </div>
-      )}
+        )
+      }
       <ConfirmModal
         isOpen={separationConfirm.isOpen}
         title="Separate Session"
@@ -1410,72 +1451,79 @@ export default function OrderCenterPage() {
       />
 
       {/* Quick Preview Drawer */}
-      {previewOrder && (
-        <div className="fixed inset-0 z-[100] overflow-hidden">
-          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm transition-opacity" onClick={() => setPreviewOrder(null)} />
-          <div className="absolute inset-y-0 right-0 max-w-full flex">
-            <div className="relative w-screen max-w-2xl bg-white border-l border-gray-100 shadow-2xl flex flex-col animate-in slide-in-from-right duration-300">
-              {/* Header */}
-              <div className="flex items-center justify-between p-6 border-b border-gray-100 bg-gray-50/50">
-                <div>
-                  <h2 className="text-xl font-bold text-gray-900 border-none m-0 p-0">Quick Order Preview</h2>
-                  <p className="text-sm text-gray-500 mt-1">
-                    ID: {previewOrder.serialNumber ? `SKC-ORDER-${previewOrder.serialNumber}` : previewOrder.id?.slice(0, 8)} |
-                    Status: <span className="capitalize font-semibold">{previewOrder.status?.replace('_', ' ')}</span>
-                  </p>
+      {
+        previewOrder && (
+          <div className="fixed inset-0 z-[100] overflow-hidden">
+            <div className="absolute inset-0 bg-black/40 backdrop-blur-sm transition-opacity" onClick={() => setPreviewOrder(null)} />
+            <div className="absolute inset-y-0 right-0 max-w-full flex">
+              <div className="relative w-screen max-w-2xl bg-white border-l border-gray-100 shadow-2xl flex flex-col animate-in slide-in-from-right duration-300">
+                {/* Header */}
+                <div className="flex items-center justify-between p-6 border-b border-slate-100 bg-slate-50/50">
+                  <div>
+                    <h2 className="text-xl font-bold text-slate-900 tracking-tight">Quick Order Preview</h2>
+                    <div className="flex items-center gap-2 mt-1">
+                      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+                        ID: {previewOrder.serialNumber ? `SKC-ORDER-${previewOrder.serialNumber}` : previewOrder.id?.slice(0, 8)}
+                      </span>
+                      <span className="w-1 h-1 bg-slate-300 rounded-full"></span>
+                      <span className={`text-[10px] font-bold uppercase tracking-widest ${previewOrder.status === 'completed' ? 'text-emerald-600' : previewOrder.status === 'in_progress' ? 'text-blue-600' : 'text-orange-600'}`}>
+                        {previewOrder.status?.replace('_', ' ')}
+                      </span>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => setPreviewOrder(null)}
+                    className="p-2 hover:bg-slate-100 rounded-full transition-all active:scale-90"
+                  >
+                    <FaTimesCircle className="w-6 h-6 text-slate-300 hover:text-slate-400" />
+                  </button>
                 </div>
-                <button
-                  onClick={() => setPreviewOrder(null)}
-                  className="p-2 hover:bg-gray-200 rounded-full transition-colors"
-                >
-                  <FaTimesCircle className="w-6 h-6 text-gray-400" />
-                </button>
-              </div>
 
-              {/* Content */}
-              <div className="flex-1 overflow-y-auto bg-gray-100 p-4 md:p-8">
-                {previewOrder.loading ? (
-                  <div className="h-full flex flex-col items-center justify-center gap-4">
-                    <div className="w-12 h-12 border-4 border-primary-500 border-t-transparent rounded-full animate-spin"></div>
-                    <p className="text-gray-500 font-medium">Fetching details...</p>
-                  </div>
-                ) : (
-                  <div className="bg-white shadow-lg rounded-xl overflow-hidden min-h-min mx-auto" style={{ width: '210mm', maxWidth: '100%' }}>
-                    <div
-                      className="origin-top"
-                      style={{ transform: 'scale(0.95)', transformOrigin: 'top center' }}
-                      dangerouslySetInnerHTML={{
-                        __html: buildOrderPdfHtml(previewOrder, {
-                          useEnglish: true,
-                          formatDate,
-                          showFinancials: true,
-                          formatCurrency,
-                        })
-                      }}
-                    />
-                  </div>
-                )}
-              </div>
+                {/* Content */}
+                <div className="flex-1 overflow-y-auto bg-slate-50 p-4 md:p-8">
+                  {previewOrder.loading ? (
+                    <div className="h-full flex flex-col items-center justify-center gap-4">
+                      <div className="w-12 h-12 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin"></div>
+                      <p className="text-slate-500 font-bold text-sm uppercase tracking-widest">Fetching details...</p>
+                    </div>
+                  ) : (
+                    <div className="bg-white shadow-lg rounded-xl overflow-hidden min-h-min mx-auto" style={{ width: '210mm', maxWidth: '100%' }}>
+                      <div
+                        className="origin-top"
+                        style={{ transform: 'scale(0.95)', transformOrigin: 'top center' }}
+                        dangerouslySetInnerHTML={{
+                          __html: buildOrderPdfHtml(previewOrder, {
+                            useEnglish: true,
+                            formatDate,
+                            showFinancials: true,
+                            formatCurrency,
+                          })
+                        }}
+                      />
+                    </div>
+                  )}
+                </div>
 
-              {/* Footer Actions */}
-              <div className="p-6 border-t border-gray-100 bg-gray-50/50 flex gap-3">
-                <button
-                  onClick={() => handleGenerateImage(previewOrder)}
-                  className="flex-1 flex items-center justify-center gap-2 px-6 py-3 bg-indigo-600 text-white rounded-xl font-semibold hover:bg-indigo-700 transition-all shadow-lg active:scale-95"
-                >
-                  <FaFileImage /> Download Summary Image
-                </button>
-                <button
-                  onClick={() => setPreviewOrder(null)}
-                  className="px-6 py-3 bg-white border border-gray-200 text-gray-700 rounded-xl font-semibold hover:bg-gray-50 transition-all shadow-sm"
-                >
-                  Close
-                </button>
+                {/* Footer Actions */}
+                <div className="p-6 border-t border-slate-100 bg-slate-50/50 flex gap-4">
+                  <button
+                    onClick={() => handleGenerateImage(previewOrder)}
+                    className="flex-1 flex items-center justify-center gap-2 px-6 py-4 bg-indigo-600 text-white rounded-2xl font-bold hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-100 active:scale-95"
+                  >
+                    <FaFileImage /> Download Summary
+                  </button>
+                  <button
+                    onClick={() => setPreviewOrder(null)}
+                    className="px-6 py-4 bg-white border border-slate-200 text-slate-600 rounded-2xl font-bold hover:bg-slate-50 transition-all shadow-sm active:scale-95"
+                  >
+                    Close
+                  </button>
+                </div>
               </div>
             </div>
           </div>
-        </div>
-      )}
-    </div>
+        )
+      }
+    </div >
   )
 }

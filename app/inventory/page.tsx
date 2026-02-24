@@ -315,9 +315,9 @@ export default function InventoryPage() {
       header: 'Item Name',
       accessor: (row: InventoryItem) => (
         <div>
-          <div className="font-medium text-gray-900">{row.name}</div>
+          <div className="font-medium text-slate-900">{row.name}</div>
           {row.description && (
-            <div className="text-xs text-gray-500 truncate max-w-xs">{row.description}</div>
+            <div className="text-xs text-slate-400 truncate max-w-xs">{row.description}</div>
           )}
         </div>
       ),
@@ -339,8 +339,8 @@ export default function InventoryPage() {
       key: 'quantity',
       header: 'Quantity',
       accessor: (row: InventoryItem) => (
-        <div className="font-bold text-lg text-gray-900">
-          {row.quantity} {row.unit}
+        <div className="font-bold text-slate-900">
+          {row.quantity} <span className="text-[10px] text-slate-400 font-medium uppercase">{row.unit}</span>
         </div>
       ),
     },
@@ -355,49 +355,16 @@ export default function InventoryPage() {
     },
     {
       key: 'location',
-      header: 'Location/Supplier',
-      accessor: (row: InventoryItem) => (
-        <div className="max-w-xs">
-          {row.location && (
-            <div className="text-sm text-gray-900">{row.location}</div>
-          )}
-          {row.supplier && (
-            <div className="text-xs text-gray-500">{row.supplier}</div>
-          )}
-          {!row.location && !row.supplier && (
-            <span className="text-gray-400 text-sm">-</span>
-          )}
-        </div>
-      ),
-    },
-    {
-      key: 'purchasePrice',
-      header: 'Purchase Info',
-      accessor: (row: InventoryItem) => (
-        <div>
-          {row.purchasePrice ? (
-            <>
-              <div className="font-medium text-gray-900">{formatCurrency(row.purchasePrice)}</div>
-              <div className="text-xs text-gray-500">
-                Total: {formatCurrency((row.purchasePrice || 0) * row.quantity)}
-              </div>
-            </>
-          ) : (
-            <span className="text-gray-400">-</span>
-          )}
-          {row.purchaseDate && (
-            <div className="text-xs text-gray-500 mt-1">{formatDate(row.purchaseDate)}</div>
-          )}
-        </div>
-      ),
+      header: 'Location',
+      accessor: (row: InventoryItem) => (row.location || '-'),
     },
     {
       key: 'status',
       header: 'Status',
       accessor: (row: InventoryItem) => (
-        <span className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${row.isActive
-          ? 'bg-green-100 text-green-800'
-          : 'bg-gray-100 text-gray-800'
+        <span className={`px-2 py-1 inline-flex text-[10px] font-black uppercase tracking-widest rounded-lg ${row.isActive
+          ? 'bg-emerald-50 text-emerald-600'
+          : 'bg-slate-100 text-slate-400'
           }`}>
           {row.isActive ? 'Active' : 'Inactive'}
         </span>
@@ -412,235 +379,224 @@ export default function InventoryPage() {
   ].filter(Boolean).length
 
   return (
-    <div className="p-4 sm:p-6 lg:p-8 bg-gray-50 min-h-screen">
+    <div className="min-h-screen bg-slate-50/50 p-4 md:p-8">
       {/* Header */}
-      <div className="mb-6 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900">Inventory Management</h1>
-          <p className="text-gray-600 mt-1">Track and manage kitchen equipment and utensils</p>
+      <div className="max-w-7xl mx-auto space-y-8">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div>
+            <h1 className="text-3xl font-bold text-slate-900 tracking-tight">Inventory Management</h1>
+            <p className="text-slate-500 mt-1">Track and manage kitchen equipment, utensils, and service assets</p>
+          </div>
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => setShowFilters(!showFilters)}
+              className={`flex items-center gap-2 px-4 py-2 rounded-xl border transition-all shadow-sm ${showFilters ? 'bg-indigo-50 border-indigo-200 text-indigo-600' : 'bg-white border-slate-200 text-slate-600 hover:border-slate-300'}`}
+            >
+              <FaFilter className={activeFiltersCount > 0 ? 'text-indigo-600' : 'text-slate-400'} />
+              <span className="text-sm font-bold">Filters</span>
+              {activeFiltersCount > 0 && (
+                <span className="bg-indigo-600 text-white text-[10px] font-black rounded-full w-5 h-5 flex items-center justify-center">
+                  {activeFiltersCount}
+                </span>
+              )}
+            </button>
+            <button
+              onClick={handleDownloadReport}
+              className="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 text-slate-600 rounded-xl hover:bg-slate-50 transition-all shadow-sm font-bold text-sm"
+            >
+              <FaFilePdf className="text-rose-500" />
+              Download Report
+            </button>
+            <Link
+              href="/inventory/create"
+              className="flex items-center gap-2 px-6 py-2 bg-slate-900 text-white rounded-xl hover:bg-slate-800 transition-all shadow-lg active:scale-95 font-bold text-sm"
+            >
+              <FaPlus />
+              Add Item
+            </Link>
+          </div>
         </div>
-        <div className="flex items-center gap-3">
-          <button
-            onClick={() => setShowFilters(!showFilters)}
-            className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors shadow-sm"
-          >
-            <FaFilter />
-            Filters
-            {activeFiltersCount > 0 && (
-              <span className="bg-primary-500 text-white text-xs rounded-full px-2 py-0.5">
-                {activeFiltersCount}
-              </span>
-            )}
-          </button>
-          <button
-            onClick={handleDownloadReport}
-            className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors shadow-sm"
-          >
-            <FaFilePdf className="text-primary-500" />
-            Download Report
-          </button>
-          <Link
-            href="/inventory/create"
-            className="flex items-center gap-2 px-4 py-2 bg-primary-500 text-white rounded-lg hover:bg-primary-600 transition-colors shadow-md"
-          >
-            <FaPlus />
-            Add Inventory Item
-          </Link>
-        </div>
-      </div>
 
-      {/* Condition Alerts */}
-      {(conditionCounts.damaged > 0 || conditionCounts.repair > 0) && (
-        <div className="mb-6 bg-orange-50 border-l-4 border-orange-400 p-4 rounded-lg">
-          <div className="flex items-center gap-2">
-            <FaExclamationTriangle className="text-orange-400 text-xl" />
-            <div className="flex-1">
-              <h3 className="text-orange-800 font-semibold">Items Requiring Attention</h3>
-              <p className="text-orange-700 text-sm">
-                {conditionCounts.damaged} items damaged, {conditionCounts.repair} items need repair
+        {/* Condition Alerts */}
+        {(conditionCounts.damaged > 0 || conditionCounts.repair > 0) && (
+          <div className="bg-rose-50 border border-rose-100 p-4 rounded-2xl flex items-center gap-4 animate-pulse">
+            <div className="w-10 h-10 bg-rose-500 rounded-full flex items-center justify-center text-white shadow-lg shadow-rose-200">
+              <FaExclamationTriangle />
+            </div>
+            <div>
+              <h3 className="text-rose-900 font-bold text-sm">Action Required</h3>
+              <p className="text-rose-600 text-xs font-medium">
+                {conditionCounts.damaged} items damaged and {conditionCounts.repair} items requiring repair.
               </p>
             </div>
           </div>
-        </div>
-      )}
+        )}
 
-      {/* Summary Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-        {INVENTORY_CATEGORIES.map(category => {
-          const Icon = CATEGORY_ICONS[category]
-          const total = categoryTotals[category] || { count: 0, totalQuantity: 0, totalValue: 0 }
-          return (
-            <div key={category} className="bg-white rounded-xl shadow-md p-6 border border-gray-100">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-gray-600 text-sm font-medium mb-1">
-                    {category.replace('_', ' ').split(' ').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ')}
-                  </p>
-                  <p className="text-2xl font-bold text-gray-900">{total.count} items</p>
-                  <p className="text-gray-500 text-xs mt-2">{total.totalQuantity} {total.count > 0 ? filteredInventory.find(i => i.category === category)?.unit || 'pieces' : 'total'}</p>
-                  {total.totalValue > 0 && (
-                    <p className="text-gray-500 text-xs">{formatCurrency(total.totalValue)}</p>
-                  )}
-                </div>
-                <div className={`${CATEGORY_COLORS[category]} rounded-full p-3`}>
-                  <Icon className="text-xl" />
+        {/* Summary Cards */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
+          {INVENTORY_CATEGORIES.map(category => {
+            const Icon = CATEGORY_ICONS[category]
+            const total = categoryTotals[category] || { count: 0, totalQuantity: 0, totalValue: 0 }
+
+            const categoryMeta: any = {
+              glasses: { color: 'blue', label: 'Glasses' },
+              vessels: { color: 'emerald', label: 'Vessels' },
+              cooking_utensils: { color: 'orange', label: 'Cooking' },
+              serving_items: { color: 'indigo', label: 'Serving' },
+              storage: { color: 'amber', label: 'Storage' },
+              other: { color: 'slate', label: 'Others' }
+            }
+            const meta = categoryMeta[category] || categoryMeta.other
+
+            return (
+              <div key={category} className="bg-white rounded-2xl shadow-sm p-5 border border-slate-100 hover:shadow-md transition-all group overflow-hidden relative">
+                <div className={`absolute top-0 right-0 w-16 h-16 opacity-10 rounded-full -mr-8 -mt-8 bg-${meta.color}-500 group-hover:scale-150 transition-transform`} />
+                <div className="relative z-10">
+                  <div className="flex items-center justify-between mb-3">
+                    <div className={`p-2 rounded-xl bg-${meta.color}-50 text-${meta.color}-600`}>
+                      <Icon className="text-lg" />
+                    </div>
+                  </div>
+                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{meta.label}</p>
+                  <p className="text-xl font-black text-slate-900">{total.count} <span className="text-[10px] font-medium text-slate-400">Items</span></p>
+                  <div className="mt-2 text-xs font-bold text-slate-500 flex items-center justify-between">
+                    <span>{total.totalQuantity} Units</span>
+                  </div>
                 </div>
               </div>
-            </div>
-          )
-        })}
-      </div>
+            )
+          })}
+        </div>
 
-      {/* Filters Panel */}
-      {showFilters && (
-        <div className="mb-6 bg-white rounded-xl shadow-md p-6 border border-gray-200">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
-              <FaFilter className="text-primary-500" />
-              Filters
-            </h3>
-            <div className="flex items-center gap-2">
-              {activeFiltersCount > 0 && (
-                <button
-                  onClick={clearFilters}
-                  className="text-sm text-primary-600 hover:text-primary-700 font-medium"
-                >
-                  Clear All
-                </button>
-              )}
-              <button
-                onClick={() => setShowFilters(false)}
-                className="text-gray-400 hover:text-gray-600"
-              >
-                <FaTimes />
-              </button>
-            </div>
-          </div>
+        {/* Filters Panel */}
+        {showFilters && (
+          <div className="bg-white rounded-2xl shadow-sm p-6 border border-slate-200 animate-in fade-in slide-in-from-top-4 duration-300">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              {/* Search */}
+              <div className="md:col-span-2">
+                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 block">
+                  Search Assets
+                </label>
+                <div className="relative">
+                  <FaSearch className="absolute left-3.5 top-3.5 text-slate-300" />
+                  <input
+                    type="text"
+                    value={searchTerm}
+                    onChange={(e) => {
+                      setSearchTerm(e.target.value)
+                      setCurrentPage(1)
+                    }}
+                    placeholder="Search by name, supplier, location..."
+                    className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-100 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:bg-white outline-none transition-all placeholder:text-slate-300 text-sm font-medium"
+                  />
+                </div>
+              </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            {/* Search */}
-            <div className="md:col-span-2">
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Search
-              </label>
-              <div className="relative">
-                <FaSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
-                <input
-                  type="text"
-                  value={searchTerm}
+              {/* Condition Filter */}
+              <div>
+                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 block">
+                  Condition Status
+                </label>
+                <select
+                  value={selectedCondition}
                   onChange={(e) => {
-                    setSearchTerm(e.target.value)
+                    setSelectedCondition(e.target.value)
                     setCurrentPage(1)
                   }}
-                  placeholder="Search by name, supplier, location..."
-                  className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-                />
-              </div>
-            </div>
-
-            {/* Condition Filter */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Condition
-              </label>
-              <select
-                value={selectedCondition}
-                onChange={(e) => {
-                  setSelectedCondition(e.target.value)
-                  setCurrentPage(1)
-                }}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-              >
-                <option value="all">All Conditions</option>
-                <option value="good">Good</option>
-                <option value="fair">Fair</option>
-                <option value="damaged">Damaged</option>
-                <option value="repair">Repair</option>
-              </select>
-            </div>
-
-            {/* Category Filter */}
-            <div className="md:col-span-3">
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Category
-              </label>
-              <div className="flex flex-wrap gap-2">
-                <button
-                  onClick={() => {
-                    setSelectedCategory('all')
-                    setCurrentPage(1)
-                  }}
-                  className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${selectedCategory === 'all'
-                    ? 'bg-primary-500 text-white shadow-md'
-                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                    }`}
+                  className="w-full px-4 py-2.5 bg-slate-50 border border-slate-100 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:bg-white outline-none transition-all text-sm font-medium"
                 >
-                  All Categories
-                </button>
-                {INVENTORY_CATEGORIES.map(category => {
-                  const Icon = CATEGORY_ICONS[category]
-                  return (
-                    <button
-                      key={category}
-                      onClick={() => {
-                        setSelectedCategory(category)
-                        setCurrentPage(1)
-                      }}
-                      className={`inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${selectedCategory === category
-                        ? `${CATEGORY_COLORS[category]} border-2`
-                        : 'bg-white border border-gray-300 text-gray-700 hover:bg-gray-50'
-                        }`}
-                    >
-                      <Icon className="text-xs" />
-                      {category.replace('_', ' ').split(' ').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ')}
-                    </button>
-                  )
-                })}
+                  <option value="all">All Conditions</option>
+                  <option value="good">Good</option>
+                  <option value="fair">Fair</option>
+                  <option value="damaged">Damaged</option>
+                  <option value="repair">Repair</option>
+                </select>
+              </div>
+
+              {/* Category Chips */}
+              <div className="md:col-span-3">
+                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3 block">
+                  Quick Categories
+                </label>
+                <div className="flex flex-wrap gap-2">
+                  <button
+                    onClick={() => {
+                      setSelectedCategory('all')
+                      setCurrentPage(1)
+                    }}
+                    className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${selectedCategory === 'all'
+                      ? 'bg-slate-900 text-white shadow-md'
+                      : 'bg-slate-50 text-slate-600 hover:bg-slate-100'
+                      }`}
+                  >
+                    All Items
+                  </button>
+                  {INVENTORY_CATEGORIES.map(category => {
+                    const Icon = CATEGORY_ICONS[category]
+                    const isActive = selectedCategory === category
+                    return (
+                      <button
+                        key={category}
+                        onClick={() => {
+                          setSelectedCategory(category)
+                          setCurrentPage(1)
+                        }}
+                        className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all ${isActive
+                          ? 'bg-indigo-600 text-white shadow-md'
+                          : 'bg-slate-50 text-slate-600 hover:bg-slate-100 border border-transparent'
+                          }`}
+                      >
+                        <Icon className="text-[10px]" />
+                        {category.replace('_', ' ')}
+                      </button>
+                    )
+                  })}
+                </div>
               </div>
             </div>
           </div>
-        </div>
-      )}
+        )}
 
-      {/* Inventory Table */}
-      <div className="bg-white rounded-xl shadow-md border border-gray-200 overflow-hidden">
-        <Table
-          columns={columns}
-          data={filteredInventory}
-          emptyMessage="No inventory items found. Click 'Add Inventory Item' to add your first item."
-          itemsPerPage={itemsPerPage}
-          currentPage={currentPage}
-          totalItems={filteredInventory.length}
-          onPageChange={setCurrentPage}
-          onItemsPerPageChange={setItemsPerPage}
-          itemName="inventory item"
-          getItemId={(item: InventoryItem) => item.id}
-          renderActions={(item: InventoryItem) => (
-            <div className="flex items-center gap-2">
-              <button
-                onClick={() => handleDownloadItemPDF(item)}
-                className="p-2 text-primary-600 hover:bg-primary-50 rounded-lg transition-colors"
-                title="Download PDF"
-              >
-                <FaFilePdf />
-              </button>
-              <Link
-                href={`/inventory/create?id=${item.id}`}
-                className="p-2 text-primary-600 hover:bg-primary-50 rounded-lg transition-colors"
-                title="Edit"
-              >
-                <FaEdit />
-              </Link>
-              <button
-                onClick={() => handleDelete(item.id)}
-                className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                title="Delete"
-              >
-                <FaTrash />
-              </button>
-            </div>
-          )}
-        />
+        {/* Inventory Table Container */}
+        <div className="bg-white rounded-3xl shadow-sm border border-slate-100 overflow-hidden">
+          <Table
+            columns={columns}
+            data={filteredInventory}
+            emptyMessage="No inventory items found. Click 'Add Item' to start tracking."
+            itemsPerPage={itemsPerPage}
+            currentPage={currentPage}
+            totalItems={filteredInventory.length}
+            onPageChange={setCurrentPage}
+            onItemsPerPageChange={setItemsPerPage}
+            itemName="inventory item"
+            getItemId={(item: InventoryItem) => item.id}
+            renderActions={(item: InventoryItem) => (
+              <div className="flex items-center gap-1">
+                <button
+                  onClick={() => handleDownloadItemPDF(item)}
+                  className="p-2 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-xl transition-all"
+                  title="Download PDF"
+                >
+                  <FaFilePdf />
+                </button>
+                <Link
+                  href={`/inventory/create?id=${item.id}`}
+                  className="p-2 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-xl transition-all"
+                  title="Edit"
+                >
+                  <FaEdit />
+                </Link>
+                <button
+                  onClick={() => handleDelete(item.id)}
+                  className="p-2 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-xl transition-all"
+                  title="Delete"
+                >
+                  <FaTrash />
+                </button>
+              </div>
+            )}
+          />
+        </div>
       </div>
 
 
@@ -650,6 +606,7 @@ export default function InventoryPage() {
         onConfirm={confirmDelete}
         title="Delete Inventory Item"
         message="Are you sure you want to delete this inventory item? This action cannot be undone."
+        confirmText="Delete"
         variant="danger"
       />
     </div>
