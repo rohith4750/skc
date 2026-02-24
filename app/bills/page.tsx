@@ -14,6 +14,7 @@ import jsPDF from 'jspdf'
 import html2canvas from 'html2canvas'
 import { generatePDFTemplate } from '@/lib/pdf-template'
 import { buildOrderPdfHtml } from '@/lib/order-pdf-html'
+import ConfirmModal from '@/components/ConfirmModal'
 
 interface ExtendedBill {
   id: string;
@@ -54,6 +55,8 @@ export default function BillsPage() {
     method: 'cash' as string,
     notes: ''
   })
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false)
+  const [billToDelete, setBillToDelete] = useState<string | null>(null)
 
   // Load Bills
   const loadBills = async () => {
@@ -131,12 +134,17 @@ export default function BillsPage() {
     }
   }
 
-  const handleDeleteBill = async (billId: string) => {
-    if (!window.confirm('Are you sure you want to delete this bill? This action cannot be undone.')) return
+  const handleDeleteBill = (billId: string) => {
+    setBillToDelete(billId)
+    setIsDeleteModalOpen(true)
+  }
+
+  const confirmDeleteBill = async () => {
+    if (!billToDelete) return
 
     const toastId = toast.loading('Deleting bill...')
     try {
-      const response = await fetchWithLoader(`/api/bills/${billId}`, {
+      const response = await fetchWithLoader(`/api/bills/${billToDelete}`, {
         method: 'DELETE',
       })
 
@@ -145,14 +153,17 @@ export default function BillsPage() {
         throw new Error(errorData.error || 'Failed to delete bill');
       }
 
-      setBills(prev => prev.filter(b => b.id !== billId))
-      if (selectedBill?.id === billId) {
+      setBills(prev => prev.filter(b => b.id !== billToDelete))
+      if (selectedBill?.id === billToDelete) {
         setIsDrawerOpen(false)
         setSelectedBill(null)
       }
       toast.success('Bill deleted successfully', { id: toastId })
     } catch (error: any) {
       toast.error(error.message || 'Failed to delete bill', { id: toastId })
+    } finally {
+      setIsDeleteModalOpen(false)
+      setBillToDelete(null)
     }
   }
 
@@ -741,6 +752,19 @@ export default function BillsPage() {
           </div>
         )
       }
+
+      <ConfirmModal
+        isOpen={isDeleteModalOpen}
+        title="Delete Bill"
+        message="Are you sure you want to delete this bill? This action cannot be undone."
+        onConfirm={confirmDeleteBill}
+        onCancel={() => {
+          setIsDeleteModalOpen(false)
+          setBillToDelete(null)
+        }}
+        confirmText="Delete"
+        variant="danger"
+      />
     </div >
   )
 }

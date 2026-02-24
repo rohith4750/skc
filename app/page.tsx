@@ -195,6 +195,15 @@ export default function Dashboard() {
       subValue: `Collected: ${formatCurrency(stats.totalCollected)}`,
     },
     {
+      title: 'Total Collected',
+      value: formatCurrency(stats.totalCollected),
+      icon: FaArrowUp,
+      color: 'text-green-600',
+      bgColor: 'bg-green-50',
+      href: '/bills',
+      subValue: `Collected: ${formatCurrency(stats.totalCollected)}`,
+    },
+    {
       title: 'Net Profit',
       value: formatCurrency(stats.totalBilled - stats.totalExpenses),
       icon: FaChartLine,
@@ -283,7 +292,8 @@ export default function Dashboard() {
       items: [
         { label: 'Gross Revenue', value: formatCurrency(stats.totalBilled), color: 'text-green-600', icon: FaArrowUp },
         { label: 'Total Expenses', value: formatCurrency(stats.totalExpenses), color: 'text-red-600', icon: FaArrowDown },
-        { label: 'Net Profit (Gross)', value: formatCurrency(stats.totalBilled - stats.totalExpenses), color: stats.totalBilled - stats.totalExpenses >= 0 ? 'text-green-600' : 'text-red-600' },
+        { label: 'Total Collected', value: formatCurrency(stats.totalCollected), color: 'text-green-600', icon: FaArrowUp },
+        { label: 'Net Profit (Gross)', value: formatCurrency(stats.totalBilled - stats.totalExpenses - stats.totalCollected), color: stats.totalBilled - stats.totalExpenses >= 0 ? 'text-green-600' : 'text-red-600' },
       ],
     },
   ]
