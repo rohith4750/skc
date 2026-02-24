@@ -42,7 +42,7 @@ export default function Dashboard() {
     stockItems: 0,
     lowStockItems: 0,
     inventoryItems: 0,
-    totalRevenue: 0,
+    totalCollected: 0,
     totalExpenses: 0,
     totalBilled: 0,
     totalReceivable: 0,
@@ -74,14 +74,14 @@ export default function Dashboard() {
           Storage.getExpenses(),
         ])
 
-        // Calculate revenue from paid bills
-        const totalRevenue = bills.reduce((sum: number, bill: any) => sum + (parseFloat(bill.paidAmount) || 0), 0)
+        // Calculate financial stats
+        const totalCollected = bills.reduce((sum: number, bill: any) => sum + (parseFloat(bill.paidAmount) || 0), 0)
         const totalExpenses = expenses.reduce((sum: number, expense: any) => sum + (parseFloat(expense.amount) || 0), 0)
         const totalBilled = bills.reduce((sum: number, bill: any) => sum + (parseFloat(bill.totalAmount) || 0), 0)
         const totalReceivable = bills.reduce((sum: number, bill: any) => sum + (parseFloat(bill.remainingAmount) || 0), 0)
         const avgOrderValue = orders.length > 0 ? totalBilled / orders.length : 0
         const profitMargin = totalBilled > 0 ? ((totalBilled - totalExpenses) / totalBilled) * 100 : 0
-        const collectionRate = totalBilled > 0 ? (totalRevenue / totalBilled) * 100 : 0
+        const collectionRate = totalBilled > 0 ? (totalCollected / totalBilled) * 100 : 0
 
         // Order status counts
         const pendingOrders = orders.filter((o: any) => o.status === 'pending' || o.status === 'in_progress').length
@@ -153,7 +153,7 @@ export default function Dashboard() {
           stockItems,
           lowStockItems,
           inventoryItems,
-          totalRevenue,
+          totalCollected,
           totalExpenses,
           totalBilled,
           totalReceivable,
@@ -186,22 +186,22 @@ export default function Dashboard() {
       href: '/customers',
     },
     {
-      title: 'Total Orders',
-      value: stats.orders,
-      icon: FaShoppingCart,
-      color: 'text-accent-600',
-      bgColor: 'bg-accent-50',
-      href: '/orders/history',
-      subValue: `${stats.pendingOrders} pending`,
+      title: 'Total Billed (Gross)',
+      value: formatCurrency(stats.totalBilled),
+      icon: FaFileInvoiceDollar,
+      color: 'text-primary-600',
+      bgColor: 'bg-primary-50',
+      href: '/bills',
+      subValue: `Collected: ${formatCurrency(stats.totalCollected)}`,
     },
     {
-      title: 'Total Revenue',
-      value: formatCurrency(stats.totalRevenue),
-      icon: FaFileInvoiceDollar,
-      color: 'text-green-600',
-      bgColor: 'bg-green-50',
-      href: '/bills',
-      subValue: `${stats.paidBills} paid bills`,
+      title: 'Net Profit',
+      value: formatCurrency(stats.totalBilled - stats.totalExpenses),
+      icon: FaChartLine,
+      color: stats.totalBilled - stats.totalExpenses >= 0 ? 'text-green-600' : 'text-red-600',
+      bgColor: stats.totalBilled - stats.totalExpenses >= 0 ? 'bg-green-50' : 'bg-red-50',
+      href: '/analytics',
+      subValue: `${stats.profitMargin.toFixed(1)}% margin`,
     },
     {
       title: 'Total Expenses',
@@ -210,6 +210,7 @@ export default function Dashboard() {
       color: 'text-red-600',
       bgColor: 'bg-red-50',
       href: '/expenses',
+      subValue: `${stats.pendingExpenses} pending`,
     },
   ]
 
@@ -277,12 +278,12 @@ export default function Dashboard() {
       ],
     },
     {
-      title: 'Financial Summary',
+      title: 'Financial Summary (Gross)',
       icon: FaMoneyBillWave,
       items: [
-        { label: 'Total Billed', value: formatCurrency(stats.totalBilled), color: 'text-green-600', icon: FaArrowUp },
+        { label: 'Gross Revenue', value: formatCurrency(stats.totalBilled), color: 'text-green-600', icon: FaArrowUp },
         { label: 'Total Expenses', value: formatCurrency(stats.totalExpenses), color: 'text-red-600', icon: FaArrowDown },
-        { label: 'Net Profit', value: formatCurrency(stats.totalBilled - stats.totalExpenses), color: stats.totalBilled - stats.totalExpenses >= 0 ? 'text-green-600' : 'text-red-600' },
+        { label: 'Net Profit (Gross)', value: formatCurrency(stats.totalBilled - stats.totalExpenses), color: stats.totalBilled - stats.totalExpenses >= 0 ? 'text-green-600' : 'text-red-600' },
       ],
     },
   ]
