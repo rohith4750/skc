@@ -5,6 +5,7 @@ import { usePathname, useRouter } from 'next/navigation'
 import { FaUserCircle, FaSignOutAlt } from 'react-icons/fa'
 import { clearAuth, getUserRole } from '@/lib/auth'
 import NotificationCenter from '@/components/notifications/NotificationCenter'
+import { getRouteTitle } from '@/constants/menu'
 
 export default function Header() {
   const pathname = usePathname()
@@ -26,13 +27,6 @@ export default function Header() {
   const handleLogout = () => {
     clearAuth()
     router.push('/login')
-  }
-
-  // Get page title from pathname
-  const getPageTitle = () => {
-    if (pathname === '/') return 'Dashboard'
-    const path = pathname.replace('/', '').split('/')[0]
-    return path.charAt(0).toUpperCase() + path.slice(1).replace(/-/g, ' ')
   }
 
   const formatTime = (date: Date) => {
@@ -58,7 +52,7 @@ export default function Header() {
         {/* Page Title */}
         <div className="flex items-center gap-3">
           <h1 className="text-base font-semibold text-gray-800 hidden sm:block">
-            {getPageTitle()}
+            {getRouteTitle(pathname)}
           </h1>
           <div className="text-xs text-gray-500 hidden md:block">
             {formatDate(currentTime)} • {formatTime(currentTime)}

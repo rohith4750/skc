@@ -1,80 +1,33 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
 import { usePathname } from 'next/navigation'
 import {
-  FaHome,
-  FaUsers,
-  FaUtensils,
-  FaShoppingCart,
-  FaFileInvoiceDollar,
-  FaUserTie,
   FaChevronLeft,
   FaChevronRight,
-  FaMoneyBillWave,
-  FaDollarSign,
-  FaUserShield,
-  FaBox,
-  FaWarehouse,
-  FaStore,
-  FaHistory,
-  FaUserCircle,
-  FaChartLine,
-  FaFileInvoice,
-  FaClipboardList,
-  FaBell,
-  FaEnvelope
 } from 'react-icons/fa'
-import { isSuperAdmin, getUserRole } from '@/lib/auth'
-
-// Menu items organized by catering management workflow
-const menuItems = [
-  // 1. Core Business Operations - Order Management Flow
-  { href: '/', icon: FaHome, label: 'Dashboard', section: 'core' },
-  { href: '/alerts', icon: FaBell, label: 'Alerts', section: 'core' },
-  { href: '/customers', icon: FaUsers, label: 'Customers', section: 'core' },
-  { href: '/menu', icon: FaUtensils, label: 'Menu', section: 'core' },
-  { href: '/orders/center', icon: FaShoppingCart, label: 'Order Hub', section: 'core' },
-  { href: '/orders/history', icon: FaHistory, label: 'Past Events', section: 'core' },
-  { href: '/orders/overview', icon: FaChartLine, label: 'Event Planner', section: 'core' },
-  { href: '/bills', icon: FaFileInvoiceDollar, label: 'Bills', section: 'core' },
-
-  // 2. Financial Management
-  { href: '/expenses', icon: FaMoneyBillWave, label: 'Expenses', requiredRole: 'super_admin', section: 'financial' },
-  { href: '/expenses/store-calculator', icon: FaStore, label: 'Store Calculator', requiredRole: 'super_admin', section: 'financial' },
-  { href: '/workforce/outstanding', icon: FaDollarSign, label: 'Outstanding', requiredRole: 'super_admin', section: 'financial' },
-  { href: '/workforce', icon: FaUserTie, label: 'Workforce', requiredRole: 'super_admin', section: 'financial' },
-  { href: '/analytics', icon: FaChartLine, label: 'Analytics', requiredRole: 'super_admin', section: 'financial' },
-
-  // 3. Tax Management
-  { href: '/tax', icon: FaFileInvoice, label: 'Income Tax Return', requiredRole: 'super_admin', section: 'tax' },
-
-  // 4. Inventory & Stock Management
-  { href: '/stock', icon: FaBox, label: 'Stock', hideForRole: 'admin', section: 'inventory' },
-  { href: '/inventory', icon: FaWarehouse, label: 'Inventory', hideForRole: 'admin', section: 'inventory' },
-
-  // 5. System Administration
-  { href: '/users', icon: FaUserShield, label: 'User Management', requiredRole: 'super_admin', section: 'system' },
-  { href: '/audit-logs', icon: FaClipboardList, label: 'Login Audit Logs', requiredRole: 'super_admin', section: 'system' },
-  { href: '/enquiries', icon: FaEnvelope, label: 'Enquiries', requiredRole: 'super_admin', section: 'system' },
-
-  // 6. Profile
-  { href: '/profile', icon: FaUserCircle, label: 'Profile', section: 'profile' },
-]
+import type { UserRole } from '@/lib/auth-storage'
+import { getPermissions, getUserRole } from '@/lib/auth'
+import { getSidebarSections, matchesRoute } from '@/constants/menu'
+import { MENU_ICON_MAP } from '@/constants/menu-icons'
 
 export default function Sidebar() {
   const pathname = usePathname()
   const [isOpen, setIsOpen] = useState(false)
-  const [isSuperAdminUser, setIsSuperAdminUser] = useState(false)
-  const [userRole, setUserRole] = useState<string | null>(null)
+  const [userRole, setUserRole] = useState<UserRole | null>(null)
+  const [permissions, setPermissions] = useState<string[]>([])
 
   useEffect(() => {
-    // Check role on mount and when pathname changes (in case user navigates after login)
-    setIsSuperAdminUser(isSuperAdmin())
     setUserRole(getUserRole())
-  }, [pathname])
+    setPermissions(getPermissions())
+  }, [])
+
+  const sidebarSections = useMemo(
+    () => getSidebarSections(userRole, permissions),
+    [userRole, permissions]
+  )
 
   // Close sidebar when route changes on mobile
   useEffect(() => {
@@ -150,80 +103,41 @@ export default function Sidebar() {
         {/* Navigation Menu - Scrollable */}
         <nav className="flex-1 overflow-y-auto overflow-x-hidden py-4 min-h-0 scrollbar-thin scrollbar-thumb-slate-700 scrollbar-track-transparent dark-scrollbar">
           <div className="space-y-0.5 px-2">
-            {(() => {
-              // Filter menu items based on role first
-              const filteredItems = menuItems.filter((item) => {
-                if ('requiredRole' in item && item.requiredRole === 'super_admin' && !isSuperAdminUser) {
-                  return false
-                }
-                if ('hideForRole' in item && item.hideForRole === userRole) {
-                  return false
-                }
-                return true
-              })
+            {sidebarSections.map((section, index) => (
+              <div key={section.key}>
+                {/* Section Header */}
+                <div className="px-4 py-2 mt-2 mb-1">
+                  <span className="text-[10px] lg:text-xs font-bold text-slate-400 uppercase tracking-[0.2em] flex items-center">
+                    <span className="h-px w-3 bg-slate-700 mr-2 rounded-full"></span>
+                    {section.title}
+                  </span>
+                </div>
+                {/* Section Items */}
+                {section.items.map((item) => {
+                  const Icon = MENU_ICON_MAP[item.icon!]
+                  const isActive = matchesRoute(pathname, item.route)
 
-              // Group items by section
-              const sections = {
-                core: filteredItems.filter(item => item.section === 'core'),
-                financial: filteredItems.filter(item => item.section === 'financial'),
-                tax: filteredItems.filter(item => item.section === 'tax'),
-                inventory: filteredItems.filter(item => item.section === 'inventory'),
-                system: filteredItems.filter(item => item.section === 'system'),
-                profile: filteredItems.filter(item => item.section === 'profile'),
-              }
-
-              const sectionTitles: Record<string, string> = {
-                core: 'Order Management',
-                financial: 'Financial Management',
-                tax: 'Tax Management',
-                inventory: 'Stock & Inventory',
-                system: 'System Administration',
-                profile: 'My Account',
-              }
-
-              const sectionOrder = ['core', 'financial', 'tax', 'inventory', 'system', 'profile']
-
-              return sectionOrder.map((sectionKey, index) => {
-                const items = sections[sectionKey as keyof typeof sections]
-                if (items.length === 0) return null
-
-                return (
-                  <div key={sectionKey}>
-                    {/* Section Header */}
-                    <div className="px-4 py-2 mt-2 mb-1">
-                      <span className="text-[10px] lg:text-xs font-bold text-slate-400 uppercase tracking-[0.2em] flex items-center">
-                        <span className="h-px w-3 bg-slate-700 mr-2 rounded-full"></span>
-                        {sectionTitles[sectionKey]}
-                      </span>
-                    </div>
-                    {/* Section Items */}
-                    {items.map((item) => {
-                      const Icon = item.icon
-                      const isActive = pathname === item.href
-
-                      return (
-                        <Link
-                          key={item.href}
-                          href={item.href}
-                          className={`group flex items-center px-4 py-2.5 mx-2 mb-1 rounded-xl transition-all duration-300 ${isActive
-                            ? 'bg-gradient-to-r from-amber-500/20 to-amber-500/5 text-amber-400 shadow-[inset_4px_0_0_rgba(245,158,11,1)] ring-1 ring-amber-500/20 font-semibold'
-                            : 'text-slate-300 hover:bg-slate-800/50 hover:text-white hover:shadow-md'
-                            }`}
-                          onClick={() => setIsOpen(false)}
-                        >
-                          <Icon className={`w-4 h-4 mr-3 lg:w-5 lg:h-5 flex-shrink-0 transition-transform duration-300 ${isActive ? 'scale-110 drop-shadow-[0_0_8px_rgba(245,158,11,0.5)]' : 'group-hover:scale-110 group-hover:text-amber-400/80'}`} />
-                          <span className="font-medium text-sm tracking-wide">{item.label}</span>
-                        </Link>
-                      )
-                    })}
-                    {/* Section Separator */}
-                    {index < sectionOrder.length - 1 && (
-                      <div className="mx-6 my-3 border-t border-slate-800/50"></div>
-                    )}
-                  </div>
-                )
-              })
-            })()}
+                  return (
+                    <Link
+                      key={item.route}
+                      href={item.route}
+                      className={`group flex items-center px-4 py-2.5 mx-2 mb-1 rounded-xl transition-all duration-300 ${isActive
+                        ? 'bg-gradient-to-r from-amber-500/20 to-amber-500/5 text-amber-400 shadow-[inset_4px_0_0_rgba(245,158,11,1)] ring-1 ring-amber-500/20 font-semibold'
+                        : 'text-slate-300 hover:bg-slate-800/50 hover:text-white hover:shadow-md'
+                        }`}
+                      onClick={() => setIsOpen(false)}
+                    >
+                      <Icon className={`w-4 h-4 mr-3 lg:w-5 lg:h-5 flex-shrink-0 transition-transform duration-300 ${isActive ? 'scale-110 drop-shadow-[0_0_8px_rgba(245,158,11,0.5)]' : 'group-hover:scale-110 group-hover:text-amber-400/80'}`} />
+                      <span className="font-medium text-sm tracking-wide">{item.name}</span>
+                    </Link>
+                  )
+                })}
+                {/* Section Separator */}
+                {index < sidebarSections.length - 1 && (
+                  <div className="mx-6 my-3 border-t border-slate-800/50"></div>
+                )}
+              </div>
+            ))}
           </div>
         </nav >
       </div >
