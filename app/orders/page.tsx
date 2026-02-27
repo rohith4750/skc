@@ -28,6 +28,14 @@ export default function OrdersPage() {
   const [customerSearchTerm, setCustomerSearchTerm] = useState<string>('')
   const [showCustomerDropdown, setShowCustomerDropdown] = useState<boolean>(false)
   const customerSearchRef = useRef<HTMLDivElement>(null)
+  const [showAddCustomerForm, setShowAddCustomerForm] = useState<boolean>(false)
+  const [isSavingCustomer, setIsSavingCustomer] = useState<boolean>(false)
+  const [newCustomerForm, setNewCustomerForm] = useState({
+    name: '',
+    phone: '',
+    email: '',
+    address: '',
+  })
   const [collapsedMealTypes, setCollapsedMealTypes] = useState<Record<string, boolean>>({})
   const [originalAdvancePaid, setOriginalAdvancePaid] = useState<number>(0)
   const [originalMealTypeAmounts, setOriginalMealTypeAmounts] = useState<Record<string, any>>({})
@@ -546,6 +554,11 @@ export default function OrdersPage() {
     e.preventDefault()
     setFormError('')
 
+    if (!formData.customerId) {
+      toast.error('Please select or add a customer')
+      return
+    }
+
     // Validate that at least one meal type is added
     if (formData.mealTypes.length === 0) {
       toast.error('Please add at least one meal type')
@@ -706,6 +719,41 @@ export default function OrdersPage() {
     } catch (error) {
       console.error('Failed to quick add menu item:', error)
       toast.error('Failed to add menu item')
+    }
+  }
+
+  const handleCreateCustomerInline = async () => {
+    const name = newCustomerForm.name.trim()
+    const address = newCustomerForm.address.trim()
+    const email = newCustomerForm.email.trim()
+    const phone = newCustomerForm.phone.trim()
+
+    if (!name || !address) {
+      toast.error('Name and address are required')
+      return
+    }
+
+    setIsSavingCustomer(true)
+    try {
+      const created = await Storage.saveCustomer({
+        name,
+        phone,
+        email,
+        address,
+      })
+
+      setCustomers(prev => [created, ...prev])
+      setFormData(prev => ({ ...prev, customerId: created.id }))
+      setCustomerSearchTerm('')
+      setShowCustomerDropdown(false)
+      setShowAddCustomerForm(false)
+      setNewCustomerForm({ name: '', phone: '', email: '', address: '' })
+      toast.success('Customer added and selected')
+    } catch (error) {
+      console.error('Failed to create customer:', error)
+      toast.error((error as Error)?.message || 'Failed to add customer')
+    } finally {
+      setIsSavingCustomer(false)
     }
   }
 
@@ -1008,8 +1056,23 @@ export default function OrdersPage() {
                       </div>
                     )}
                     {showCustomerDropdown && customerSearchTerm && filteredCustomers.length === 0 && (
-                      <div className="absolute z-50 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg p-4 text-center text-gray-500">
-                        No customers found
+                      <div className="absolute z-50 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg p-4 text-center">
+                        <p className="text-gray-500 mb-3">No customers found</p>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setShowAddCustomerForm(true)
+                            setShowCustomerDropdown(false)
+                            setNewCustomerForm(prev => ({
+                              ...prev,
+                              name: prev.name || customerSearchTerm.trim(),
+                            }))
+                          }}
+                          className="inline-flex items-center gap-2 px-3 py-2 text-sm font-medium rounded-lg bg-primary-500 text-white hover:bg-primary-600 transition-colors"
+                        >
+                          <FaPlus />
+                          Add New Customer
+                        </button>
                       </div>
                     )}
                   </div>
@@ -1019,6 +1082,87 @@ export default function OrdersPage() {
                       value={formData.customerId}
                       required
                     />
+                  )}
+
+                  {!formData.customerId && (
+                    <div className="mt-2">
+                      <button
+                        type="button"
+                        onClick={() => setShowAddCustomerForm(prev => !prev)}
+                        className="inline-flex items-center gap-2 text-sm text-primary-600 hover:text-primary-700 font-medium"
+                      >
+                        <FaPlus className="text-xs" />
+                        {showAddCustomerForm ? 'Hide customer form' : 'Add new customer'}
+                      </button>
+                    </div>
+                  )}
+
+                  {showAddCustomerForm && (
+                    <div className="mt-3 p-4 border border-primary-100 bg-primary-50/40 rounded-xl space-y-3">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        <div>
+                          <label className="block text-xs font-medium text-gray-700 mb-1">Name *</label>
+                          <input
+                            type="text"
+                            value={newCustomerForm.name}
+                            onChange={(e) => setNewCustomerForm(prev => ({ ...prev, name: e.target.value }))}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 text-sm"
+                            placeholder="Customer name"
+                            required
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-xs font-medium text-gray-700 mb-1">Phone</label>
+                          <input
+                            type="text"
+                            value={newCustomerForm.phone}
+                            onChange={(e) => setNewCustomerForm(prev => ({ ...prev, phone: e.target.value }))}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 text-sm"
+                            placeholder="Phone number"
+                          />
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        <div>
+                          <label className="block text-xs font-medium text-gray-700 mb-1">Email</label>
+                          <input
+                            type="email"
+                            value={newCustomerForm.email}
+                            onChange={(e) => setNewCustomerForm(prev => ({ ...prev, email: e.target.value }))}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 text-sm"
+                            placeholder="Email"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-xs font-medium text-gray-700 mb-1">Address *</label>
+                          <input
+                            type="text"
+                            value={newCustomerForm.address}
+                            onChange={(e) => setNewCustomerForm(prev => ({ ...prev, address: e.target.value }))}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 text-sm"
+                            placeholder="Address"
+                            required
+                          />
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2 pt-1">
+                        <button
+                          type="button"
+                          onClick={handleCreateCustomerInline}
+                          disabled={isSavingCustomer}
+                          className="px-3 py-2 text-sm rounded-lg bg-primary-500 text-white hover:bg-primary-600 disabled:opacity-60"
+                        >
+                          {isSavingCustomer ? 'Saving...' : 'Save Customer'}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setShowAddCustomerForm(false)}
+                          className="px-3 py-2 text-sm rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50"
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    </div>
                   )}
                 </div>
 
