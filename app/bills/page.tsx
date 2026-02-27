@@ -68,6 +68,7 @@ export default function BillsPage() {
   const [billToDelete, setBillToDelete] = useState<string | null>(null)
   const [billNoteDraft, setBillNoteDraft] = useState('')
   const [isSavingBillNote, setIsSavingBillNote] = useState(false)
+  const [isEditingBillNote, setIsEditingBillNote] = useState(false)
 
   // Load Bills
   const loadBills = async () => {
@@ -116,6 +117,7 @@ export default function BillsPage() {
   const handleOpenDrawer = (bill: ExtendedBill) => {
     setSelectedBill(bill)
     setBillNoteDraft(getBillNoteFromBill(bill))
+    setIsEditingBillNote(false)
     setIsDrawerOpen(true)
   }
 
@@ -141,6 +143,7 @@ export default function BillsPage() {
       setBills(prev => prev.map(b => b.id === updatedBill.id ? updatedBill : b))
       setSelectedBill(updatedBill)
       setBillNoteDraft(getBillNoteFromBill(updatedBill))
+      setIsEditingBillNote(false)
       toast.success('Bill note saved')
     } catch (error) {
       toast.error('Failed to save bill note')
@@ -732,22 +735,49 @@ export default function BillsPage() {
                 <div>
                   <h3 className="text-sm font-bold text-slate-400 uppercase tracking-wider mb-3">Bill Note (PDF / Image)</h3>
                   <div className="p-4 border border-slate-200 rounded-2xl bg-slate-50">
-                    <textarea
-                      value={billNoteDraft}
-                      onChange={(e) => setBillNoteDraft(e.target.value)}
-                      rows={3}
-                      className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none text-sm"
-                      placeholder="Add note to show in bill PDF and image..."
-                    />
-                    <div className="mt-3 flex justify-end">
-                      <button
-                        onClick={handleSaveBillNote}
-                        disabled={isSavingBillNote}
-                        className="px-4 py-2 bg-indigo-600 text-white rounded-xl text-sm font-bold hover:bg-indigo-700 disabled:opacity-60"
-                      >
-                        {isSavingBillNote ? 'Saving...' : 'Save Note'}
-                      </button>
-                    </div>
+                    {!isEditingBillNote ? (
+                      <>
+                        <div className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-sm min-h-[72px] whitespace-pre-wrap text-slate-700">
+                          {billNoteDraft || 'No note added yet.'}
+                        </div>
+                        <div className="mt-3 flex justify-end">
+                          <button
+                            onClick={() => setIsEditingBillNote(true)}
+                            className="px-4 py-2 bg-indigo-600 text-white rounded-xl text-sm font-bold hover:bg-indigo-700"
+                          >
+                            Edit Note
+                          </button>
+                        </div>
+                      </>
+                    ) : (
+                      <>
+                        <textarea
+                          value={billNoteDraft}
+                          onChange={(e) => setBillNoteDraft(e.target.value)}
+                          rows={3}
+                          className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none text-sm"
+                          placeholder="Add note to show in bill PDF and image..."
+                        />
+                        <div className="mt-3 flex justify-end gap-2">
+                          <button
+                            onClick={() => {
+                              setBillNoteDraft(getBillNoteFromBill(selectedBill))
+                              setIsEditingBillNote(false)
+                            }}
+                            className="px-4 py-2 bg-slate-200 text-slate-700 rounded-xl text-sm font-bold hover:bg-slate-300"
+                          >
+                            Cancel
+                          </button>
+                          <button
+                            onClick={handleSaveBillNote}
+                            disabled={isSavingBillNote}
+                            className="px-4 py-2 bg-indigo-600 text-white rounded-xl text-sm font-bold hover:bg-indigo-700 disabled:opacity-60"
+                          >
+                            {isSavingBillNote ? 'Saving...' : 'Save Note'}
+                          </button>
+                        </div>
+                      </>
+                    )}
                   </div>
                 </div>
 
