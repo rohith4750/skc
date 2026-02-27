@@ -50,6 +50,7 @@ export default function OrdersPage() {
     mealTypes: [] as Array<{
       id: string
       eventName: string // NEW: Event name like "Mehendi Day", "Wedding Day"
+      venue: string
       menuType: string
       selectedMenuItems: string[]
       pricingMethod: 'manual' | 'plate-based'
@@ -193,6 +194,7 @@ export default function OrdersPage() {
           const date = typeof mealTypeData === 'object' && mealTypeData !== null ? mealTypeData.date : ''
           const services = typeof mealTypeData === 'object' && mealTypeData !== null && mealTypeData.services ? mealTypeData.services : []
           const numberOfMembers = typeof mealTypeData === 'object' && mealTypeData !== null && mealTypeData.numberOfMembers ? mealTypeData.numberOfMembers.toString() : ''
+          const venue = typeof mealTypeData === 'object' && mealTypeData !== null && (mealTypeData as any).venue ? (mealTypeData as any).venue : ''
 
           // If key is a menuType name (legacy), use it. If it's an ID-keyed object, use stored menuType.
           let menuTypeName = (typeof mealTypeData === 'object' && mealTypeData !== null && (mealTypeData as any).menuType)
@@ -257,6 +259,7 @@ export default function OrdersPage() {
           return {
             id: key,
             eventName: (mealTypeData && typeof mealTypeData === 'object' && (mealTypeData as any).eventName) || '', // NEW: Support multi-event orders, backward compatible
+            venue,
             menuType: menuTypeName,
             selectedMenuItems,
             itemCustomizations: customizationsByItemAndType[custQtKey] || customizationsByItemAndType[key] || customizationsByItemAndType[menuTypeName] || {},
@@ -345,6 +348,7 @@ export default function OrdersPage() {
       mealTypes: [...prev.mealTypes, {
         id: newId,
         eventName: '',
+        venue: '',
         menuType: '',
         selectedMenuItems: [],
         pricingMethod: 'manual',
@@ -608,6 +612,7 @@ export default function OrdersPage() {
           menuType: mealType.menuType, // Store name inside
           amount,
           date: mealType.date || '',
+          venue: mealType.venue || '',
           services: mealType.services,
           numberOfMembers: mealType.numberOfMembers ? parseInt(mealType.numberOfMembers, 10) : undefined,
           pricingMethod: mealType.pricingMethod,
@@ -1237,8 +1242,8 @@ export default function OrdersPage() {
 
                               {!isCollapsed && (
                                 <div className="p-4 md:p-6 space-y-4">
-                                  {/* Event Name, Menu Type, and Date */}
-                                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                  {/* Event Name, Menu Type, Venue and Date */}
+                                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                                     <div>
                                       <label className="block text-sm font-medium text-gray-700 mb-1">
                                         Event Name
@@ -1269,6 +1274,18 @@ export default function OrdersPage() {
                                         <option value="sweets">Sweets</option>
                                         <option value="saree">Saree</option>
                                       </select>
+                                    </div>
+                                    <div>
+                                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                                        Venue
+                                      </label>
+                                      <input
+                                        type="text"
+                                        placeholder="e.g., Function Hall / Home"
+                                        value={mealType.venue}
+                                        onChange={(e: any) => handleUpdateMealType(mealType.id, 'venue', e.target.value)}
+                                        className="w-full px-4 py-3 md:py-2 min-h-[48px] md:min-h-0 border border-gray-300 rounded-xl md:rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 text-base md:text-sm touch-manipulation"
+                                      />
                                     </div>
                                     <div>
                                       <label className="block text-sm font-medium text-gray-700 mb-1">

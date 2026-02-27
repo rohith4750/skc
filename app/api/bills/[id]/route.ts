@@ -52,6 +52,8 @@ export async function PUT(
     const status = data.status;
     const paymentMethod = data.paymentMethod || "cash";
     const paymentNotes = data.paymentNotes || "";
+    const billNote =
+      typeof data.billNote === "string" ? data.billNote.trim() : undefined;
 
     if (!validateEnum(status, ["pending", "partial", "paid"])) {
       return NextResponse.json({ error: "Invalid status" }, { status: 400 });
@@ -90,7 +92,7 @@ export async function PUT(
       ? existingBill.paymentHistory
       : [];
     const deltaPaid = paidAmount - Number(existingBill.paidAmount);
-    const updatedPaymentHistory =
+    const paymentHistoryWithPayment =
       deltaPaid > 0
         ? [
             ...paymentHistory,
@@ -106,6 +108,28 @@ export async function PUT(
             },
           ]
         : paymentHistory;
+
+    let updatedPaymentHistory = paymentHistoryWithPayment;
+    if (billNote !== undefined) {
+      const historyWithoutBillNote = updatedPaymentHistory.filter(
+        (entry: any) => entry?.source !== "bill_note",
+      );
+      updatedPaymentHistory = billNote
+        ? [
+            ...historyWithoutBillNote,
+            {
+              amount: 0,
+              totalPaid: paidAmount,
+              remainingAmount,
+              status,
+              date: new Date().toISOString(),
+              source: "bill_note",
+              method: paymentMethod,
+              notes: billNote,
+            },
+          ]
+        : historyWithoutBillNote;
+    }
 
     const bill = await prisma.bill.update({
       where: { id },

@@ -184,8 +184,15 @@ export async function PUT(
     const discount = parseFloat(data.discount) || 0;
     const transportCost = parseFloat(data.transportCost) || 0;
     const additionalPayment = parseFloat(data.additionalPayment) || 0;
+    const paymentDate =
+      typeof data.paymentDate === "string" && data.paymentDate.trim()
+        ? data.paymentDate.trim()
+        : null;
     const paymentMethod = data.paymentMethod || "cash";
     const paymentNotes = data.paymentNotes || "";
+    const paymentHistoryDateIso = paymentDate
+      ? new Date(`${paymentDate}T00:00:00`).toISOString()
+      : new Date().toISOString();
 
     const existingOrder = await prisma.order.findUnique({
       where: { id: params.id },
@@ -353,7 +360,7 @@ export async function PUT(
             totalPaid: advancePaid,
             remainingAmount,
             status: statusLabel,
-            date: new Date().toISOString(),
+            date: paymentHistoryDateIso,
             source:
               Number(existingOrder.advancePaid || 0) === 0
                 ? "booking"
@@ -369,7 +376,7 @@ export async function PUT(
             totalPaid: advancePaid,
             remainingAmount,
             status: statusLabel,
-            date: new Date().toISOString(),
+            date: paymentHistoryDateIso,
             source:
               Number(existingOrder.advancePaid || 0) === 0 &&
               baseAdvanceDelta === 0

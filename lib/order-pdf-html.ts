@@ -146,6 +146,22 @@ export function buildOrderPdfHtml(
   const finalRemaining = Number(
     bill?.remainingAmount || order.remainingAmount || 0,
   );
+  const billNote = (() => {
+    if (!bill) return "";
+    if (typeof (bill as any).notes === "string" && (bill as any).notes.trim()) {
+      return (bill as any).notes.trim();
+    }
+    const history = Array.isArray((bill as any).paymentHistory)
+      ? (bill as any).paymentHistory
+      : [];
+    const noteEntry = [...history]
+      .reverse()
+      .find(
+        (entry: any) =>
+          entry?.source === "bill_note" && typeof entry?.notes === "string",
+      );
+    return noteEntry?.notes?.trim?.() || "";
+  })();
 
   const billNo =
     bill?.serialNumber != null
@@ -262,6 +278,17 @@ export function buildOrderPdfHtml(
                  </div>
             </div>
         </div>
+
+        ${
+          billNote
+            ? `
+        <div style="margin-top: 10px; border: 1px solid #ddd; background-color: #fafafa; border-radius: 6px; padding: 8px 10px;">
+            <div style="font-size: 10px; font-weight: 700; text-transform: uppercase; margin-bottom: 3px;">Note</div>
+            <div style="font-size: 10px; line-height: 1.45; color: #333; white-space: pre-wrap;">${safeString(billNote)}</div>
+        </div>
+            `
+            : ""
+        }
 
         <!-- TERMS & CONDITIONS -->
         <div style="margin-top: 15px;">

@@ -30,6 +30,13 @@ interface ExtendedBill {
   order: Order & { items: any[], customer: Customer };
 }
 
+const getBillNoteFromBill = (bill: ExtendedBill | null): string => {
+  if (!bill) return ''
+  const history = Array.isArray(bill.paymentHistory) ? bill.paymentHistory : []
+  const noteEntry = [...history].reverse().find((entry: any) => entry?.source === 'bill_note' && typeof entry?.notes === 'string')
+  return noteEntry?.notes || ''
+}
+
 const getGuestCount = (order: Order) => {
   if (order.numberOfMembers) return Number(order.numberOfMembers);
   const mealTypeAmounts = order.mealTypeAmounts as Record<string, any>;
@@ -59,6 +66,8 @@ export default function BillsPage() {
   })
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false)
   const [billToDelete, setBillToDelete] = useState<string | null>(null)
+  const [billNoteDraft, setBillNoteDraft] = useState('')
+  const [isSavingBillNote, setIsSavingBillNote] = useState(false)
 
   // Load Bills
   const loadBills = async () => {
@@ -106,7 +115,38 @@ export default function BillsPage() {
 
   const handleOpenDrawer = (bill: ExtendedBill) => {
     setSelectedBill(bill)
+    setBillNoteDraft(getBillNoteFromBill(bill))
     setIsDrawerOpen(true)
+  }
+
+  const handleSaveBillNote = async () => {
+    if (!selectedBill) return
+    setIsSavingBillNote(true)
+    try {
+      const response = await fetchWithLoader(`/api/bills/${selectedBill.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          paidAmount: Number(selectedBill.paidAmount),
+          remainingAmount: Number(selectedBill.remainingAmount),
+          status: selectedBill.status,
+          paymentMethod: 'cash',
+          paymentNotes: '',
+          billNote: billNoteDraft,
+        }),
+      })
+
+      if (!response.ok) throw new Error('Failed to save bill note')
+      const updatedBill = await response.json()
+      setBills(prev => prev.map(b => b.id === updatedBill.id ? updatedBill : b))
+      setSelectedBill(updatedBill)
+      setBillNoteDraft(getBillNoteFromBill(updatedBill))
+      toast.success('Bill note saved')
+    } catch (error) {
+      toast.error('Failed to save bill note')
+    } finally {
+      setIsSavingBillNote(false)
+    }
   }
 
   const handleRecordPayment = async () => {
@@ -688,12 +728,40 @@ export default function BillsPage() {
                   </div>
                 </div>
 
+                {/* Bill Note (PDF/Image) */}
+                <div>
+                  <h3 className="text-sm font-bold text-slate-400 uppercase tracking-wider mb-3">Bill Note (PDF / Image)</h3>
+                  <div className="p-4 border border-slate-200 rounded-2xl bg-slate-50">
+                    <textarea
+                      value={billNoteDraft}
+                      onChange={(e) => setBillNoteDraft(e.target.value)}
+                      rows={3}
+                      className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none text-sm"
+                      placeholder="Add note to show in bill PDF and image..."
+                    />
+                    <div className="mt-3 flex justify-end">
+                      <button
+                        onClick={handleSaveBillNote}
+                        disabled={isSavingBillNote}
+                        className="px-4 py-2 bg-indigo-600 text-white rounded-xl text-sm font-bold hover:bg-indigo-700 disabled:opacity-60"
+                      >
+                        {isSavingBillNote ? 'Saving...' : 'Save Note'}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
                 {/* Payment History */}
-                {selectedBill.paymentHistory && (selectedBill.paymentHistory as any[]).length > 0 && (
+                {selectedBill.paymentHistory &&
+                  (selectedBill.paymentHistory as any[]).filter((p: any) => p?.source !== 'bill_note').length > 0 && (
                   <div>
                     <h3 className="text-sm font-bold text-slate-400 uppercase tracking-wider mb-4">Payment History</h3>
                     <div className="space-y-3">
-                      {(selectedBill.paymentHistory as any[]).slice().reverse().map((p, idx) => (
+                      {(selectedBill.paymentHistory as any[])
+                        .filter((p: any) => p?.source !== 'bill_note')
+                        .slice()
+                        .reverse()
+                        .map((p, idx) => (
                         <div key={idx} className="flex items-center justify-between p-3 bg-slate-50 rounded-xl border-l-4 border-emerald-500">
                           <div>
                             <p className="text-sm font-bold text-slate-800">+{formatCurrency(p.amount)}</p>

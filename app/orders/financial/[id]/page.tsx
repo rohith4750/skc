@@ -28,10 +28,12 @@ export default function FinancialTrackingPage() {
     stalls: [] as Array<{ category: string; description: string; cost: string }>,
     baseAdvancePaid: '0',
     additionalPayment: '',
+    paymentDate: new Date().toISOString().slice(0, 10),
     paymentMethod: 'cash' as any,
     paymentNotes: '',
     mealTypes: [] as Array<{
       menuType: string
+      venue: string
       pricingMethod: 'manual' | 'plate-based'
       numberOfPlates: string
       platePrice: string
@@ -60,6 +62,7 @@ export default function FinancialTrackingPage() {
         return {
           id: key,
           menuType: normalized.menuType || key,
+          venue: normalized.venue || '',
           pricingMethod: normalized.pricingMethod || 'manual',
           numberOfPlates: normalized.numberOfPlates?.toString() || (normalized.pricingMethod === 'plate-based' && normalized.numberOfMembers ? normalized.numberOfMembers.toString() : ''),
           platePrice: normalized.platePrice?.toString() || '',
@@ -84,6 +87,7 @@ export default function FinancialTrackingPage() {
         })),
         baseAdvancePaid: data.advancePaid?.toString() || '0',
         additionalPayment: '',
+        paymentDate: new Date().toISOString().slice(0, 10),
         paymentMethod: 'cash',
         paymentNotes: '',
         mealTypes,
@@ -103,6 +107,7 @@ export default function FinancialTrackingPage() {
         ...prev.mealTypes,
         {
           menuType: '',
+          venue: '',
           pricingMethod: 'manual',
           numberOfPlates: '',
           platePrice: '',
@@ -211,6 +216,7 @@ export default function FinancialTrackingPage() {
       const sessionKey = (mealType as any).id || `session-${index}-${Date.now()}`
       mealTypeAmounts[sessionKey] = {
         menuType: mealType.menuType,
+        venue: mealType.venue || '',
         amount: getMealTypeAmount(mealType),
         date: mealType.date,
         services: mealType.services,
@@ -273,6 +279,10 @@ export default function FinancialTrackingPage() {
 
       const basePaidValue = parseFloat(formData.baseAdvancePaid) || 0
       const additionalPaymentValue = parseFloat(formData.additionalPayment) || 0
+      if (additionalPaymentValue > 0 && !formData.paymentDate) {
+        toast.error('Please select payment date')
+        return
+      }
       if (basePaidValue < 0) {
         toast.error('Advance paid cannot be negative.')
         return
@@ -298,6 +308,7 @@ export default function FinancialTrackingPage() {
         stalls: formData.stalls,
         mealTypeAmounts: buildMealTypeAmounts(),
         additionalPayment: additionalPaymentValue,
+        paymentDate: formData.paymentDate || null,
         paymentMethod: formData.paymentMethod,
         paymentNotes: formData.paymentNotes,
         totalAmount: calculatedTotals.total,
@@ -700,6 +711,15 @@ export default function FinancialTrackingPage() {
                       <option value="bank_transfer">Bank Transfer</option>
                       <option value="other">Other</option>
                     </select>
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-black text-slate-600 uppercase tracking-widest mb-2">Payment Date</label>
+                    <input
+                      type="date"
+                      value={formData.paymentDate}
+                      onChange={(e) => setFormData({ ...formData, paymentDate: e.target.value })}
+                      className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none font-bold text-slate-900"
+                    />
                   </div>
                 </div>
                 <div>
