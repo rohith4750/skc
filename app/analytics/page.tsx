@@ -25,7 +25,6 @@ import {
   FaExclamationTriangle,
   FaTimesCircle,
   FaUtensils,
-  FaStar,
   FaRetweet,
   FaStopwatch,
   FaCalendarWeek
@@ -34,6 +33,11 @@ import toast from 'react-hot-toast'
 import { fetchWithLoader } from '@/lib/fetch-with-loader'
 import jsPDF from 'jspdf'
 import html2canvas from 'html2canvas'
+import {
+  ANALYTICS_DATE_FILTER_OPTIONS,
+  ANALYTICS_PAGE_HEADER,
+  ANALYTICS_TABS,
+} from '@/config/pages/analytics-page-config'
 
 interface AnalyticsData {
   orders: any[]
@@ -520,8 +524,8 @@ export default function AnalyticsPage() {
       {/* Header */}
       <div className="mb-6 sm:mb-8 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h1 className="text-2xl sm:text-3xl font-bold text-gray-800 mb-2">Business Analytics & Reports</h1>
-          <p className="text-gray-600">Comprehensive overview of your business performance</p>
+          <h1 className="text-2xl sm:text-3xl font-bold text-gray-800 mb-2">{ANALYTICS_PAGE_HEADER.title}</h1>
+          <p className="text-gray-600">{ANALYTICS_PAGE_HEADER.description}</p>
         </div>
         <button
           onClick={loadData}
@@ -536,33 +540,18 @@ export default function AnalyticsPage() {
         <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center">
           <label className="text-sm font-medium text-gray-700">Filter Period:</label>
           <div className="flex flex-wrap gap-3">
-            <button
-              onClick={() => setDateFilter('all')}
-              className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${dateFilter === 'all'
-                ? 'bg-primary-500 text-white'
-                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                }`}
-            >
-              All Time
-            </button>
-            <button
-              onClick={() => setDateFilter('month')}
-              className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${dateFilter === 'month'
-                ? 'bg-primary-500 text-white'
-                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                }`}
-            >
-              Month
-            </button>
-            <button
-              onClick={() => setDateFilter('year')}
-              className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${dateFilter === 'year'
-                ? 'bg-primary-500 text-white'
-                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                }`}
-            >
-              Year
-            </button>
+            {ANALYTICS_DATE_FILTER_OPTIONS.map((option) => (
+              <button
+                key={option.key}
+                onClick={() => setDateFilter(option.key)}
+                className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${dateFilter === option.key
+                  ? 'bg-primary-500 text-white'
+                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                  }`}
+              >
+                {option.label}
+              </button>
+            ))}
           </div>
           {dateFilter === 'month' && (
             <input
@@ -588,16 +577,10 @@ export default function AnalyticsPage() {
       {/* Tabs */}
       <div className="bg-white rounded-lg shadow-md mb-6">
         <div className="flex border-b border-gray-200 overflow-x-auto">
-          {[
-            { id: 'overview', label: 'Overview', icon: FaChartLine },
-            { id: 'financial', label: 'Financial', icon: FaDollarSign },
-            { id: 'operations', label: 'Operations', icon: FaShoppingCart },
-            { id: 'customers', label: 'Customers', icon: FaUsers },
-            { id: 'predictive', label: 'Predictive Analysis', icon: FaStar }
-          ].map((tab) => (
+          {ANALYTICS_TABS.map((tab) => (
             <button
               key={tab.id}
-              onClick={() => setActiveTab(tab.id as any)}
+              onClick={() => setActiveTab(tab.id)}
               className={`flex items-center gap-2 px-6 py-4 font-medium transition-colors border-b-2 ${activeTab === tab.id
                 ? 'border-primary-500 text-primary-600 bg-primary-50'
                 : 'border-transparent text-gray-600 hover:text-gray-800 hover:bg-gray-50'
