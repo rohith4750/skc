@@ -112,7 +112,11 @@ export function generatePDFTemplate(data: PDFTemplateData): string {
   const subtitle = '(Pure Vegetarian)'
   const regdNo = 'Regd. No. 236190310003331'
   const address = 'Plot No. 115, Padmavathi Nagar, Bank Colony, Saheb Nagar. Varsthalipuram, Hyderabad - 500070.'
-  const contact = 'Email: pujyasri1989cya@gmail.com, Cell: 9866525102, 9963691393, 9390015302'
+  const isWorkforceOrExpense = data.type === 'workforce' ||
+    (data.type === 'expense' && ['supervisor', 'chef', 'labours', 'boys', 'transport', 'gas', 'pan', 'store', 'other'].includes(data.expenseDetails?.category?.toLowerCase() || ''))
+  const contact = isWorkforceOrExpense
+    ? 'Email: pujyasri1989cya@gmail.com'
+    : 'Email: pujyasri1989cya@gmail.com, Cell: 9866525102, 9963691393, 9390015302'
   const topLeft = 'Telidevara Rajendraprasad'
   const topRight = 'ART FOOD ZONE'
 
@@ -269,7 +273,7 @@ export function generatePDFTemplate(data: PDFTemplateData): string {
         }
         .signature-line {
           border-top: 1px dotted #000;
-          margin-top: 60px;
+          margin-top: 80px;
           padding-top: 5px;
           font-size: 11px;
           font-weight: 500;
@@ -353,11 +357,11 @@ export function generatePDFTemplate(data: PDFTemplateData): string {
         .text-right { text-align: right !important; }
         .stamp-image {
           position: absolute;
-          width: 180px;
+          width: 95%;
           height: auto;
-          opacity: 0.9;
-          top: -25px;
-          left: 50%;
+          opacity: 0.7;
+          top: -80px;
+          left: 30%;
           transform: translateX(-50%);
           pointer-events: none;
         }
