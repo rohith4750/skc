@@ -590,7 +590,38 @@ export default function OrdersPage() {
     }
 
     try {
-      const totalAmount = parseFloat(formData.totalAmount) || 0
+      // Synchronously recalculate total amount to avoid stale state from useEffect
+      const stallsTotal = showStalls ? formData.stalls.reduce((sum, s) => sum + (parseFloat(s.cost) || 0), 0) : 0
+      const discount = parseFloat(formData.discount) || 0
+      const transportCost = parseFloat(formData.transportCost) || 0
+      let calculatedMealTypesTotal = 0
+      let calculatedWaterTotal = 0
+
+      formData.mealTypes.forEach(mt => {
+        let mtTotal = 0
+        mt.selectedMenuItems.forEach(itemId => {
+          const item = menuItems.find(m => m.id === itemId)
+          if (item && item.price) {
+            const qty = parseFloat(mt.itemQuantities?.[itemId] || '1')
+            if (item.name.toLowerCase().includes('water') && item.name.toLowerCase().includes('bottle')) {
+              calculatedWaterTotal += item.price * qty
+            } else {
+              mtTotal += item.price * qty
+            }
+          }
+        })
+        if (mt.pricingMethod === 'plate-based') {
+          const plates = parseFloat(mt.numberOfPlates) || parseFloat(mt.numberOfMembers) || 0
+          mtTotal += plates * (parseFloat(mt.platePrice) || 0)
+        } else {
+          mtTotal += parseFloat(mt.manualAmount) || 0
+        }
+        calculatedMealTypesTotal += mtTotal
+      })
+
+      const finalWaterCost = calculatedWaterTotal > 0 ? calculatedWaterTotal : (parseFloat(formData.waterBottlesCost) || 0)
+      const totalAmount = Math.max(0, calculatedMealTypesTotal + transportCost + finalWaterCost + stallsTotal - discount)
+
       const inputAdvancePaid = parseFloat(formData.advancePaid) || 0
       const effectiveAdvancePaid = isEditMode ? originalAdvancePaid + inputAdvancePaid : inputAdvancePaid
       const remainingAmount = Math.max(0, totalAmount - effectiveAdvancePaid)
@@ -632,6 +663,9 @@ export default function OrdersPage() {
         }))
       )
 
+      // Calculate total number of members across all meal types
+      const totalNumberOfMembers = formData.mealTypes.reduce((sum, mt) => sum + (parseInt(mt.numberOfMembers) || 0), 0)
+
       const allDates = formData.mealTypes
         .map(mt => mt.date)
         .filter(d => !!d)
@@ -644,6 +678,7 @@ export default function OrdersPage() {
         eventDate: primaryEventDate,
         items: orderItems,
         totalAmount,
+        numberOfMembers: totalNumberOfMembers, // NEW: Include top-level member count
         advancePaid: effectiveAdvancePaid,
         remainingAmount,
         status: isEditMode ? currentOrderStatus : 'pending',
@@ -835,17 +870,16 @@ export default function OrdersPage() {
       })
 
       if (mealType.pricingMethod === 'plate-based') {
-        // Use numberOfMembers as the plate count for plate-based pricing
-        const members = parseFloat(mealType.numberOfMembers) || 0
+        // Use numberOfPlates if present, otherwise fallback to numberOfMembers
+        const plates = parseFloat(mealType.numberOfPlates) || parseFloat(mealType.numberOfMembers) || 0
         const price = parseFloat(mealType.platePrice) || 0
-        mealTypeTotal += members * price
+        mealTypeTotal += plates * price
       } else {
         mealTypeTotal += parseFloat(mealType.manualAmount) || 0
       }
 
       mealTypesTotal += mealTypeTotal
     })
-
 
     const waterBottlesCost = calculatedWaterBottlesCost > 0 ? calculatedWaterBottlesCost : parseFloat(formData.waterBottlesCost || '0')
     const finalTotal = Math.max(0, mealTypesTotal + transportCost + waterBottlesCost + stallsTotal - discount)
@@ -1650,7 +1684,10 @@ export default function OrdersPage() {
                     </h4>
                     <div className="space-y-2">
                       {formData.mealTypes.map(mt => {
-                        const original = originalMealTypeAmounts[mt.id] ?? originalMealTypeAmounts[mt.menuType]
+                        // Better lookup: prioritize exact ID match (handles multi-session orders correctly)
+                        const original = originalMealTypeAmounts[mt.id] ||
+                          (mt.id.startsWith('session_') ? null : (typeof originalMealTypeAmounts[mt.menuType] === 'object' ? originalMealTypeAmounts[mt.menuType] : null))
+
                         const oldMembers = original?.numberOfMembers || 0
                         const newMembers = parseInt(mt.numberOfMembers) || 0
                         const diff = newMembers - oldMembers
@@ -1984,7 +2021,7 @@ export default function OrdersPage() {
 
                 <div className="flex justify-between items-center pt-2 border-t border-gray-50">
                   <span className="text-sm text-gray-500 font-medium">Balance</span>
-                  <span className="text-sm font-bold text-red-600">{formatCurrency(Math.max(0, Number(formData.totalAmount || 0) - Number(formData.advancePaid || 0)))}</span>
+                  <span className="text-sm font-bold text-red-600">{formatCurrency(Math.max(0, Number(formData.totalAmount || 0) - (isEditMode ? originalAdvancePaid + Number(formData.advancePaid || 0) : Number(formData.advancePaid || 0))))}</span>
                 </div>
 
                 <div className="pt-2">

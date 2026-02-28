@@ -56,6 +56,11 @@ export default function CreateExpensePage() {
   const [bulkAllocations, setBulkAllocations] = useState<BulkAllocation[]>([])
   const [showAllocationDetails, setShowAllocationDetails] = useState(true)
 
+  // Filters for orders
+  const [filterMonth, setFilterMonth] = useState<string>(new Date().getMonth().toString()) // Default to current month
+  const [filterYear, setFilterYear] = useState<string>(new Date().getFullYear().toString())
+  const [orderSearch, setOrderSearch] = useState('')
+
   const [formData, setFormData] = useState({
     orderId: '',
     category: 'supervisor',
@@ -222,9 +227,33 @@ export default function CreateExpensePage() {
   const getOrderDisplayName = (order: Order) => {
     const customerName = order.customer?.name || 'Unknown'
     const eventName = order.eventName || 'No Event Name'
-    const date = new Date(order.createdAt).toLocaleDateString()
+    const date = order.eventDate
+      ? new Date(order.eventDate).toLocaleDateString()
+      : new Date(order.createdAt).toLocaleDateString()
     return `${customerName} - ${eventName} (${date})`
   }
+
+  // Filtered orders based on month, year and search
+  const filteredOrders = useMemo(() => {
+    return orders.filter(order => {
+      // Date filtering
+      const eventDate = order.eventDate ? new Date(order.eventDate) : new Date(order.createdAt)
+      const monthMatch = filterMonth === 'all' || eventDate.getMonth().toString() === filterMonth
+      const yearMatch = filterYear === 'all' || eventDate.getFullYear().toString() === filterYear
+
+      if (!monthMatch || !yearMatch) return false
+
+      // Search filtering
+      if (!orderSearch.trim()) return true
+
+      const searchLower = orderSearch.toLowerCase()
+      const customerMatch = order.customer?.name?.toLowerCase().includes(searchLower)
+      const eventMatch = order.eventName?.toLowerCase().includes(searchLower)
+      const phoneMatch = order.customer?.phone?.includes(orderSearch)
+
+      return customerMatch || eventMatch || phoneMatch
+    })
+  }, [orders, filterMonth, filterYear, orderSearch])
 
   // Get plates/members count for an order (for by-plates allocation)
   const getOrderPlates = (order: Order): number => {
@@ -593,6 +622,52 @@ export default function CreateExpensePage() {
               </div>
             </div>
 
+            {/* Order Filter Controls */}
+            <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
+              <h3 className="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2">
+                <FaInfoCircle className="text-primary-500" />
+                Filter Events
+              </h3>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <div>
+                  <label className="block text-xs font-medium text-gray-500 mb-1">Month</label>
+                  <select
+                    value={filterMonth}
+                    onChange={(e) => setFilterMonth(e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-1 focus:ring-primary-500"
+                  >
+                    <option value="all">All Months</option>
+                    {['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'].map((month, idx) => (
+                      <option key={month} value={idx}>{month}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-500 mb-1">Year</label>
+                  <select
+                    value={filterYear}
+                    onChange={(e) => setFilterYear(e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-1 focus:ring-primary-500"
+                  >
+                    <option value="all">All Years</option>
+                    {[2024, 2025, 2026, 2027].map(year => (
+                      <option key={year} value={year}>{year}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-500 mb-1">Search Event/Customer</label>
+                  <input
+                    type="text"
+                    value={orderSearch}
+                    onChange={(e) => setOrderSearch(e.target.value)}
+                    placeholder="Search name, phone..."
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-1 focus:ring-primary-500"
+                  />
+                </div>
+              </div>
+            </div>
+
             {/* Single Order Selection (when NOT bulk) */}
             {!isBulkExpense && (
               <div>
@@ -605,16 +680,14 @@ export default function CreateExpensePage() {
                   className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
                 >
                   <option value="">No specific event/order</option>
-                  {orders.map((order: any) => {
-                    const customerName = order.customer?.name || 'Unknown'
-                    const eventName = order.eventName || 'No Event Name'
-                    const date = new Date(order.createdAt).toLocaleDateString()
-                    return (
-                      <option key={order.id} value={order.id}>
-                        {customerName} - {eventName} - {date}
-                      </option>
-                    )
-                  })}
+                  {filteredOrders.map((order: any) => (
+                    <option key={order.id} value={order.id}>
+                      {getOrderDisplayName(order)}
+                    </option>
+                  ))}
+                  {filteredOrders.length === 0 && orders.length > 0 && (
+                    <option disabled value="">No matching events found</option>
+                  )}
                 </select>
               </div>
             )}
@@ -642,13 +715,16 @@ export default function CreateExpensePage() {
                   </div>
                 </div>
                 <div className="max-h-60 overflow-y-auto p-2">
-                  {orders.length === 0 ? (
-                    <p className="text-gray-500 text-sm p-4 text-center">No events available</p>
+                  {filteredOrders.length === 0 ? (
+                    <p className="text-gray-500 text-sm p-4 text-center">
+                      {orders.length === 0 ? 'No events available' : 'No matching events found'}
+                    </p>
                   ) : (
                     <div className="space-y-1">
-                      {orders.map((order: any) => {
+                      {filteredOrders.map((order: any) => {
                         const isSelected = selectedOrderIds.includes(order.id)
                         const plates = getOrderPlates(order)
+                        const eventDate = order.eventDate ? new Date(order.eventDate) : new Date(order.createdAt)
                         return (
                           <label
                             key={order.id}
@@ -668,7 +744,7 @@ export default function CreateExpensePage() {
                                 {order.customer?.name || 'Unknown'} - {order.eventName || 'No Event Name'}
                               </div>
                               <div className="text-xs text-gray-500 flex items-center gap-2">
-                                <span>{new Date(order.createdAt).toLocaleDateString()}</span>
+                                <span>{eventDate.toLocaleDateString()}</span>
                                 <span>•</span>
                                 <span>{plates} plates/members</span>
                                 <span>•</span>

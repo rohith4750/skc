@@ -85,6 +85,7 @@ export interface Order {
 }
 
 export interface PaymentHistoryEntry {
+  id?: string;
   amount: number;
   totalPaid: number;
   remainingAmount: number;

@@ -1,3 +1,4 @@
+import { generateId } from "@/lib/utils";
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { isNonNegativeNumber, validateEnum } from "@/lib/validation";
@@ -97,6 +98,7 @@ export async function PUT(
         ? [
             ...paymentHistory,
             {
+              id: generateId(),
               amount: deltaPaid,
               totalPaid: paidAmount,
               remainingAmount,
@@ -118,6 +120,7 @@ export async function PUT(
         ? [
             ...historyWithoutBillNote,
             {
+              id: generateId(),
               amount: 0,
               totalPaid: paidAmount,
               remainingAmount,

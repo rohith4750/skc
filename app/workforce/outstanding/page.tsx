@@ -88,7 +88,9 @@ export default function OutstandingPage() {
   const [expandedStatement, setExpandedStatement] = useState<string | null>(null)
 
   const buildStatement = (r: RoleSummary) => {
-    const lines: { date: string; desc: string; amount: number; method: string; type: 'workforce' | 'expense' }[] = []
+    const lines: { date: string; desc: string; amount: number; method: string; type: 'workforce' | 'expense' | 'due' }[] = []
+
+    // Recorded payments (Workforce payments)
     r.payments?.forEach((p: any) => {
       lines.push({
         date: p.paymentDate,
@@ -98,19 +100,35 @@ export default function OutstandingPage() {
         type: 'workforce',
       })
     })
+
+    // Expenses (Dues and partial payments)
     r.expenses?.forEach((e: any) => {
+      const total = Number(e.amount || 0)
       const paid = Number(e.paidAmount || 0)
+      const desc = e.recipient ? `Expense – ${e.recipient}` : (e.description || 'Expense')
+
+      // Record the due amount (Total expense)
+      lines.push({
+        date: e.paymentDate || e.createdAt,
+        desc: `${desc} (Total Due)`,
+        amount: total,
+        method: 'Due',
+        type: 'due',
+      })
+
+      // If any amount was paid towards this expense, record it as a credit
       if (paid > 0) {
-        const desc = e.recipient ? `Expense – ${e.recipient}` : (e.description || 'Expense payment')
         lines.push({
-          date: e.paymentDate,
-          desc,
+          date: e.paymentDate || e.createdAt,
+          desc: `${desc} (Paid)`,
           amount: paid,
-          method: 'Expense',
+          method: 'Expense Pymt',
           type: 'expense',
         })
       }
     })
+
+    // Sort by date descending
     lines.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
     return lines
   }
@@ -225,7 +243,10 @@ export default function OutstandingPage() {
 
         {/* Events & Event Money */}
         <div className="bg-white rounded-xl shadow border border-gray-200 overflow-hidden mb-6">
-          <h2 className="text-lg font-semibold text-gray-800 p-4 border-b border-gray-200">Events & Event Money</h2>
+          <div className="px-4 py-3 border-b border-gray-200 flex justify-between items-center bg-gray-50/50">
+            <h2 className="text-lg font-semibold text-gray-800">Events & Event Money</h2>
+            <span className="text-xs font-medium text-gray-500 uppercase">Linked to Orders</span>
+          </div>
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead>
@@ -240,7 +261,7 @@ export default function OutstandingPage() {
                 {events.length === 0 ? (
                   <tr>
                     <td colSpan={4} className="px-4 py-8 text-center text-gray-500">
-                      No events with expenses yet
+                      No event-linked expenses yet
                     </td>
                   </tr>
                 ) : (
@@ -252,6 +273,56 @@ export default function OutstandingPage() {
                       <td className="px-4 py-3 text-right font-medium">{formatCurrency(ev.totalAmount)}</td>
                     </tr>
                   ))
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        {/* General Business Expenses */}
+        <div className="bg-white rounded-xl shadow border border-gray-200 overflow-hidden mb-6">
+          <div className="px-4 py-3 border-b border-gray-200 flex justify-between items-center bg-gray-50/50">
+            <h2 className="text-lg font-semibold text-gray-800">General Business Expenses</h2>
+            <span className="text-xs font-medium text-gray-500 uppercase">Not linked to orders</span>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead>
+                <tr className="bg-gray-50 text-left text-xs sm:text-sm text-gray-600">
+                  <th className="px-4 py-3 font-medium">Description</th>
+                  <th className="px-4 py-3 font-medium">Category</th>
+                  <th className="px-4 py-3 font-medium">Date</th>
+                  <th className="px-4 py-3 font-medium text-right">Amount</th>
+                </tr>
+              </thead>
+              <tbody>
+                {roleSummary.map(r => r.expenses.filter(e => !e.orderId && !e.isBulkExpense)).flat().length === 0 ? (
+                  <tr>
+                    <td colSpan={4} className="px-4 py-8 text-center text-gray-500">
+                      No general expenses found
+                    </td>
+                  </tr>
+                ) : (
+                  roleSummary.map(r => r.expenses.filter(e => !e.orderId && !e.isBulkExpense)).flat()
+                    .sort((a, b) => new Date(b.paymentDate || b.createdAt).getTime() - new Date(a.paymentDate || a.createdAt).getTime())
+                    .map((exp: any) => (
+                      <tr key={exp.id} className="border-t border-gray-100 hover:bg-gray-50">
+                        <td className="px-4 py-3 font-medium text-gray-900">
+                          {exp.description || (exp.recipient ? `Expense – ${exp.recipient}` : 'Expense')}
+                        </td>
+                        <td className="px-4 py-3">
+                          <span className="capitalize text-xs bg-gray-100 text-gray-700 px-2 py-0.5 rounded-full">
+                            {exp.category}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3 text-gray-600">
+                          {formatDate(exp.paymentDate || exp.createdAt)}
+                        </td>
+                        <td className="px-4 py-3 text-right font-medium">
+                          {formatCurrency(Number(exp.amount || 0))}
+                        </td>
+                      </tr>
+                    ))
                 )}
               </tbody>
             </table>
@@ -330,8 +401,18 @@ export default function OutstandingPage() {
                                     <tr key={i} className="border-t border-gray-100">
                                       <td className="px-4 py-2 text-gray-700">{formatDate(line.date)}</td>
                                       <td className="px-4 py-2 text-gray-700">{line.desc}</td>
-                                      <td className="px-4 py-2 text-gray-600 capitalize">{line.method}</td>
-                                      <td className="px-4 py-2 text-right font-medium text-green-600">{formatCurrency(line.amount)}</td>
+                                      <td className="px-4 py-2 text-gray-600 capitalize">
+                                        <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase ${line.type === 'due' ? 'bg-amber-100 text-amber-700' :
+                                            line.type === 'workforce' ? 'bg-green-100 text-green-700' :
+                                              'bg-blue-100 text-blue-700'
+                                          }`}>
+                                          {line.method}
+                                        </span>
+                                      </td>
+                                      <td className={`px-4 py-2 text-right font-medium ${line.type === 'due' ? 'text-amber-700' : 'text-green-600'
+                                        }`}>
+                                        {line.type === 'due' ? `+ ${formatCurrency(line.amount)}` : `- ${formatCurrency(line.amount)}`}
+                                      </td>
                                     </tr>
                                   ))}
                                 </tbody>

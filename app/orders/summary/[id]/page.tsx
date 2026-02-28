@@ -6,7 +6,7 @@ import Link from 'next/link'
 import toast from 'react-hot-toast'
 import { formatCurrency, formatDate, formatDateTime, sanitizeMealLabel } from '@/lib/utils'
 import { Bill, Order, PaymentHistoryEntry } from '@/types'
-import { FaUser, FaCalendarAlt, FaMoneyBillWave, FaHistory, FaUtensils, FaTruck, FaTag, FaArrowLeft, FaEdit, FaCheckCircle, FaExclamationCircle } from 'react-icons/fa'
+import { FaUser, FaCalendarAlt, FaMoneyBillWave, FaHistory, FaUtensils, FaTruck, FaTag, FaArrowLeft, FaEdit, FaCheckCircle, FaExclamationCircle, FaTrash, FaTimes, FaSave } from 'react-icons/fa'
 
 export default function OrderSummaryPage() {
   const params = useParams()
@@ -14,6 +14,15 @@ export default function OrderSummaryPage() {
   const orderId = params?.id as string
   const [order, setOrder] = useState<Order & { bill?: Bill } | null>(null)
   const [loading, setLoading] = useState(true)
+  const [editingEntry, setEditingEntry] = useState<PaymentHistoryEntry | null>(null)
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false)
+  const [isDeleting, setIsDeleting] = useState(false)
+  const [editFormData, setEditFormData] = useState({
+    amount: 0,
+    date: '',
+    method: '',
+    notes: ''
+  })
 
   useEffect(() => {
     const loadOrder = async () => {
@@ -40,6 +49,68 @@ export default function OrderSummaryPage() {
       loadOrder()
     }
   }, [orderId, router])
+
+  const handleEditEntry = (entry: PaymentHistoryEntry) => {
+    setEditingEntry(entry)
+    setEditFormData({
+      amount: entry.amount,
+      date: new Date(entry.date).toISOString().split('T')[0],
+      method: entry.method || 'cash',
+      notes: entry.notes || ''
+    })
+    setIsEditModalOpen(true)
+  }
+
+  const handleUpdateEntry = async () => {
+    if (!editingEntry || !order?.bill?.id) return
+
+    try {
+      const response = await fetch(`/api/bills/${order.bill.id}/ledger`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          entryId: editingEntry.id,
+          ...editFormData
+        })
+      })
+
+      if (!response.ok) throw new Error('Failed to update entry')
+
+      toast.success('Ledger entry updated')
+      setIsEditModalOpen(false)
+      // Refresh order data
+      const updatedOrderResponse = await fetch(`/api/orders/${orderId}`)
+      const updatedOrderData = await updatedOrderResponse.json()
+      setOrder(updatedOrderData)
+    } catch (error: any) {
+      toast.error(error.message)
+    }
+  }
+
+  const handleDeleteEntry = async (entryId: string) => {
+    if (!order?.bill?.id || !confirm('Are you sure you want to delete this entry? This will update the total balance.')) return
+
+    setIsDeleting(true)
+    try {
+      const response = await fetch(`/api/bills/${order.bill.id}/ledger`, {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ entryId })
+      })
+
+      if (!response.ok) throw new Error('Failed to delete entry')
+
+      toast.success('Ledger entry deleted')
+      // Refresh order data
+      const updatedOrderResponse = await fetch(`/api/orders/${orderId}`)
+      const updatedOrderData = await updatedOrderResponse.json()
+      setOrder(updatedOrderData)
+    } catch (error: any) {
+      toast.error(error.message)
+    } finally {
+      setIsDeleting(false)
+    }
+  }
 
   if (loading) {
     return (
@@ -448,13 +519,34 @@ export default function OrderSummaryPage() {
                             </div>
                           </td>
                           <td className="px-8 py-5 text-right whitespace-nowrap">
-                            {payment.totalPriceChange ? (
-                              <div className={`text-[10px] font-black mb-1 ${payment.totalPriceChange > 0 ? 'text-amber-600' : 'text-emerald-600'}`}>
-                                {payment.totalPriceChange > 0 ? '+' : ''}{formatCurrency(payment.totalPriceChange)}
+                            <div className="flex flex-col items-end">
+                              {payment.totalPriceChange ? (
+                                <div className={`text-[10px] font-black mb-1 ${payment.totalPriceChange > 0 ? 'text-amber-600' : 'text-emerald-600'}`}>
+                                  {payment.totalPriceChange > 0 ? '+' : ''}{formatCurrency(payment.totalPriceChange)}
+                                </div>
+                              ) : null}
+                              <div className={`text-base font-black ${isPayment ? 'text-slate-900' : 'text-slate-300'}`}>
+                                {isPayment ? formatCurrency(payment.amount) : '-'}
                               </div>
-                            ) : null}
-                            <div className={`text-base font-black ${isPayment ? 'text-slate-900' : 'text-slate-300'}`}>
-                              {isPayment ? formatCurrency(payment.amount) : '-'}
+                              {payment.id && (
+                                <div className="mt-2 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                  <button
+                                    onClick={() => handleEditEntry(payment)}
+                                    className="p-1.5 text-slate-400 hover:text-primary-600 hover:bg-primary-50 rounded-lg transition-all"
+                                    title="Edit Entry"
+                                  >
+                                    <FaEdit size={12} />
+                                  </button>
+                                  <button
+                                    onClick={() => handleDeleteEntry(payment.id!)}
+                                    className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-all"
+                                    title="Delete Entry"
+                                    disabled={isDeleting}
+                                  >
+                                    <FaTrash size={12} />
+                                  </button>
+                                </div>
+                              )}
                             </div>
                           </td>
                         </tr>
@@ -466,6 +558,80 @@ export default function OrderSummaryPage() {
             )}
           </div>
         </div>
+        {/* Edit Modal */}
+        {isEditModalOpen && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
+            <div className="bg-white rounded-[2rem] w-full max-w-md shadow-2xl overflow-hidden border border-slate-100">
+              <div className="p-6 border-b border-slate-50 flex items-center justify-between">
+                <h3 className="text-xl font-black text-slate-900">Edit Ledger Entry</h3>
+                <button
+                  onClick={() => setIsEditModalOpen(false)}
+                  className="w-10 h-10 rounded-full flex items-center justify-center text-slate-400 hover:bg-slate-50 hover:text-slate-900 transition-all"
+                >
+                  <FaTimes />
+                </button>
+              </div>
+              <div className="p-6 space-y-4">
+                <div>
+                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-1.5 ml-1">Transaction Date</label>
+                  <input
+                    type="date"
+                    value={editFormData.date}
+                    onChange={(e) => setEditFormData({ ...editFormData, date: e.target.value })}
+                    className="w-full px-4 py-3 bg-slate-50 border border-slate-100 rounded-2xl focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 transition-all font-bold text-slate-700"
+                  />
+                </div>
+                <div>
+                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-1.5 ml-1">Amount</label>
+                  <input
+                    type="number"
+                    value={editFormData.amount}
+                    onChange={(e) => setEditFormData({ ...editFormData, amount: parseFloat(e.target.value) || 0 })}
+                    className="w-full px-4 py-3 bg-slate-50 border border-slate-100 rounded-2xl focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 transition-all font-bold text-slate-700"
+                  />
+                </div>
+                <div>
+                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-1.5 ml-1">Payment Method</label>
+                  <select
+                    value={editFormData.method}
+                    onChange={(e) => setEditFormData({ ...editFormData, method: e.target.value })}
+                    className="w-full px-4 py-3 bg-slate-50 border border-slate-100 rounded-2xl focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 transition-all font-bold text-slate-700 appearance-none"
+                  >
+                    <option value="cash">Cash</option>
+                    <option value="upi">UPI</option>
+                    <option value="bank_transfer">Bank Transfer</option>
+                    <option value="card">Card</option>
+                    <option value="other">Other</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-1.5 ml-1">Internal Notes</label>
+                  <textarea
+                    value={editFormData.notes}
+                    onChange={(e) => setEditFormData({ ...editFormData, notes: e.target.value })}
+                    rows={3}
+                    className="w-full px-4 py-3 bg-slate-50 border border-slate-100 rounded-2xl focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 transition-all font-bold text-slate-700 resize-none"
+                    placeholder="Enter details about this adjustment..."
+                  />
+                </div>
+              </div>
+              <div className="p-6 bg-slate-50/50 flex gap-3">
+                <button
+                  onClick={() => setIsEditModalOpen(false)}
+                  className="flex-1 px-6 py-3.5 bg-white border border-slate-200 text-slate-600 rounded-2xl font-bold hover:bg-slate-100 transition-all active:scale-95"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleUpdateEntry}
+                  className="flex-1 px-6 py-3.5 bg-primary-600 text-white rounded-2xl font-bold hover:bg-primary-700 shadow-lg shadow-primary-200 transition-all active:scale-95 flex items-center justify-center gap-2"
+                >
+                  <FaSave /> Save Changes
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

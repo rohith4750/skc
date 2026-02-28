@@ -41,8 +41,8 @@ export default function OrderCenterPage() {
   const [showFilters, setShowFilters] = useState(false)
   const [statusFilter, setStatusFilter] = useState<string>('all')
   const [customerSearch, setCustomerSearch] = useState<string>('')
-  const [selectedMonth, setSelectedMonth] = useState<number>(new Date().getMonth() + 1)
-  const [selectedYear, setSelectedYear] = useState<number>(new Date().getFullYear())
+  const [selectedMonth, setSelectedMonth] = useState<number>(0) // 0 for All Months
+  const [selectedYear, setSelectedYear] = useState<number>(0) // 0 for All Years
   const [pdfLanguageModal, setPdfLanguageModal] = useState<{ isOpen: boolean; order: any | null }>({
     isOpen: false,
     order: null,
@@ -108,10 +108,12 @@ export default function OrderCenterPage() {
       )
     }
 
-    // Month/Year filter
+    // Month/Year filter - skip if 0
     filtered = filtered.filter(order => {
       const orderDate = new Date(order.eventDate || order.createdAt)
-      return (orderDate.getMonth() + 1) === selectedMonth && orderDate.getFullYear() === selectedYear
+      const monthMatch = selectedMonth === 0 || (orderDate.getMonth() + 1) === selectedMonth
+      const yearMatch = selectedYear === 0 || orderDate.getFullYear() === selectedYear
+      return monthMatch && yearMatch
     })
 
     return filtered.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
@@ -886,6 +888,7 @@ export default function OrderCenterPage() {
                 onChange={(e) => setSelectedMonth(parseInt(e.target.value))}
                 className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-700 font-bold text-sm focus:ring-2 focus:ring-indigo-500 outline-none transition-all"
               >
+                <option value={0}>All Months</option>
                 {['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'].map((m, i) => (
                   <option key={m} value={i + 1}>{m}</option>
                 ))}
@@ -900,6 +903,7 @@ export default function OrderCenterPage() {
                 onChange={(e) => setSelectedYear(parseInt(e.target.value))}
                 className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-700 font-bold text-sm focus:ring-2 focus:ring-indigo-500 outline-none transition-all"
               >
+                <option value={0}>All Years</option>
                 {[2024, 2025, 2026].map(y => (
                   <option key={y} value={y}>{y}</option>
                 ))}
@@ -912,8 +916,8 @@ export default function OrderCenterPage() {
               onClick={() => {
                 setStatusFilter('all')
                 setCustomerSearch('')
-                setSelectedMonth(new Date().getMonth() + 1)
-                setSelectedYear(new Date().getFullYear())
+                setSelectedMonth(0)
+                setSelectedYear(0)
                 setCurrentPage(1)
               }}
               className="text-xs text-indigo-600 hover:text-indigo-700 font-bold uppercase tracking-wider transition-colors"
@@ -943,6 +947,12 @@ export default function OrderCenterPage() {
                   }
                 })
               }
+
+              // Fallback to order level eventDate if no session dates
+              if (eventDates.length === 0 && order.eventDate) {
+                eventDates.push(order.eventDate)
+              }
+
               eventDates.sort((a, b) => new Date(a).getTime() - new Date(b).getTime())
               const firstDate = eventDates[0] ? new Date(eventDates[0]).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }) : null
 
@@ -1040,6 +1050,9 @@ export default function OrderCenterPage() {
                           totalMembersAll += Number((value as any).numberOfMembers) || 0
                         }
                       })
+                    }
+                    if (totalMembersAll === 0 && order.numberOfMembers) {
+                      totalMembersAll = Number(order.numberOfMembers) || 0
                     }
                     const eventDates: Array<{ mealType: string; date: string; key: string; members?: number }> = []
                     if (mealTypeAmounts) {
@@ -1178,6 +1191,15 @@ export default function OrderCenterPage() {
                                     </div>
                                   </div>
                                 ))
+                              ) : order.eventDate ? (
+                                <div className="flex items-center gap-2">
+                                  <div className="flex items-center gap-1.5 bg-slate-100 px-2 py-0.5 rounded-md border border-slate-200 shadow-sm">
+                                    <FaCalendarAlt className="text-slate-400 text-[10px]" />
+                                    <span className="text-[10px] font-black text-slate-600 uppercase tracking-widest leading-none">
+                                      {new Date(order.eventDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
+                                    </span>
+                                  </div>
+                                </div>
                               ) : (
                                 <span className="text-gray-400 italic">No dates set</span>
                               )

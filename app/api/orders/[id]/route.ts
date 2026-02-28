@@ -4,7 +4,7 @@ import { isNonEmptyString, isNonNegativeNumber } from "@/lib/validation";
 import { publishNotification } from "@/lib/notifications";
 import { transformDecimal } from "@/lib/decimal-utils";
 import { sendPaymentReceivedAlert } from "@/lib/email-alerts";
-import { formatCurrency } from "@/lib/utils";
+import { formatCurrency, generateId } from "@/lib/utils";
 
 export async function GET(
   request: NextRequest,
@@ -63,6 +63,7 @@ export async function PUT(
           Number(order.advancePaid) > 0
             ? [
                 {
+                  id: generateId(),
                   amount: order.advancePaid,
                   totalPaid: order.advancePaid,
                   remainingAmount: order.remainingAmount,
@@ -233,8 +234,20 @@ export async function PUT(
       if (memberDiff !== 0 && oldMemberCount !== 0) {
         const diffSign = memberDiff > 0 ? "+" : "";
         const priceSign = priceDiff > 0 ? "+" : "";
+
+        // Resolve a human-readable label for the meal type
+        let label = newType.menuType || newType.eventName || type;
+        if (type.startsWith("session_")) {
+          const parts = type.split("_");
+          if (parts.length > 1 && parts[1] !== "merged") {
+            label = parts[1];
+          }
+        }
+        // Capitalize label
+        label = label.charAt(0).toUpperCase() + label.slice(1);
+
         mealTypeChanges.push(
-          `${type.charAt(0).toUpperCase() + type.slice(1)}: ${oldMemberCount} → ${newMemberCount} (${diffSign}${memberDiff} members, ${priceSign}${priceDiff.toFixed(2)} price)`,
+          `${label}: ${oldMemberCount} → ${newMemberCount} (${diffSign}${memberDiff} members, ${priceSign}${priceDiff.toFixed(2)} price)`,
         );
         totalMemberPriceDifference += priceDiff;
         totalMembersChanged += memberDiff;
@@ -356,6 +369,7 @@ export async function PUT(
 
         if (baseAdvanceDelta > 0) {
           historyEntries.push({
+            id: generateId(),
             amount: baseAdvanceDelta,
             totalPaid: advancePaid,
             remainingAmount,
@@ -372,6 +386,7 @@ export async function PUT(
 
         if (additionalPayment > 0) {
           historyEntries.push({
+            id: generateId(),
             amount: additionalPayment,
             totalPaid: advancePaid,
             remainingAmount,
@@ -398,6 +413,7 @@ export async function PUT(
                 : undefined;
           } else {
             historyEntries.push({
+              id: generateId(),
               amount: 0,
               totalPaid: advancePaid,
               remainingAmount,
