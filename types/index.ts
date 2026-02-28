@@ -156,6 +156,7 @@ export interface Expense {
     numberOfLabours?: number;
     numberOfBoys?: number;
     perUnitAmount?: number;
+    mealTypePlates?: Array<{ mealType: string; plates: number }>;
   };
   // Bulk Allocation Fields
   isBulkExpense?: boolean;

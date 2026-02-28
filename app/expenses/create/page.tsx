@@ -81,6 +81,7 @@ export default function CreateExpensePage() {
     paidAmount: '',
     paymentStatus: 'pending' as 'pending' | 'partial' | 'paid',
     mealType: '', // Add mealType to state
+    selectedMealTypes: [] as Array<{ id: string; label: string; plates: string }>,
   })
 
 
@@ -154,6 +155,11 @@ export default function CreateExpensePage() {
             paidAmount: expenseData.paidAmount?.toString() || '0',
             paymentStatus: expenseData.paymentStatus || 'pending',
             mealType: details.mealType || '',
+            selectedMealTypes: details.mealTypePlates ? details.mealTypePlates.map((mp: any) => ({
+              id: mp.mealType,
+              label: mp.mealType, // We might not have the original label, fallback to ID
+              plates: mp.plates.toString()
+            })) : [],
           })
           if (isCustomCategory) {
             setCustomCategoryInputType('input')
@@ -212,9 +218,15 @@ export default function CreateExpensePage() {
   const calculatedAmount = useMemo(() => {
     if (formData.category === 'chef') {
       if (formData.calculationMethod === 'plate-wise') {
-        const plates = parseFloat(formData.plates) || 0
-        const amount = parseFloat(formData.amount) || 0
-        return plates * amount
+        if (formData.selectedMealTypes.length > 0) {
+          const totalPlates = formData.selectedMealTypes.reduce((sum, mt) => sum + (parseFloat(mt.plates) || 0), 0)
+          const amount = parseFloat(formData.amount) || 0
+          return totalPlates * amount
+        } else {
+          const plates = parseFloat(formData.plates) || 0
+          const amount = parseFloat(formData.amount) || 0
+          return plates * amount
+        }
       } else {
         return parseFloat(formData.amount) || 0
       }
@@ -412,6 +424,35 @@ export default function CreateExpensePage() {
     }
   }, [calculatedAmount])
 
+  const handleMealTypeToggle = (mealId: string, mealLabel: string) => {
+    setFormData(prev => {
+      const isSelected = prev.selectedMealTypes.some(mt => mt.id === mealId)
+      if (isSelected) {
+        return {
+          ...prev,
+          selectedMealTypes: prev.selectedMealTypes.filter(mt => mt.id !== mealId)
+        }
+      } else {
+        // Find default plates for this meal type
+        let defaultPlates = ''
+        if (prev.orderId) {
+          const selectedOrder = orders.find(o => o.id === prev.orderId)
+          if (selectedOrder && selectedOrder.mealTypeAmounts) {
+            const mealData = (selectedOrder.mealTypeAmounts as any)[mealId]
+            if (mealData && typeof mealData === 'object') {
+              const plates = mealData.numberOfPlates || mealData.numberOfMembers || 0
+              if (plates > 0) defaultPlates = plates.toString()
+            }
+          }
+        }
+        return {
+          ...prev,
+          selectedMealTypes: [...prev.selectedMealTypes, { id: mealId, label: mealLabel, plates: defaultPlates }]
+        }
+      }
+    })
+  }
+
   // Autofill plates from order when category is 'chef'
   useEffect(() => {
     // console.log('Autofill check:', { category: formData.category, orderId: formData.orderId, mealType: formData.mealType, isBulkExpense })
@@ -481,11 +522,20 @@ export default function CreateExpensePage() {
 
     // Validate category-specific fields
     if (formData.category === 'chef' && formData.calculationMethod === 'plate-wise') {
-      if (!formData.plates || !formData.amount) {
-        toast.error('Please enter number of plates and amount per plate')
-        setFormError('Please enter number of plates and amount per plate')
-        setSaving(false)
-        return
+      if (formData.selectedMealTypes.length > 0) {
+        if (formData.selectedMealTypes.some(mt => !mt.plates) || !formData.amount) {
+          toast.error('Please enter number of plates for all selected meal types and amount per plate')
+          setFormError('Please enter number of plates for all selected meal types and amount per plate')
+          setSaving(false)
+          return
+        }
+      } else {
+        if (!formData.plates || !formData.amount) {
+          toast.error('Please enter number of plates and amount per plate')
+          setFormError('Please enter number of plates and amount per plate')
+          setSaving(false)
+          return
+        }
       }
     }
     if (formData.category === 'labours') {
@@ -510,10 +560,20 @@ export default function CreateExpensePage() {
       if (formData.category === 'chef') {
         calculationDetails.method = formData.calculationMethod
         if (formData.calculationMethod === 'plate-wise') {
-          calculationDetails.plates = parseFloat(formData.plates)
-          calculationDetails.perPlateAmount = parseFloat(formData.amount)
-          if (formData.mealType) {
-            calculationDetails.mealType = formData.mealType
+          if (formData.selectedMealTypes.length > 0) {
+            calculationDetails.plates = formData.selectedMealTypes.reduce((sum, mt) => sum + (parseFloat(mt.plates) || 0), 0)
+            calculationDetails.perPlateAmount = parseFloat(formData.amount)
+            calculationDetails.mealTypePlates = formData.selectedMealTypes.map(mt => ({
+              mealType: mt.id,
+              plates: parseFloat(mt.plates) || 0
+            }))
+            calculationDetails.mealType = formData.selectedMealTypes.map(mt => mt.id).join(',')
+          } else {
+            calculationDetails.plates = parseFloat(formData.plates)
+            calculationDetails.perPlateAmount = parseFloat(formData.amount)
+            if (formData.mealType) {
+              calculationDetails.mealType = formData.mealType
+            }
           }
         }
       } else if (formData.category === 'labours') {
@@ -841,6 +901,7 @@ export default function CreateExpensePage() {
                       numberOfBoys: '',
                       boyAmount: '',
                       recipient: '',
+                      selectedMealTypes: [],
                     })
                   }}
                   className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
@@ -873,20 +934,28 @@ export default function CreateExpensePage() {
 
                   {/* Meal Type Selection (Visible only when Order is selected) */}
                   {formData.orderId && !isBulkExpense && availableMealTypes.length > 0 && (
-                    <div>
+                    <div className="md:col-span-2">
                       <label className="block text-sm font-semibold text-gray-700 mb-2">
-                        Meal Type (Optional)
+                        Meal Types (Optional)
                       </label>
-                      <select
-                        value={formData.mealType}
-                        onChange={(e) => setFormData({ ...formData, mealType: e.target.value })}
-                        className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-                      >
-                        <option value="">All / Specific Meal Not Selected</option>
-                        {availableMealTypes.map(meal => (
-                          <option key={meal.id} value={meal.id}>{meal.label}</option>
-                        ))}
-                      </select>
+                      <div className="flex flex-wrap gap-2">
+                        {availableMealTypes.map(meal => {
+                          const isSelected = formData.selectedMealTypes.some(mt => mt.id === meal.id)
+                          return (
+                            <button
+                              key={meal.id}
+                              type="button"
+                              onClick={() => handleMealTypeToggle(meal.id, meal.label)}
+                              className={`px-3 py-1.5 rounded-full text-sm font-medium border transition-colors ${isSelected
+                                  ? 'bg-primary-50 text-primary-700 border-primary-200'
+                                  : 'bg-white text-gray-600 border-gray-300 hover:bg-gray-50'
+                                }`}
+                            >
+                              {meal.label}
+                            </button>
+                          )
+                        })}
+                      </div>
                     </div>
                   )}
                 </div>
@@ -961,37 +1030,81 @@ export default function CreateExpensePage() {
               {/* Chef Plate-wise */}
               {formData.category === 'chef' && formData.calculationMethod === 'plate-wise' && (
                 <>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Number of Plates *
-                      </label>
-                      <input
-                        type="number"
-                        step="1"
-                        required
-                        value={formData.plates}
-                        onChange={(e) => setFormData({ ...formData, plates: e.target.value })}
-                        className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-                        placeholder="0"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Amount per Plate *
-                      </label>
-                      <input
-                        type="number"
-                        step="0.01"
-                        required
-                        value={formData.amount}
-                        onChange={(e) => setFormData({ ...formData, amount: e.target.value })}
-                        className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-                        placeholder="0.00"
-                      />
-                    </div>
+                  <div className="grid grid-cols-1 gap-4">
+                    {formData.selectedMealTypes.length > 0 ? (
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 border border-gray-200 bg-white p-4 rounded-lg">
+                        <div className="space-y-3">
+                          <label className="block text-sm font-medium text-gray-700">
+                            Plates per Meal Type *
+                          </label>
+                          {formData.selectedMealTypes.map((mt, index) => (
+                            <div key={mt.id} className="flex items-center gap-3">
+                              <span className="text-sm font-medium text-gray-600 w-24 truncate" title={mt.label}>{mt.label}</span>
+                              <input
+                                type="number"
+                                step="1"
+                                required
+                                value={mt.plates}
+                                onChange={(e) => {
+                                  const newMealTypes = [...formData.selectedMealTypes]
+                                  newMealTypes[index].plates = e.target.value
+                                  setFormData({ ...formData, selectedMealTypes: newMealTypes })
+                                }}
+                                className="flex-1 px-4 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                                placeholder="0"
+                              />
+                            </div>
+                          ))}
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">
+                            Amount per Plate *
+                          </label>
+                          <input
+                            type="number"
+                            step="0.01"
+                            required
+                            value={formData.amount}
+                            onChange={(e) => setFormData({ ...formData, amount: e.target.value })}
+                            className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                            placeholder="0.00"
+                          />
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">
+                            Number of Plates *
+                          </label>
+                          <input
+                            type="number"
+                            step="1"
+                            required
+                            value={formData.plates}
+                            onChange={(e) => setFormData({ ...formData, plates: e.target.value })}
+                            className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                            placeholder="0"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">
+                            Amount per Plate *
+                          </label>
+                          <input
+                            type="number"
+                            step="0.01"
+                            required
+                            value={formData.amount}
+                            onChange={(e) => setFormData({ ...formData, amount: e.target.value })}
+                            className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                            placeholder="0.00"
+                          />
+                        </div>
+                      </div>
+                    )}
                   </div>
-                  <div className="bg-primary-50 border border-primary-200 rounded-lg p-4">
+                  <div className="bg-primary-50 border border-primary-200 rounded-lg p-4 mt-4">
                     <p className="text-sm font-semibold text-primary-900">
                       Total Amount: {formatCurrency(calculatedAmount)}
                     </p>
