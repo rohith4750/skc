@@ -617,7 +617,16 @@ function generateExpenseContent(data: PDFTemplateData): string {
           <span class="form-value">${expense.notes}</span>
         </div>
         ` : ''}
-        ${expense.calculationDetails ? `
+        ${expense.calculationDetails && expense.category === 'boys' ? `
+        <div class="form-row">
+          <span class="form-label">Dressed Boys:</span>
+          <span class="form-value">${expense.calculationDetails.dressedBoys || 0} @ ${formatCurrency(expense.calculationDetails.dressedBoyAmount || 0)}</span>
+        </div>
+        <div class="form-row">
+          <span class="form-label">Non-Dressed Boys:</span>
+          <span class="form-value">${expense.calculationDetails.nonDressedBoys || 0} @ ${formatCurrency(expense.calculationDetails.nonDressedBoyAmount || 0)}</span>
+        </div>
+        ` : expense.calculationDetails ? `
         <div class="form-row">
           <span class="form-label">Calculation Method:</span>
           <span class="form-value">${expense.calculationDetails.method || 'N/A'}</span>

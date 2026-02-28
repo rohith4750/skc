@@ -70,8 +70,10 @@ export default function CreateExpensePage() {
     plates: '',
     numberOfLabours: '',
     labourAmount: '',
-    numberOfBoys: '',
-    boyAmount: '',
+    dressedBoys: '',
+    dressedBoyAmount: '',
+    nonDressedBoys: '',
+    nonDressedBoyAmount: '',
     description: '',
     recipient: '',
     paymentDate: getLocalISODate(),
@@ -143,8 +145,10 @@ export default function CreateExpensePage() {
             plates: details.plates ? details.plates.toString() : '',
             numberOfLabours: details.numberOfLabours ? details.numberOfLabours.toString() : '',
             labourAmount: details.perUnitAmount && expenseData.category === 'labours' ? details.perUnitAmount.toString() : '',
-            numberOfBoys: details.numberOfBoys ? details.numberOfBoys.toString() : '',
-            boyAmount: details.perUnitAmount && expenseData.category === 'boys' ? details.perUnitAmount.toString() : '',
+            dressedBoys: details.dressedBoys ? details.dressedBoys.toString() : '',
+            dressedBoyAmount: details.dressedBoyAmount ? details.dressedBoyAmount.toString() : '',
+            nonDressedBoys: details.nonDressedBoys ? details.nonDressedBoys.toString() : '',
+            nonDressedBoyAmount: details.nonDressedBoyAmount ? details.nonDressedBoyAmount.toString() : '',
             description: expenseData.description || '',
             recipient: expenseData.recipient || '',
             paymentDate: expenseData.paymentDate ? expenseData.paymentDate.split('T')[0] : getLocalISODate(),
@@ -244,9 +248,11 @@ export default function CreateExpensePage() {
       const labourAmount = parseFloat(formData.labourAmount) || 0
       return numberOfLabours * labourAmount
     } else if (formData.category === 'boys') {
-      const numberOfBoys = parseFloat(formData.numberOfBoys) || 0
-      const boyAmount = parseFloat(formData.boyAmount) || 0
-      return numberOfBoys * boyAmount
+      const dressedBoys = parseFloat(formData.dressedBoys) || 0
+      const dressedBoyAmount = parseFloat(formData.dressedBoyAmount) || 0
+      const nonDressedBoys = parseFloat(formData.nonDressedBoys) || 0
+      const nonDressedBoyAmount = parseFloat(formData.nonDressedBoyAmount) || 0
+      return (dressedBoys * dressedBoyAmount) + (nonDressedBoys * nonDressedBoyAmount)
     } else {
       return parseFloat(formData.amount) || 0
     }
@@ -573,9 +579,9 @@ export default function CreateExpensePage() {
       }
     }
     if (formData.category === 'boys') {
-      if (!formData.numberOfBoys || !formData.boyAmount || !formData.eventDate) {
-        toast.error('Please enter number of boys, amount per boy, and event date')
-        setFormError('Please enter number of boys, amount per boy, and event date')
+      if (formData.dressedBoys === '' || formData.dressedBoyAmount === '' || formData.nonDressedBoys === '' || formData.nonDressedBoyAmount === '' || !formData.eventDate) {
+        toast.error('Please enter details for all boys (use 0 if none) and the event date')
+        setFormError('Please enter details for all boys (use 0 if none) and the event date')
         setSaving(false)
         return
       }
@@ -606,8 +612,10 @@ export default function CreateExpensePage() {
         calculationDetails.numberOfLabours = parseFloat(formData.numberOfLabours)
         calculationDetails.perUnitAmount = parseFloat(formData.labourAmount)
       } else if (formData.category === 'boys') {
-        calculationDetails.numberOfBoys = parseFloat(formData.numberOfBoys)
-        calculationDetails.perUnitAmount = parseFloat(formData.boyAmount)
+        calculationDetails.dressedBoys = parseFloat(formData.dressedBoys) || 0
+        calculationDetails.dressedBoyAmount = parseFloat(formData.dressedBoyAmount) || 0
+        calculationDetails.nonDressedBoys = parseFloat(formData.nonDressedBoys) || 0
+        calculationDetails.nonDressedBoyAmount = parseFloat(formData.nonDressedBoyAmount) || 0
       }
 
       const paidAmount = formData.paidAmount ? parseFloat(formData.paidAmount) : 0
@@ -886,8 +894,10 @@ export default function CreateExpensePage() {
                       plates: '',
                       numberOfLabours: '',
                       labourAmount: '',
-                      numberOfBoys: '',
-                      boyAmount: '',
+                      dressedBoys: '',
+                      dressedBoyAmount: '',
+                      nonDressedBoys: '',
+                      nonDressedBoyAmount: '',
                       recipient: '',
                       selectedMealTypes: [],
                     })
@@ -1192,8 +1202,8 @@ export default function CreateExpensePage() {
               {/* Boys */}
               {formData.category === 'boys' && (
                 <>
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                    <div className="md:col-span-2 lg:col-span-4">
                       <label className="block text-sm font-medium text-gray-700 mb-2">
                         Event Date *
                       </label>
@@ -1207,28 +1217,56 @@ export default function CreateExpensePage() {
                     </div>
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Number of Boys *
+                        Dressed Boys *
                       </label>
                       <input
                         type="number"
                         step="1"
                         required
-                        value={formData.numberOfBoys}
-                        onChange={(e) => setFormData({ ...formData, numberOfBoys: e.target.value })}
+                        value={formData.dressedBoys}
+                        onChange={(e) => setFormData({ ...formData, dressedBoys: e.target.value })}
                         className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
                         placeholder="0"
                       />
                     </div>
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Payment per Boy *
+                        Dressed Rate *
                       </label>
                       <input
                         type="number"
                         step="0.01"
                         required
-                        value={formData.boyAmount}
-                        onChange={(e) => setFormData({ ...formData, boyAmount: e.target.value })}
+                        value={formData.dressedBoyAmount}
+                        onChange={(e) => setFormData({ ...formData, dressedBoyAmount: e.target.value })}
+                        className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                        placeholder="0.00"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Non-Dressed Boys *
+                      </label>
+                      <input
+                        type="number"
+                        step="1"
+                        required
+                        value={formData.nonDressedBoys}
+                        onChange={(e) => setFormData({ ...formData, nonDressedBoys: e.target.value })}
+                        className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                        placeholder="0"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Non-Dressed Rate *
+                      </label>
+                      <input
+                        type="number"
+                        step="0.01"
+                        required
+                        value={formData.nonDressedBoyAmount}
+                        onChange={(e) => setFormData({ ...formData, nonDressedBoyAmount: e.target.value })}
                         className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
                         placeholder="0.00"
                       />
