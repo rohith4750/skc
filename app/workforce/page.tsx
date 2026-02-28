@@ -141,6 +141,11 @@ export default function WorkforcePage() {
       amount: exp.amount || 0,
       description: exp.description || '',
       status: exp.paymentStatus || 'pending',
+      orderName: exp.order?.eventName,
+      customerName: exp.order?.customer?.name,
+      calculationDetails: exp.calculationDetails,
+      isBulkExpense: exp.isBulkExpense,
+      bulkAllocations: exp.bulkAllocations,
     }))
 
     // Prepare PDF template data
@@ -224,6 +229,11 @@ export default function WorkforcePage() {
       amount: exp.amount || 0,
       description: exp.description || '',
       status: exp.paymentStatus || 'pending',
+      orderName: exp.order?.eventName,
+      customerName: exp.order?.customer?.name,
+      calculationDetails: exp.calculationDetails,
+      isBulkExpense: exp.isBulkExpense,
+      bulkAllocations: exp.bulkAllocations,
     }))
 
     // Prepare PDF template data

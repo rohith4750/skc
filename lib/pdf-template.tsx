@@ -64,6 +64,11 @@ export interface PDFTemplateData {
       amount: number
       description?: string
       status?: string
+      orderName?: string
+      customerName?: string
+      calculationDetails?: any
+      isBulkExpense?: boolean
+      bulkAllocations?: any[]
     }>
   }
   orderId?: string
@@ -756,6 +761,8 @@ function generateExpenseContent(data: PDFTemplateData): string {
 function generateWorkforceContent(data: PDFTemplateData): string {
   const workforce = data.workforceDetails || {}
   const expenses = workforce.expenses || []
+  const role = (workforce.role || '').toLowerCase()
+  const isChefOrSupervisor = role === 'chef' || role === 'supervisor'
 
   return `
     <!-- Workforce Info -->
@@ -776,7 +783,7 @@ function generateWorkforceContent(data: PDFTemplateData): string {
         </div>
         <div class="form-row">
           <span class="form-label">Role:</span>
-          <span class="form-value">${workforce.role || ''}</span>
+          <span class="form-value" style="text-transform: capitalize;">${workforce.role || ''}</span>
         </div>
       </div>
     </div>
@@ -784,23 +791,97 @@ function generateWorkforceContent(data: PDFTemplateData): string {
     ${expenses.length > 0 ? `
     <!-- Expense Items -->
     <div class="form-section">
-      <div class="section-title">EXPENSE ITEMS</div>
-      ${expenses.map((exp, idx) => `
-        <div class="expense-item">
-          <div class="form-row">
-            <span class="form-label">Date:</span>
-            <span class="form-value">${formatDate(exp.date)}</span>
-            <span style="margin-left: 20px;" class="form-label">Amount:</span>
-            <span class="form-value">${formatCurrency(exp.amount)}</span>
-          </div>
-          ${exp.description ? `
-          <div class="form-row">
-            <span class="form-label">Description:</span>
-            <span class="form-value">${exp.description}</span>
-          </div>
-          ` : ''}
-        </div>
-      `).join('')}
+      <div class="section-title">${isChefOrSupervisor ? 'EVENT WISE BREAKDOWN' : 'EXPENSE ITEMS'}</div>
+      
+      ${isChefOrSupervisor ? `
+        <table class="details-table">
+          <thead>
+            <tr>
+              <th>Date</th>
+              <th>Event / Customer</th>
+              ${role === 'chef' ? '<th>Plates</th>' : ''}
+              ${role === 'chef' ? '<th>Rate</th>' : ''}
+              <th class="text-right">Amount</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${expenses.flatMap(exp => {
+    if (exp.isBulkExpense && exp.bulkAllocations && exp.bulkAllocations.length > 0) {
+      return exp.bulkAllocations.map((alloc: any) => ({
+        date: exp.date,
+        orderName: alloc.orderName,
+        customerName: alloc.customerName || '',
+        amount: alloc.amount,
+        plates: alloc.plates,
+        rate: exp.calculationDetails?.perPlateAmount,
+        description: exp.description,
+        isAllocation: true
+      }))
+    }
+    return [{
+      date: exp.date,
+      orderName: exp.orderName,
+      customerName: exp.customerName,
+      amount: exp.amount,
+      plates: exp.calculationDetails?.plates,
+      rate: exp.calculationDetails?.perPlateAmount,
+      description: exp.description,
+      isAllocation: false
+    }]
+  }).map(item => {
+    const eventInfo = [item.orderName, item.customerName].filter(Boolean).join(' - ')
+
+    return `
+                <tr>
+                  <td>${formatDate(item.date)}</td>
+                  <td>
+                    <div style="font-weight: bold;">${eventInfo || 'General Expense'}</div>
+                    ${item.description ? `<div style="font-size: 9px; color: #666; margin-top: 2px;">${item.description}</div>` : ''}
+                  </td>
+                  ${role === 'chef' ? `<td>${item.plates || '-'}</td>` : ''}
+                  ${role === 'chef' ? `<td>${item.rate ? formatCurrency(item.rate) : '-'}</td>` : ''}
+                  <td class="text-right">${formatCurrency(item.amount)}</td>
+                </tr>
+              `
+  }).join('')}
+          </tbody>
+        </table>
+      ` : `
+        ${expenses.map((exp, idx) => {
+    const calc = exp.calculationDetails || {}
+    return `
+            <div class="expense-item">
+              <div class="form-row">
+                <span class="form-label">Date:</span>
+                <span class="form-value">${formatDate(exp.date)}</span>
+                <span style="margin-left: 20px;" class="form-label">Amount:</span>
+                <span class="form-value">${formatCurrency(exp.amount)}</span>
+              </div>
+              
+              ${role === 'boys' && (calc.method === 'per-member-type' || (calc.dressedBoys !== undefined)) ? `
+                <div class="form-row" style="font-size: 10px; color: #666; margin-top: 2px;">
+                  <span>Dressed: ${calc.dressedBoys || 0} (@ ${formatCurrency(calc.dressedBoyAmount || 0)})</span>
+                  <span style="margin-left: 15px;">Non-Dressed: ${calc.nonDressedBoys || 0} (@ ${formatCurrency(calc.nonDressedBoyAmount || 0)})</span>
+                </div>
+              ` : ''}
+
+              ${exp.description ? `
+              <div class="form-row">
+                <span class="form-label">Description:</span>
+                <span class="form-value">${exp.description}</span>
+              </div>
+              ` : ''}
+              
+              ${exp.orderName ? `
+              <div class="form-row" style="font-size: 10px; color: #444;">
+                <span class="form-label">Event:</span>
+                <span class="form-value">${exp.orderName} ${exp.customerName ? `(${exp.customerName})` : ''}</span>
+              </div>
+              ` : ''}
+            </div>
+          `
+  }).join('')}
+      `}
     </div>
     ` : ''}
 
