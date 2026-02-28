@@ -529,21 +529,21 @@ export default function OrderSummaryPage() {
                                 {isPayment ? formatCurrency(payment.amount) : '-'}
                               </div>
                               {payment.id && (
-                                <div className="mt-2 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                <div className="mt-3 flex gap-2">
                                   <button
                                     onClick={() => handleEditEntry(payment)}
-                                    className="p-1.5 text-slate-400 hover:text-primary-600 hover:bg-primary-50 rounded-lg transition-all"
+                                    className="flex items-center gap-1.5 px-3 py-1.5 bg-white border border-slate-200 text-slate-600 hover:bg-primary-50 hover:text-primary-600 hover:border-primary-200 rounded-lg transition-all text-[10px] font-black tracking-widest shadow-sm"
                                     title="Edit Entry"
                                   >
-                                    <FaEdit size={12} />
+                                    <FaEdit size={10} /> EDIT
                                   </button>
                                   <button
                                     onClick={() => handleDeleteEntry(payment.id!)}
-                                    className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-all"
+                                    className="flex items-center gap-1.5 px-3 py-1.5 bg-white border border-slate-200 text-slate-600 hover:bg-rose-50 hover:text-rose-600 hover:border-rose-200 rounded-lg transition-all text-[10px] font-black tracking-widest shadow-sm"
                                     title="Delete Entry"
                                     disabled={isDeleting}
                                   >
-                                    <FaTrash size={12} />
+                                    <FaTrash size={10} /> DELETE
                                   </button>
                                 </div>
                               )}
