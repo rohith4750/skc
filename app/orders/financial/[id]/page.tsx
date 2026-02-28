@@ -367,7 +367,7 @@ export default function FinancialTrackingPage() {
             {/* 1. Core Adjustments */}
             <div className="min-w-0 space-y-6">
               {/* Meal Type Calculation */}
-              <div className="bg-white p-6 rounded-3xl shadow-sm border border-slate-200">
+              <div className="bg-white p-6 rounded-[5px] shadow-sm border border-slate-200">
                 <div className="flex flex-col gap-1 md:flex-row md:items-center md:justify-between mb-6">
                   <h2 className="text-sm font-black text-slate-900 uppercase tracking-widest flex items-center gap-2">
                     <div className="w-1.5 h-4 bg-emerald-500 rounded-full"></div>
@@ -377,13 +377,13 @@ export default function FinancialTrackingPage() {
                 </div>
                 <div className="space-y-8">
                   {groupedMealTypes.length === 0 ? (
-                    <div className="text-center py-8 border-2 border-dashed border-slate-100 rounded-2xl">
+                    <div className="text-center py-8 border-2 border-dashed border-slate-100 rounded-[5px]">
                       <p className="text-slate-400 text-xs font-bold">No meal types found for this order.</p>
                     </div>
                   ) : (
                     groupedMealTypes.map((group) => (
                       <div key={group.date || 'pending'} className="space-y-4">
-                        <div className="flex items-center justify-between px-2 bg-slate-50/50 py-2 rounded-xl">
+                        <div className="flex items-center justify-between px-2 bg-slate-50/50 py-2 rounded-[5px]">
                           <h3 className="text-xs font-black text-slate-500 uppercase tracking-widest flex items-center gap-2">
                             <FaCalendarAlt className="text-primary-400" />
                             {group.date ? formatDate(group.date) : 'Date Pending'}
@@ -391,7 +391,7 @@ export default function FinancialTrackingPage() {
                           <button
                             type="button"
                             onClick={() => handleDiscardByDate(group.date)}
-                            className="flex items-center gap-1.5 px-3 py-1.5 bg-rose-50 text-rose-600 rounded-lg text-[10px] font-black hover:bg-rose-100 transition-all uppercase tracking-tight"
+                            className="flex items-center gap-1.5 px-3 py-1.5 bg-rose-50 text-rose-600 rounded-[5px] text-[10px] font-black hover:bg-rose-100 transition-all uppercase tracking-tight"
                           >
                             <FaTrash className="text-[10px]" /> Discard Date
                           </button>
@@ -402,7 +402,7 @@ export default function FinancialTrackingPage() {
                             const calculatedAmount = getMealTypeAmount(mealType)
                             const newMembers = calculateMembers(mealType)
                             return (
-                              <div key={`${mealType.menuType}-${index}`} className="p-5 bg-white rounded-2xl border border-slate-200 shadow-sm">
+                              <div key={`${mealType.menuType}-${index}`} className="p-5 bg-white rounded-[5px] border border-slate-200 shadow-sm">
                                 <div className="flex flex-col gap-4 mb-4">
                                   <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
                                     <div className="flex-1">
@@ -414,7 +414,7 @@ export default function FinancialTrackingPage() {
                                           updated[index] = { ...mealType, menuType: e.target.value }
                                           setFormData({ ...formData, mealTypes: updated })
                                         }}
-                                        className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold text-slate-700 outline-none focus:ring-2 focus:ring-primary-500"
+                                        className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-[5px] text-sm font-bold text-slate-700 outline-none focus:ring-2 focus:ring-primary-500"
                                       >
                                         <option value="">Select Menu Type</option>
                                         {mealTypeOptions.map(option => (
@@ -434,16 +434,16 @@ export default function FinancialTrackingPage() {
                                           updated[index] = { ...mealType, date: e.target.value }
                                           setFormData({ ...formData, mealTypes: updated })
                                         }}
-                                        className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold text-slate-700 outline-none focus:ring-2 focus:ring-primary-500"
+                                        className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-[5px] text-sm font-bold text-slate-700 outline-none focus:ring-2 focus:ring-primary-500"
                                       />
                                     </div>
                                   </div>
-                                  <div className="bg-slate-50 px-4 py-2 rounded-xl border border-slate-100 flex items-center justify-between">
+                                  <div className="bg-slate-50 px-4 py-2 rounded-[5px] border border-slate-100 flex items-center justify-between">
                                     <div className="flex items-center gap-4">
                                       <button
                                         type="button"
                                         onClick={() => handleRemoveMealType(index)}
-                                        className="inline-flex items-center gap-2 text-rose-500 text-[10px] font-black hover:text-rose-600 uppercase tracking-widest bg-white px-3 py-1.5 rounded-lg border border-rose-100"
+                                        className="inline-flex items-center gap-2 text-rose-500 text-[10px] font-black hover:text-rose-600 uppercase tracking-widest bg-white px-3 py-1.5 rounded-[5px] border border-rose-100"
                                       >
                                         <FaTrash /> Remove Session
                                       </button>
@@ -467,7 +467,7 @@ export default function FinancialTrackingPage() {
                                         updated[index] = syncPlateBasedMembers(mealType, { numberOfMembers: e.target.value })
                                         setFormData({ ...formData, mealTypes: updated })
                                       }}
-                                      className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold text-slate-700 outline-none focus:ring-2 focus:ring-primary-500"
+                                      className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-[5px] text-sm font-bold text-slate-700 outline-none focus:ring-2 focus:ring-primary-500"
                                     />
                                   </div>
                                   <div>
@@ -481,7 +481,7 @@ export default function FinancialTrackingPage() {
                                         updated[index] = syncPlateBasedMembers(mealType, { addMembers: e.target.value })
                                         setFormData({ ...formData, mealTypes: updated })
                                       }}
-                                      className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold text-slate-700 outline-none focus:ring-2 focus:ring-primary-500"
+                                      className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-[5px] text-sm font-bold text-slate-700 outline-none focus:ring-2 focus:ring-primary-500"
                                       placeholder="0"
                                     />
                                     <p className="mt-1 text-[10px] font-bold text-slate-500">New total: {newMembers}</p>
@@ -495,7 +495,7 @@ export default function FinancialTrackingPage() {
                                         updated[index] = syncPlateBasedMembers(mealType, { pricingMethod: e.target.value })
                                         setFormData({ ...formData, mealTypes: updated })
                                       }}
-                                      className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold text-slate-700 outline-none focus:ring-2 focus:ring-primary-500"
+                                      className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-[5px] text-sm font-bold text-slate-700 outline-none focus:ring-2 focus:ring-primary-500"
                                     >
                                       <option value="manual">Manual</option>
                                       <option value="plate-based">Plate-based</option>
@@ -513,7 +513,7 @@ export default function FinancialTrackingPage() {
                                           min="0"
                                           value={mealType.numberOfPlates}
                                           readOnly={mealType.pricingMethod === 'plate-based'}
-                                          className={`w-full px-4 py-3 rounded-xl text-sm font-bold outline-none ${mealType.pricingMethod === 'plate-based'
+                                          className={`w-full px-4 py-3 rounded-[5px] text-sm font-bold outline-none ${mealType.pricingMethod === 'plate-based'
                                             ? 'bg-slate-100 border border-slate-100 text-slate-500'
                                             : 'bg-white border border-slate-200 text-slate-700 focus:ring-2 focus:ring-primary-500'
                                             }`}
@@ -530,7 +530,7 @@ export default function FinancialTrackingPage() {
                                             updated[index] = { ...mealType, platePrice: e.target.value }
                                             setFormData({ ...formData, mealTypes: updated })
                                           }}
-                                          className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold text-slate-700 outline-none focus:ring-2 focus:ring-primary-500"
+                                          className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-[5px] text-sm font-bold text-slate-700 outline-none focus:ring-2 focus:ring-primary-500"
                                         />
                                       </div>
                                     </>
@@ -546,7 +546,7 @@ export default function FinancialTrackingPage() {
                                           updated[index] = { ...mealType, manualAmount: e.target.value }
                                           setFormData({ ...formData, mealTypes: updated })
                                         }}
-                                        className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold text-slate-700 outline-none focus:ring-2 focus:ring-primary-500"
+                                        className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-[5px] text-sm font-bold text-slate-700 outline-none focus:ring-2 focus:ring-primary-500"
                                       />
                                     </div>
                                   )}
@@ -561,7 +561,7 @@ export default function FinancialTrackingPage() {
                 </div>
               </div>
               {/* Transport & Discount */}
-              <div className="bg-white p-6 rounded-3xl shadow-sm border border-slate-200">
+              <div className="bg-white p-6 rounded-[5px] shadow-sm border border-slate-200">
                 <h2 className="text-sm font-black text-slate-900 uppercase tracking-widest mb-6 flex items-center gap-2">
                   <div className="w-1.5 h-4 bg-primary-500 rounded-full"></div>
                   Core Adjustments
@@ -575,7 +575,7 @@ export default function FinancialTrackingPage() {
                         type="number"
                         value={formData.transportCost}
                         onChange={(e) => setFormData({ ...formData, transportCost: e.target.value })}
-                        className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-100 rounded-xl focus:ring-2 focus:ring-primary-500 outline-none font-bold text-slate-700"
+                        className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-100 rounded-[5px] focus:ring-2 focus:ring-primary-500 outline-none font-bold text-slate-700"
                         placeholder="0.00"
                       />
                     </div>
@@ -588,7 +588,7 @@ export default function FinancialTrackingPage() {
                         type="number"
                         value={formData.discount}
                         onChange={(e) => setFormData({ ...formData, discount: e.target.value })}
-                        className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-100 rounded-xl focus:ring-2 focus:ring-primary-500 outline-none font-bold text-slate-700"
+                        className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-100 rounded-[5px] focus:ring-2 focus:ring-primary-500 outline-none font-bold text-slate-700"
                         placeholder="0.00"
                       />
                     </div>
@@ -597,7 +597,7 @@ export default function FinancialTrackingPage() {
               </div>
 
               {/* Stalls Section */}
-              <div className="bg-white p-6 rounded-3xl shadow-sm border border-slate-200">
+              <div className="bg-white p-6 rounded-[5px] shadow-sm border border-slate-200">
                 <div className="flex justify-between items-center mb-6">
                   <h2 className="text-sm font-black text-slate-900 uppercase tracking-widest flex items-center gap-2">
                     <div className="w-1.5 h-4 bg-amber-500 rounded-full"></div>
@@ -606,7 +606,7 @@ export default function FinancialTrackingPage() {
                   <button
                     type="button"
                     onClick={handleAddStall}
-                    className="flex items-center px-4 py-2 bg-amber-50 text-amber-600 rounded-xl font-bold text-xs hover:bg-amber-100 transition-all"
+                    className="flex items-center px-4 py-2 bg-amber-50 text-amber-600 rounded-[5px] font-bold text-xs hover:bg-amber-100 transition-all"
                   >
                     <FaPlus className="mr-2" /> Add Stall
                   </button>
@@ -614,18 +614,18 @@ export default function FinancialTrackingPage() {
 
                 <div className="space-y-4">
                   {formData.stalls.length === 0 ? (
-                    <div className="text-center py-8 border-2 border-dashed border-slate-100 rounded-2xl">
+                    <div className="text-center py-8 border-2 border-dashed border-slate-100 rounded-[5px]">
                       <FaStore className="mx-auto text-3xl text-slate-100 mb-2" />
                       <p className="text-slate-400 text-xs font-bold">No stalls added to this order.</p>
                     </div>
                   ) : (
                     formData.stalls.map((stall, index) => (
-                      <div key={index} className="flex gap-4 items-start p-4 bg-slate-50 rounded-2xl border border-slate-100">
+                      <div key={index} className="flex gap-4 items-start p-4 bg-slate-50 rounded-[5px] border border-slate-100">
                         <div className="flex-1 space-y-3">
                           <select
                             value={stall.category}
                             onChange={(e) => handleUpdateStall(index, 'category', e.target.value)}
-                            className="w-full px-4 py-2 bg-white border border-slate-200 rounded-lg text-sm font-bold text-slate-700 outline-none focus:ring-2 focus:ring-primary-500"
+                            className="w-full px-4 py-2 bg-white border border-slate-200 rounded-[5px] text-sm font-bold text-slate-700 outline-none focus:ring-2 focus:ring-primary-500"
                           >
                             <option value="">Select Category</option>
                             <option value="Sweet Stall">Sweet Stall</option>
@@ -639,7 +639,7 @@ export default function FinancialTrackingPage() {
                             value={stall.description}
                             onChange={(e) => handleUpdateStall(index, 'description', e.target.value)}
                             placeholder="Description / Note"
-                            className="w-full px-4 py-2 bg-white border border-slate-200 rounded-lg text-sm font-medium text-slate-700 outline-none focus:ring-2 focus:ring-primary-500"
+                            className="w-full px-4 py-2 bg-white border border-slate-200 rounded-[5px] text-sm font-medium text-slate-700 outline-none focus:ring-2 focus:ring-primary-500"
                           />
                         </div>
                         <div className="w-32">
@@ -648,13 +648,13 @@ export default function FinancialTrackingPage() {
                             value={stall.cost}
                             onChange={(e) => handleUpdateStall(index, 'cost', e.target.value)}
                             placeholder="Cost"
-                            className="w-full px-4 py-2 bg-white border border-slate-200 rounded-lg text-sm font-black text-slate-900 outline-none focus:ring-2 focus:ring-primary-500"
+                            className="w-full px-4 py-2 bg-white border border-slate-200 rounded-[5px] text-sm font-black text-slate-900 outline-none focus:ring-2 focus:ring-primary-500"
                           />
                         </div>
                         <button
                           type="button"
                           onClick={() => handleRemoveStall(index)}
-                          className="p-3 text-rose-500 hover:bg-rose-50 rounded-lg transition-colors"
+                          className="p-3 text-rose-500 hover:bg-rose-50 rounded-[5px] transition-colors"
                         >
                           <FaTrash />
                         </button>
@@ -665,7 +665,7 @@ export default function FinancialTrackingPage() {
               </div>
 
               {/* New Payment Record */}
-              <div className="bg-white p-6 rounded-3xl shadow-sm border border-slate-200">
+              <div className="bg-white p-6 rounded-[5px] shadow-sm border border-slate-200">
                 <h2 className="text-sm font-black text-slate-900 uppercase tracking-widest mb-6 flex items-center gap-2">
                   <div className="w-1.5 h-4 bg-emerald-500 rounded-full"></div>
                   Record New Payment
@@ -679,7 +679,7 @@ export default function FinancialTrackingPage() {
                       max={calculatedTotals.total}
                       value={formData.baseAdvancePaid}
                       onChange={(e) => setFormData({ ...formData, baseAdvancePaid: e.target.value })}
-                      className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none font-black text-slate-900"
+                      className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-[5px] focus:ring-2 focus:ring-emerald-500 outline-none font-black text-slate-900"
                       placeholder="0.00"
                     />
                   </div>
@@ -691,7 +691,7 @@ export default function FinancialTrackingPage() {
                       max={remainingAllowed}
                       value={formData.additionalPayment}
                       onChange={(e) => setFormData({ ...formData, additionalPayment: e.target.value })}
-                      className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none font-black text-slate-900"
+                      className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-[5px] focus:ring-2 focus:ring-emerald-500 outline-none font-black text-slate-900"
                       placeholder="0.00"
                     />
                     <p className="mt-2 text-[10px] font-black text-slate-500 uppercase tracking-widest">
@@ -703,7 +703,7 @@ export default function FinancialTrackingPage() {
                     <select
                       value={formData.paymentMethod}
                       onChange={(e) => setFormData({ ...formData, paymentMethod: e.target.value })}
-                      className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none font-bold text-slate-900"
+                      className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-[5px] focus:ring-2 focus:ring-emerald-500 outline-none font-bold text-slate-900"
                     >
                       <option value="cash">Cash</option>
                       <option value="upi">UPI / Online</option>
@@ -718,7 +718,7 @@ export default function FinancialTrackingPage() {
                       type="date"
                       value={formData.paymentDate}
                       onChange={(e) => setFormData({ ...formData, paymentDate: e.target.value })}
-                      className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none font-bold text-slate-900"
+                      className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-[5px] focus:ring-2 focus:ring-emerald-500 outline-none font-bold text-slate-900"
                     />
                   </div>
                 </div>
@@ -728,7 +728,7 @@ export default function FinancialTrackingPage() {
                     type="text"
                     value={formData.paymentNotes}
                     onChange={(e) => setFormData({ ...formData, paymentNotes: e.target.value })}
-                    className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none font-medium text-slate-700"
+                    className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-[5px] focus:ring-2 focus:ring-emerald-500 outline-none font-medium text-slate-700"
                     placeholder="Transaction ID, specific notes, etc."
                   />
                 </div>
@@ -737,7 +737,7 @@ export default function FinancialTrackingPage() {
 
             {/* 2. Sticky Summary & Actions */}
             <div className="min-w-0 space-y-6">
-              <div className="bg-white p-6 rounded-3xl shadow-md border border-slate-200 xl:sticky xl:top-8">
+              <div className="bg-white p-6 rounded-[5px] shadow-md border border-slate-200 xl:sticky xl:top-8">
                 <h2 className="text-sm font-black text-slate-900 uppercase tracking-widest mb-6 flex items-center gap-2">
                   <div className="w-1.5 h-4 bg-primary-500 rounded-full"></div>
                   Final Impact
@@ -767,7 +767,7 @@ export default function FinancialTrackingPage() {
                 <FormError message={formError} className="mb-4" />
                 <button
                   type="submit"
-                  className="w-full py-4 bg-primary-600 text-white rounded-2xl font-black hover:bg-primary-700 transition-all shadow-xl shadow-primary-200 flex items-center justify-center gap-2 active:scale-[0.98]"
+                  className="w-full py-4 bg-primary-600 text-white rounded-[5px] font-black hover:bg-primary-700 transition-all shadow-xl shadow-primary-200 flex items-center justify-center gap-2 active:scale-[0.98]"
                 >
                   <FaSave /> Save Adjustments
                 </button>
@@ -778,7 +778,7 @@ export default function FinancialTrackingPage() {
               </div>
 
               {/* Audit View Link */}
-              <div className="p-6 bg-white rounded-3xl border border-slate-200 text-center">
+              <div className="p-6 bg-white rounded-[5px] border border-slate-200 text-center">
                 <FaHistory className="mx-auto text-2xl text-slate-200 mb-3" />
                 <p className="text-xs font-bold text-slate-600 leading-relaxed px-4">
                   Menu item changes should be made in the <Link href={`/orders?edit=${orderId}`} className="text-primary-600 underline">Order Editor</Link>.

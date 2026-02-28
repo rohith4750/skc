@@ -507,7 +507,7 @@ export default function BillsPage() {
 
         {/* Stats Grid */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-6 flex flex-col justify-between hover:shadow-md transition-all">
+          <div className="bg-white rounded-xl shadow-sm border border-slate-100 p-6 flex flex-col justify-between hover:shadow-md transition-all">
             <div>
               <div className="flex items-center justify-between mb-4">
                 <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider">Total Receivables</h3>
@@ -520,7 +520,7 @@ export default function BillsPage() {
             </div>
           </div>
 
-          <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-6 flex flex-col justify-between hover:shadow-md transition-all">
+          <div className="bg-white rounded-xl shadow-sm border border-slate-100 p-6 flex flex-col justify-between hover:shadow-md transition-all">
             <div>
               <div className="flex items-center justify-between mb-4">
                 <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider">Collected</h3>
@@ -533,7 +533,7 @@ export default function BillsPage() {
             </div>
           </div>
 
-          <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-6 flex flex-col justify-between hover:shadow-md transition-all">
+          <div className="bg-white rounded-xl shadow-sm border border-slate-100 p-6 flex flex-col justify-between hover:shadow-md transition-all">
             <div>
               <div className="flex items-center justify-between mb-4">
                 <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider">Outstanding</h3>
@@ -620,7 +620,7 @@ export default function BillsPage() {
               {/* Drawer Content */}
               <div className="flex-1 overflow-y-auto p-6 space-y-8">
                 {/* Customer Info */}
-                <div className="bg-indigo-50 rounded-2xl p-5 border border-indigo-100">
+                <div className="bg-indigo-50 rounded-xl p-5 border border-indigo-100">
                   <div className="flex items-start justify-between">
                     <div className="flex items-center gap-4">
                       <div className="w-12 h-12 bg-white rounded-xl shadow-sm flex items-center justify-center text-indigo-600 font-bold text-xl">
@@ -705,7 +705,7 @@ export default function BillsPage() {
                   <div className="flex items-center justify-between mb-4">
                     <h3 className="text-sm font-bold text-slate-400 uppercase tracking-wider">Order Details</h3>
                   </div>
-                  <div className="p-4 border border-slate-100 rounded-2xl bg-white hover:border-indigo-200 transition-all shadow-[0_2px_10px_-5px_rgba(0,0,0,0.1)]">
+                  <div className="p-4 border border-slate-100 rounded-xl bg-white hover:border-indigo-200 transition-all shadow-[0_2px_10px_-5px_rgba(0,0,0,0.1)]">
                     <div className="flex justify-between items-start mb-2">
                       <div>
                         <p className="font-bold text-slate-800">{selectedBill.order.eventName || 'Unnamed Event'}</p>
@@ -734,7 +734,7 @@ export default function BillsPage() {
                 {/* Bill Note (PDF/Image) */}
                 <div>
                   <h3 className="text-sm font-bold text-slate-400 uppercase tracking-wider mb-3">Bill Note (PDF / Image)</h3>
-                  <div className="p-4 border border-slate-200 rounded-2xl bg-slate-50">
+                  <div className="p-4 border border-slate-200 rounded-xl bg-slate-50">
                     {!isEditingBillNote ? (
                       <>
                         <div className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-sm min-h-[72px] whitespace-pre-wrap text-slate-700">
@@ -784,29 +784,29 @@ export default function BillsPage() {
                 {/* Payment History */}
                 {selectedBill.paymentHistory &&
                   (selectedBill.paymentHistory as any[]).filter((p: any) => p?.source !== 'bill_note').length > 0 && (
-                  <div>
-                    <h3 className="text-sm font-bold text-slate-400 uppercase tracking-wider mb-4">Payment History</h3>
-                    <div className="space-y-3">
-                      {(selectedBill.paymentHistory as any[])
-                        .filter((p: any) => p?.source !== 'bill_note')
-                        .slice()
-                        .reverse()
-                        .map((p, idx) => (
-                        <div key={idx} className="flex items-center justify-between p-3 bg-slate-50 rounded-xl border-l-4 border-emerald-500">
-                          <div>
-                            <p className="text-sm font-bold text-slate-800">+{formatCurrency(p.amount)}</p>
-                            <p className="text-[10px] text-slate-500 uppercase tracking-tight">{p.method} · {formatDateTime(p.date)}</p>
-                          </div>
-                          {p.notes && (
-                            <div className="max-w-[150px] truncate text-xs text-slate-400 italic">
-                              {p.notes}
+                    <div>
+                      <h3 className="text-sm font-bold text-slate-400 uppercase tracking-wider mb-4">Payment History</h3>
+                      <div className="space-y-3">
+                        {(selectedBill.paymentHistory as any[])
+                          .filter((p: any) => p?.source !== 'bill_note')
+                          .slice()
+                          .reverse()
+                          .map((p, idx) => (
+                            <div key={idx} className="flex items-center justify-between p-3 bg-slate-50 rounded-xl border-l-4 border-emerald-500">
+                              <div>
+                                <p className="text-sm font-bold text-slate-800">+{formatCurrency(p.amount)}</p>
+                                <p className="text-[10px] text-slate-500 uppercase tracking-tight">{p.method} · {formatDateTime(p.date)}</p>
+                              </div>
+                              {p.notes && (
+                                <div className="max-w-[150px] truncate text-xs text-slate-400 italic">
+                                  {p.notes}
+                                </div>
+                              )}
                             </div>
-                          )}
-                        </div>
-                      ))}
+                          ))}
+                      </div>
                     </div>
-                  </div>
-                )}
+                  )}
               </div>
 
               {/* Footer Actions */}

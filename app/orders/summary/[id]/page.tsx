@@ -124,7 +124,7 @@ export default function OrderSummaryPage() {
   if (loading) {
     return (
       <div className="p-8">
-        <div className="bg-white rounded-lg shadow p-6">Loading order summary...</div>
+        <div className="bg-white rounded-[5px] shadow p-6">Loading order summary...</div>
       </div>
     )
   }
@@ -132,7 +132,7 @@ export default function OrderSummaryPage() {
   if (!order) {
     return (
       <div className="p-8">
-        <div className="bg-white rounded-lg shadow p-6">Order not found.</div>
+        <div className="bg-white rounded-[5px] shadow p-6">Order not found.</div>
       </div>
     )
   }
@@ -220,14 +220,14 @@ export default function OrderSummaryPage() {
           </Link>
           <Link
             href={`/orders/financial/${order.id}`}
-            className="flex items-center px-6 py-2.5 bg-primary-600 text-white rounded-xl font-bold hover:bg-primary-700 transition-all shadow-lg shadow-primary-200 active:scale-95"
+            className="flex items-center px-6 py-2.5 bg-primary-600 text-white rounded-[5px] font-bold hover:bg-primary-700 transition-all shadow-lg shadow-primary-200 active:scale-95"
           >
             <FaMoneyBillWave className="mr-2" /> Financial Summary
           </Link>
         </div>
 
         {/* Hero Banner Section */}
-        <div className="bg-white rounded-[2.5rem] p-8 shadow-xl shadow-slate-200/50 border border-slate-100 mb-8 overflow-hidden relative">
+        <div className="bg-white rounded-[5px] p-8 shadow-xl shadow-slate-200/50 border border-slate-100 mb-8 overflow-hidden relative">
           <div className="absolute top-0 right-0 w-64 h-64 bg-primary-50/50 rounded-full -mr-32 -mt-32 blur-3xl -z-0"></div>
 
           <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
@@ -275,27 +275,27 @@ export default function OrderSummaryPage() {
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8">
           {/* Customer & Logistics Quick Info */}
-          <div className="bg-white rounded-[2rem] p-6 shadow-md shadow-slate-200/40 border border-slate-50">
+          <div className="bg-white rounded-[5px] p-6 shadow-md shadow-slate-200/40 border border-slate-50">
             <h2 className="text-xs font-black text-slate-400 uppercase tracking-widest mb-6 flex items-center gap-2">
               <div className="w-1.5 h-4 bg-primary-500 rounded-full"></div>
               Logistics & Assignment
             </h2>
             <div className="space-y-5">
               <div className="grid grid-cols-2 gap-4">
-                <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100">
+                <div className="p-4 bg-slate-50 rounded-[5px] border border-slate-100">
                   <span className="text-[10px] font-bold text-slate-400 uppercase block mb-1">Supervisor</span>
                   <span className="text-sm font-black text-slate-900">{(order as any).supervisor?.name || 'Unassigned'}</span>
                 </div>
-                <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100">
+                <div className="p-4 bg-slate-50 rounded-[5px] border border-slate-100">
                   <span className="text-[10px] font-bold text-slate-400 uppercase block mb-1">Transport</span>
                   <span className="text-sm font-black text-slate-900">{formatCurrency(order.transportCost || 0)}</span>
                 </div>
-                <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100">
+                <div className="p-4 bg-slate-50 rounded-[5px] border border-slate-100">
                   <span className="text-[10px] font-bold text-slate-400 uppercase block mb-1">Water Bottles</span>
                   <span className="text-sm font-black text-slate-900">{formatCurrency(order.waterBottlesCost || 0)}</span>
                 </div>
               </div>
-              <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100">
+              <div className="p-4 bg-slate-50 rounded-[5px] border border-slate-100">
                 <span className="text-[10px] font-bold text-slate-400 uppercase block mb-1">Contact Details</span>
                 <span className="text-sm font-black text-slate-900 block">{order.customer?.phone}</span>
                 <span className="text-xs font-medium text-slate-500 block mt-0.5">{order.customer?.address}</span>
@@ -304,7 +304,7 @@ export default function OrderSummaryPage() {
           </div>
 
           {/* Financial Progress Card */}
-          <div className="bg-slate-900 rounded-[2rem] p-6 shadow-xl shadow-slate-900/20 text-white relative overflow-hidden">
+          <div className="bg-slate-900 rounded-[5px] p-6 shadow-xl shadow-slate-900/20 text-white relative overflow-hidden">
             <div className="absolute top-0 right-0 -mr-8 -mt-8 opacity-10">
               <FaMoneyBillWave className="text-[10rem]" />
             </div>
@@ -366,7 +366,7 @@ export default function OrderSummaryPage() {
                 </div>
                 <div className="grid grid-cols-1 gap-4 pl-4 border-l-2 border-slate-100">
                   {byDate[date].map(({ key: mealType, data, detail, items }) => (
-                    <div key={mealType} className="bg-white rounded-[2rem] border border-slate-100 shadow-sm hover:shadow-xl hover:border-primary-100 transition-all group overflow-hidden">
+                    <div key={mealType} className="bg-white rounded-[5px] border border-slate-100 shadow-sm hover:shadow-xl hover:border-primary-100 transition-all group overflow-hidden">
                       <div className="flex flex-col md:flex-row h-full">
                         {/* Left: Meal Category Header */}
                         <div className={`w-full md:w-64 p-6 flex flex-col justify-center items-center text-center ${(detail?.menuType?.toLowerCase() || mealType.toLowerCase()) === 'breakfast' ? 'bg-orange-50/50' :
@@ -374,7 +374,7 @@ export default function OrderSummaryPage() {
                             (detail?.menuType?.toLowerCase() || mealType.toLowerCase()) === 'dinner' ? 'bg-indigo-50/50' :
                               'bg-slate-50/50'
                           }`}>
-                          <div className={`w-12 h-12 rounded-2xl flex items-center justify-center shadow-sm mb-3 ${(detail?.menuType?.toLowerCase() || mealType.toLowerCase()) === 'breakfast' ? 'bg-orange-100 text-orange-600' :
+                          <div className={`w-12 h-12 rounded-[5px] flex items-center justify-center shadow-sm mb-3 ${(detail?.menuType?.toLowerCase() || mealType.toLowerCase()) === 'breakfast' ? 'bg-orange-100 text-orange-600' :
                             (detail?.menuType?.toLowerCase() || mealType.toLowerCase()) === 'lunch' ? 'bg-emerald-100 text-emerald-600' :
                               (detail?.menuType?.toLowerCase() || mealType.toLowerCase()) === 'dinner' ? 'bg-indigo-100 text-indigo-600' :
                                 'bg-slate-100 text-slate-600'
@@ -396,7 +396,7 @@ export default function OrderSummaryPage() {
                                 <div className="flex items-center gap-2">
                                   <span className="text-lg font-black text-slate-900">{detail?.numberOfMembers || 'N/A'}</span>
                                   {detail?.originalMembers !== undefined && detail?.numberOfMembers !== undefined && detail.originalMembers !== detail.numberOfMembers && (
-                                    <span className={`px-2 py-0.5 rounded-lg text-[10px] font-black ${(detail.numberOfMembers ?? 0) > (detail.originalMembers ?? 0) ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-700'
+                                    <span className={`px-2 py-0.5 rounded-[5px] text-[10px] font-black ${(detail.numberOfMembers ?? 0) > (detail.originalMembers ?? 0) ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-700'
                                       }`}>
                                       {(detail.numberOfMembers ?? 0) > (detail.originalMembers ?? 0) ? '↑' : '↓'}
                                       {Math.abs((detail.numberOfMembers ?? 0) - (detail.originalMembers ?? 0))}
@@ -409,7 +409,7 @@ export default function OrderSummaryPage() {
                                 <span className="text-lg font-black text-slate-900 capitalize">{detail?.pricingMethod || 'Manual'}</span>
                               </div>
                             </div>
-                            <div className="bg-slate-50 px-6 py-3 rounded-2xl border border-slate-100 text-right">
+                            <div className="bg-slate-50 px-6 py-3 rounded-[5px] border border-slate-100 text-right">
                               <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-0.5">Amount</span>
                               <div className="flex flex-col items-end">
                                 <span className="text-xl font-black text-primary-600">
@@ -439,10 +439,10 @@ export default function OrderSummaryPage() {
                             <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-3">Selected Menu Items</span>
                             <div className="flex flex-wrap gap-2">
                               {items.length > 0 ? items.map((item) => (
-                                <span key={item.id} className="px-3 py-1.5 bg-white border border-slate-200 text-slate-700 rounded-xl text-xs font-bold shadow-sm hover:border-primary-300 transition-colors flex items-center gap-1">
+                                <span key={item.id} className="px-3 py-1.5 bg-white border border-slate-200 text-slate-700 rounded-[5px] text-xs font-bold shadow-sm hover:border-primary-300 transition-colors flex items-center gap-1">
                                   {item.menuItem?.name}
                                   {item.customization && (
-                                    <span className="text-[10px] text-primary-500 font-medium bg-primary-50 px-1.5 py-0.5 rounded-md">
+                                    <span className="text-[10px] text-primary-500 font-medium bg-primary-50 px-1.5 py-0.5 rounded-[5px]">
                                       {item.customization}
                                     </span>
                                   )}
@@ -461,10 +461,10 @@ export default function OrderSummaryPage() {
         </div>
 
         {/* Professional Transaction Ledger */}
-        <div className="bg-white rounded-[2.5rem] shadow-xl shadow-slate-200/50 border border-slate-100 overflow-hidden mb-12">
+        <div className="bg-white rounded-[5px] shadow-xl shadow-slate-200/50 border border-slate-100 overflow-hidden mb-12">
           <div className="p-8 border-b border-slate-50 flex items-center justify-between bg-slate-50/30">
             <div className="flex items-center gap-4">
-              <div className="w-12 h-12 rounded-2xl bg-white shadow-sm border border-slate-100 flex items-center justify-center text-primary-600">
+              <div className="w-12 h-12 rounded-[5px] bg-white shadow-sm border border-slate-100 flex items-center justify-center text-primary-600">
                 <FaHistory className="text-xl" />
               </div>
               <div>
@@ -508,7 +508,7 @@ export default function OrderSummaryPage() {
                         <tr key={index} className="hover:bg-slate-50/80 transition-colors group">
                           <td className="px-8 py-5 text-xs font-bold text-slate-500 whitespace-nowrap">{formatDateTime(payment.date)}</td>
                           <td className="px-8 py-5 whitespace-nowrap">
-                            <span className={`px-2.5 py-1 rounded-lg text-[10px] font-black uppercase tracking-tighter ${isBooking ? 'bg-blue-100 text-blue-700' :
+                            <span className={`px-2.5 py-1 rounded-[5px] text-[10px] font-black uppercase tracking-tighter ${isBooking ? 'bg-blue-100 text-blue-700' :
                               isRevision ? 'bg-amber-100 text-amber-700' :
                                 'bg-emerald-100 text-emerald-700'
                               }`}>
@@ -541,14 +541,14 @@ export default function OrderSummaryPage() {
                                 <div className="mt-3 flex gap-2">
                                   <button
                                     onClick={() => handleEditEntry(payment)}
-                                    className="flex items-center gap-1.5 px-3 py-1.5 bg-white border border-slate-200 text-slate-600 hover:bg-primary-50 hover:text-primary-600 hover:border-primary-200 rounded-lg transition-all text-[10px] font-black tracking-widest shadow-sm"
+                                    className="flex items-center gap-1.5 px-3 py-1.5 bg-white border border-slate-200 text-slate-600 hover:bg-primary-50 hover:text-primary-600 hover:border-primary-200 rounded-[5px] transition-all text-[10px] font-black tracking-widest shadow-sm"
                                     title="Edit Entry"
                                   >
                                     <FaEdit size={10} /> EDIT
                                   </button>
                                   <button
                                     onClick={() => confirmDeleteEntry(payment.id!)}
-                                    className="flex items-center gap-1.5 px-3 py-1.5 bg-white border border-slate-200 text-slate-600 hover:bg-rose-50 hover:text-rose-600 hover:border-rose-200 rounded-lg transition-all text-[10px] font-black tracking-widest shadow-sm"
+                                    className="flex items-center gap-1.5 px-3 py-1.5 bg-white border border-slate-200 text-slate-600 hover:bg-rose-50 hover:text-rose-600 hover:border-rose-200 rounded-[5px] transition-all text-[10px] font-black tracking-widest shadow-sm"
                                     title="Delete Entry"
                                     disabled={isDeleting}
                                   >
@@ -570,7 +570,7 @@ export default function OrderSummaryPage() {
         {/* Edit Modal */}
         {isEditModalOpen && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
-            <div className="bg-white rounded-[2rem] w-full max-w-md shadow-2xl overflow-hidden border border-slate-100">
+            <div className="bg-white rounded-[5px] w-full max-w-md shadow-2xl overflow-hidden border border-slate-100">
               <div className="p-6 border-b border-slate-50 flex items-center justify-between">
                 <h3 className="text-xl font-black text-slate-900">Edit Ledger Entry</h3>
                 <button
@@ -587,7 +587,7 @@ export default function OrderSummaryPage() {
                     type="date"
                     value={editFormData.date}
                     onChange={(e) => setEditFormData({ ...editFormData, date: e.target.value })}
-                    className="w-full px-4 py-3 bg-slate-50 border border-slate-100 rounded-2xl focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 transition-all font-bold text-slate-700"
+                    className="w-full px-4 py-3 bg-slate-50 border border-slate-100 rounded-[5px] focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 transition-all font-bold text-slate-700"
                   />
                 </div>
                 <div>
@@ -596,7 +596,7 @@ export default function OrderSummaryPage() {
                     type="number"
                     value={editFormData.amount}
                     onChange={(e) => setEditFormData({ ...editFormData, amount: parseFloat(e.target.value) || 0 })}
-                    className="w-full px-4 py-3 bg-slate-50 border border-slate-100 rounded-2xl focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 transition-all font-bold text-slate-700"
+                    className="w-full px-4 py-3 bg-slate-50 border border-slate-100 rounded-[5px] focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 transition-all font-bold text-slate-700"
                   />
                 </div>
                 <div>
@@ -604,7 +604,7 @@ export default function OrderSummaryPage() {
                   <select
                     value={editFormData.method}
                     onChange={(e) => setEditFormData({ ...editFormData, method: e.target.value })}
-                    className="w-full px-4 py-3 bg-slate-50 border border-slate-100 rounded-2xl focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 transition-all font-bold text-slate-700 appearance-none"
+                    className="w-full px-4 py-3 bg-slate-50 border border-slate-100 rounded-[5px] focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 transition-all font-bold text-slate-700 appearance-none"
                   >
                     <option value="cash">Cash</option>
                     <option value="upi">UPI</option>
@@ -619,7 +619,7 @@ export default function OrderSummaryPage() {
                     value={editFormData.notes}
                     onChange={(e) => setEditFormData({ ...editFormData, notes: e.target.value })}
                     rows={3}
-                    className="w-full px-4 py-3 bg-slate-50 border border-slate-100 rounded-2xl focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 transition-all font-bold text-slate-700 resize-none"
+                    className="w-full px-4 py-3 bg-slate-50 border border-slate-100 rounded-[5px] focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 transition-all font-bold text-slate-700 resize-none"
                     placeholder="Enter details about this adjustment..."
                   />
                 </div>
@@ -627,13 +627,13 @@ export default function OrderSummaryPage() {
               <div className="p-6 bg-slate-50/50 flex gap-3">
                 <button
                   onClick={() => setIsEditModalOpen(false)}
-                  className="flex-1 px-6 py-3.5 bg-white border border-slate-200 text-slate-600 rounded-2xl font-bold hover:bg-slate-100 transition-all active:scale-95"
+                  className="flex-1 px-6 py-3.5 bg-white border border-slate-200 text-slate-600 rounded-[5px] font-bold hover:bg-slate-100 transition-all active:scale-95"
                 >
                   Cancel
                 </button>
                 <button
                   onClick={handleUpdateEntry}
-                  className="flex-1 px-6 py-3.5 bg-primary-600 text-white rounded-2xl font-bold hover:bg-primary-700 shadow-lg shadow-primary-200 transition-all active:scale-95 flex items-center justify-center gap-2"
+                  className="flex-1 px-6 py-3.5 bg-primary-600 text-white rounded-[5px] font-bold hover:bg-primary-700 shadow-lg shadow-primary-200 transition-all active:scale-95 flex items-center justify-center gap-2"
                 >
                   <FaSave /> Save Changes
                 </button>
@@ -645,7 +645,7 @@ export default function OrderSummaryPage() {
         {/* Delete Confirmation Modal */}
         {isDeleteModalOpen && (
           <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
-            <div className="bg-white rounded-[2.5rem] w-full max-w-sm shadow-2xl overflow-hidden border border-slate-100 p-8 text-center">
+            <div className="bg-white rounded-[5px] w-full max-w-sm shadow-2xl overflow-hidden border border-slate-100 p-8 text-center">
               <div className="w-20 h-20 bg-rose-50 rounded-full flex items-center justify-center mx-auto mb-6 text-rose-500 shadow-inner">
                 <FaExclamationCircle size={40} />
               </div>
@@ -657,7 +657,7 @@ export default function OrderSummaryPage() {
                 <button
                   onClick={handleDeleteEntry}
                   disabled={isDeleting}
-                  className="w-full py-4 bg-rose-600 text-white rounded-2xl font-black hover:bg-rose-700 shadow-xl shadow-rose-200 transition-all active:scale-95 disabled:bg-rose-400 flex items-center justify-center gap-2"
+                  className="w-full py-4 bg-rose-600 text-white rounded-[5px] font-black hover:bg-rose-700 shadow-xl shadow-rose-200 transition-all active:scale-95 disabled:bg-rose-400 flex items-center justify-center gap-2"
                 >
                   {isDeleting ? 'Deleting...' : <><FaTrash /> Confirm Delete</>}
                 </button>
@@ -667,7 +667,7 @@ export default function OrderSummaryPage() {
                     setEntryIdToDelete(null)
                   }}
                   disabled={isDeleting}
-                  className="w-full py-4 bg-white border border-slate-200 text-slate-500 rounded-2xl font-black hover:bg-slate-50 transition-all active:scale-95"
+                  className="w-full py-4 bg-white border border-slate-200 text-slate-500 rounded-[5px] font-black hover:bg-slate-50 transition-all active:scale-95"
                 >
                   Cancel
                 </button>
