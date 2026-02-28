@@ -50,8 +50,9 @@ export default function CreateExpensePage() {
   const [customCategoryInputType, setCustomCategoryInputType] = useState<'select' | 'input'>('select')
 
   // Bulk allocation state
-  const [isBulkExpense, setIsBulkExpense] = useState(false)
+  const [isEventDropdownOpen, setIsEventDropdownOpen] = useState(false)
   const [selectedOrderIds, setSelectedOrderIds] = useState<string[]>([])
+  const isBulkExpense = selectedOrderIds.length > 1
   const [allocationMethod, setAllocationMethod] = useState<'equal' | 'manual' | 'by-plates' | 'by-percentage'>('equal')
   const [bulkAllocations, setBulkAllocations] = useState<BulkAllocation[]>([])
   const [showAllocationDetails, setShowAllocationDetails] = useState(true)
@@ -63,7 +64,6 @@ export default function CreateExpensePage() {
   const [orderSearch, setOrderSearch] = useState('')
 
   const [formData, setFormData] = useState({
-    orderId: '',
     category: 'supervisor',
     customCategoryName: '',
     calculationMethod: 'total' as 'plate-wise' | 'total',
@@ -137,7 +137,6 @@ export default function CreateExpensePage() {
           const details = expenseData.calculationDetails as any || {}
           const isCustomCategory = !EXPENSE_CATEGORIES.includes(expenseData.category)
           setFormData({
-            orderId: expenseData.orderId || '',
             category: isCustomCategory ? 'other' : expenseData.category,
             customCategoryName: isCustomCategory ? expenseData.category : '',
             calculationMethod: details.method || 'total',
@@ -166,11 +165,12 @@ export default function CreateExpensePage() {
           }
 
           if (expenseData.isBulkExpense && expenseData.bulkAllocations) {
-            setIsBulkExpense(true)
             setAllocationMethod(expenseData.allocationMethod || 'manual')
             const allocations = expenseData.bulkAllocations as BulkAllocation[]
             setBulkAllocations(allocations)
             setSelectedOrderIds(allocations.map((a: BulkAllocation) => a.orderId))
+          } else if (expenseData.orderId) {
+            setSelectedOrderIds([expenseData.orderId])
           }
         }
       }
@@ -201,8 +201,8 @@ export default function CreateExpensePage() {
 
   // Get available meal types for the selected order
   const availableMealTypes = useMemo(() => {
-    if (!formData.orderId) return []
-    const order = orders.find(o => o.id === formData.orderId)
+    if (selectedOrderIds.length !== 1) return []
+    const order = orders.find(o => o.id === selectedOrderIds[0])
     if (!order || !order.mealTypeAmounts) return []
 
     return Object.entries(order.mealTypeAmounts).map(([id, data]) => {
@@ -212,7 +212,7 @@ export default function CreateExpensePage() {
       }
       return { id, label }
     })
-  }, [formData.orderId, orders])
+  }, [selectedOrderIds, orders])
 
   // Calculate total amount based on category and calculation method
   const calculatedAmount = useMemo(() => {
@@ -435,8 +435,8 @@ export default function CreateExpensePage() {
       } else {
         // Find default plates for this meal type
         let defaultPlates = ''
-        if (prev.orderId) {
-          const selectedOrder = orders.find(o => o.id === prev.orderId)
+        if (selectedOrderIds.length === 1) {
+          const selectedOrder = orders.find(o => o.id === selectedOrderIds[0])
           if (selectedOrder && selectedOrder.mealTypeAmounts) {
             const mealData = (selectedOrder.mealTypeAmounts as any)[mealId]
             if (mealData && typeof mealData === 'object') {
@@ -455,10 +455,10 @@ export default function CreateExpensePage() {
 
   // Autofill plates from order when category is 'chef'
   useEffect(() => {
-    // console.log('Autofill check:', { category: formData.category, orderId: formData.orderId, mealType: formData.mealType, isBulkExpense })
+    // console.log('Autofill check:', { category: formData.category, orderId: selectedOrderIds[0], mealType: formData.mealType, isBulkExpense })
 
-    if (formData.category === 'chef' && formData.orderId && !isBulkExpense) {
-      const selectedOrder = orders.find(o => o.id === formData.orderId)
+    if (formData.category === 'chef' && selectedOrderIds.length === 1 && !isBulkExpense) {
+      const selectedOrder = orders.find(o => o.id === selectedOrderIds[0])
       // console.log('Selected Order:', selectedOrder)
 
       if (selectedOrder) {
@@ -490,7 +490,7 @@ export default function CreateExpensePage() {
         }
       }
     }
-  }, [formData.orderId, formData.category, formData.mealType, isBulkExpense, orders])
+  }, [selectedOrderIds, formData.category, formData.mealType, isBulkExpense, orders])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -601,7 +601,7 @@ export default function CreateExpensePage() {
         : formData.category
 
       const expenseData: any = {
-        orderId: isBulkExpense ? null : (formData.orderId || null),
+        orderId: isBulkExpense ? null : (selectedOrderIds[0] || null),
         category: finalCategory,
         amount: calculatedAmount,
         paidAmount: paidAmount,
@@ -670,36 +670,6 @@ export default function CreateExpensePage() {
         {/* Form */}
         <div className="bg-white rounded-xl shadow-md border border-gray-200 p-6">
           <form onSubmit={handleSubmit} className="space-y-6">
-            {/* Bulk Expense Toggle */}
-            <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg p-4 border border-blue-200">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <FaLayerGroup className={`text-xl ${isBulkExpense ? 'text-blue-600' : 'text-gray-400'}`} />
-                  <div>
-                    <h3 className="font-semibold text-gray-900">Bulk Expense (Multiple Events)</h3>
-                    <p className="text-sm text-gray-600">
-                      Split one payment across multiple events (e.g., weekly chef payment)
-                    </p>
-                  </div>
-                </div>
-                <label className="relative inline-flex items-center cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={isBulkExpense}
-                    onChange={(e) => {
-                      setIsBulkExpense(e.target.checked)
-                      if (!e.target.checked) {
-                        setSelectedOrderIds([])
-                        setBulkAllocations([])
-                      }
-                    }}
-                    className="sr-only peer"
-                  />
-                  <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
-                </label>
-              </div>
-            </div>
-
             {/* Order Filter Controls */}
             <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
               <h3 className="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2">
@@ -779,105 +749,97 @@ export default function CreateExpensePage() {
               </div>
             </div>
 
-            {/* Single Order Selection (when NOT bulk) */}
-            {!isBulkExpense && (
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">
-                  Event/Order (Optional)
-                </label>
-                <select
-                  value={formData.orderId}
-                  onChange={(e) => setFormData({ ...formData, orderId: e.target.value })}
-                  className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-                >
-                  <option value="">No specific event/order</option>
-                  {filteredOrders.map((order: any) => (
-                    <option key={order.id} value={order.id}>
-                      {getOrderDisplayName(order)}
-                    </option>
-                  ))}
-                  {filteredOrders.length === 0 && orders.length > 0 && (
-                    <option disabled value="">No matching events found</option>
-                  )}
-                </select>
-              </div>
-            )}
+            {/* Event Selection Dropdown */}
+            <div className="relative">
+              <label className="block text-sm font-semibold text-gray-700 mb-2">
+                Event/Order (Optional)
+              </label>
 
-            {/* Bulk Event Selection (when bulk mode is ON) */}
-            {isBulkExpense && (
-              <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
-                <div className="bg-gray-50 px-4 py-3 border-b border-gray-200">
-                  <div className="flex items-center justify-between">
-                    <h3 className="font-semibold text-gray-900">
-                      Select Events ({selectedOrderIds.length} selected)
-                    </h3>
-                    {selectedOrderIds.length > 0 && (
-                      <button
-                        type="button"
-                        onClick={() => {
+              <div
+                className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 bg-white cursor-pointer flex justify-between items-center"
+                onClick={() => setIsEventDropdownOpen(!isEventDropdownOpen)}
+              >
+                <div className="truncate text-gray-800">
+                  {selectedOrderIds.length === 0
+                    ? 'No specific event/order'
+                    : selectedOrderIds.length === 1
+                      ? (() => {
+                        const o = orders.find(ord => ord.id === selectedOrderIds[0])
+                        return o ? getOrderDisplayName(o) : '1 event selected'
+                      })()
+                      : `${selectedOrderIds.length} events selected`}
+                </div>
+                <FaChevronDown className={`text-gray-400 transition-transform ${isEventDropdownOpen ? 'rotate-180' : ''}`} />
+              </div>
+
+              {isEventDropdownOpen && (
+                <div className="absolute z-10 w-full mt-2 bg-white border border-gray-200 rounded-lg shadow-xl overflow-hidden">
+                  <div className="max-h-64 overflow-y-auto p-2">
+                    <label className="flex items-center gap-3 p-3 rounded-lg hover:bg-gray-50 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={selectedOrderIds.length === 0}
+                        onChange={() => {
                           setSelectedOrderIds([])
                           setBulkAllocations([])
+                          setIsEventDropdownOpen(false)
                         }}
-                        className="text-sm text-red-600 hover:text-red-700"
-                      >
-                        Clear All
-                      </button>
+                        className="w-4 h-4 text-primary-600 border-gray-300 rounded focus:ring-primary-500"
+                      />
+                      <span className="font-medium text-gray-900">No specific event/order</span>
+                    </label>
+
+                    <div className="h-px bg-gray-100 my-1"></div>
+
+                    {filteredOrders.length === 0 && (
+                      <div className="p-4 text-sm text-gray-500 text-center">No events found matching your filter</div>
                     )}
-                  </div>
-                </div>
-                <div className="max-h-60 overflow-y-auto p-2">
-                  {filteredOrders.length === 0 ? (
-                    <p className="text-gray-500 text-sm p-4 text-center">
-                      {orders.length === 0 ? 'No events available' : 'No matching events found'}
-                    </p>
-                  ) : (
-                    <div className="space-y-1">
-                      {filteredOrders.map((order: any) => {
-                        const isSelected = selectedOrderIds.includes(order.id)
-                        const plates = getOrderPlates(order)
-                        const eventDate = order.eventDate ? new Date(order.eventDate) : new Date(order.createdAt)
-                        return (
-                          <label
-                            key={order.id}
-                            className={`flex items-center gap-3 p-3 rounded-lg cursor-pointer transition-colors ${isSelected
-                              ? 'bg-blue-50 border border-blue-200'
-                              : 'hover:bg-gray-50 border border-transparent'
-                              }`}
-                          >
-                            <input
-                              type="checkbox"
-                              checked={isSelected}
-                              onChange={(e) => handleOrderSelection(order.id, e.target.checked)}
-                              className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
-                            />
-                            <div className="flex-1 min-w-0">
-                              <div className="font-medium text-gray-900 truncate">
-                                {order.customer?.name || 'Unknown'} - {order.eventName || 'No Event Name'}
-                              </div>
-                              <div className="text-xs text-gray-500 flex items-center gap-2">
-                                <span>{eventDate.toLocaleDateString()}</span>
-                                <span>•</span>
-                                <span>{plates} plates/members</span>
-                                <span>•</span>
-                                <span>{formatCurrency(order.totalAmount)}</span>
-                              </div>
+
+                    {filteredOrders.map(order => {
+                      const isSelected = selectedOrderIds.includes(order.id)
+                      const plates = getOrderPlates(order)
+                      const eventDate = order.eventDate ? new Date(order.eventDate) : new Date(order.createdAt)
+                      return (
+                        <label
+                          key={order.id}
+                          className={`flex items-center gap-3 p-3 rounded-lg cursor-pointer transition-colors ${isSelected ? 'bg-primary-50 border border-transparent' : 'hover:bg-gray-50 border border-transparent'
+                            }`}
+                        >
+                          <input
+                            type="checkbox"
+                            checked={isSelected}
+                            onChange={(e) => handleOrderSelection(order.id, e.target.checked)}
+                            className="w-4 h-4 text-primary-600 border-gray-300 rounded focus:ring-primary-500"
+                          />
+                          <div className="flex-1 min-w-0">
+                            <div className="font-medium text-gray-900 truncate">
+                              {order.customer?.name || 'Unknown'} - {order.eventName || 'No Event Name'}
                             </div>
-                          </label>
-                        )
-                      })}
+                            <div className="text-xs text-gray-500 flex items-center gap-2">
+                              <span>{eventDate.toLocaleDateString()}</span>
+                              <span>•</span>
+                              <span>{plates} plates/members</span>
+                            </div>
+                          </div>
+                        </label>
+                      )
+                    })}
+                  </div>
+                  {selectedOrderIds.length > 0 && (
+                    <div className="p-3 bg-gray-50 border-t border-gray-200 flex justify-between items-center">
+                      <span className="text-sm text-gray-600 font-medium">Selected: {selectedOrderIds.length}</span>
+                      <button
+                        type="button"
+                        onClick={() => setIsEventDropdownOpen(false)}
+                        className="text-sm font-semibold text-primary-600 hover:text-primary-700"
+                      >
+                        Done
+                      </button>
                     </div>
                   )}
                 </div>
-                {selectedOrderIds.length < 2 && isBulkExpense && (
-                  <div className="bg-yellow-50 px-4 py-2 border-t border-yellow-200">
-                    <p className="text-sm text-yellow-700 flex items-center gap-2">
-                      <FaInfoCircle />
-                      Select at least 2 events for bulk expense
-                    </p>
-                  </div>
-                )}
-              </div>
-            )}
+              )}
+            </div>
 
             {/* Category and Calculation Method */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -933,7 +895,7 @@ export default function CreateExpensePage() {
                   </div>
 
                   {/* Meal Type Selection (Visible only when Order is selected) */}
-                  {formData.orderId && !isBulkExpense && availableMealTypes.length > 0 && (
+                  {selectedOrderIds.length === 1 && !isBulkExpense && availableMealTypes.length > 0 && (
                     <div className="md:col-span-2">
                       <label className="block text-sm font-semibold text-gray-700 mb-2">
                         Meal Types (Optional)
@@ -947,8 +909,8 @@ export default function CreateExpensePage() {
                               type="button"
                               onClick={() => handleMealTypeToggle(meal.id, meal.label)}
                               className={`px-3 py-1.5 rounded-full text-sm font-medium border transition-colors ${isSelected
-                                  ? 'bg-primary-50 text-primary-700 border-primary-200'
-                                  : 'bg-white text-gray-600 border-gray-300 hover:bg-gray-50'
+                                ? 'bg-primary-50 text-primary-700 border-primary-200'
+                                : 'bg-white text-gray-600 border-gray-300 hover:bg-gray-50'
                                 }`}
                             >
                               {meal.label}
