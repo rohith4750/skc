@@ -199,19 +199,28 @@ export default function CreateExpensePage() {
     return Array.from(categories).sort()
   }, [existingExpenses, workforce])
 
-  // Get available meal types for the selected order
+  // Get available meal types for the selected orders
   const availableMealTypes = useMemo(() => {
-    if (selectedOrderIds.length !== 1) return []
-    const order = orders.find(o => o.id === selectedOrderIds[0])
-    if (!order || !order.mealTypeAmounts) return []
+    if (selectedOrderIds.length === 0) return []
 
-    return Object.entries(order.mealTypeAmounts).map(([id, data]) => {
-      let label = id // fallback to ID if no name
-      if (typeof data === 'object' && data.menuType) {
-        label = data.menuType
+    const uniqueMeals = new Map<string, { id: string; label: string }>()
+
+    selectedOrderIds.forEach(orderId => {
+      const order = orders.find(o => o.id === orderId)
+      if (order && order.mealTypeAmounts) {
+        Object.entries(order.mealTypeAmounts).forEach(([id, data]) => {
+          if (!uniqueMeals.has(id)) {
+            let label = id // fallback to ID if no name
+            if (typeof data === 'object' && data.menuType) {
+              label = data.menuType
+            }
+            uniqueMeals.set(id, { id, label })
+          }
+        })
       }
-      return { id, label }
     })
+
+    return Array.from(uniqueMeals.values())
   }, [selectedOrderIds, orders])
 
   // Calculate total amount based on category and calculation method
@@ -433,21 +442,30 @@ export default function CreateExpensePage() {
           selectedMealTypes: prev.selectedMealTypes.filter(mt => mt.id !== mealId)
         }
       } else {
-        // Find default plates for this meal type
-        let defaultPlates = ''
-        if (selectedOrderIds.length === 1) {
-          const selectedOrder = orders.find(o => o.id === selectedOrderIds[0])
+        // Find default plates for this meal type across all selected orders
+        let totalDefaultPlates = 0
+
+        selectedOrderIds.forEach(orderId => {
+          const selectedOrder = orders.find(o => o.id === orderId)
           if (selectedOrder && selectedOrder.mealTypeAmounts) {
             const mealData = (selectedOrder.mealTypeAmounts as any)[mealId]
             if (mealData && typeof mealData === 'object') {
               const plates = mealData.numberOfPlates || mealData.numberOfMembers || 0
-              if (plates > 0) defaultPlates = plates.toString()
+              totalDefaultPlates += plates
             }
           }
-        }
+        })
+
         return {
           ...prev,
-          selectedMealTypes: [...prev.selectedMealTypes, { id: mealId, label: mealLabel, plates: defaultPlates }]
+          selectedMealTypes: [
+            ...prev.selectedMealTypes,
+            {
+              id: mealId,
+              label: mealLabel,
+              plates: totalDefaultPlates > 0 ? totalDefaultPlates.toString() : ''
+            }
+          ]
         }
       }
     })
@@ -457,7 +475,9 @@ export default function CreateExpensePage() {
   useEffect(() => {
     // console.log('Autofill check:', { category: formData.category, orderId: selectedOrderIds[0], mealType: formData.mealType, isBulkExpense })
 
-    if (formData.category === 'chef' && selectedOrderIds.length === 1 && !isBulkExpense) {
+    if (formData.category === 'chef' && selectedOrderIds.length > 0 && !isBulkExpense && selectedOrderIds.length === 1) {
+      // NOTE: For multi-event (bulk), handleMealTypeToggle handles the plate summation. 
+      // This autofill is mainly left intact for single-event total plates fallback.
       const selectedOrder = orders.find(o => o.id === selectedOrderIds[0])
       // console.log('Selected Order:', selectedOrder)
 
@@ -894,8 +914,8 @@ export default function CreateExpensePage() {
                     </select>
                   </div>
 
-                  {/* Meal Type Selection (Visible only when Order is selected) */}
-                  {selectedOrderIds.length === 1 && !isBulkExpense && availableMealTypes.length > 0 && (
+                  {/* Meal Type Selection (Visible when Orders are selected) */}
+                  {selectedOrderIds.length > 0 && availableMealTypes.length > 0 && (
                     <div className="md:col-span-2">
                       <label className="block text-sm font-semibold text-gray-700 mb-2">
                         Meal Types (Optional)
