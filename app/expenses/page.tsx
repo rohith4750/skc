@@ -270,6 +270,8 @@ export default function ExpensesPage() {
         eventName: expense.order?.eventName || undefined,
         notes: expense.notes || undefined,
         calculationDetails: expense.calculationDetails || undefined,
+        isBulkExpense: expense.isBulkExpense,
+        bulkAllocations: expense.bulkAllocations as any[] || undefined,
       },
     }
 

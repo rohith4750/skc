@@ -51,6 +51,8 @@ export interface PDFTemplateData {
     eventName?: string
     notes?: string
     calculationDetails?: any
+    isBulkExpense?: boolean
+    bulkAllocations?: any[]
   }
   workforceDetails?: {
     name?: string
@@ -303,6 +305,46 @@ export function generatePDFTemplate(data: PDFTemplateData): string {
         .expense-item:last-child {
           border-bottom: none;
         }
+        .details-grid {
+          display: flex;
+          justify-content: space-between;
+          border: 1px solid #000;
+          padding: 8px;
+          margin-bottom: 10px;
+        }
+        .grid-item {
+          flex: 1;
+        }
+        .grid-label {
+          font-weight: 500;
+          font-size: 10px;
+          text-transform: uppercase;
+          color: #444;
+          margin-bottom: 3px;
+        }
+        .grid-value {
+          font-size: 12px;
+          font-weight: 600;
+        }
+        .details-table {
+          width: 100%;
+          border-collapse: collapse;
+          margin-top: 10px;
+          margin-bottom: 15px;
+        }
+        .details-table th, .details-table td {
+          border: 1px solid #000;
+          padding: 6px 8px;
+          text-align: left;
+          font-size: 11px;
+        }
+        .details-table th {
+          background-color: #f8fafc;
+          font-weight: bold;
+          text-transform: uppercase;
+          font-size: 10px;
+        }
+        .text-right { text-align: right !important; }
       </style>
     </head>
     <body>
@@ -338,7 +380,7 @@ export function generatePDFTemplate(data: PDFTemplateData): string {
           <div class="signature-box">
             <div class="signature-line">Authorized Signature</div>
           </div>
-          ${data.type !== 'inventory' ? `
+          ${data.type !== 'inventory' && data.type !== 'workforce' ? `
           <div class="signature-box">
             <div class="signature-line">Customer Signature</div>
           </div>
@@ -584,65 +626,93 @@ function generateExpenseContent(data: PDFTemplateData): string {
     </div>
 
     <!-- Expense Details -->
-    <div class="expense-details">
-      <div class="form-section">
-        <div class="section-title">EXPENSE DETAILS</div>
-        <div class="form-row">
-          <span class="form-label">Category:</span>
-          <span class="form-value">${expense.category || ''}</span>
+    <div class="expense-details" style="border: none; padding: 0;">
+      <div class="section-title">EXPENSE DETAILS</div>
+      
+      <div class="details-grid">
+        <div class="grid-item">
+          <div class="grid-label">Category</div>
+          <div class="grid-value">${expense.category ? expense.category.charAt(0).toUpperCase() + expense.category.slice(1) : ''}</div>
         </div>
-        <div class="form-row">
-          <span class="form-label">Recipient:</span>
-          <span class="form-value">${expense.recipient || ''}</span>
+        <div class="grid-item">
+          <div class="grid-label">Recipient</div>
+          <div class="grid-value">${expense.recipient || 'N/A'}</div>
         </div>
-        <div class="form-row">
-          <span class="form-label">Description:</span>
-          <span class="form-value">${expense.description || ''}</span>
+        <div class="grid-item">
+          <div class="grid-label">Event Date</div>
+          <div class="grid-value">${expense.eventDate ? formatDate(expense.eventDate) : 'N/A'}</div>
         </div>
-        ${expense.eventDate ? `
-        <div class="form-row">
-          <span class="form-label">Event Date:</span>
-          <span class="form-value">${formatDate(expense.eventDate)}</span>
-        </div>
-        ` : ''}
-        <div class="form-row">
-          <span class="form-label">Payment Date:</span>
-          <span class="form-value">${expense.paymentDate ? formatDate(expense.paymentDate) : formatDate(data.date)}</span>
-        </div>
-        ${expense.notes ? `
-        <div class="form-row">
-          <span class="form-label">Notes:</span>
-          <span class="form-value">${expense.notes}</span>
-        </div>
-        ` : ''}
-        ${expense.calculationDetails && expense.category === 'boys' ? `
-        <div class="form-row">
-          <span class="form-label">Dressed Boys:</span>
-          <span class="form-value">${expense.calculationDetails.dressedBoys || 0} @ ${formatCurrency(expense.calculationDetails.dressedBoyAmount || 0)}</span>
-        </div>
-        <div class="form-row">
-          <span class="form-label">Non-Dressed Boys:</span>
-          <span class="form-value">${expense.calculationDetails.nonDressedBoys || 0} @ ${formatCurrency(expense.calculationDetails.nonDressedBoyAmount || 0)}</span>
-        </div>
-        ` : expense.calculationDetails ? `
-        ${expense.eventName ? `
-        <div class="form-row">
-          <span class="form-label">Event Name:</span>
-          <span class="form-value">${expense.eventName}</span>
-        </div>
-        ` : ''}
-        <div class="form-row">
-          <span class="form-label">Calculation Method:</span>
-          <span class="form-value">${expense.calculationDetails.method || 'N/A'}</span>
-        </div>
-        ${expense.calculationDetails.method === 'plate-wise' ? `
-        <div class="form-row">
-          <span class="form-label">Plate Details:</span>
-          <span class="form-value">${expense.calculationDetails.plates || 0} plates @ ${formatCurrency(expense.calculationDetails.perPlateAmount || 0)}</span>
-        </div>
-        ` : ''}
-        ` : ''}
       </div>
+
+      ${expense.description ? `
+      <div class="form-row" style="margin-bottom: 10px;">
+        <span class="form-label" style="min-width: 100px;">Description:</span>
+        <span class="form-value">${expense.description}</span>
+      </div>
+      ` : ''}
+
+      ${expense.isBulkExpense && expense.bulkAllocations && expense.bulkAllocations.length > 0 ? `
+      <div class="section-title" style="margin-top: 20px; font-size: 12px;">EVENT BREAKDOWN</div>
+      <table class="details-table">
+        <thead>
+          <tr>
+            <th>Event / Order</th>
+            <th class="text-right">${expense.category === 'chef' ? 'Plates' : 'Percentage'}</th>
+            <th class="text-right">Amount</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${expense.bulkAllocations.map((alloc: any) => `
+          <tr>
+            <td>${alloc.orderName}</td>
+            <td class="text-right">${expense.category === 'chef' ? (alloc.plates || '-') : (alloc.percentage ? alloc.percentage.toFixed(1) + '%' : '-')}</td>
+            <td class="text-right">${formatCurrency(alloc.amount)}</td>
+          </tr>
+          `).join('')}
+        </tbody>
+        <tfoot>
+          <tr>
+            <td colspan="2" style="font-weight: bold; text-align: right;">Total Allocated:</td>
+            <td style="font-weight: bold;" class="text-right">${formatCurrency(expense.amount)}</td>
+          </tr>
+        </tfoot>
+      </table>
+      ` : ''}
+
+      ${!expense.isBulkExpense && expense.calculationDetails ? `
+        ${expense.category === 'boys' ? `
+          <div class="details-grid" style="margin-top: 10px;">
+            <div class="grid-item">
+              <div class="grid-label">Dressed Boys</div>
+              <div class="grid-value">${expense.calculationDetails.dressedBoys || 0} @ ${formatCurrency(expense.calculationDetails.dressedBoyAmount || 0)}</div>
+            </div>
+            <div class="grid-item">
+              <div class="grid-label">Non-Dressed Boys</div>
+              <div class="grid-value">${expense.calculationDetails.nonDressedBoys || 0} @ ${formatCurrency(expense.calculationDetails.nonDressedBoyAmount || 0)}</div>
+            </div>
+          </div>
+        ` : `
+          <div class="details-grid" style="margin-top: 10px;">
+            <div class="grid-item">
+              <div class="grid-label">Calculation Method</div>
+              <div class="grid-value">${expense.calculationDetails.method || 'N/A'}</div>
+            </div>
+            ${expense.calculationDetails.method === 'plate-wise' ? `
+            <div class="grid-item">
+              <div class="grid-label">Plate Details</div>
+              <div class="grid-value">${expense.calculationDetails.plates || 0} plates @ ${formatCurrency(expense.calculationDetails.perPlateAmount || 0)}</div>
+            </div>
+            ` : ''}
+          </div>
+        `}
+      ` : ''}
+
+      ${expense.notes ? `
+      <div class="form-row">
+        <span class="form-label" style="min-width: 100px;">Notes:</span>
+        <span class="form-value">${expense.notes}</span>
+      </div>
+      ` : ''}
     </div>
 
     <!-- Financial Summary -->
