@@ -2,11 +2,11 @@
 
 import { useEffect, useState, useMemo } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { formatCurrency } from '@/lib/utils'
 import { Expense, Order, BulkAllocation } from '@/types'
 import { FaArrowLeft, FaLayerGroup, FaChevronDown, FaChevronUp, FaTimes, FaInfoCircle } from 'react-icons/fa'
 import toast from 'react-hot-toast'
 import Link from 'next/link'
+import { formatCurrency, getLocalISODate } from '@/lib/utils'
 import FormError from '@/components/FormError'
 
 const EXPENSE_CATEGORIES = [
@@ -75,7 +75,7 @@ export default function CreateExpensePage() {
     boyAmount: '',
     description: '',
     recipient: '',
-    paymentDate: new Date().toISOString().split('T')[0],
+    paymentDate: getLocalISODate(),
     eventDate: '',
     notes: '',
     paidAmount: '',
@@ -148,7 +148,7 @@ export default function CreateExpensePage() {
             boyAmount: details.perUnitAmount && expenseData.category === 'boys' ? details.perUnitAmount.toString() : '',
             description: expenseData.description || '',
             recipient: expenseData.recipient || '',
-            paymentDate: expenseData.paymentDate ? expenseData.paymentDate.split('T')[0] : new Date().toISOString().split('T')[0],
+            paymentDate: expenseData.paymentDate ? expenseData.paymentDate.split('T')[0] : getLocalISODate(),
             eventDate: expenseData.eventDate ? expenseData.eventDate.split('T')[0] : '',
             notes: expenseData.notes || '',
             paidAmount: expenseData.paidAmount?.toString() || '0',
@@ -209,12 +209,13 @@ export default function CreateExpensePage() {
       const order = orders.find(o => o.id === orderId)
       if (order && order.mealTypeAmounts) {
         Object.entries(order.mealTypeAmounts).forEach(([id, data]) => {
-          if (!uniqueMeals.has(id)) {
-            let label = id // fallback to ID if no name
-            if (typeof data === 'object' && data.menuType) {
-              label = data.menuType
-            }
-            uniqueMeals.set(id, { id, label })
+          let label = id // fallback to ID if no name
+          if (typeof data === 'object' && (data as any).menuType) {
+            label = (data as any).menuType
+          }
+          const normalizedId = label.toLowerCase().trim()
+          if (!uniqueMeals.has(normalizedId)) {
+            uniqueMeals.set(normalizedId, { id: normalizedId, label })
           }
         })
       }
@@ -448,11 +449,19 @@ export default function CreateExpensePage() {
         selectedOrderIds.forEach(orderId => {
           const selectedOrder = orders.find(o => o.id === orderId)
           if (selectedOrder && selectedOrder.mealTypeAmounts) {
-            const mealData = (selectedOrder.mealTypeAmounts as any)[mealId]
-            if (mealData && typeof mealData === 'object') {
-              const plates = mealData.numberOfPlates || mealData.numberOfMembers || 0
-              totalDefaultPlates += plates
-            }
+            Object.entries(selectedOrder.mealTypeAmounts).forEach(([key, mealData]) => {
+              let label = key
+              if (mealData && typeof mealData === 'object' && (mealData as any).menuType) {
+                label = (mealData as any).menuType
+              }
+
+              if (label.toLowerCase().trim() === mealId) {
+                if (mealData && typeof mealData === 'object') {
+                  const plates = (mealData as any).numberOfPlates || (mealData as any).numberOfMembers || 0
+                  totalDefaultPlates += plates
+                }
+              }
+            })
           }
         })
 

@@ -3,7 +3,7 @@
 import { useEffect, useState, Fragment } from 'react'
 import { FaDollarSign, FaUtensils, FaUserTie, FaTruck, FaUsers, FaUserFriends, FaGasPump, FaBox, FaStore, FaCircle, FaReceipt, FaChevronDown, FaChevronUp, FaFileAlt } from 'react-icons/fa'
 import toast from 'react-hot-toast'
-import { formatCurrency, formatDate } from '@/lib/utils'
+import { formatCurrency, formatDate, getLocalISODate } from '@/lib/utils'
 import Link from 'next/link'
 import RoleGuard from '@/components/RoleGuard'
 
@@ -82,7 +82,7 @@ export default function OutstandingPage() {
     amount: '',
     paymentMethod: 'cash',
     notes: '',
-    paymentDate: new Date().toISOString().split('T')[0],
+    paymentDate: getLocalISODate(),
   })
   const [paymentSubmitting, setPaymentSubmitting] = useState(false)
   const [expandedStatement, setExpandedStatement] = useState<string | null>(null)
@@ -183,7 +183,7 @@ export default function OutstandingPage() {
       amount: '',
       paymentMethod: 'cash',
       notes: '',
-      paymentDate: new Date().toISOString().split('T')[0],
+      paymentDate: getLocalISODate(),
     })
   }
 
@@ -217,7 +217,7 @@ export default function OutstandingPage() {
       toast.success(`Payment of ${formatCurrency(amount)} recorded for ${selectedRole}`)
       setShowPaymentModal(false)
       setSelectedRole(null)
-      setPaymentForm({ amount: '', paymentMethod: 'cash', notes: '', paymentDate: new Date().toISOString().split('T')[0] })
+      setPaymentForm({ amount: '', paymentMethod: 'cash', notes: '', paymentDate: getLocalISODate() })
       await loadOutstanding()
     } catch (e: any) {
       toast.error(e.message || 'Failed to record payment')

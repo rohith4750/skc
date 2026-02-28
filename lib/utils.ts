@@ -29,6 +29,18 @@ export function formatDateTime(date: string | Date): string {
   });
 }
 
+/**
+ * Returns the current date in YYYY-MM-DD format based on the user's local timezone.
+ * This fixes the issue where `new Date().toISOString().split('T')[0]` returns yesterday's date
+ * when the local time is past midnight but UTC is still on the previous day.
+ */
+export function getLocalISODate(): string {
+  const date = new Date();
+  const offsetMs = date.getTimezoneOffset() * 60 * 1000;
+  const localDate = new Date(date.getTime() - offsetMs);
+  return localDate.toISOString().split("T")[0];
+}
+
 export function sendEmail(email: string, subject: string, message: string) {
   // Free email sending using mailto: protocol
   // This opens the user's default email client with pre-filled content
