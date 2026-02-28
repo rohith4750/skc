@@ -59,6 +59,7 @@ export default function CreateExpensePage() {
   // Filters for orders
   const [filterMonth, setFilterMonth] = useState<string>(new Date().getMonth().toString()) // Default to current month
   const [filterYear, setFilterYear] = useState<string>(new Date().getFullYear().toString())
+  const [filterDate, setFilterDate] = useState<string>('') // New specific date filter
   const [orderSearch, setOrderSearch] = useState('')
 
   const [formData, setFormData] = useState({
@@ -197,7 +198,14 @@ export default function CreateExpensePage() {
     if (!formData.orderId) return []
     const order = orders.find(o => o.id === formData.orderId)
     if (!order || !order.mealTypeAmounts) return []
-    return Object.keys(order.mealTypeAmounts as object)
+
+    return Object.entries(order.mealTypeAmounts).map(([id, data]) => {
+      let label = id // fallback to ID if no name
+      if (typeof data === 'object' && data.menuType) {
+        label = data.menuType
+      }
+      return { id, label }
+    })
   }, [formData.orderId, orders])
 
   // Calculate total amount based on category and calculation method
@@ -238,10 +246,20 @@ export default function CreateExpensePage() {
     return orders.filter(order => {
       // Date filtering
       const eventDate = order.eventDate ? new Date(order.eventDate) : new Date(order.createdAt)
-      const monthMatch = filterMonth === 'all' || eventDate.getMonth().toString() === filterMonth
-      const yearMatch = filterYear === 'all' || eventDate.getFullYear().toString() === filterYear
 
-      if (!monthMatch || !yearMatch) return false
+      // If specific date is provided, ignore month/year
+      if (filterDate) {
+        const d = new Date(filterDate)
+        if (eventDate.getFullYear() !== d.getFullYear() ||
+          eventDate.getMonth() !== d.getMonth() ||
+          eventDate.getDate() !== d.getDate()) {
+          return false
+        }
+      } else {
+        const monthMatch = filterMonth === 'all' || eventDate.getMonth().toString() === filterMonth
+        const yearMatch = filterYear === 'all' || eventDate.getFullYear().toString() === filterYear
+        if (!monthMatch || !yearMatch) return false
+      }
 
       // Search filtering
       if (!orderSearch.trim()) return true
@@ -253,7 +271,7 @@ export default function CreateExpensePage() {
 
       return customerMatch || eventMatch || phoneMatch
     })
-  }, [orders, filterMonth, filterYear, orderSearch])
+  }, [orders, filterMonth, filterYear, filterDate, orderSearch])
 
   // Get plates/members count for an order (for by-plates allocation)
   const getOrderPlates = (order: Order): number => {
@@ -628,13 +646,26 @@ export default function CreateExpensePage() {
                 <FaInfoCircle className="text-primary-500" />
                 Filter Events
               </h3>
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
+                <div>
+                  <label className="block text-xs font-medium text-gray-500 mb-1">Specific Date</label>
+                  <input
+                    type="date"
+                    value={filterDate}
+                    onChange={(e) => setFilterDate(e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-1 focus:ring-primary-500"
+                  />
+                </div>
                 <div>
                   <label className="block text-xs font-medium text-gray-500 mb-1">Month</label>
                   <select
                     value={filterMonth}
-                    onChange={(e) => setFilterMonth(e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-1 focus:ring-primary-500"
+                    onChange={(e) => {
+                      setFilterMonth(e.target.value)
+                      if (e.target.value !== 'all') setFilterDate('')
+                    }}
+                    disabled={!!filterDate}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-1 focus:ring-primary-500 disabled:bg-gray-50 disabled:text-gray-400"
                   >
                     <option value="all">All Months</option>
                     {['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'].map((month, idx) => (
@@ -646,8 +677,12 @@ export default function CreateExpensePage() {
                   <label className="block text-xs font-medium text-gray-500 mb-1">Year</label>
                   <select
                     value={filterYear}
-                    onChange={(e) => setFilterYear(e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-1 focus:ring-primary-500"
+                    onChange={(e) => {
+                      setFilterYear(e.target.value)
+                      if (e.target.value !== 'all') setFilterDate('')
+                    }}
+                    disabled={!!filterDate}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-1 focus:ring-primary-500 disabled:bg-gray-50 disabled:text-gray-400"
                   >
                     <option value="all">All Years</option>
                     {[2024, 2025, 2026, 2027].map(year => (
@@ -657,13 +692,29 @@ export default function CreateExpensePage() {
                 </div>
                 <div>
                   <label className="block text-xs font-medium text-gray-500 mb-1">Search Event/Customer</label>
-                  <input
-                    type="text"
-                    value={orderSearch}
-                    onChange={(e) => setOrderSearch(e.target.value)}
-                    placeholder="Search name, phone..."
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-1 focus:ring-primary-500"
-                  />
+                  <div className="relative">
+                    <input
+                      type="text"
+                      value={orderSearch}
+                      onChange={(e) => setOrderSearch(e.target.value)}
+                      placeholder="Search name, phone..."
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-1 focus:ring-primary-500"
+                    />
+                    {(filterDate || filterMonth !== 'all' || orderSearch) && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setFilterDate('')
+                          setFilterMonth('all')
+                          setFilterYear(new Date().getFullYear().toString())
+                          setOrderSearch('')
+                        }}
+                        className="absolute right-2 top-1/2 -translate-y-1/2 text-[10px] text-gray-400 hover:text-red-500"
+                      >
+                        Reset
+                      </button>
+                    )}
+                  </div>
                 </div>
               </div>
             </div>
@@ -832,8 +883,8 @@ export default function CreateExpensePage() {
                         className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
                       >
                         <option value="">All / Specific Meal Not Selected</option>
-                        {availableMealTypes.map(type => (
-                          <option key={type} value={type}>{type}</option>
+                        {availableMealTypes.map(meal => (
+                          <option key={meal.id} value={meal.id}>{meal.label}</option>
                         ))}
                       </select>
                     </div>

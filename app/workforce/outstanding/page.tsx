@@ -87,6 +87,11 @@ export default function OutstandingPage() {
   const [paymentSubmitting, setPaymentSubmitting] = useState(false)
   const [expandedStatement, setExpandedStatement] = useState<string | null>(null)
 
+  // Filters
+  const [filterMonth, setFilterMonth] = useState<string>(new Date().getMonth().toString())
+  const [filterYear, setFilterYear] = useState<string>(new Date().getFullYear().toString())
+  const [filterDate, setFilterDate] = useState<string>('')
+
   const buildStatement = (r: RoleSummary) => {
     const lines: { date: string; desc: string; amount: number; method: string; type: 'workforce' | 'expense' | 'due' }[] = []
 
@@ -133,9 +138,26 @@ export default function OutstandingPage() {
     return lines
   }
 
-  const loadOutstanding = async () => {
+  const loadOutstanding = async (month?: string, year?: string, date?: string) => {
     try {
-      const res = await fetch('/api/workforce/outstanding')
+      const m = month !== undefined ? month : filterMonth
+      const y = year !== undefined ? year : filterYear
+      const d = date !== undefined ? date : filterDate
+
+      let url = '/api/workforce/outstanding'
+      const params = new URLSearchParams()
+
+      if (d) {
+        params.append('date', d)
+      } else {
+        if (y && y !== 'all') params.append('year', y)
+        if (m && m !== 'all') params.append('month', m)
+      }
+
+      const queryString = params.toString()
+      if (queryString) url += '?' + queryString
+
+      const res = await fetch(url)
       if (!res.ok) throw new Error('Failed to fetch')
       const data = await res.json()
       setTotalOutstanding(data.totalOutstanding ?? 0)
@@ -151,8 +173,8 @@ export default function OutstandingPage() {
   }
 
   useEffect(() => {
-    loadOutstanding()
-  }, [])
+    loadOutstanding(filterMonth, filterYear, filterDate)
+  }, [filterMonth, filterYear, filterDate])
 
   const openPaymentModal = (role: string) => {
     setSelectedRole(role)
@@ -224,12 +246,75 @@ export default function OutstandingPage() {
             </h1>
             <p className="text-gray-600 mt-1 text-sm">Events, workforce dues, and role-based payments</p>
           </div>
-          <Link
-            href="/workforce"
-            className="text-primary-600 hover:text-primary-700 font-medium text-sm"
-          >
-            ← Workforce
-          </Link>
+          <div className="flex items-center gap-3 w-full sm:w-auto">
+            <Link
+              href="/workforce"
+              className="text-primary-600 hover:text-primary-700 font-medium text-sm whitespace-nowrap"
+            >
+              ← Workforce
+            </Link>
+          </div>
+        </div>
+
+        {/* Global Filters */}
+        <div className="bg-white rounded-xl shadow border border-gray-200 p-4 mb-6">
+          <div className="flex flex-wrap items-center gap-4">
+            <div className="flex-1 min-w-[150px]">
+              <label className="block text-xs font-semibold text-gray-500 uppercase mb-1">Specific Date</label>
+              <input
+                type="date"
+                value={filterDate}
+                onChange={(e) => setFilterDate(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 text-sm"
+              />
+            </div>
+            <div className="flex-1 min-w-[150px]">
+              <label className="block text-xs font-semibold text-gray-500 uppercase mb-1">Year</label>
+              <select
+                value={filterYear}
+                onChange={(e) => {
+                  setFilterYear(e.target.value)
+                  if (e.target.value !== 'all') setFilterDate('')
+                }}
+                disabled={!!filterDate}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 text-sm disabled:bg-gray-50 disabled:text-gray-400"
+              >
+                <option value="all">All Time</option>
+                {[2024, 2025, 2026, 2027].map(y => (
+                  <option key={y} value={y.toString()}>{y}</option>
+                ))}
+              </select>
+            </div>
+            <div className="flex-1 min-w-[150px]">
+              <label className="block text-xs font-semibold text-gray-500 uppercase mb-1">Month</label>
+              <select
+                value={filterMonth}
+                onChange={(e) => {
+                  setFilterMonth(e.target.value)
+                  if (e.target.value !== 'all') setFilterDate('')
+                }}
+                disabled={filterYear === 'all' || !!filterDate}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 text-sm disabled:bg-gray-50 disabled:text-gray-400"
+              >
+                <option value="all">All Months</option>
+                {['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'].map((m, i) => (
+                  <option key={i} value={i.toString()}>{m}</option>
+                ))}
+              </select>
+            </div>
+            <div className="flex items-end">
+              <button
+                onClick={() => {
+                  setFilterDate('')
+                  setFilterYear(new Date().getFullYear().toString())
+                  setFilterMonth(new Date().getMonth().toString())
+                }}
+                className="px-3 py-2 text-sm text-gray-600 hover:text-primary-600 font-medium transition-colors"
+              >
+                Reset to Current
+              </button>
+            </div>
+          </div>
         </div>
 
         {/* Total Outstanding */}
@@ -403,8 +488,8 @@ export default function OutstandingPage() {
                                       <td className="px-4 py-2 text-gray-700">{line.desc}</td>
                                       <td className="px-4 py-2 text-gray-600 capitalize">
                                         <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase ${line.type === 'due' ? 'bg-amber-100 text-amber-700' :
-                                            line.type === 'workforce' ? 'bg-green-100 text-green-700' :
-                                              'bg-blue-100 text-blue-700'
+                                          line.type === 'workforce' ? 'bg-green-100 text-green-700' :
+                                            'bg-blue-100 text-blue-700'
                                           }`}>
                                           {line.method}
                                         </span>
