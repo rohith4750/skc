@@ -299,7 +299,30 @@ export default function CreateExpensePage() {
   }, [orders, filterMonth, filterYear, filterDate, orderSearch])
 
   // Get plates/members count for an order (for by-plates allocation)
-  const getOrderPlates = (order: Order): number => {
+  const getOrderPlates = (order: Order, mealTypeIds?: string[]): number => {
+    if (mealTypeIds && mealTypeIds.length > 0) {
+      if (order.mealTypeAmounts) {
+        let totalPlates = 0
+        Object.entries(order.mealTypeAmounts).forEach(([key, mealData]) => {
+          let label = key
+          if (mealData && typeof mealData === 'object' && (mealData as any).menuType) {
+            label = (mealData as any).menuType
+          }
+          const mealId = label.toLowerCase().trim()
+          
+          if (mealTypeIds.includes(mealId)) {
+            if (mealData && typeof mealData === 'object' && (mealData as any).numberOfPlates) {
+              totalPlates += (mealData as any).numberOfPlates
+            } else if (mealData && typeof mealData === 'object' && (mealData as any).numberOfMembers) {
+              totalPlates += (mealData as any).numberOfMembers
+            }
+          }
+        })
+        if (totalPlates > 0) return totalPlates
+      }
+      return 0
+    }
+
     if (order.numberOfMembers) return order.numberOfMembers
     // Try to get from mealTypeAmounts
     if (order.mealTypeAmounts) {
@@ -340,9 +363,12 @@ export default function CreateExpensePage() {
       }
       setBulkAllocations(newAllocations)
     } else if (method === 'by-plates') {
+      const filterByMealTypes = formData.category === 'chef' && formData.calculationMethod === 'plate-wise' && formData.selectedMealTypes.length > 0
+      const mealTypeIds = filterByMealTypes ? formData.selectedMealTypes.map(m => m.id) : undefined
+
       const ordersWithPlates = selectedOrders.map(order => ({
         order,
-        plates: getOrderPlates(order)
+        plates: getOrderPlates(order, mealTypeIds)
       }))
       const totalPlates = ordersWithPlates.reduce((sum, o) => sum + o.plates, 0)
 

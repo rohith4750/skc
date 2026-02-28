@@ -267,6 +267,7 @@ export default function ExpensesPage() {
         paymentStatus: expense.paymentStatus as 'pending' | 'partial' | 'paid' || 'pending',
         paymentDate: expense.paymentDate,
         eventDate: expense.eventDate || undefined,
+        eventName: expense.order?.eventName || undefined,
         notes: expense.notes || undefined,
         calculationDetails: expense.calculationDetails || undefined,
       },

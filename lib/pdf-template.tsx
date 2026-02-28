@@ -48,6 +48,7 @@ export interface PDFTemplateData {
     paymentStatus?: 'pending' | 'partial' | 'paid'
     paymentDate?: string
     eventDate?: string
+    eventName?: string
     notes?: string
     calculationDetails?: any
   }
@@ -580,9 +581,6 @@ function generateExpenseContent(data: PDFTemplateData): string {
         <div class="bill-number">Expense Receipt No: ${data.billNumber || 'N/A'}</div>
         <div style="font-size: 10px; margin-top: 3px;">Date: ${formatDate(data.date)}</div>
       </div>
-      <div class="status-badge" style="background-color: #fff; color: #000; border: 1px solid #000;">
-        ${paymentStatus.toUpperCase()}
-      </div>
     </div>
 
     <!-- Expense Details -->
@@ -627,10 +625,22 @@ function generateExpenseContent(data: PDFTemplateData): string {
           <span class="form-value">${expense.calculationDetails.nonDressedBoys || 0} @ ${formatCurrency(expense.calculationDetails.nonDressedBoyAmount || 0)}</span>
         </div>
         ` : expense.calculationDetails ? `
+        ${expense.eventName ? `
+        <div class="form-row">
+          <span class="form-label">Event Name:</span>
+          <span class="form-value">${expense.eventName}</span>
+        </div>
+        ` : ''}
         <div class="form-row">
           <span class="form-label">Calculation Method:</span>
           <span class="form-value">${expense.calculationDetails.method || 'N/A'}</span>
         </div>
+        ${expense.calculationDetails.method === 'plate-wise' ? `
+        <div class="form-row">
+          <span class="form-label">Plate Details:</span>
+          <span class="form-value">${expense.calculationDetails.plates || 0} plates @ ${formatCurrency(expense.calculationDetails.perPlateAmount || 0)}</span>
+        </div>
+        ` : ''}
         ` : ''}
       </div>
     </div>
