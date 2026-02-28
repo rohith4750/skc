@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useState, useMemo } from 'react'
-import { FaEdit, FaTrash, FaUtensils, FaUserTie, FaTruck, FaDollarSign, FaReceipt, FaChevronDown, FaChevronUp, FaUsers, FaUserFriends, FaFilter, FaSearch, FaTimes, FaCheckCircle, FaExclamationCircle, FaClock, FaGasPump, FaBox, FaStore, FaCircle, FaPlus, FaPrint } from 'react-icons/fa'
+import { FaEdit, FaTrash, FaUtensils, FaUserTie, FaTruck, FaDollarSign, FaReceipt, FaChevronDown, FaChevronUp, FaUsers, FaUserFriends, FaFilter, FaSearch, FaTimes, FaCheckCircle, FaExclamationCircle, FaClock, FaGasPump, FaBox, FaStore, FaCircle, FaPlus, FaPrint, FaImage } from 'react-icons/fa'
 import toast from 'react-hot-toast'
 import Table from '@/components/Table'
 import ConfirmModal from '@/components/ConfirmModal'
@@ -142,7 +142,7 @@ export default function WorkforcePage() {
       description: exp.description || '',
       status: exp.paymentStatus || 'pending',
     }))
-    
+
     // Prepare PDF template data
     const pdfData: PDFTemplateData = {
       type: 'workforce',
@@ -156,10 +156,10 @@ export default function WorkforcePage() {
         expenses: expenseItems,
       },
     }
-    
+
     // Generate HTML using template
     const htmlContent = generatePDFTemplate(pdfData)
-    
+
     // Create a temporary HTML element to render properly
     const tempDiv = document.createElement('div')
     tempDiv.style.position = 'absolute'
@@ -168,10 +168,10 @@ export default function WorkforcePage() {
     tempDiv.style.padding = '0'
     tempDiv.style.background = 'white'
     tempDiv.style.color = '#000'
-    
+
     tempDiv.innerHTML = htmlContent
     document.body.appendChild(tempDiv)
-    
+
     try {
       // Convert HTML to canvas
       const canvas = await html2canvas(tempDiv, {
@@ -182,10 +182,10 @@ export default function WorkforcePage() {
         width: tempDiv.scrollWidth,
         height: tempDiv.scrollHeight,
       })
-      
+
       // Remove temporary element
       document.body.removeChild(tempDiv)
-      
+
       // Create PDF from canvas
       const imgData = canvas.toDataURL('image/png')
       const pdf = new jsPDF('p', 'mm', 'a4')
@@ -193,19 +193,19 @@ export default function WorkforcePage() {
       const pageHeight = 297 // A4 height in mm
       const imgHeight = (canvas.height * imgWidth) / canvas.width
       let heightLeft = imgHeight
-      
+
       let position = 0
-      
+
       pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight)
       heightLeft -= pageHeight
-      
+
       while (heightLeft >= 0) {
         position = heightLeft - imgHeight
         pdf.addPage()
         pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight)
         heightLeft -= pageHeight
       }
-      
+
       pdf.save(`workforce-${member.id.slice(0, 8)}.pdf`)
       toast.success('Workforce receipt generated successfully!')
     } catch (error) {
@@ -214,6 +214,75 @@ export default function WorkforcePage() {
       }
       console.error('Error generating PDF:', error)
       toast.error('Failed to generate PDF. Please try again.')
+    }
+  }
+
+  const handleDownloadImage = async (member: Workforce) => {
+    // Prepare expense items for PDF (reusing logic from handleGeneratePDF)
+    const expenseItems = (member.expenses || []).map((exp: any) => ({
+      date: exp.paymentDate || exp.createdAt,
+      amount: exp.amount || 0,
+      description: exp.description || '',
+      status: exp.paymentStatus || 'pending',
+    }))
+
+    // Prepare PDF template data
+    const pdfData: PDFTemplateData = {
+      type: 'workforce',
+      billNumber: `WF-${member.id.slice(0, 8).toUpperCase()}`,
+      date: new Date().toISOString(),
+      workforceDetails: {
+        name: member.name || 'Unknown',
+        role: member.role,
+        totalAmount: member.totalAmount || 0,
+        totalPaid: member.totalPaidAmount || 0,
+        expenses: expenseItems,
+      },
+    }
+
+    // Generate HTML using template
+    const htmlContent = generatePDFTemplate(pdfData)
+
+    // Create a temporary HTML element to render properly
+    const tempDiv = document.createElement('div')
+    tempDiv.style.position = 'absolute'
+    tempDiv.style.left = '-9999px'
+    tempDiv.style.width = '210mm' // A4 width
+    tempDiv.style.padding = '0'
+    tempDiv.style.background = 'white'
+    tempDiv.style.color = '#000'
+
+    tempDiv.innerHTML = htmlContent
+    document.body.appendChild(tempDiv)
+
+    try {
+      // Convert HTML to canvas
+      const canvas = await html2canvas(tempDiv, {
+        scale: 2,
+        useCORS: true,
+        logging: false,
+        backgroundColor: '#ffffff',
+        width: tempDiv.scrollWidth,
+        height: tempDiv.scrollHeight,
+      })
+
+      // Remove temporary element
+      document.body.removeChild(tempDiv)
+
+      // Download as Image
+      const imgData = canvas.toDataURL('image/png')
+      const link = document.createElement('a')
+      link.href = imgData
+      link.download = `workforce-receipt-${member.name.replace(/\s+/g, '-').toLowerCase()}-${member.id.slice(0, 8)}.png`
+      link.click()
+
+      toast.success('Workforce receipt downloaded as image!')
+    } catch (error) {
+      if (document.body.contains(tempDiv)) {
+        document.body.removeChild(tempDiv)
+      }
+      console.error('Error downloading image:', error)
+      toast.error('Failed to download image. Please try again.')
     }
   }
 
@@ -264,11 +333,11 @@ export default function WorkforcePage() {
     const weeks: string[] = []
     const now = new Date()
     const currentYear = now.getFullYear()
-    
+
     for (let year = currentYear - 1; year <= currentYear + 1; year++) {
       const lastDay = new Date(year, 11, 31)
       const lastWeek = getWeekNumber(lastDay)
-      
+
       for (let week = 1; week <= lastWeek; week++) {
         weeks.push(`${year}-W${week.toString().padStart(2, '0')}`)
       }
@@ -279,10 +348,10 @@ export default function WorkforcePage() {
   // Helper function for date filtering
   const getDateRange = useMemo(() => {
     if (datePeriodType === 'all') return null
-    
+
     let startDate: Date
     let endDate: Date
-    
+
     if (datePeriodType === 'day' && selectedDate) {
       startDate = new Date(selectedDate)
       startDate.setHours(0, 0, 0, 0)
@@ -290,7 +359,7 @@ export default function WorkforcePage() {
       endDate.setHours(23, 59, 59, 999)
       return { start: startDate, end: endDate }
     }
-    
+
     if (datePeriodType === 'week' && selectedWeek) {
       const [year, week] = selectedWeek.split('-W').map(Number)
       const firstDay = new Date(year, 0, 1)
@@ -303,7 +372,7 @@ export default function WorkforcePage() {
       endDate.setHours(23, 59, 59, 999)
       return { start: startDate, end: endDate }
     }
-    
+
     if (datePeriodType === 'month' && selectedMonth) {
       const [year, month] = selectedMonth.split('-').map(Number)
       startDate = new Date(year, month - 1, 1)
@@ -312,7 +381,7 @@ export default function WorkforcePage() {
       endDate.setHours(23, 59, 59, 999)
       return { start: startDate, end: endDate }
     }
-    
+
     return null
   }, [datePeriodType, selectedDate, selectedWeek, selectedMonth])
 
@@ -320,29 +389,29 @@ export default function WorkforcePage() {
     let filtered = workforce.map(member => {
       // Filter expenses by date period
       let memberExpenses = member.expenses || []
-      
+
       if (getDateRange) {
         memberExpenses = memberExpenses.filter((expense: any) => {
           const paymentDate = new Date(expense.paymentDate)
           return paymentDate >= getDateRange.start && paymentDate <= getDateRange.end
         })
-        
+
         // Recalculate totals based on filtered expenses
         const totalAmount = memberExpenses.reduce((sum: number, exp: any) => sum + (exp.amount || 0), 0)
         const totalPaidAmount = memberExpenses.reduce((sum: number, exp: any) => sum + (exp.paidAmount || 0), 0)
         const expenseCount = memberExpenses.length
-        
+
         const pendingExpenses = memberExpenses.filter((exp: any) => exp.paymentStatus === 'pending').length
         const partialExpenses = memberExpenses.filter((exp: any) => exp.paymentStatus === 'partial').length
         const paidExpenses = memberExpenses.filter((exp: any) => exp.paymentStatus === 'paid').length
-        
+
         let overallPaymentStatus: 'pending' | 'partial' | 'paid' = 'paid'
         if (totalPaidAmount === 0) {
           overallPaymentStatus = 'pending'
         } else if (totalPaidAmount < totalAmount) {
           overallPaymentStatus = 'partial'
         }
-        
+
         return {
           ...member,
           expenses: memberExpenses,
@@ -355,30 +424,30 @@ export default function WorkforcePage() {
           overallPaymentStatus,
         }
       }
-      
+
       return member
     })
-    
+
     // Role filter
     if (selectedRole !== 'all') {
       filtered = filtered.filter(member => member.role === selectedRole)
     }
-    
+
     // Status filter
     if (selectedStatus !== 'all') {
       const isActive = selectedStatus === 'active'
       filtered = filtered.filter(member => member.isActive === isActive)
     }
-    
+
     // Search filter
     if (searchTerm) {
       const searchLower = searchTerm.toLowerCase()
-      filtered = filtered.filter(member => 
+      filtered = filtered.filter(member =>
         member.name.toLowerCase().includes(searchLower) ||
         member.role.toLowerCase().includes(searchLower)
       )
     }
-    
+
     return filtered.sort((a, b) => a.name.localeCompare(b.name))
   }, [workforce, selectedRole, selectedStatus, searchTerm, getDateRange])
 
@@ -456,11 +525,10 @@ export default function WorkforcePage() {
           </Link>
           <button
             onClick={() => setShowFilters(!showFilters)}
-            className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-sm ${
-              showFilters
-                ? 'bg-primary-500 text-white hover:bg-primary-600'
-                : 'bg-white border border-gray-300 text-gray-700 hover:bg-gray-50'
-            }`}
+            className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-sm ${showFilters
+              ? 'bg-primary-500 text-white hover:bg-primary-600'
+              : 'bg-white border border-gray-300 text-gray-700 hover:bg-gray-50'
+              }`}
           >
             <FaFilter className="w-3.5 h-3.5" /> <span className="hidden sm:inline">{showFilters ? 'Hide' : 'Filters'}</span>
           </button>
@@ -485,7 +553,7 @@ export default function WorkforcePage() {
               <FaTimes />
             </button>
           </div>
-          
+
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             {/* Search */}
             <div>
@@ -713,7 +781,7 @@ export default function WorkforcePage() {
               {filteredWorkforce.length === 0 ? (
                 <tr>
                   <td colSpan={columns.length + 2} className="px-6 py-8 text-center text-gray-500">
-                    {workforce.length === 0 
+                    {workforce.length === 0
                       ? 'No workforce members found. Add your first member.'
                       : 'No workforce members match the current filters.'}
                   </td>
@@ -745,9 +813,16 @@ export default function WorkforcePage() {
                             <button
                               onClick={() => handleGeneratePDF(member)}
                               className="text-primary-600 hover:text-primary-700 p-2 hover:bg-primary-50 rounded"
-                              title="Generate Receipt"
+                              title="Generate PDF Receipt"
                             >
                               <FaPrint />
+                            </button>
+                            <button
+                              onClick={() => handleDownloadImage(member)}
+                              className="text-amber-600 hover:text-amber-700 p-2 hover:bg-amber-50 rounded"
+                              title="Download Image Receipt"
+                            >
+                              <FaImage />
                             </button>
                             <button
                               onClick={() => handleEdit(member)}
@@ -806,11 +881,10 @@ export default function WorkforcePage() {
                                         </p>
                                       )}
                                       {expense.paymentStatus && (
-                                        <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium mt-1 ${
-                                          expense.paymentStatus === 'paid' ? 'bg-green-100 text-green-800' :
+                                        <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium mt-1 ${expense.paymentStatus === 'paid' ? 'bg-green-100 text-green-800' :
                                           expense.paymentStatus === 'partial' ? 'bg-yellow-100 text-yellow-800' :
-                                          'bg-red-100 text-red-800'
-                                        }`}>
+                                            'bg-red-100 text-red-800'
+                                          }`}>
                                           {expense.paymentStatus === 'paid' && <FaCheckCircle className="text-xs" />}
                                           {expense.paymentStatus === 'partial' && <FaExclamationCircle className="text-xs" />}
                                           {expense.paymentStatus === 'pending' && <FaClock className="text-xs" />}
@@ -900,7 +974,7 @@ export default function WorkforcePage() {
             </h2>
             <p className="text-green-100 text-sm mt-1">Track all paid amounts for workforce</p>
           </div>
-          
+
           <div className="overflow-x-auto">
             <table className="w-full min-w-[800px]">
               <thead className="bg-gray-50 border-b border-gray-200">
@@ -923,7 +997,7 @@ export default function WorkforcePage() {
                       (exp: any) => exp.paymentStatus === 'paid' || exp.paidAmount > 0
                     )
                     const Icon = roleIcons[member.role] || FaCircle
-                    
+
                     return paidExpenses.map((expense: any) => {
                       const paidAmount = expense.paidAmount || expense.amount || 0
                       return (
