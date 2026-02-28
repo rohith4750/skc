@@ -6,7 +6,7 @@ import { Expense, Order, BulkAllocation } from '@/types'
 import { FaArrowLeft, FaLayerGroup, FaChevronDown, FaChevronUp, FaTimes, FaInfoCircle } from 'react-icons/fa'
 import toast from 'react-hot-toast'
 import Link from 'next/link'
-import { formatCurrency, getLocalISODate } from '@/lib/utils'
+import { formatCurrency, getLocalISODate , getOrderDate} from '@/lib/utils'
 import FormError from '@/components/FormError'
 
 const EXPENSE_CATEGORIES = [
@@ -257,9 +257,7 @@ export default function CreateExpensePage() {
   const getOrderDisplayName = (order: Order) => {
     const customerName = order.customer?.name || 'Unknown'
     const eventName = order.eventName || 'No Event Name'
-    const date = order.eventDate
-      ? new Date(order.eventDate).toLocaleDateString()
-      : new Date(order.createdAt).toLocaleDateString()
+    const date = new Date(getOrderDate(order)).toLocaleDateString()
     return `${customerName} - ${eventName} (${date})`
   }
 
@@ -267,7 +265,7 @@ export default function CreateExpensePage() {
   const filteredOrders = useMemo(() => {
     return orders.filter(order => {
       // Date filtering
-      const eventDate = order.eventDate ? new Date(order.eventDate) : new Date(order.createdAt)
+      const eventDate = new Date(getOrderDate(order))
 
       // If specific date is provided, ignore month/year
       if (filterDate) {
@@ -827,7 +825,7 @@ export default function CreateExpensePage() {
                     {filteredOrders.map(order => {
                       const isSelected = selectedOrderIds.includes(order.id)
                       const plates = getOrderPlates(order)
-                      const eventDate = order.eventDate ? new Date(order.eventDate) : new Date(order.createdAt)
+                      const eventDate = new Date(getOrderDate(order))
                       return (
                         <label
                           key={order.id}

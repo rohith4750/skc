@@ -1,3 +1,4 @@
+import { getOrderDate } from '@/lib/utils';
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 
@@ -131,7 +132,7 @@ export async function GET(request: NextRequest) {
     })
 
     orders.forEach((order: any) => {
-      const key = getMonthKey(new Date(order.eventDate || order.createdAt))
+      const key = getMonthKey(new Date(getOrderDate(order)))
       if (monthsMap[key]) {
         // We calculate trend revenue based on billed amount (totalAmount) 
         // as this represents the "business generated" in that month

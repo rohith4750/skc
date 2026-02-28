@@ -1,3 +1,4 @@
+import { getOrderDate } from '@/lib/utils';
 "use client";
 
 import { useEffect, useState } from "react";
@@ -84,7 +85,7 @@ export default function Dashboard() {
         };
 
         const orders = rawOrders.filter((o: any) =>
-          filterByMonthYear(o.eventDate || o.createdAt),
+          filterByMonthYear(getOrderDate(o)),
         );
         const bills = rawBills.filter((b: any) =>
           filterByMonthYear(b.order?.eventDate || b.createdAt),

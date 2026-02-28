@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
-import { formatDateTime, formatDate, formatCurrency, sanitizeMealLabel } from '@/lib/utils'
+import { formatDateTime, formatDate, formatCurrency, sanitizeMealLabel , getOrderDate} from '@/lib/utils'
 import { Order } from '@/types'
 import {
   FaPlus, FaEdit, FaTrash, FaSearch, FaFilter, FaFilePdf, FaFileImage,
@@ -110,7 +110,7 @@ export default function OrderCenterPage() {
 
     // Month/Year filter - skip if 0
     filtered = filtered.filter(order => {
-      const orderDate = new Date(order.eventDate || order.createdAt)
+      const orderDate = new Date(getOrderDate(order))
       const monthMatch = selectedMonth === 0 || (orderDate.getMonth() + 1) === selectedMonth
       const yearMatch = selectedYear === 0 || orderDate.getFullYear() === selectedYear
       return monthMatch && yearMatch

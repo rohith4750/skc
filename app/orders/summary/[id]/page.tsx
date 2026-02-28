@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import toast from 'react-hot-toast'
-import { formatCurrency, formatDate, formatDateTime, sanitizeMealLabel } from '@/lib/utils'
+import { formatCurrency, formatDate, formatDateTime, sanitizeMealLabel , getOrderDate} from '@/lib/utils'
 import { Bill, Order, PaymentHistoryEntry } from '@/types'
 import { FaUser, FaCalendarAlt, FaMoneyBillWave, FaHistory, FaUtensils, FaTruck, FaTag, FaArrowLeft, FaEdit, FaCheckCircle, FaExclamationCircle, FaTrash, FaTimes, FaSave } from 'react-icons/fa'
 
@@ -247,7 +247,7 @@ export default function OrderSummaryPage() {
               <div className="flex items-center gap-4 text-slate-500 font-semibold text-sm">
                 <div className="flex items-center gap-1.5">
                   <FaCalendarAlt className="text-primary-400" />
-                  {formatDateTime(order.createdAt)}
+                  {formatDateTime(getOrderDate(order))}
                 </div>
                 <div className="w-1 h-1 bg-slate-300 rounded-full"></div>
                 <div className="flex items-center gap-1.5 text-slate-900">

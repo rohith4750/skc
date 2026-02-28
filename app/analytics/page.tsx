@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState, useMemo } from 'react'
-import { formatCurrency, formatDateTime, formatDate } from '@/lib/utils'
+import { formatCurrency, formatDateTime, formatDate , getOrderDate} from '@/lib/utils'
 import {
   FaChartLine,
   FaChartBar,
@@ -153,7 +153,7 @@ export default function AnalyticsPage() {
 
       return {
         orders: data.orders.filter((o: any) => {
-          const date = new Date(o.eventDate || o.createdAt)
+          const date = new Date(getOrderDate(o))
           return date >= prevMonth && date <= prevMonthEnd
         }),
         bills: data.bills.filter((b: any) => {
@@ -172,7 +172,7 @@ export default function AnalyticsPage() {
 
       return {
         orders: data.orders.filter((o: any) => {
-          const date = new Date(o.eventDate || o.createdAt)
+          const date = new Date(getOrderDate(o))
           return date >= prevYearStart && date <= prevYearEnd
         }),
         bills: data.bills.filter((b: any) => {
@@ -197,7 +197,7 @@ export default function AnalyticsPage() {
       const monthEnd = new Date(monthStart.getFullYear(), monthStart.getMonth() + 1, 0, 23, 59, 59)
 
       filtered.orders = data.orders.filter((o: any) => {
-        const date = new Date(o.eventDate || o.createdAt)
+        const date = new Date(getOrderDate(o))
         return date >= monthStart && date <= monthEnd
       })
 
@@ -215,7 +215,7 @@ export default function AnalyticsPage() {
       const yearEnd = new Date(parseInt(selectedYear), 11, 31, 23, 59, 59)
 
       filtered.orders = data.orders.filter((o: any) => {
-        const date = new Date(o.eventDate || o.createdAt)
+        const date = new Date(getOrderDate(o))
         return date >= yearStart && date <= yearEnd
       })
 
@@ -369,7 +369,7 @@ export default function AnalyticsPage() {
     })
 
     data.orders.forEach((order: any) => {
-      const monthKey = new Date(order.eventDate || order.createdAt).toISOString().slice(0, 7)
+      const monthKey = new Date(getOrderDate(order)).toISOString().slice(0, 7)
       if (months[monthKey]) {
         months[monthKey].orders += 1
       }

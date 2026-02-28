@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
-import { formatCurrency, formatDate, formatDateTime } from '@/lib/utils'
+import { formatCurrency, formatDate, formatDateTime , getOrderDate} from '@/lib/utils'
 import { Expense, Order } from '@/types'
 import {
   FaPlus,
@@ -423,7 +423,7 @@ export default function ExpensesPage() {
           return (
             <div>
               <div className="text-sm font-medium text-gray-900">{row.order.customer.name}</div>
-              <div className="text-xs text-gray-500">{formatDate(row.order.createdAt)}</div>
+              <div className="text-xs text-gray-500">{formatDate(getOrderDate(row.order))}</div>
             </div>
           )
         }
@@ -688,7 +688,7 @@ export default function ExpensesPage() {
                 <option value="all">All Events/Orders</option>
                 {orders.map((order: any) => (
                   <option key={order.id} value={order.id}>
-                    {order.customer?.name || 'Unknown'} - {formatDate(order.createdAt)}
+                    {order.customer?.name || 'Unknown'} - {formatDate(getOrderDate(order))}
                   </option>
                 ))}
               </select>

@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState, useMemo } from 'react'
-import { formatDateTime, formatDate, formatCurrency, sanitizeMealLabel } from '@/lib/utils'
+import { formatDateTime, formatDate, formatCurrency, sanitizeMealLabel , getOrderDate} from '@/lib/utils'
 import { Order } from '@/types'
 import { FaTrash, FaFilePdf, FaFileImage, FaChevronLeft, FaChevronRight, FaEdit, FaFilter, FaChartLine, FaClock, FaCheckCircle, FaTimesCircle, FaEnvelope, FaCalendarAlt } from 'react-icons/fa'
 import Link from 'next/link'
@@ -103,7 +103,7 @@ export default function OrdersHistoryPage() {
 
     // Month/Year filter
     filtered = filtered.filter(order => {
-      const orderDate = new Date(order.eventDate || order.createdAt)
+      const orderDate = new Date(getOrderDate(order))
       return (orderDate.getMonth() + 1) === selectedMonth && orderDate.getFullYear() === selectedYear
     })
 

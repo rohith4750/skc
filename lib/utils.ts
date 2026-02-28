@@ -29,6 +29,11 @@ export function formatDateTime(date: string | Date): string {
   });
 }
 
+export function getOrderDate(order: any): string | Date {
+  if (!order) return new Date();
+  return order.eventDate || order.createdAt;
+}
+
 /**
  * Returns the current date in YYYY-MM-DD format based on the user's local timezone.
  * This fixes the issue where `new Date().toISOString().split('T')[0]` returns yesterday's date
