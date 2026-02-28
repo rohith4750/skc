@@ -17,6 +17,8 @@ export default function OrderSummaryPage() {
   const [editingEntry, setEditingEntry] = useState<PaymentHistoryEntry | null>(null)
   const [isEditModalOpen, setIsEditModalOpen] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false)
+  const [entryIdToDelete, setEntryIdToDelete] = useState<string | null>(null)
   const [editFormData, setEditFormData] = useState({
     amount: 0,
     date: '',
@@ -87,20 +89,27 @@ export default function OrderSummaryPage() {
     }
   }
 
-  const handleDeleteEntry = async (entryId: string) => {
-    if (!order?.bill?.id || !confirm('Are you sure you want to delete this entry? This will update the total balance.')) return
+  const confirmDeleteEntry = (entryId: string) => {
+    setEntryIdToDelete(entryId)
+    setIsDeleteModalOpen(true)
+  }
+
+  const handleDeleteEntry = async () => {
+    if (!entryIdToDelete || !order?.bill?.id) return
 
     setIsDeleting(true)
     try {
       const response = await fetch(`/api/bills/${order.bill.id}/ledger`, {
         method: 'DELETE',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ entryId })
+        body: JSON.stringify({ entryId: entryIdToDelete })
       })
 
       if (!response.ok) throw new Error('Failed to delete entry')
 
       toast.success('Ledger entry deleted')
+      setIsDeleteModalOpen(false)
+      setEntryIdToDelete(null)
       // Refresh order data
       const updatedOrderResponse = await fetch(`/api/orders/${orderId}`)
       const updatedOrderData = await updatedOrderResponse.json()
@@ -538,7 +547,7 @@ export default function OrderSummaryPage() {
                                     <FaEdit size={10} /> EDIT
                                   </button>
                                   <button
-                                    onClick={() => handleDeleteEntry(payment.id!)}
+                                    onClick={() => confirmDeleteEntry(payment.id!)}
                                     className="flex items-center gap-1.5 px-3 py-1.5 bg-white border border-slate-200 text-slate-600 hover:bg-rose-50 hover:text-rose-600 hover:border-rose-200 rounded-lg transition-all text-[10px] font-black tracking-widest shadow-sm"
                                     title="Delete Entry"
                                     disabled={isDeleting}
@@ -627,6 +636,40 @@ export default function OrderSummaryPage() {
                   className="flex-1 px-6 py-3.5 bg-primary-600 text-white rounded-2xl font-bold hover:bg-primary-700 shadow-lg shadow-primary-200 transition-all active:scale-95 flex items-center justify-center gap-2"
                 >
                   <FaSave /> Save Changes
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Delete Confirmation Modal */}
+        {isDeleteModalOpen && (
+          <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
+            <div className="bg-white rounded-[2.5rem] w-full max-w-sm shadow-2xl overflow-hidden border border-slate-100 p-8 text-center">
+              <div className="w-20 h-20 bg-rose-50 rounded-full flex items-center justify-center mx-auto mb-6 text-rose-500 shadow-inner">
+                <FaExclamationCircle size={40} />
+              </div>
+              <h3 className="text-2xl font-black text-slate-900 mb-2">Are you sure?</h3>
+              <p className="text-sm font-bold text-slate-400 leading-relaxed mb-8">
+                This will permanently delete this ledger entry and update the order's remaining balance. This action cannot be undone.
+              </p>
+              <div className="flex flex-col gap-3">
+                <button
+                  onClick={handleDeleteEntry}
+                  disabled={isDeleting}
+                  className="w-full py-4 bg-rose-600 text-white rounded-2xl font-black hover:bg-rose-700 shadow-xl shadow-rose-200 transition-all active:scale-95 disabled:bg-rose-400 flex items-center justify-center gap-2"
+                >
+                  {isDeleting ? 'Deleting...' : <><FaTrash /> Confirm Delete</>}
+                </button>
+                <button
+                  onClick={() => {
+                    setIsDeleteModalOpen(false)
+                    setEntryIdToDelete(null)
+                  }}
+                  disabled={isDeleting}
+                  className="w-full py-4 bg-white border border-slate-200 text-slate-500 rounded-2xl font-black hover:bg-slate-50 transition-all active:scale-95"
+                >
+                  Cancel
                 </button>
               </div>
             </div>
