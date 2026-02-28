@@ -66,6 +66,7 @@ export interface PDFTemplateData {
       status?: string
       orderName?: string
       customerName?: string
+      venueAddress?: string
       calculationDetails?: any
       isBulkExpense?: boolean
       bulkAllocations?: any[]
@@ -268,7 +269,7 @@ export function generatePDFTemplate(data: PDFTemplateData): string {
         }
         .signature-line {
           border-top: 1px dotted #000;
-          margin-top: 50px;
+          margin-top: 60px;
           padding-top: 5px;
           font-size: 11px;
           font-weight: 500;
@@ -352,10 +353,10 @@ export function generatePDFTemplate(data: PDFTemplateData): string {
         .text-right { text-align: right !important; }
         .stamp-image {
           position: absolute;
-          width: 100px;
+          width: 180px;
           height: auto;
-          opacity: 0.8;
-          top: -45px;
+          opacity: 0.9;
+          top: -25px;
           left: 50%;
           transform: translateX(-50%);
           pointer-events: none;
@@ -811,6 +812,7 @@ function generateWorkforceContent(data: PDFTemplateData): string {
         date: exp.date,
         orderName: alloc.orderName,
         customerName: alloc.customerName || '',
+        venueAddress: alloc.venueAddress || '',
         amount: alloc.amount,
         plates: alloc.plates,
         rate: exp.calculationDetails?.perPlateAmount,
@@ -822,6 +824,7 @@ function generateWorkforceContent(data: PDFTemplateData): string {
       date: exp.date,
       orderName: exp.orderName,
       customerName: exp.customerName,
+      venueAddress: exp.venueAddress,
       amount: exp.amount,
       plates: exp.calculationDetails?.plates,
       rate: exp.calculationDetails?.perPlateAmount,
@@ -836,6 +839,7 @@ function generateWorkforceContent(data: PDFTemplateData): string {
                   <td>${formatDate(item.date)}</td>
                   <td>
                     <div style="font-weight: bold;">${eventInfo || 'General Expense'}</div>
+                    ${item.venueAddress ? `<div style="font-size: 9px; color: #444; margin-top: 2px;">📍 ${item.venueAddress}</div>` : ''}
                     ${item.description ? `<div style="font-size: 9px; color: #666; margin-top: 2px;">${item.description}</div>` : ''}
                   </td>
                   ${role === 'chef' ? `<td>${item.plates || '-'}</td>` : ''}
