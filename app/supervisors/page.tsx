@@ -1,5 +1,4 @@
-'use client'
-
+"use client";
 import { useEffect, useState } from 'react'
 import { Storage } from '@/lib/storage-api'
 import { Supervisor } from '@/types'

@@ -1,5 +1,4 @@
-'use client'
-
+"use client";
 import { useEffect, useState, useMemo, useRef } from 'react'
 import { Storage } from '@/lib/storage-api'
 import { generateId, formatCurrency, formatDateTime } from '@/lib/utils'

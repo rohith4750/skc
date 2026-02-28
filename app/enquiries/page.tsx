@@ -1,5 +1,4 @@
-'use client'
-
+"use client";
 import { useEffect, useMemo, useState } from 'react'
 import { FaEnvelope, FaSearch, FaSync, FaTimes, FaEnvelopeOpenText, FaGlobe } from 'react-icons/fa'
 import RoleGuard from '@/components/RoleGuard'

@@ -1,5 +1,4 @@
-'use client'
-
+"use client";
 import { useState, useEffect } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { FaLock, FaEnvelope, FaEye, FaEyeSlash, FaKey, FaCheckCircle } from 'react-icons/fa'

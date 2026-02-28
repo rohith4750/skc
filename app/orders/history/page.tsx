@@ -1,5 +1,4 @@
-'use client'
-
+"use client";
 import { useEffect, useState, useMemo } from 'react'
 import { formatDateTime, formatDate, formatCurrency, sanitizeMealLabel , getOrderDate} from '@/lib/utils'
 import { Order } from '@/types'

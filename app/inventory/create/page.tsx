@@ -1,5 +1,4 @@
-'use client'
-
+"use client";
 import { useEffect, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { FaArrowLeft, FaCircle, FaCookieBite, FaUtensils, FaBox, FaWarehouse, FaTools } from 'react-icons/fa'

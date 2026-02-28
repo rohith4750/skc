@@ -122,6 +122,33 @@ npx prisma migrate dev
     └── index.ts         # All type definitions
 ```
 
+## Central Routing And Side Menu Config
+
+Route and side menu metadata is centralized in:
+
+- `constants/menu.ts`
+
+This file is the source of truth for:
+
+- `menuData`: Sidebar-visible routes.
+- `loginRoutes`: Public routes outside authenticated layout.
+- `adminRoutes`: Authenticated routes (including hidden routes not shown in sidebar).
+
+Each route config object includes:
+
+- `name`: Display title.
+- `route`: URL path.
+- `file`: Component file path.
+- `icon`: Icon key used by sidebar rendering.
+- `permissions`: Access rule key.
+- `showInSideMenu`: Controls sidebar visibility.
+
+Implementation references:
+
+- `components/layout/Sidebar.tsx` renders menu items from `menuData`.
+- `components/layout/Header.tsx` resolves page titles from route config.
+- `lib/constants.ts` derives public auth paths from `loginRoutes`.
+
 ## Database Schema
 
 The application uses the following main models:

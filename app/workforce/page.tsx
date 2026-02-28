@@ -1,5 +1,4 @@
-'use client'
-
+"use client";
 import { useEffect, useState, useMemo } from 'react'
 import { FaEdit, FaTrash, FaUtensils, FaUserTie, FaTruck, FaDollarSign, FaReceipt, FaChevronDown, FaChevronUp, FaUsers, FaUserFriends, FaFilter, FaSearch, FaTimes, FaCheckCircle, FaExclamationCircle, FaClock, FaGasPump, FaBox, FaStore, FaCircle, FaPlus, FaPrint } from 'react-icons/fa'
 import toast from 'react-hot-toast'

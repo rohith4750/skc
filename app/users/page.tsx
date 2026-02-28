@@ -1,5 +1,4 @@
-'use client'
-
+"use client";
 import { useEffect, useState } from 'react'
 import { formatDateTime } from '@/lib/utils'
 import { FaPlus, FaEdit, FaTrash, FaUserShield, FaUtensils, FaUserTie, FaTruck, FaUser, FaHistory } from 'react-icons/fa'

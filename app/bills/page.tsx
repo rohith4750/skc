@@ -1,5 +1,4 @@
-'use client'
-
+"use client";
 import { useEffect, useState, useMemo } from 'react'
 import { formatCurrency, formatDateTime, formatDate, sendWhatsAppMessage } from '@/lib/utils'
 import { Bill, Order, Customer } from '@/types'

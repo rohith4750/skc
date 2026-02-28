@@ -1,5 +1,4 @@
-'use client'
-
+"use client";
 import { useEffect, useState, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import { Storage } from '@/lib/storage-api'

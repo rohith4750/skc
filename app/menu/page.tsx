@@ -1,5 +1,4 @@
-'use client'
-
+"use client";
 import { useEffect, useState, useMemo } from 'react'
 import { Storage } from '@/lib/storage-api'
 import { initializeMenuItems } from '@/lib/initMenu'
