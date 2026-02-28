@@ -345,6 +345,20 @@ export function generatePDFTemplate(data: PDFTemplateData): string {
           font-size: 10px;
         }
         .text-right { text-align: right !important; }
+        .stamp-image {
+          position: absolute;
+          width: 100px;
+          height: auto;
+          opacity: 0.8;
+          top: -45px;
+          left: 50%;
+          transform: translateX(-50%);
+          pointer-events: none;
+        }
+        .signature-box {
+          width: 45%;
+          position: relative;
+        }
       </style>
     </head>
     <body>
@@ -378,9 +392,13 @@ export function generatePDFTemplate(data: PDFTemplateData): string {
         <!-- Signatures -->
         <div class="signature-section">
           <div class="signature-box">
-            <div class="signature-line">Authorized Signature</div>
+            ${(data.type === 'workforce' || (data.type === 'expense' && ['supervisor', 'chef', 'labours', 'boys', 'transport', 'gas', 'pan', 'store', 'other'].includes(data.expenseDetails?.category?.toLowerCase() || ''))) ? `
+              <img src="/images/billstamp.png" class="stamp-image" alt="Stamp" />
+            ` : ''}
+            <div class="signature-line">Authorized Signatory & Stamp</div>
           </div>
-          ${data.type !== 'inventory' && data.type !== 'workforce' ? `
+          ${(data.type !== 'inventory' && data.type !== 'workforce' &&
+      !(data.type === 'expense' && ['supervisor', 'chef', 'labours', 'boys', 'transport', 'gas', 'pan', 'store', 'other'].includes(data.expenseDetails?.category?.toLowerCase() || ''))) ? `
           <div class="signature-box">
             <div class="signature-line">Customer Signature</div>
           </div>
