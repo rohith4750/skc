@@ -1997,6 +1997,14 @@ export default function OrdersPage() {
                 <a href="#customer-section" className="px-3 py-2.5 text-sm text-gray-600 hover:text-primary-600 hover:bg-primary-50 rounded-lg transition-colors flex items-center gap-3 font-medium">
                   <FaUser className="text-gray-400" /> Customer Details
                 </a>
+                {selectedCustomer && (
+                  <div className="mx-3 px-3 py-2 mb-2 bg-primary-50/50 rounded-lg border border-primary-100 text-xs text-gray-600 space-y-0.5">
+                    <p className="font-bold text-gray-800 text-[13px] border-b border-primary-100/50 pb-1 mb-1">{selectedCustomer.name}</p>
+                    {selectedCustomer.phone && <div className="flex items-center gap-2"><span>{selectedCustomer.phone}</span></div>}
+                    {selectedCustomer.email && <div className="flex items-center gap-2 truncate" title={selectedCustomer.email}><span className="truncate">{selectedCustomer.email}</span></div>}
+                    {selectedCustomer.address && <div className="flex flex-col mt-0.5 pt-0.5 border-t border-primary-100/50"><span className="text-[10px] text-gray-400 font-medium uppercase mt-0.5">Address</span><span className="line-clamp-2" title={selectedCustomer.address}>{selectedCustomer.address}</span></div>}
+                  </div>
+                )}
                 <a href="#meal-types-section" className="px-3 py-2.5 text-sm text-gray-600 hover:text-primary-600 hover:bg-primary-50 rounded-lg transition-colors flex items-center gap-3 font-medium">
                   <span className="w-5 h-5 flex items-center justify-center text-[10px] font-bold border border-current rounded-full"><FaUtensils className="text-[10px]" /></span> Meal Types
                 </a>

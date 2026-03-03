@@ -29,6 +29,7 @@ export default function Dashboard() {
 
   const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth() + 1);
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
+  const [selectedDate, setSelectedDate] = useState<string>('');
   const [stats, setStats] = useState<DashboardStats>({
     customers: 0,
     menuItems: 0,
@@ -77,6 +78,14 @@ export default function Dashboard() {
         const filterByMonthYear = (itemDate: string | Date | null) => {
           if (!itemDate) return false;
           const d = new Date(itemDate);
+
+          if (selectedDate) {
+            const y = d.getFullYear();
+            const m = String(d.getMonth() + 1).padStart(2, '0');
+            const day = String(d.getDate()).padStart(2, '0');
+            return `${y}-${m}-${day}` === selectedDate;
+          }
+
           return (
             d.getMonth() + 1 === selectedMonth &&
             d.getFullYear() === selectedYear
@@ -226,7 +235,7 @@ export default function Dashboard() {
       }
     };
     loadStats();
-  }, [isSuperAdminUser, selectedMonth, selectedYear]);
+  }, [isSuperAdminUser, selectedMonth, selectedYear, selectedDate]);
 
   const mainStatCards = getDashboardMainStatCards(stats);
   const adminStatCards = getDashboardAdminStatCards(stats, isSuperAdminUser);
@@ -294,30 +303,52 @@ export default function Dashboard() {
           </p>
         </div>
 
-        {/* Month Selector */}
-        <div className="flex items-center justify-center sm:justify-end gap-2 bg-white p-1.5 rounded-2xl shadow-sm border border-gray-100">
-          <select
-            value={selectedMonth}
-            onChange={(e) => setSelectedMonth(parseInt(e.target.value))}
-            className="bg-transparent text-sm font-bold text-gray-700 outline-none px-2 py-1 cursor-pointer"
-          >
-            {DASHBOARD_MONTH_OPTIONS.map((m, i) => (
-              <option key={m} value={i + 1}>
-                {m}
-              </option>
-            ))}
-          </select>
-          <select
-            value={selectedYear}
-            onChange={(e) => setSelectedYear(parseInt(e.target.value))}
-            className="bg-transparent text-sm font-bold text-gray-700 outline-none px-2 py-1 cursor-pointer"
-          >
-            {DASHBOARD_YEAR_OPTIONS.map((y) => (
-              <option key={y} value={y}>
-                {y}
-              </option>
-            ))}
-          </select>
+        {/* Filters */}
+        <div className="flex flex-col sm:flex-row items-center justify-center sm:justify-end gap-2 z-10">
+          {/* Specific Date Filter */}
+          <div className="flex items-center bg-white px-3 py-1.5 rounded-2xl shadow-sm border border-gray-100 flex-shrink-0">
+            <input
+              type="date"
+              value={selectedDate}
+              onChange={(e) => setSelectedDate(e.target.value)}
+              className="bg-transparent text-sm font-bold text-gray-700 outline-none cursor-pointer"
+            />
+            {selectedDate && (
+              <button
+                onClick={() => setSelectedDate('')}
+                className="ml-2 text-gray-400 hover:text-gray-600 focus:outline-none focus:text-gray-800"
+                title="Clear Specific Date"
+              >
+                ✕
+              </button>
+            )}
+          </div>
+
+          {/* Month/Year Selector */}
+          <div className={`flex items-center justify-center sm:justify-end gap-2 bg-white p-1.5 rounded-2xl shadow-sm border border-gray-100 transition-opacity duration-300 ${selectedDate ? 'opacity-40 pointer-events-none' : 'opacity-100'}`}>
+            <select
+              value={selectedMonth}
+              onChange={(e) => setSelectedMonth(parseInt(e.target.value))}
+              className="bg-transparent text-sm font-bold text-gray-700 outline-none px-2 py-1 cursor-pointer"
+            >
+              {DASHBOARD_MONTH_OPTIONS.map((m, i) => (
+                <option key={m} value={i + 1}>
+                  {m}
+                </option>
+              ))}
+            </select>
+            <select
+              value={selectedYear}
+              onChange={(e) => setSelectedYear(parseInt(e.target.value))}
+              className="bg-transparent text-sm font-bold text-gray-700 outline-none px-2 py-1 cursor-pointer"
+            >
+              {DASHBOARD_YEAR_OPTIONS.map((y) => (
+                <option key={y} value={y}>
+                  {y}
+                </option>
+              ))}
+            </select>
+          </div>
         </div>
       </div>
 

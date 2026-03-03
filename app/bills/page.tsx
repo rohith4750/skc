@@ -55,6 +55,7 @@ export default function BillsPage() {
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedMonth, setSelectedMonth] = useState<number>(new Date().getMonth() + 1)
   const [selectedYear, setSelectedYear] = useState<number>(new Date().getFullYear())
+  const [filterDate, setFilterDate] = useState<string>('')
   const [selectedBill, setSelectedBill] = useState<ExtendedBill | null>(null)
   const [isDrawerOpen, setIsDrawerOpen] = useState(false)
   const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false)
@@ -99,11 +100,19 @@ export default function BillsPage() {
 
       // Month/Year filter based on order eventDate or bill creation
       const billDate = new Date(bill.order?.eventDate || bill.createdAt)
+      if (filterDate) {
+        const y = billDate.getFullYear()
+        const m = String(billDate.getMonth() + 1).padStart(2, '0')
+        const day = String(billDate.getDate()).padStart(2, '0')
+        const matchesDate = `${y}-${m}-${day}` === filterDate
+        return matchesSearch && matchesDate
+      }
+
       const matchesMonth = (billDate.getMonth() + 1) === selectedMonth && billDate.getFullYear() === selectedYear
 
       return matchesSearch && matchesMonth
     })
-  }, [bills, searchQuery, selectedMonth, selectedYear])
+  }, [bills, searchQuery, selectedMonth, selectedYear, filterDate])
 
   // Metrics (based on filtered bills)
   const metrics = useMemo(() => {
@@ -472,27 +481,49 @@ export default function BillsPage() {
           </div>
 
           <div className="flex items-center gap-3">
-            {/* Month/Year Selector */}
-            <div className="flex items-center gap-2 bg-white px-3 py-1.5 rounded-xl border border-slate-200 shadow-sm">
-              <select
-                value={selectedMonth}
-                onChange={(e) => setSelectedMonth(parseInt(e.target.value))}
-                className="bg-transparent text-sm font-bold text-slate-700 outline-none cursor-pointer"
-              >
-                {['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'].map((m, i) => (
-                  <option key={m} value={i + 1}>{m}</option>
-                ))}
-              </select>
-              <div className="w-px h-4 bg-slate-200"></div>
-              <select
-                value={selectedYear}
-                onChange={(e) => setSelectedYear(parseInt(e.target.value))}
-                className="bg-transparent text-sm font-bold text-slate-700 outline-none cursor-pointer"
-              >
-                {[2024, 2025, 2026].map(y => (
-                  <option key={y} value={y}>{y}</option>
-                ))}
-              </select>
+            {/* Filters */}
+            <div className="flex flex-col sm:flex-row items-center gap-2">
+              {/* Specific Date Filter */}
+              <div className="flex items-center bg-white px-3 py-1.5 rounded-xl border border-slate-200 shadow-sm flex-shrink-0">
+                <input
+                  type="date"
+                  value={filterDate}
+                  onChange={(e) => setFilterDate(e.target.value)}
+                  className="bg-transparent text-sm font-bold text-slate-700 outline-none cursor-pointer"
+                />
+                {filterDate && (
+                  <button
+                    onClick={() => setFilterDate('')}
+                    className="ml-2 text-slate-400 hover:text-slate-600 focus:outline-none"
+                    title="Clear Specific Date"
+                  >
+                    ✕
+                  </button>
+                )}
+              </div>
+
+              {/* Month/Year Selector */}
+              <div className={`flex items-center gap-2 bg-white px-3 py-1.5 rounded-xl border border-slate-200 shadow-sm transition-opacity duration-300 ${filterDate ? 'opacity-40 pointer-events-none' : 'opacity-100'}`}>
+                <select
+                  value={selectedMonth}
+                  onChange={(e) => setSelectedMonth(parseInt(e.target.value))}
+                  className="bg-transparent text-sm font-bold text-slate-700 outline-none cursor-pointer"
+                >
+                  {['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'].map((m, i) => (
+                    <option key={m} value={i + 1}>{m}</option>
+                  ))}
+                </select>
+                <div className="w-px h-4 bg-slate-200"></div>
+                <select
+                  value={selectedYear}
+                  onChange={(e) => setSelectedYear(parseInt(e.target.value))}
+                  className="bg-transparent text-sm font-bold text-slate-700 outline-none cursor-pointer"
+                >
+                  {[2024, 2025, 2026].map(y => (
+                    <option key={y} value={y}>{y}</option>
+                  ))}
+                </select>
+              </div>
             </div>
 
             <button

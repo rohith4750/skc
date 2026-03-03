@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useState, useMemo } from 'react'
-import { formatDateTime, formatDate, formatCurrency, sanitizeMealLabel , getOrderDate} from '@/lib/utils'
+import { formatDateTime, formatDate, formatCurrency, sanitizeMealLabel, getOrderDate } from '@/lib/utils'
 import { Order } from '@/types'
 import { FaTrash, FaFilePdf, FaFileImage, FaChevronLeft, FaChevronRight, FaEdit, FaFilter, FaChartLine, FaClock, FaCheckCircle, FaTimesCircle, FaEnvelope, FaCalendarAlt } from 'react-icons/fa'
 import Link from 'next/link'
@@ -34,6 +34,7 @@ export default function OrdersHistoryPage() {
   const [showFilters, setShowFilters] = useState(false)
   const [statusFilter, setStatusFilter] = useState<string>('all')
   const [customerSearch, setCustomerSearch] = useState<string>('')
+  const [filterDate, setFilterDate] = useState<string>('')
   const [selectedMonth, setSelectedMonth] = useState<number>(new Date().getMonth() + 1)
   const [selectedYear, setSelectedYear] = useState<number>(new Date().getFullYear())
   const [pdfLanguageModal, setPdfLanguageModal] = useState<{ isOpen: boolean; order: any | null }>({
@@ -103,11 +104,19 @@ export default function OrdersHistoryPage() {
     // Month/Year filter
     filtered = filtered.filter(order => {
       const orderDate = new Date(getOrderDate(order))
+
+      if (filterDate) {
+        const y = orderDate.getFullYear()
+        const m = String(orderDate.getMonth() + 1).padStart(2, '0')
+        const day = String(orderDate.getDate()).padStart(2, '0')
+        return `${y}-${m}-${day}` === filterDate
+      }
+
       return (orderDate.getMonth() + 1) === selectedMonth && orderDate.getFullYear() === selectedYear
     })
 
     return filtered.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
-  }, [orders, statusFilter, customerSearch, selectedMonth, selectedYear])
+  }, [orders, statusFilter, customerSearch, selectedMonth, selectedYear, filterDate])
 
   const statusSummary = useMemo(() => {
     const totalOrders = filteredOrders.length
@@ -769,7 +778,7 @@ export default function OrdersHistoryPage() {
       {/* Filters */}
       {showFilters && (
         <div className="bg-white rounded-lg shadow-md p-6 mb-6">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4">
             {/* Status Filter */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">Status</label>
@@ -798,8 +807,30 @@ export default function OrdersHistoryPage() {
               />
             </div>
 
-            {/* Month Filter */}
+            {/* Specific Date Filter */}
             <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Specific Date</label>
+              <div className="relative">
+                <input
+                  type="date"
+                  value={filterDate}
+                  onChange={(e) => setFilterDate(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                />
+                {filterDate && (
+                  <button
+                    onClick={() => setFilterDate('')}
+                    className="absolute right-2 top-1/2 transform -translate-y-1/2 p-1 text-gray-400 hover:text-gray-600 focus:outline-none bg-white rounded-md"
+                    title="Clear Specific Date"
+                  >
+                    ✕
+                  </button>
+                )}
+              </div>
+            </div>
+
+            {/* Month Filter */}
+            <div className={`transition-opacity duration-300 ${filterDate ? 'opacity-40 pointer-events-none' : 'opacity-100'}`}>
               <label className="block text-sm font-medium text-gray-700 mb-2">Month</label>
               <select
                 value={selectedMonth}
@@ -813,7 +844,7 @@ export default function OrdersHistoryPage() {
             </div>
 
             {/* Year Filter */}
-            <div>
+            <div className={`transition-opacity duration-300 ${filterDate ? 'opacity-40 pointer-events-none' : 'opacity-100'}`}>
               <label className="block text-sm font-medium text-gray-700 mb-2">Year</label>
               <select
                 value={selectedYear}
@@ -831,6 +862,7 @@ export default function OrdersHistoryPage() {
               onClick={() => {
                 setStatusFilter('all')
                 setCustomerSearch('')
+                setFilterDate('')
                 setSelectedMonth(new Date().getMonth() + 1)
                 setSelectedYear(new Date().getFullYear())
                 setCurrentPage(1)
