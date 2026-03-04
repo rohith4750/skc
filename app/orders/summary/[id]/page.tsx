@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import toast from 'react-hot-toast'
-import { formatCurrency, formatDate, formatDateTime, sanitizeMealLabel , getOrderDate} from '@/lib/utils'
+import { formatCurrency, formatDate, formatDateTime, sanitizeMealLabel, getOrderDate } from '@/lib/utils'
 import { Bill, Order, PaymentHistoryEntry } from '@/types'
 import { FaUser, FaCalendarAlt, FaMoneyBillWave, FaHistory, FaUtensils, FaTruck, FaTag, FaArrowLeft, FaEdit, FaCheckCircle, FaExclamationCircle, FaTrash, FaTimes, FaSave } from 'react-icons/fa'
 
@@ -150,7 +150,7 @@ export default function OrderSummaryPage() {
 
   // Build date-wise structure: date -> sessions (for one customer with many dates)
   const getMealTypePriority = (type: string) => {
-    const p: Record<string, number> = { breakfast: 1, lunch: 2, dinner: 3, snacks: 4, high_tea: 5 }
+    const p: Record<string, number> = { breakfast: 1, lunch: 2, snacks: 3, dinner: 4, high_tea: 5 }
     return p[(type || '').toLowerCase()] || 99
   }
   type SessionEntry = { key: string; data: any; detail: any; items: any[] }

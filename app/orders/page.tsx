@@ -331,11 +331,10 @@ export default function OrdersPage() {
   // Helper for meal type sorting
   const getMealTypePriority = (type: string) => {
     const priorities: Record<string, number> = {
-
       'BREAKFAST': 1,
       'LUNCH': 2,
-      'DINNER': 3,
-      'SNACKS': 4
+      'SNACKS': 3,
+      'DINNER': 4
     }
     return priorities[type?.toUpperCase()] || 99
   }

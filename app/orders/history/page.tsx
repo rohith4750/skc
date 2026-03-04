@@ -397,7 +397,7 @@ export default function OrdersHistoryPage() {
 
     // Build date-wise structure for merged orders (same as order-pdf-html)
     const getMealTypePriority = (type: string) => {
-      const p: Record<string, number> = { 'BREAKFAST': 1, 'LUNCH': 2, 'DINNER': 3, 'SNACKS': 4 }
+      const p: Record<string, number> = { 'BREAKFAST': 1, 'LUNCH': 2, 'SNACKS': 3, 'DINNER': 4 }
       return p[type?.toUpperCase()] || 99
     }
     type SessionGroup = { menuType: string; members?: number; services?: string[]; items: any[] }
