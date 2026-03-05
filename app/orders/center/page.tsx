@@ -44,6 +44,7 @@ export default function OrderCenterPage() {
   const [customerSearch, setCustomerSearch] = useState<string>('')
   const [selectedMonth, setSelectedMonth] = useState<number>(0) // 0 for All Months
   const [selectedYear, setSelectedYear] = useState<number>(0) // 0 for All Years
+  const [mealTypeFilter, setMealTypeFilter] = useState<string>('all')
   const [pdfLanguageModal, setPdfLanguageModal] = useState<{ isOpen: boolean; order: any | null }>({
     isOpen: false,
     order: null,
@@ -115,8 +116,20 @@ export default function OrderCenterPage() {
       return monthMatch && yearMatch
     })
 
+    // Meal type filter
+    if (mealTypeFilter !== 'all') {
+      filtered = filtered.filter(order => {
+        const mealTypeAmounts = order.mealTypeAmounts as Record<string, any> | null
+        if (!mealTypeAmounts) return false
+        return Object.values(mealTypeAmounts).some(data => {
+          const menuType = typeof data === 'object' && data !== null ? data.menuType : null
+          return menuType?.toLowerCase() === mealTypeFilter.toLowerCase()
+        })
+      })
+    }
+
     return filtered.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
-  }, [orders, statusFilter, customerSearch, selectedMonth, selectedYear])
+  }, [orders, statusFilter, customerSearch, selectedMonth, selectedYear, mealTypeFilter])
 
   const statusSummary = useMemo(() => {
     const totalOrders = filteredOrders.length
@@ -875,6 +888,24 @@ export default function OrderCenterPage() {
                 ))}
               </select>
             </div>
+
+            {/* Meal Type Filter */}
+            <div>
+              <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Meal Type</label>
+              <select
+                value={mealTypeFilter}
+                onChange={(e) => setMealTypeFilter(e.target.value)}
+                className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-700 font-bold text-sm focus:ring-2 focus:ring-indigo-500 outline-none transition-all"
+              >
+                <option value="all">All Meal Types</option>
+                <option value="breakfast">Breakfast</option>
+                <option value="lunch">Lunch</option>
+                <option value="dinner">Dinner</option>
+                <option value="snacks">Snacks</option>
+                <option value="sweets">Sweets</option>
+                <option value="saree">Saree</option>
+              </select>
+            </div>
           </div>
 
           <div className="mt-6 flex justify-end border-t border-slate-50 pt-4">
@@ -884,6 +915,7 @@ export default function OrderCenterPage() {
                 setCustomerSearch('')
                 setSelectedMonth(0)
                 setSelectedYear(0)
+                setMealTypeFilter('all')
                 setCurrentPage(1)
               }}
               className="text-xs text-indigo-600 hover:text-indigo-700 font-bold uppercase tracking-wider transition-colors"

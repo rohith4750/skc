@@ -60,6 +60,7 @@ export interface Order {
         menuType?: string;
         amount?: number;
         date?: string;
+        time?: string; // NEW: Specific time for the session
         services?: string[];
         numberOfMembers?: number;
         pricingMethod?: "manual" | "plate-based";

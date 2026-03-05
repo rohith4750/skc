@@ -57,6 +57,7 @@ export default function OrdersPage() {
       platePrice: string
       manualAmount: string
       date: string
+      time: string // NEW: Specific time for the session
       services: string[] // Array of selected services: 'buffet', 'vaddana', 'handover'
       numberOfMembers: string
       itemCustomizations: Record<string, string> // menuItemId -> customization text
@@ -191,6 +192,7 @@ export default function OrdersPage() {
         ? Object.entries(mealTypeAmounts).map(([key, mealTypeData]) => {
           const amount = typeof mealTypeData === 'object' && mealTypeData !== null ? mealTypeData.amount : (typeof mealTypeData === 'number' ? mealTypeData : 0)
           const date = typeof mealTypeData === 'object' && mealTypeData !== null ? mealTypeData.date : ''
+          const time = typeof mealTypeData === 'object' && mealTypeData !== null ? (mealTypeData as any).time : ''
           const services = typeof mealTypeData === 'object' && mealTypeData !== null && mealTypeData.services ? mealTypeData.services : []
           const numberOfMembers = typeof mealTypeData === 'object' && mealTypeData !== null && mealTypeData.numberOfMembers ? mealTypeData.numberOfMembers.toString() : ''
           const venue = typeof mealTypeData === 'object' && mealTypeData !== null && (mealTypeData as any).venue ? (mealTypeData as any).venue : ''
@@ -268,6 +270,7 @@ export default function OrdersPage() {
             platePrice,
             manualAmount,
             date: date || '',
+            time: time || '',
             services,
             numberOfMembers
           }
@@ -313,6 +316,12 @@ export default function OrdersPage() {
   }
 
   const handleMenuItemToggle = (mealTypeId: string, menuItemId: string) => {
+    // Clear search term for this meal type when an item is selected
+    setMenuItemSearch(prev => ({
+      ...prev,
+      [mealTypeId]: ''
+    }))
+
     setFormData(prev => ({
       ...prev,
       mealTypes: prev.mealTypes.map(mealType =>
@@ -354,6 +363,7 @@ export default function OrdersPage() {
         platePrice: '',
         manualAmount: '',
         date: '',
+        time: '',
         services: [],
         numberOfMembers: '',
         itemCustomizations: {},
@@ -641,6 +651,7 @@ export default function OrdersPage() {
           menuType: mealType.menuType, // Store name inside
           amount,
           date: mealType.date || '',
+          time: mealType.time || '',
           venue: mealType.venue || '',
           services: mealType.services,
           numberOfMembers: mealType.numberOfMembers ? parseInt(mealType.numberOfMembers, 10) : undefined,
@@ -1274,8 +1285,8 @@ export default function OrdersPage() {
 
                               {!isCollapsed && (
                                 <div className="p-4 md:p-6 space-y-4">
-                                  {/* Event Name, Menu Type, Venue and Date */}
-                                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                                  {/* Event Name, Menu Type, Venue, Date and Time */}
+                                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
                                     <div>
                                       <label className="block text-sm font-medium text-gray-700 mb-1">
                                         Event Name
@@ -1328,6 +1339,17 @@ export default function OrdersPage() {
                                         required
                                         value={mealType.date}
                                         onChange={(e: any) => handleUpdateMealType(mealType.id, 'date', e.target.value)}
+                                        className="w-full px-4 py-3 md:py-2 min-h-[48px] md:min-h-0 border border-gray-300 rounded-xl md:rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 text-base md:text-sm touch-manipulation"
+                                      />
+                                    </div>
+                                    <div>
+                                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                                        Time (Optional)
+                                      </label>
+                                      <input
+                                        type="time"
+                                        value={mealType.time}
+                                        onChange={(e: any) => handleUpdateMealType(mealType.id, 'time', e.target.value)}
                                         className="w-full px-4 py-3 md:py-2 min-h-[48px] md:min-h-0 border border-gray-300 rounded-xl md:rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 text-base md:text-sm touch-manipulation"
                                       />
                                     </div>

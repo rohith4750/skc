@@ -369,7 +369,22 @@ export default function OrderSummaryPage() {
                           </div>
                           <h3 className="text-xl font-black capitalize text-slate-900 leading-none">{sanitizeMealLabel(detail?.menuType || mealType)}</h3>
                           <p className="text-[10px] font-bold text-slate-400 uppercase mt-2 tracking-widest">
-                            {detail?.date ? formatDate(detail.date) : 'Date Pending'}
+                            {(() => {
+                              const d = detail?.date ? formatDate(detail.date) : 'Date Pending';
+                              if (detail?.time) {
+                                // Convert HH:mm to 12h format
+                                try {
+                                  const [hours, minutes] = detail.time.split(':');
+                                  const h = parseInt(hours);
+                                  const ampm = h >= 12 ? 'PM' : 'AM';
+                                  const h12 = h % 12 || 12;
+                                  return `${d} @ ${h12}:${minutes} ${ampm}`;
+                                } catch (e) {
+                                  return `${d} @ ${detail.time}`;
+                                }
+                              }
+                              return d;
+                            })()}
                           </p>
                         </div>
 
