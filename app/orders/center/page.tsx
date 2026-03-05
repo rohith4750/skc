@@ -15,6 +15,8 @@ import html2canvas from 'html2canvas'
 import toast from 'react-hot-toast'
 import ConfirmModal from '@/components/ConfirmModal'
 import MergeOrdersModal from '@/components/MergeOrdersModal'
+import { getRequest, postRequest, putRequest, deleteRequest } from '@/lib/api/api'
+import { apiUrl } from '@/lib/api/apiUrl'
 import { buildOrderPdfHtml } from '@/lib/order-pdf-html'
 
 export default function OrderCenterPage() {
@@ -74,9 +76,7 @@ export default function OrderCenterPage() {
 
   const loadData = async () => {
     try {
-      const response = await fetch('/api/orders')
-      if (!response.ok) throw new Error('Failed to fetch orders')
-      const allOrders = await response.json() as Order[]
+      const allOrders = await getRequest({ url: apiUrl.GET_getAllOrders }) as Order[]
       setOrders(allOrders)
     } catch (error) {
       console.error('Failed to load data:', error)
@@ -140,14 +140,7 @@ export default function OrderCenterPage() {
   const confirmDelete = async () => {
     if (!deleteConfirm.id) return
     try {
-      const response = await fetch(`/api/orders/${deleteConfirm.id}`, {
-        method: 'DELETE',
-      })
-
-      if (!response.ok) {
-        const error = await response.json()
-        throw new Error(error.error || error.details || 'Failed to delete order')
-      }
+      await deleteRequest({ url: apiUrl.DEL_deleteOrder(deleteConfirm.id) })
 
       await loadData()
       toast.success('Order deleted successfully!')
@@ -162,20 +155,11 @@ export default function OrderCenterPage() {
   const handleStatusChange = async (orderId: string, newStatus: string) => {
     try {
       console.log(`[Order History] Updating order ${orderId} status to ${newStatus}`)
-      const response = await fetch(`/api/orders/${orderId}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          status: newStatus,
-        }),
+      const responseData = await putRequest({
+        url: apiUrl.PUT_updateOrder(orderId),
+        data: { status: newStatus }
       })
 
-      if (!response.ok) {
-        const error = await response.json()
-        throw new Error(error.error || 'Failed to update status')
-      }
-
-      const responseData = await response.json()
       console.log(`[Order History] Order status updated.`, responseData)
 
       // Reload data to get the latest orders with updated status
@@ -244,19 +228,13 @@ export default function OrderCenterPage() {
     if (!orderId) return
 
     try {
-      const endpoint = sessionKey ? '/api/orders/discard-session' : '/api/orders/discard-date'
+      const endpoint = sessionKey ? apiUrl.POST_discardOrderSession : apiUrl.POST_discardOrderDate
       const body = sessionKey ? { orderId, sessionKey } : { orderId, date }
 
-      const response = await fetch(endpoint, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body),
+      await postRequest({
+        url: endpoint,
+        data: body
       })
-
-      if (!response.ok) {
-        const error = await response.json()
-        throw new Error(error.error || 'Failed to separate session')
-      }
 
       toast.success(sessionKey ? 'Session separated successfully' : 'Date group separated successfully')
       setSeparationConfirm({ isOpen: false, orderId: null, sessionKey: null, sessionLabel: '', date: '' })
@@ -276,16 +254,10 @@ export default function OrderCenterPage() {
 
     setIsMerging(true)
     try {
-      const response = await fetch('/api/orders/merge', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ primaryOrderId, secondaryOrderIds })
+      await postRequest({
+        url: apiUrl.POST_mergeOrders,
+        data: { primaryOrderId, secondaryOrderIds }
       })
-
-      if (!response.ok) {
-        const error = await response.json()
-        throw new Error(error.error || 'Failed to merge orders')
-      }
 
       toast.success('Orders merged successfully!')
       setSelectedOrderIds([])
@@ -670,7 +642,7 @@ export default function OrderCenterPage() {
   }
 
   const handleGeneratePDF = async (order: any, language: 'english' | 'telugu') => {
-    const freshOrder = await fetch(`/api/orders/${order.id}`).then(r => r.ok ? r.json() : order).catch(() => order)
+    const freshOrder = await getRequest({ url: apiUrl.GET_getOrderById(order.id) }).catch(() => order)
     const orderToUse = freshOrder?.items?.length ? freshOrder : order
     const pdfBase64 = await renderOrderToPdf(orderToUse, language)
     if (!pdfBase64) {
@@ -691,7 +663,7 @@ export default function OrderCenterPage() {
   }
 
   const handleGenerateImage = async (order: any, language: 'english' | 'telugu' = 'english') => {
-    const freshOrder = await fetch(`/api/orders/${order.id}`).then(r => r.ok ? r.json() : order).catch(() => order)
+    const freshOrder = await getRequest({ url: apiUrl.GET_getOrderById(order.id) }).catch(() => order)
     const orderToUse = freshOrder?.items?.length ? freshOrder : order
     const imageDataUrl = await renderOrderToImage(orderToUse, language, true)
     if (!imageDataUrl) {
@@ -713,22 +685,17 @@ export default function OrderCenterPage() {
     }
     setEmailSending(true)
     try {
-      const freshOrder = await fetch(`/api/orders/${order.id}`).then(r => r.ok ? r.json() : order).catch(() => order)
+      const freshOrder = await getRequest({ url: apiUrl.GET_getOrderById(order.id) }).catch(() => order)
       const orderToUse = freshOrder?.items?.length ? freshOrder : order
       const pdfBase64 = await renderOrderToPdf(orderToUse, language)
       if (!pdfBase64) {
         toast.error('Failed to generate PDF. Please try again.')
         return
       }
-      const response = await fetch(`/api/orders/${order.id}/send-email`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: customerEmail, pdfBase64 }),
+      await postRequest({
+        url: apiUrl.POST_sendOrderEmail(order.id),
+        data: { email: customerEmail, pdfBase64 }
       })
-      if (!response.ok) {
-        const err = await response.json()
-        throw new Error(err.error || 'Failed to send order email')
-      }
       toast.success(`Order sent to ${customerEmail}`)
       setEmailModal({ isOpen: false, order: null })
     } catch (error: any) {
@@ -740,7 +707,7 @@ export default function OrderCenterPage() {
 
   const handleOpenPreview = async (order: any) => {
     setPreviewOrder({ ...order, loading: true })
-    const freshOrder = await fetch(`/api/orders/${order.id}`).then(r => r.ok ? r.json() : order).catch(() => order)
+    const freshOrder = await getRequest({ url: apiUrl.GET_getOrderById(order.id) }).catch(() => order)
     setPreviewOrder(freshOrder)
   }
 

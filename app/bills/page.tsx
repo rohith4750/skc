@@ -8,7 +8,8 @@ import {
   FaChevronLeft, FaChevronRight, FaHistory, FaPlus, FaUser, FaUsers, FaInfoCircle, FaFileInvoiceDollar, FaTimes, FaTrash
 } from 'react-icons/fa'
 import toast from 'react-hot-toast'
-import { fetchWithLoader } from '@/lib/fetch-with-loader'
+import { getRequest, postRequest, putRequest, deleteRequest } from '@/lib/api/api'
+import { apiUrl } from '@/lib/api/apiUrl'
 import jsPDF from 'jspdf'
 import html2canvas from 'html2canvas'
 import { generatePDFTemplate } from '@/lib/pdf-template'
@@ -74,9 +75,8 @@ export default function BillsPage() {
   const loadBills = async () => {
     setLoading(true)
     try {
-      const response = await fetchWithLoader('/api/bills', { cache: 'no-store' })
-      if (!response.ok) throw new Error('Failed to fetch bills')
-      const data = await response.json()
+      // Using the new Axios-based API wrapper
+      const data = await getRequest({ url: apiUrl.GET_getAllBills })
       setBills(data)
     } catch (error) {
       console.error('Failed to load bills:', error)
@@ -133,21 +133,18 @@ export default function BillsPage() {
     if (!selectedBill) return
     setIsSavingBillNote(true)
     try {
-      const response = await fetchWithLoader(`/api/bills/${selectedBill.id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
+      const updatedBill = await putRequest({
+        url: apiUrl.PUT_updateBill(selectedBill.id),
+        data: {
           paidAmount: Number(selectedBill.paidAmount),
           remainingAmount: Number(selectedBill.remainingAmount),
           status: selectedBill.status,
           paymentMethod: 'cash',
           paymentNotes: '',
           billNote: billNoteDraft,
-        }),
+        }
       })
 
-      if (!response.ok) throw new Error('Failed to save bill note')
-      const updatedBill = await response.json()
       setBills(prev => prev.map(b => b.id === updatedBill.id ? updatedBill : b))
       setSelectedBill(updatedBill)
       setBillNoteDraft(getBillNoteFromBill(updatedBill))
@@ -168,21 +165,17 @@ export default function BillsPage() {
     const newStatus = newRemainingAmount <= 0 ? 'paid' : 'partial'
 
     try {
-      const response = await fetchWithLoader(`/api/bills/${selectedBill.id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
+      const updatedBill = await putRequest({
+        url: apiUrl.PUT_updateBill(selectedBill.id),
+        data: {
           paidAmount: newPaidAmount,
           remainingAmount: newRemainingAmount,
           status: newStatus,
           paymentMethod: paymentData.method,
           paymentNotes: paymentData.notes
-        }),
+        }
       })
 
-      if (!response.ok) throw new Error('Failed to record payment')
-
-      const updatedBill = await response.json()
       setBills(prev => prev.map(b => b.id === selectedBill.id ? updatedBill : b))
       setSelectedBill(updatedBill)
       setIsPaymentModalOpen(false)
@@ -203,14 +196,7 @@ export default function BillsPage() {
 
     const toastId = toast.loading('Deleting bill...')
     try {
-      const response = await fetchWithLoader(`/api/bills/${billToDelete}`, {
-        method: 'DELETE',
-      })
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to delete bill');
-      }
+      await deleteRequest({ url: apiUrl.DEL_deleteBill(billToDelete) })
 
       setBills(prev => prev.filter(b => b.id !== billToDelete))
       if (selectedBill?.id === billToDelete) {
@@ -420,17 +406,14 @@ export default function BillsPage() {
         return
       }
 
-      const response = await fetch(`/api/bills/${bill.id}/send`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ pdfBase64 })
-      })
-
-      if (response.ok) {
+      try {
+        await postRequest({
+          url: apiUrl.POST_sendBillEmail(bill.id),
+          data: { pdfBase64 }
+        })
         toast.success(`Bill sent to ${bill.order.customer.email}`, { id: toastId })
-      } else {
-        const error = await response.json()
-        toast.error(error.error || 'Failed to send bill', { id: toastId })
+      } catch (error: any) {
+        toast.error(error.message || 'Failed to send bill', { id: toastId })
       }
     } catch (error) {
       console.error(error)

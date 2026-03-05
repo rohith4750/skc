@@ -5,7 +5,8 @@ import { formatCurrency, formatDate, formatDateTime, sanitizeMealLabel } from '@
 import { Order, Bill, PaymentHistoryEntry } from '@/types'
 import { FaArrowLeft, FaMoneyBillWave, FaSave, FaPlus, FaTrash, FaHistory, FaPercentage, FaTruck, FaStore, FaCalendarAlt } from 'react-icons/fa'
 import { FaBottleWater } from 'react-icons/fa6'
-import { fetchWithLoader } from '@/lib/fetch-with-loader'
+import { getRequest, putRequest } from '@/lib/api/api'
+import { apiUrl } from '@/lib/api/apiUrl'
 import toast from 'react-hot-toast'
 import Link from 'next/link'
 import FormError from '@/components/FormError'
@@ -51,9 +52,7 @@ export default function FinancialTrackingPage() {
 
   const loadOrder = async () => {
     try {
-      const response = await fetchWithLoader(`/api/orders/${orderId}`)
-      if (!response.ok) throw new Error('Order not found')
-      const data = await response.json()
+      const data = await getRequest({ url: apiUrl.GET_getOrderById(orderId) })
       setOrder(data)
 
       const mealTypes = Object.entries(data.mealTypeAmounts || {}).map(([key, detail]: any) => {
@@ -315,15 +314,13 @@ export default function FinancialTrackingPage() {
         remainingAmount: calculatedTotals.remaining,
       }
 
-      const response = await fetchWithLoader(`/api/orders/${orderId}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-      })
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}))
-        const message = errorData.error || 'Failed to update finances'
+      try {
+        await putRequest({
+          url: apiUrl.PUT_updateOrder(orderId),
+          data: payload,
+        })
+      } catch (error: any) {
+        const message = error.message || 'Failed to update finances'
         setFormError(message)
         throw new Error(message)
       }

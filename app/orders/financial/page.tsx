@@ -5,6 +5,8 @@ import toast from 'react-hot-toast'
 import { formatCurrency, formatDateTime } from '@/lib/utils'
 import { Order } from '@/types'
 import { FaMoneyBillWave } from 'react-icons/fa'
+import { getRequest } from '@/lib/api/api'
+import { apiUrl } from '@/lib/api/apiUrl'
 
 export default function OrdersFinancialListPage() {
   const [orders, setOrders] = useState<Order[]>([])
@@ -13,9 +15,7 @@ export default function OrdersFinancialListPage() {
   useEffect(() => {
     const loadOrders = async () => {
       try {
-        const response = await fetch('/api/orders', { cache: 'no-store' })
-        if (!response.ok) throw new Error('Failed to fetch orders')
-        const data = await response.json()
+        const data = await getRequest({ url: apiUrl.GET_getAllOrders })
         setOrders(data)
       } catch (error) {
         console.error('Failed to load orders:', error)

@@ -4,6 +4,8 @@ import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import toast from 'react-hot-toast'
 import { formatCurrency, formatDate, formatDateTime, sanitizeMealLabel, getOrderDate } from '@/lib/utils'
+import { getRequest, putRequest, deleteRequest } from '@/lib/api/api'
+import { apiUrl } from '@/lib/api/apiUrl'
 import { Bill, Order, PaymentHistoryEntry } from '@/types'
 import { FaUser, FaCalendarAlt, FaMoneyBillWave, FaHistory, FaUtensils, FaTruck, FaTag, FaArrowLeft, FaEdit, FaCheckCircle, FaExclamationCircle, FaTrash, FaTimes, FaSave } from 'react-icons/fa'
 
@@ -28,14 +30,7 @@ export default function OrderSummaryPage() {
   useEffect(() => {
     const loadOrder = async () => {
       try {
-        const response = await fetch(`/api/orders/${orderId}`, {
-          cache: 'no-store',
-        })
-        if (!response.ok) {
-          const error = await response.json()
-          throw new Error(error.error || 'Failed to load order')
-        }
-        const orderData = await response.json()
+        const orderData = await getRequest({ url: apiUrl.GET_getOrderById(orderId) })
         setOrder(orderData)
       } catch (error: any) {
         console.error('Failed to load order summary:', error)
@@ -66,22 +61,18 @@ export default function OrderSummaryPage() {
     if (!editingEntry || !order?.bill?.id) return
 
     try {
-      const response = await fetch(`/api/bills/${order.bill.id}/ledger`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
+      await putRequest({
+        url: apiUrl.GET_getBillLedger(order.bill.id),
+        data: {
           entryId: editingEntry.id,
           ...editFormData
-        })
+        }
       })
-
-      if (!response.ok) throw new Error('Failed to update entry')
 
       toast.success('Ledger entry updated')
       setIsEditModalOpen(false)
       // Refresh order data
-      const updatedOrderResponse = await fetch(`/api/orders/${orderId}`)
-      const updatedOrderData = await updatedOrderResponse.json()
+      const updatedOrderData = await getRequest({ url: apiUrl.GET_getOrderById(orderId) })
       setOrder(updatedOrderData)
     } catch (error: any) {
       toast.error(error.message)
@@ -98,20 +89,16 @@ export default function OrderSummaryPage() {
 
     setIsDeleting(true)
     try {
-      const response = await fetch(`/api/bills/${order.bill.id}/ledger`, {
-        method: 'DELETE',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ entryId: entryIdToDelete })
+      await deleteRequest({
+        url: apiUrl.GET_getBillLedger(order.bill.id),
+        data: { entryId: entryIdToDelete }
       })
-
-      if (!response.ok) throw new Error('Failed to delete entry')
 
       toast.success('Ledger entry deleted')
       setIsDeleteModalOpen(false)
       setEntryIdToDelete(null)
       // Refresh order data
-      const updatedOrderResponse = await fetch(`/api/orders/${orderId}`)
-      const updatedOrderData = await updatedOrderResponse.json()
+      const updatedOrderData = await getRequest({ url: apiUrl.GET_getOrderById(orderId) })
       setOrder(updatedOrderData)
     } catch (error: any) {
       toast.error(error.message)
