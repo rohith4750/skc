@@ -108,6 +108,7 @@ export default function OutstandingPage() {
     paymentMethod: "cash",
     notes: "",
     paymentDate: getLocalISODate(),
+    supervisorId: "",
   });
   const [paymentSubmitting, setPaymentSubmitting] = useState(false);
   const [showAdjustmentModal, setShowAdjustmentModal] = useState(false);
@@ -271,6 +272,7 @@ export default function OutstandingPage() {
       paymentMethod: "cash",
       notes: "",
       paymentDate: getLocalISODate(),
+      supervisorId: "",
     });
   };
 
@@ -304,7 +306,9 @@ export default function OutstandingPage() {
           amount,
           role: selectedRole,
           paymentMethod: paymentForm.paymentMethod,
-          notes: paymentForm.notes || undefined,
+          notes: selectedRole === 'supervisor' && paymentForm.supervisorId
+            ? `${supervisors.find(s => s.id === paymentForm.supervisorId)?.name} - ${paymentForm.notes}`
+            : paymentForm.notes || undefined,
           paymentDate: paymentForm.paymentDate,
         }),
       });
@@ -322,6 +326,7 @@ export default function OutstandingPage() {
         paymentMethod: "cash",
         notes: "",
         paymentDate: getLocalISODate(),
+        supervisorId: "",
       });
       await loadOutstanding();
     } catch (e: any) {
@@ -882,6 +887,33 @@ export default function OutstandingPage() {
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
                   />
                 </div>
+                {selectedRole === "supervisor" && (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Select Supervisor
+                    </label>
+                    <select
+                      value={paymentForm.supervisorId}
+                      onChange={(e) =>
+                        setPaymentForm((f) => ({
+                          ...f,
+                          supervisorId: e.target.value,
+                        }))
+                      }
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                    >
+                      <option value="">All Supervisors (General)</option>
+                      {supervisors.map((s) => (
+                        <option key={s.id} value={s.id}>
+                          {s.name}{" "}
+                          {s.cateringServiceName
+                            ? `(${s.cateringServiceName})`
+                            : "(Workforce)"}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                )}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
                     Notes (optional)
