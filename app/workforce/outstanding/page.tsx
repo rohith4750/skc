@@ -100,6 +100,7 @@ export default function OutstandingPage() {
   const [totalPaid, setTotalPaid] = useState(0);
   const [events, setEvents] = useState<EventItem[]>([]);
   const [roleSummary, setRoleSummary] = useState<RoleSummary[]>([]);
+  const [supervisors, setSupervisors] = useState<any[]>([]);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [selectedRole, setSelectedRole] = useState<string | null>(null);
   const [paymentForm, setPaymentForm] = useState({
@@ -114,6 +115,7 @@ export default function OutstandingPage() {
     amount: "",
     description: "",
     date: getLocalISODate(),
+    supervisorId: "",
   });
   const [adjustmentSubmitting, setAdjustmentSubmitting] = useState(false);
   const [expandedStatement, setExpandedStatement] = useState<string | null>(
@@ -225,8 +227,40 @@ export default function OutstandingPage() {
     }
   };
 
+  const loadSupervisors = async () => {
+    try {
+      const [supRes, wfRes] = await Promise.all([
+        fetch("/api/supervisors"),
+        fetch("/api/workforce"),
+      ]);
+
+      let combined: any[] = [];
+
+      if (supRes.ok) {
+        const data = await supRes.json();
+        combined = [...combined, ...(Array.isArray(data) ? data : [])];
+      }
+
+      if (wfRes.ok) {
+        const data = await wfRes.json();
+        const wfList = data.workforce || (Array.isArray(data) ? data : []);
+        const wfSupervisors = wfList.filter((m: any) => m.role === "supervisor");
+        combined = [...combined, ...wfSupervisors];
+      }
+
+      // Use a Map to ensure unique IDs
+      const unique = Array.from(
+        new Map(combined.map((s) => [s.id, s])).values(),
+      );
+      setSupervisors(unique);
+    } catch (e) {
+      console.error("Failed to load supervisors", e);
+    }
+  };
+
   useEffect(() => {
     loadOutstanding(filterMonth, filterYear, filterDate);
+    loadSupervisors();
   }, [filterMonth, filterYear, filterDate]);
 
   const openPaymentModal = (role: string) => {
@@ -247,6 +281,7 @@ export default function OutstandingPage() {
       amount: "",
       description: "",
       date: getLocalISODate(),
+      supervisorId: "",
     });
   };
 
@@ -321,6 +356,9 @@ export default function OutstandingPage() {
           paidAmount: 0,
           description: adjustmentForm.description,
           paymentDate: adjustmentForm.date,
+          recipient: selectedRole === 'supervisor' && adjustmentForm.supervisorId
+            ? supervisors.find(s => s.id === adjustmentForm.supervisorId)?.name
+            : null,
         }),
       });
       if (!res.ok) {
@@ -336,6 +374,7 @@ export default function OutstandingPage() {
         amount: "",
         description: "",
         date: getLocalISODate(),
+        supervisorId: "",
       });
       await loadOutstanding();
     } catch (e: any) {
@@ -912,6 +951,26 @@ export default function OutstandingPage() {
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
                   />
                 </div>
+                {selectedRole === 'supervisor' && (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Select Supervisor</label>
+                    <select
+                      value={adjustmentForm.supervisorId}
+                      onChange={(e) => setAdjustmentForm(f => ({ ...f, supervisorId: e.target.value }))}
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                    >
+                      <option value="">All Supervisors (General)</option>
+                      {supervisors.map((s) => (
+                        <option key={s.id} value={s.id}>
+                          {s.name}{" "}
+                          {s.cateringServiceName
+                            ? `(${s.cateringServiceName})`
+                            : "(Workforce)"}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                )}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Details / Description <span className="text-red-500">*</span></label>
                   <input

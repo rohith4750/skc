@@ -5,7 +5,7 @@ import { Expense, Order, BulkAllocation } from '@/types'
 import { FaArrowLeft, FaLayerGroup, FaChevronDown, FaChevronUp, FaTimes, FaInfoCircle } from 'react-icons/fa'
 import toast from 'react-hot-toast'
 import Link from 'next/link'
-import { formatCurrency, getLocalISODate , getOrderDate} from '@/lib/utils'
+import { formatCurrency, getLocalISODate, getOrderDate } from '@/lib/utils'
 import FormError from '@/components/FormError'
 
 const EXPENSE_CATEGORIES = [
@@ -83,6 +83,10 @@ export default function CreateExpensePage() {
     paymentStatus: 'pending' as 'pending' | 'partial' | 'paid',
     mealType: '', // Add mealType to state
     selectedMealTypes: [] as Array<{ id: string; label: string; plates: string }>,
+    breakfastAmount: '',
+    lunchAmount: '',
+    snacksAmount: '',
+    dinnerAmount: '',
   })
 
 
@@ -162,6 +166,10 @@ export default function CreateExpensePage() {
               label: mp.mealType, // We might not have the original label, fallback to ID
               plates: mp.plates.toString()
             })) : [],
+            breakfastAmount: details.breakfastAmount?.toString() || '',
+            lunchAmount: details.lunchAmount?.toString() || '',
+            snacksAmount: details.snacksAmount?.toString() || '',
+            dinnerAmount: details.dinnerAmount?.toString() || '',
           })
           if (isCustomCategory) {
             setCustomCategoryInputType('input')
@@ -252,7 +260,11 @@ export default function CreateExpensePage() {
       const dressedBoyAmount = parseFloat(formData.dressedBoyAmount) || 0
       const nonDressedBoys = parseFloat(formData.nonDressedBoys) || 0
       const nonDressedBoyAmount = parseFloat(formData.nonDressedBoyAmount) || 0
-      return (dressedBoys * dressedBoyAmount) + (nonDressedBoys * nonDressedBoyAmount)
+      const mealTotal = (parseFloat(formData.breakfastAmount) || 0) +
+        (parseFloat(formData.lunchAmount) || 0) +
+        (parseFloat(formData.snacksAmount) || 0) +
+        (parseFloat(formData.dinnerAmount) || 0)
+      return (dressedBoys * dressedBoyAmount) + (nonDressedBoys * nonDressedBoyAmount) + mealTotal
     } else {
       return parseFloat(formData.amount) || 0
     }
@@ -309,7 +321,7 @@ export default function CreateExpensePage() {
             label = (mealData as any).menuType
           }
           const mealId = label.toLowerCase().trim()
-          
+
           if (mealTypeIds.includes(mealId)) {
             if (mealData && typeof mealData === 'object' && (mealData as any).numberOfPlates) {
               totalPlates += (mealData as any).numberOfPlates
@@ -642,6 +654,10 @@ export default function CreateExpensePage() {
         calculationDetails.dressedBoyAmount = parseFloat(formData.dressedBoyAmount) || 0
         calculationDetails.nonDressedBoys = parseFloat(formData.nonDressedBoys) || 0
         calculationDetails.nonDressedBoyAmount = parseFloat(formData.nonDressedBoyAmount) || 0
+        calculationDetails.breakfastAmount = parseFloat(formData.breakfastAmount) || 0
+        calculationDetails.lunchAmount = parseFloat(formData.lunchAmount) || 0
+        calculationDetails.snacksAmount = parseFloat(formData.snacksAmount) || 0
+        calculationDetails.dinnerAmount = parseFloat(formData.dinnerAmount) || 0
       }
 
       const paidAmount = formData.paidAmount ? parseFloat(formData.paidAmount) : 0
@@ -661,7 +677,7 @@ export default function CreateExpensePage() {
         : formData.category
 
       const expenseData: any = {
-        orderId: isBulkExpense ? null : (selectedOrderIds[0] || null),
+        orderId: (isBulkExpense && formData.category !== 'labours') ? null : (selectedOrderIds[0] || null),
         category: finalCategory,
         amount: calculatedAmount,
         paidAmount: paidAmount,
@@ -673,9 +689,9 @@ export default function CreateExpensePage() {
         notes: formData.notes || null,
         calculationDetails: Object.keys(calculationDetails).length > 0 ? calculationDetails : null,
         // Bulk allocation fields
-        isBulkExpense: isBulkExpense,
-        bulkAllocations: isBulkExpense ? bulkAllocations : null,
-        allocationMethod: isBulkExpense ? allocationMethod : null,
+        isBulkExpense: (isBulkExpense && formData.category !== 'labours'),
+        bulkAllocations: (isBulkExpense && formData.category !== 'labours') ? bulkAllocations : null,
+        allocationMethod: (isBulkExpense && formData.category !== 'labours') ? allocationMethod : null,
       }
 
       const url = expenseId ? `/api/expenses/${expenseId}` : '/api/expenses'
@@ -816,18 +832,20 @@ export default function CreateExpensePage() {
               </label>
 
               <div
-                className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 bg-white cursor-pointer flex justify-between items-center"
-                onClick={() => setIsEventDropdownOpen(!isEventDropdownOpen)}
+                className={`w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 bg-white cursor-pointer flex justify-between items-center ${formData.category === 'labours' ? 'opacity-50 cursor-not-allowed' : ''}`}
+                onClick={() => formData.category !== 'labours' && setIsEventDropdownOpen(!isEventDropdownOpen)}
               >
                 <div className="truncate text-gray-800">
-                  {selectedOrderIds.length === 0
-                    ? 'No specific event/order'
-                    : selectedOrderIds.length === 1
-                      ? (() => {
-                        const o = orders.find(ord => ord.id === selectedOrderIds[0])
-                        return o ? getOrderDisplayName(o) : '1 event selected'
-                      })()
-                      : `${selectedOrderIds.length} events selected`}
+                  {formData.category === 'labours' && selectedOrderIds.length > 1
+                    ? 'Only one event allowed for labours'
+                    : selectedOrderIds.length === 0
+                      ? 'No specific event/order'
+                      : selectedOrderIds.length === 1
+                        ? (() => {
+                          const o = orders.find(ord => ord.id === selectedOrderIds[0])
+                          return o ? getOrderDisplayName(o) : '1 event selected'
+                        })()
+                        : `${selectedOrderIds.length} events selected`}
                 </div>
                 <FaChevronDown className={`text-gray-400 transition-transform ${isEventDropdownOpen ? 'rotate-180' : ''}`} />
               </div>
@@ -1297,6 +1315,58 @@ export default function CreateExpensePage() {
                         placeholder="0.00"
                       />
                     </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Breakfast Amount
+                      </label>
+                      <input
+                        type="number"
+                        step="0.01"
+                        value={formData.breakfastAmount}
+                        onChange={(e) => setFormData({ ...formData, breakfastAmount: e.target.value })}
+                        className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                        placeholder="0.00"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Lunch Amount
+                      </label>
+                      <input
+                        type="number"
+                        step="0.01"
+                        value={formData.lunchAmount}
+                        onChange={(e) => setFormData({ ...formData, lunchAmount: e.target.value })}
+                        className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                        placeholder="0.00"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Snacks Amount
+                      </label>
+                      <input
+                        type="number"
+                        step="0.01"
+                        value={formData.snacksAmount}
+                        onChange={(e) => setFormData({ ...formData, snacksAmount: e.target.value })}
+                        className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                        placeholder="0.00"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Dinner Amount
+                      </label>
+                      <input
+                        type="number"
+                        step="0.01"
+                        value={formData.dinnerAmount}
+                        onChange={(e) => setFormData({ ...formData, dinnerAmount: e.target.value })}
+                        className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                        placeholder="0.00"
+                      />
+                    </div>
                   </div>
                   <div className="bg-primary-50 border border-primary-200 rounded-lg p-4">
                     <p className="text-sm font-semibold text-primary-900">
@@ -1432,7 +1502,7 @@ export default function CreateExpensePage() {
             </div>
 
             {/* Bulk Allocation Details */}
-            {isBulkExpense && selectedOrderIds.length >= 2 && calculatedAmount > 0 && (
+            {isBulkExpense && formData.category !== 'labours' && selectedOrderIds.length >= 2 && calculatedAmount > 0 && (
               <div className="bg-gradient-to-r from-indigo-50 to-purple-50 rounded-lg border border-indigo-200 overflow-hidden">
                 <div
                   className="bg-indigo-100 px-4 py-3 border-b border-indigo-200 cursor-pointer"

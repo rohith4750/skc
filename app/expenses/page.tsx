@@ -349,12 +349,15 @@ export default function ExpensesPage() {
     {
       key: 'paymentDate',
       header: 'Payment Date',
-      accessor: (row: Expense) => (
-        <div className="flex items-center gap-2">
-          <FaCalendarAlt className="text-gray-400 text-sm" />
-          <span className="font-medium">{formatDate(row.paymentDate)}</span>
-        </div>
-      ),
+      accessor: (row: Expense) => {
+        const dateStr = row.paymentDate ? formatDate(row.paymentDate) : 'Not set';
+        return (
+          <div className="flex items-center gap-2">
+            <FaCalendarAlt className="text-slate-400 text-sm" />
+            <span className="font-medium text-slate-700">{dateStr}</span>
+          </div>
+        );
+      },
       className: 'whitespace-nowrap',
     },
     {
@@ -476,9 +479,21 @@ export default function ExpensesPage() {
             )
           } else if (row.category === 'boys') {
             return (
-              <div className="text-sm">
-                <div className="font-medium text-gray-900">{details.numberOfBoys} boys</div>
-                <div className="text-xs text-gray-500">@{formatCurrency(details.perUnitAmount)}/each</div>
+              <div className="text-sm space-y-1">
+                {(details.dressedBoys > 0 || details.nonDressedBoys > 0) && (
+                  <div className="flex flex-col">
+                    {details.dressedBoys > 0 && <span className="font-medium text-gray-900">{details.dressedBoys} Dressed ( @{formatCurrency(details.dressedBoyAmount)} )</span>}
+                    {details.nonDressedBoys > 0 && <span className="font-medium text-gray-900">{details.nonDressedBoys} Non-Dressed ( @{formatCurrency(details.nonDressedBoyAmount)} )</span>}
+                  </div>
+                )}
+                {(details.breakfastAmount > 0 || details.lunchAmount > 0 || details.snacksAmount > 0 || details.dinnerAmount > 0) && (
+                  <div className="text-xs text-gray-500 grid grid-cols-2 gap-x-2 border-t border-gray-100 pt-1 mt-1">
+                    {details.breakfastAmount > 0 && <span>BF: {formatCurrency(details.breakfastAmount)}</span>}
+                    {details.lunchAmount > 0 && <span>LH: {formatCurrency(details.lunchAmount)}</span>}
+                    {details.snacksAmount > 0 && <span>SN: {formatCurrency(details.snacksAmount)}</span>}
+                    {details.dinnerAmount > 0 && <span>DN: {formatCurrency(details.dinnerAmount)}</span>}
+                  </div>
+                )}
               </div>
             )
           }
