@@ -833,6 +833,60 @@ export default function OutstandingPage() {
                 Record Payment –{" "}
                 {selectedRole.charAt(0).toUpperCase() + selectedRole.slice(1)}
               </h3>
+
+              {selectedRole && (
+                <div className="mb-4 p-3 bg-amber-50 border border-amber-200 rounded-lg">
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm font-medium text-amber-800">
+                      Current Outstanding:
+                    </span>
+                    <span className="text-lg font-bold text-amber-900">
+                      {(() => {
+                        const summary = roleSummary.find(
+                          (r) => r.role === selectedRole,
+                        );
+                        if (!summary) return formatCurrency(0);
+
+                        if (
+                          selectedRole === "supervisor" &&
+                          paymentForm.supervisorId
+                        ) {
+                          const supervisor = supervisors.find(
+                            (s) => s.id === paymentForm.supervisorId,
+                          );
+                          if (!supervisor) return formatCurrency(summary.outstanding);
+
+                          const supExpenses = summary.expenses.filter(
+                            (e) => e.recipient === supervisor.name,
+                          );
+                          const supPayments = summary.payments.filter((p) =>
+                            p.notes?.startsWith(supervisor.name),
+                          );
+
+                          const totalDues = supExpenses.reduce(
+                            (sum, e) => sum + Number(e.amount || 0),
+                            0,
+                          );
+                          const totalPaid =
+                            supExpenses.reduce(
+                              (sum, e) => sum + Number(e.paidAmount || 0),
+                              0,
+                            ) +
+                            supPayments.reduce(
+                              (sum, p) => sum + Number(p.amount || 0),
+                              0,
+                            );
+
+                          return formatCurrency(Math.max(0, totalDues - totalPaid));
+                        }
+
+                        return formatCurrency(summary.outstanding);
+                      })()}
+                    </span>
+                  </div>
+                </div>
+              )}
+
               <div className="space-y-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
