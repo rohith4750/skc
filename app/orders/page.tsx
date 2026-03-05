@@ -36,12 +36,15 @@ export default function OrdersPage() {
     address: '',
   })
   const [collapsedMealTypes, setCollapsedMealTypes] = useState<Record<string, boolean>>({})
+  const [collapsedSelectedItems, setCollapsedSelectedItems] = useState<Record<string, boolean>>({})
   const [originalAdvancePaid, setOriginalAdvancePaid] = useState<number>(0)
   const [originalMealTypeAmounts, setOriginalMealTypeAmounts] = useState<Record<string, any>>({})
   const [formError, setFormError] = useState<string>('')
   const [showQuickAddModal, setShowQuickAddModal] = useState(false)
   const [quickAddMealTypeId, setQuickAddMealTypeId] = useState<string | null>(null)
   const [quickAddFormData, setQuickAddFormData] = useState({ name: '', description: '' })
+
+  const [isOrderDataInitialized, setIsOrderDataInitialized] = useState(false)
 
   const [formData, setFormData] = useState({
     customerId: '',
@@ -78,10 +81,10 @@ export default function OrdersPage() {
   }, [])
 
   useEffect(() => {
-    if (isEditMode && editOrderId && customers.length > 0 && menuItems.length > 0) {
+    if (isEditMode && editOrderId && !isOrderDataInitialized && customers.length > 0 && menuItems.length > 0) {
       loadOrderData(editOrderId)
     }
-  }, [isEditMode, editOrderId, customers.length, menuItems.length])
+  }, [isEditMode, editOrderId, customers.length, menuItems.length, isOrderDataInitialized])
 
   // Close customer dropdown when clicking outside
   useEffect(() => {
@@ -304,6 +307,7 @@ export default function OrdersPage() {
       setShowStalls(stallsArray.length > 0)
       setOriginalAdvancePaid(order.advancePaid || 0)
       setOriginalMealTypeAmounts(mealTypeAmounts || {})
+      setIsOrderDataInitialized(true)
 
       toast.success('Order loaded successfully')
     } catch (error) {
@@ -759,6 +763,15 @@ export default function OrdersPage() {
       if (savedItem) {
         // Automatically select the new item
         handleMenuItemToggle(quickAddMealTypeId, savedItem.id)
+
+        // Ensure the selected items section is expanded so the user sees it added
+        setCollapsedSelectedItems(prev => ({ ...prev, [quickAddMealTypeId]: false }))
+
+        // Clear sub-category filter for this meal type so the item isn't hidden
+        setSelectedSubFilter(prev => ({ ...prev, [quickAddMealTypeId]: 'all' }))
+
+        // Clear search for this meal type (though handleMenuItemToggle does this, let's be explicit)
+        setMenuItemSearch(prev => ({ ...prev, [quickAddMealTypeId]: '' }))
       }
 
       toast.success('Menu item added and selected!')
@@ -1273,6 +1286,15 @@ export default function OrdersPage() {
                                       Edit
                                     </button>
                                   )}
+                                  {!isCollapsed && (
+                                    <button
+                                      type="button"
+                                      onClick={() => handleCollapseMealType(mealType.id)}
+                                      className="px-4 py-1.5 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors text-sm font-medium"
+                                    >
+                                      OK
+                                    </button>
+                                  )}
                                   <button
                                     type="button"
                                     onClick={() => handleRemoveMealType(mealType.id)}
@@ -1506,101 +1528,123 @@ export default function OrdersPage() {
                                         </div>
                                       </div>
                                       {mealType.selectedMenuItems.length > 0 && (
-                                        <div className="mt-3 p-3 bg-blue-50 border border-blue-200 rounded-lg">
-                                          <p className="text-sm font-semibold text-blue-800 mb-2">
-                                            Selected Items ({mealType.selectedMenuItems.length}):
-                                          </p>
-                                          <Droppable droppableId={mealType.id}>
-                                            {(provided: DroppableProvided) => (
-                                              <div
-                                                {...provided.droppableProps}
-                                                ref={provided.innerRef}
-                                                className="flex flex-col gap-2"
-                                              >
-                                                {mealType.selectedMenuItems.map((itemId: string, index: number) => {
-                                                  const item = menuItems.find((m: any) => m.id === itemId)
+                                        <div className="mt-3 bg-blue-50 border border-blue-200 rounded-lg overflow-hidden">
+                                          <button
+                                            type="button"
+                                            onClick={() => setCollapsedSelectedItems(prev => ({ ...prev, [mealType.id]: !prev[mealType.id] }))}
+                                            className="w-full flex items-center justify-between p-3 hover:bg-blue-100 transition-colors"
+                                          >
+                                            <p className="text-sm font-semibold text-blue-800">
+                                              Selected Items ({mealType.selectedMenuItems.length})
+                                            </p>
+                                            <svg
+                                              className={`w-4 h-4 text-blue-600 transition-transform duration-200 ${collapsedSelectedItems[mealType.id] === false ? 'rotate-180' : ''}`}
+                                              fill="none"
+                                              viewBox="0 0 24 24"
+                                              stroke="currentColor"
+                                            >
+                                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                                            </svg>
+                                          </button>
 
-                                                  return item ? (
-                                                    <Draggable key={`${mealType.id}-${itemId}`} draggableId={`${mealType.id}-${itemId}`} index={index}>
-                                                      {(provided: DraggableProvided, snapshot: DraggableStateSnapshot) => (
-                                                        <div
-                                                          ref={provided.innerRef}
-                                                          {...provided.draggableProps}
-                                                          className={`flex flex-col sm:flex-row sm:items-center gap-2 p-2 rounded-md border ${snapshot.isDragging
-                                                            ? 'bg-blue-200 border-blue-400 shadow-lg z-50'
-                                                            : 'bg-white border-blue-200 shadow-sm'
-                                                            }`}
-                                                          style={{
-                                                            ...provided.draggableProps.style,
-                                                            left: 'auto !important',
-                                                            top: 'auto !important'
-                                                          }}
-                                                        >
-                                                          <div className="flex-1 flex items-center gap-3">
+                                          {collapsedSelectedItems[mealType.id] === false && (
+                                            <div className="p-3 pt-0 border-t border-blue-100">
+                                              <div className="mt-2 text-xs text-blue-600 mb-2 font-medium bg-blue-100/50 p-2 rounded">
+                                                Tip: Drag items using the handle to reorder them in the menu.
+                                              </div>
+                                              <Droppable droppableId={mealType.id}>
+                                                {(provided: DroppableProvided) => (
+                                                  <div
+                                                    {...provided.droppableProps}
+                                                    ref={provided.innerRef}
+                                                    className="flex flex-col gap-2"
+                                                  >
+                                                    {mealType.selectedMenuItems.map((itemId: string, index: number) => {
+                                                      const item = menuItems.find((m: any) => m.id === itemId)
+
+                                                      return item ? (
+                                                        <Draggable key={`${mealType.id}-${itemId}`} draggableId={`${mealType.id}-${itemId}`} index={index}>
+                                                          {(provided: DraggableProvided, snapshot: DraggableStateSnapshot) => (
                                                             <div
-                                                              {...provided.dragHandleProps}
-                                                              className="text-blue-400 hover:text-blue-600 cursor-grab active:cursor-grabbing p-1"
-                                                              title="Drag to reorder"
+                                                              ref={provided.innerRef}
+                                                              {...provided.draggableProps}
+                                                              className={`flex flex-col sm:flex-row sm:items-center gap-2 p-2 rounded-md border ${snapshot.isDragging
+                                                                ? 'bg-blue-200 border-blue-400 shadow-lg z-50'
+                                                                : 'bg-white border-blue-200 shadow-sm'
+                                                                }`}
+                                                              style={{
+                                                                ...provided.draggableProps.style,
+                                                                left: 'auto !important',
+                                                                top: 'auto !important'
+                                                              }}
                                                             >
-                                                              <FaGripLines />
-                                                            </div>
-                                                            <span className="text-sm font-medium text-blue-900">{item.name}</span>
-                                                            <div className="flex items-center gap-1 sm:hidden ml-auto">
-                                                              <button type="button" onClick={() => handleRemoveItem(mealType.id, itemId)} className="p-1 hover:bg-red-200 text-red-600 rounded"><FaTimes className="w-3 h-3" /></button>
-                                                            </div>
-                                                          </div>
-
-                                                          <div className="flex items-center w-full sm:w-auto gap-2">
-                                                            {item.price ? (
-                                                              <div className="flex items-center gap-2 mr-2">
-                                                                <div className="flex flex-col items-end">
-                                                                  <div className="flex items-center gap-1">
-                                                                    <input
-                                                                      type="number"
-                                                                      min="1"
-                                                                      placeholder="Qty"
-                                                                      value={mealType.itemQuantities?.[itemId] || '1'}
-                                                                      onChange={(e) => handleUpdateItemQuantity(mealType.id, itemId, e.target.value)}
-                                                                      className="text-xs border border-blue-300 rounded px-2 py-1 w-16 focus:ring-1 focus:ring-blue-500 outline-none text-right"
-                                                                      onClick={(e) => e.stopPropagation()}
-                                                                    />
-                                                                    <span className="text-xs text-gray-500">{item.unit || 'units'}</span>
-                                                                  </div>
-                                                                  <span className="text-xs text-blue-700 font-medium">
-                                                                    ₹{((parseFloat(mealType.itemQuantities?.[itemId] || '1') || 0) * item.price).toFixed(2)}
-                                                                  </span>
+                                                              <div className="flex-1 flex items-center gap-3">
+                                                                <div
+                                                                  {...provided.dragHandleProps}
+                                                                  className="text-blue-400 hover:text-blue-600 cursor-grab active:cursor-grabbing p-1"
+                                                                  title="Drag to reorder"
+                                                                >
+                                                                  <FaGripLines />
+                                                                </div>
+                                                                <span className="text-sm font-medium text-blue-900">{item.name}</span>
+                                                                <div className="flex items-center gap-1 sm:hidden ml-auto">
+                                                                  <button type="button" onClick={() => handleRemoveItem(mealType.id, itemId)} className="p-1 hover:bg-red-200 text-red-600 rounded"><FaTimes className="w-3 h-3" /></button>
                                                                 </div>
                                                               </div>
-                                                            ) : null}
 
-                                                            <input
-                                                              type="text"
-                                                              placeholder="Customization (e.g. Spice Level)"
-                                                              value={mealType.itemCustomizations?.[itemId] || ''}
-                                                              onChange={(e) => handleUpdateItemCustomization(mealType.id, itemId, e.target.value)}
-                                                              className="text-xs border border-blue-300 rounded px-2 py-1 flex-1 sm:w-48 focus:ring-1 focus:ring-blue-500 outline-none"
-                                                            />
+                                                              <div className="flex items-center w-full sm:w-auto gap-2">
+                                                                {item.price ? (
+                                                                  <div className="flex items-center gap-2 mr-2">
+                                                                    <div className="flex flex-col items-end">
+                                                                      <div className="flex items-center gap-1">
+                                                                        <input
+                                                                          type="number"
+                                                                          min="1"
+                                                                          placeholder="Qty"
+                                                                          value={mealType.itemQuantities?.[itemId] || '1'}
+                                                                          onChange={(e) => handleUpdateItemQuantity(mealType.id, itemId, e.target.value)}
+                                                                          className="text-xs border border-blue-300 rounded px-2 py-1 w-16 focus:ring-1 focus:ring-blue-500 outline-none text-right"
+                                                                          onClick={(e) => e.stopPropagation()}
+                                                                        />
+                                                                        <span className="text-xs text-gray-500">{item.unit || 'units'}</span>
+                                                                      </div>
+                                                                      <span className="text-xs text-blue-700 font-medium">
+                                                                        ₹{((parseFloat(mealType.itemQuantities?.[itemId] || '1') || 0) * item.price).toFixed(2)}
+                                                                      </span>
+                                                                    </div>
+                                                                  </div>
+                                                                ) : null}
 
-                                                            <div className="hidden sm:flex items-center gap-1 border-l border-blue-300 pl-2">
-                                                              <button
-                                                                type="button"
-                                                                onClick={() => handleRemoveItem(mealType.id, itemId)}
-                                                                className="p-1.5 hover:bg-red-100 hover:text-red-700 rounded transition-colors"
-                                                                title="Remove item"
-                                                              >
-                                                                <FaTimes className="w-3.5 h-3.5" />
-                                                              </button>
+                                                                <input
+                                                                  type="text"
+                                                                  placeholder="Customization (e.g. Spice Level)"
+                                                                  value={mealType.itemCustomizations?.[itemId] || ''}
+                                                                  onChange={(e) => handleUpdateItemCustomization(mealType.id, itemId, e.target.value)}
+                                                                  className="text-xs border border-blue-300 rounded px-2 py-1 flex-1 sm:w-48 focus:ring-1 focus:ring-blue-500 outline-none"
+                                                                />
+
+                                                                <div className="hidden sm:flex items-center gap-1 border-l border-blue-300 pl-2">
+                                                                  <button
+                                                                    type="button"
+                                                                    onClick={() => handleRemoveItem(mealType.id, itemId)}
+                                                                    className="p-1.5 hover:bg-red-100 hover:text-red-700 rounded transition-colors"
+                                                                    title="Remove item"
+                                                                  >
+                                                                    <FaTimes className="w-3.5 h-3.5" />
+                                                                  </button>
+                                                                </div>
+                                                              </div>
                                                             </div>
-                                                          </div>
-                                                        </div>
-                                                      )}
-                                                    </Draggable>
-                                                  ) : null
-                                                })}
-                                                {provided.placeholder}
-                                              </div>
-                                            )}
-                                          </Droppable>
+                                                          )}
+                                                        </Draggable>
+                                                      ) : null
+                                                    })}
+                                                    {provided.placeholder}
+                                                  </div>
+                                                )}
+                                              </Droppable>
+                                            </div>
+                                          )}
                                         </div>
                                       )}
 
