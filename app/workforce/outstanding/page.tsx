@@ -142,6 +142,7 @@ export default function OutstandingPage() {
       desc: string;
       amount: number;
       method: string;
+      status?: string;
       type: "workforce" | "expense" | "due";
       balance: number;
     }[] = [];
@@ -155,6 +156,7 @@ export default function OutstandingPage() {
         method:
           PAYMENT_METHOD_LABELS[String(p.paymentMethod || "cash")] ||
           String(p.paymentMethod || "cash").replace("_", " "),
+        status: "paid",
         type: "workforce",
         balance: 0,
       });
@@ -186,6 +188,7 @@ export default function OutstandingPage() {
         desc: `${desc} (Total Due)`,
         amount: total,
         method: "Due",
+        status: e.paymentStatus || "pending",
         type: "due",
         balance: 0,
       });
@@ -198,6 +201,7 @@ export default function OutstandingPage() {
           desc: `${desc} (Paid)`,
           amount: paid,
           method: "Expense Pymt",
+          status: "paid",
           type: "expense",
           balance: 0,
         });
@@ -830,16 +834,30 @@ export default function OutstandingPage() {
                                           {line.desc}
                                         </td>
                                         <td className="px-4 py-2 text-gray-600 capitalize">
-                                          <span
-                                            className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase ${line.type === "due"
-                                              ? "bg-amber-100 text-amber-700"
-                                              : line.type === "workforce"
-                                                ? "bg-green-100 text-green-700"
-                                                : "bg-blue-100 text-blue-700"
-                                              }`}
-                                          >
-                                            {line.method}
-                                          </span>
+                                          <div className="flex flex-col items-start gap-1 mt-0.5">
+                                            <span
+                                              className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase ${line.type === "due"
+                                                ? "bg-amber-100 text-amber-700"
+                                                : line.type === "workforce"
+                                                  ? "bg-green-100 text-green-700"
+                                                  : "bg-blue-100 text-blue-700"
+                                                }`}
+                                            >
+                                              {line.method}
+                                            </span>
+                                            {line.status && (
+                                              <span
+                                                className={`px-2 py-0.5 rounded text-[9px] font-bold uppercase ${line.status.toLowerCase() === "paid"
+                                                  ? "bg-emerald-50 text-emerald-600 border border-emerald-200"
+                                                  : line.status.toLowerCase() === "partial"
+                                                    ? "bg-sky-50 text-sky-600 border border-sky-200"
+                                                    : "bg-rose-50 text-rose-600 border border-rose-200"
+                                                  }`}
+                                              >
+                                                {line.status}
+                                              </span>
+                                            )}
+                                          </div>
                                         </td>
                                         <td
                                           className="px-4 py-2 text-right"
