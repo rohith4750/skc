@@ -139,6 +139,7 @@ export default function OutstandingPage() {
       amount: number;
       method: string;
       type: "workforce" | "expense" | "due";
+      balance: number;
     }[] = [];
 
     // Recorded payments (Workforce payments)
@@ -151,6 +152,7 @@ export default function OutstandingPage() {
           PAYMENT_METHOD_LABELS[String(p.paymentMethod || "cash")] ||
           String(p.paymentMethod || "cash").replace("_", " "),
         type: "workforce",
+        balance: 0,
       });
     });
 
@@ -169,6 +171,7 @@ export default function OutstandingPage() {
         amount: total,
         method: "Due",
         type: "due",
+        balance: 0,
       });
 
       // If any amount was paid towards this expense, record it as a credit
@@ -179,11 +182,27 @@ export default function OutstandingPage() {
           amount: paid,
           method: "Expense Pymt",
           type: "expense",
+          balance: 0,
         });
       }
     });
 
-    // Sort by date descending
+    // Sort by date ascending to calculate running balance
+    lines.sort(
+      (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime(),
+    );
+
+    let runningBalance = 0;
+    lines.forEach((line) => {
+      if (line.type === "due") {
+        runningBalance += line.amount;
+      } else {
+        runningBalance -= line.amount;
+      }
+      line.balance = runningBalance;
+    });
+
+    // Sort by date descending for UI display
     lines.sort(
       (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime(),
     );
@@ -762,7 +781,7 @@ export default function OutstandingPage() {
                                         Method
                                       </th>
                                       <th className="px-4 py-2 font-medium text-right">
-                                        Amount
+                                        Amount / Bal
                                       </th>
                                     </tr>
                                   </thead>
@@ -791,18 +810,53 @@ export default function OutstandingPage() {
                                           </span>
                                         </td>
                                         <td
-                                          className={`px-4 py-2 text-right font-medium ${line.type === "due"
-                                            ? "text-amber-700"
-                                            : "text-green-600"
-                                            }`}
+                                          className="px-4 py-2 text-right"
                                         >
-                                          {line.type === "due"
-                                            ? `+ ${formatCurrency(line.amount)}`
-                                            : `- ${formatCurrency(line.amount)}`}
+                                          <div className={`font-medium ${line.type === "due" ? "text-amber-700" : "text-green-600"}`}>
+                                            {line.type === "due"
+                                              ? `+ ${formatCurrency(line.amount)}`
+                                              : `- ${formatCurrency(line.amount)}`}
+                                          </div>
+                                          <div className="text-[10px] font-black text-slate-400 mt-0.5 uppercase tracking-tighter">
+                                            Bal: {formatCurrency(line.balance)}
+                                          </div>
                                         </td>
                                       </tr>
                                     ))}
                                   </tbody>
+                                  <tfoot>
+                                    <tr className="bg-slate-50 border-t-2 border-slate-200">
+                                      <td colSpan={3} className="px-4 py-3">
+                                        <div className="font-black text-[10px] text-slate-400 uppercase tracking-widest">
+                                          Total Calculation Summary
+                                        </div>
+                                      </td>
+                                      <td className="px-4 py-8 text-right min-w-[200px]">
+                                        <div className="space-y-4">
+                                          <div>
+                                            <div className="text-[10px] font-black text-slate-400 uppercase tracking-tight mb-1">Total Dues</div>
+                                            <div className="text-sm font-black text-amber-700">
+                                              + {formatCurrency(statement.reduce((sum, line) => line.type === 'due' ? sum + line.amount : sum, 0))}
+                                            </div>
+                                          </div>
+
+                                          <div className="pt-2 border-t border-slate-200">
+                                            <div className="text-[10px] font-black text-slate-400 uppercase tracking-tight mb-1">Total Paid</div>
+                                            <div className="text-sm font-black text-green-600">
+                                              - {formatCurrency(statement.reduce((sum, line) => line.type !== 'due' ? sum + line.amount : sum, 0))}
+                                            </div>
+                                          </div>
+
+                                          <div className="pt-2 border-t-2 border-slate-300">
+                                            <div className="text-[10px] font-black text-primary-500 uppercase tracking-tight mb-1">Final Outstanding</div>
+                                            <div className="text-lg font-black text-slate-900 underline decoration-primary-500/30 underline-offset-4">
+                                              {formatCurrency(statement.length > 0 ? statement[0].balance : 0)}
+                                            </div>
+                                          </div>
+                                        </div>
+                                      </td>
+                                    </tr>
+                                  </tfoot>
                                 </table>
                               </div>
                             </td>
@@ -826,271 +880,275 @@ export default function OutstandingPage() {
         </div>
 
         {/* Payment Modal */}
-        {showPaymentModal && selectedRole && (
-          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-            <div className="bg-white rounded-xl shadow-xl max-w-md w-full p-6">
-              <h3 className="text-lg font-semibold text-gray-800 mb-4">
-                Record Payment –{" "}
-                {selectedRole.charAt(0).toUpperCase() + selectedRole.slice(1)}
-              </h3>
+        {
+          showPaymentModal && selectedRole && (
+            <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+              <div className="bg-white rounded-xl shadow-xl max-w-md w-full p-6">
+                <h3 className="text-lg font-semibold text-gray-800 mb-4">
+                  Record Payment –{" "}
+                  {selectedRole.charAt(0).toUpperCase() + selectedRole.slice(1)}
+                </h3>
 
-              {selectedRole && (
-                <div className="mb-4 p-3 bg-amber-50 border border-amber-200 rounded-lg">
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm font-medium text-amber-800">
-                      Current Outstanding:
-                    </span>
-                    <span className="text-lg font-bold text-amber-900">
-                      {(() => {
-                        const summary = roleSummary.find(
-                          (r) => r.role === selectedRole,
-                        );
-                        if (!summary) return formatCurrency(0);
+                {selectedRole && (
+                  <div className="mb-4 p-3 bg-amber-50 border border-amber-200 rounded-lg">
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm font-medium text-amber-800">
+                        Current Outstanding:
+                      </span>
+                      <span className="text-lg font-bold text-amber-900">
+                        {(() => {
+                          const summary = roleSummary.find(
+                            (r) => r.role === selectedRole,
+                          );
+                          if (!summary) return formatCurrency(0);
 
-                        if (
-                          selectedRole === "supervisor" &&
-                          paymentForm.supervisorId
-                        ) {
-                          const supervisor = supervisors.find(
-                            (s) => s.id === paymentForm.supervisorId,
-                          );
-                          if (!supervisor) return formatCurrency(summary.outstanding);
+                          if (
+                            selectedRole === "supervisor" &&
+                            paymentForm.supervisorId
+                          ) {
+                            const supervisor = supervisors.find(
+                              (s) => s.id === paymentForm.supervisorId,
+                            );
+                            if (!supervisor) return formatCurrency(summary.outstanding);
 
-                          const supExpenses = summary.expenses.filter(
-                            (e) => e.recipient === supervisor.name,
-                          );
-                          const supPayments = summary.payments.filter((p) =>
-                            p.notes?.startsWith(supervisor.name),
-                          );
-
-                          const totalDues = supExpenses.reduce(
-                            (sum, e) => sum + Number(e.amount || 0),
-                            0,
-                          );
-                          const totalPaid =
-                            supExpenses.reduce(
-                              (sum, e) => sum + Number(e.paidAmount || 0),
-                              0,
-                            ) +
-                            supPayments.reduce(
-                              (sum, p) => sum + Number(p.amount || 0),
-                              0,
+                            const supExpenses = summary.expenses.filter(
+                              (e) => e.recipient === supervisor.name,
+                            );
+                            const supPayments = summary.payments.filter((p) =>
+                              p.notes?.startsWith(supervisor.name),
                             );
 
-                          return formatCurrency(Math.max(0, totalDues - totalPaid));
-                        }
+                            const totalDues = supExpenses.reduce(
+                              (sum, e) => sum + Number(e.amount || 0),
+                              0,
+                            );
+                            const totalPaid =
+                              supExpenses.reduce(
+                                (sum, e) => sum + Number(e.paidAmount || 0),
+                                0,
+                              ) +
+                              supPayments.reduce(
+                                (sum, p) => sum + Number(p.amount || 0),
+                                0,
+                              );
 
-                        return formatCurrency(summary.outstanding);
-                      })()}
-                    </span>
+                            return formatCurrency(Math.max(0, totalDues - totalPaid));
+                          }
+
+                          return formatCurrency(summary.outstanding);
+                        })()}
+                      </span>
+                    </div>
                   </div>
-                </div>
-              )}
+                )}
 
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Amount (₹)
-                  </label>
-                  <input
-                    type="number"
-                    value={paymentForm.amount}
-                    onChange={(e) =>
-                      setPaymentForm((f) => ({ ...f, amount: e.target.value }))
-                    }
-                    placeholder="0"
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-                    min="0"
-                    step="0.01"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Payment Method
-                  </label>
-                  <select
-                    value={paymentForm.paymentMethod}
-                    onChange={(e) =>
-                      setPaymentForm((f) => ({
-                        ...f,
-                        paymentMethod: e.target.value,
-                      }))
-                    }
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-                  >
-                    {PAYMENT_METHODS.map((m) => (
-                      <option key={m.value} value={m.value}>
-                        {m.label}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Date
-                  </label>
-                  <input
-                    type="date"
-                    value={paymentForm.paymentDate}
-                    onChange={(e) =>
-                      setPaymentForm((f) => ({
-                        ...f,
-                        paymentDate: e.target.value,
-                      }))
-                    }
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-                  />
-                </div>
-                {selectedRole === "supervisor" && (
+                <div className="space-y-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Select Supervisor
+                      Amount (₹)
+                    </label>
+                    <input
+                      type="number"
+                      value={paymentForm.amount}
+                      onChange={(e) =>
+                        setPaymentForm((f) => ({ ...f, amount: e.target.value }))
+                      }
+                      placeholder="0"
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                      min="0"
+                      step="0.01"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Payment Method
                     </label>
                     <select
-                      value={paymentForm.supervisorId}
+                      value={paymentForm.paymentMethod}
                       onChange={(e) =>
                         setPaymentForm((f) => ({
                           ...f,
-                          supervisorId: e.target.value,
+                          paymentMethod: e.target.value,
                         }))
                       }
                       className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
                     >
-                      <option value="">All Supervisors (General)</option>
-                      {supervisors.map((s) => (
-                        <option key={s.id} value={s.id}>
-                          {s.name}{" "}
-                          {s.cateringServiceName
-                            ? `(${s.cateringServiceName})`
-                            : "(Workforce)"}
+                      {PAYMENT_METHODS.map((m) => (
+                        <option key={m.value} value={m.value}>
+                          {m.label}
                         </option>
                       ))}
                     </select>
                   </div>
-                )}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Notes (optional)
-                  </label>
-                  <input
-                    type="text"
-                    value={paymentForm.notes}
-                    onChange={(e) =>
-                      setPaymentForm((f) => ({ ...f, notes: e.target.value }))
-                    }
-                    placeholder="Optional notes"
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-                  />
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Date
+                    </label>
+                    <input
+                      type="date"
+                      value={paymentForm.paymentDate}
+                      onChange={(e) =>
+                        setPaymentForm((f) => ({
+                          ...f,
+                          paymentDate: e.target.value,
+                        }))
+                      }
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                    />
+                  </div>
+                  {selectedRole === "supervisor" && (
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Select Supervisor
+                      </label>
+                      <select
+                        value={paymentForm.supervisorId}
+                        onChange={(e) =>
+                          setPaymentForm((f) => ({
+                            ...f,
+                            supervisorId: e.target.value,
+                          }))
+                        }
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                      >
+                        <option value="">All Supervisors (General)</option>
+                        {supervisors.map((s) => (
+                          <option key={s.id} value={s.id}>
+                            {s.name}{" "}
+                            {s.cateringServiceName
+                              ? `(${s.cateringServiceName})`
+                              : "(Workforce)"}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  )}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Notes (optional)
+                    </label>
+                    <input
+                      type="text"
+                      value={paymentForm.notes}
+                      onChange={(e) =>
+                        setPaymentForm((f) => ({ ...f, notes: e.target.value }))
+                      }
+                      placeholder="Optional notes"
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                    />
+                  </div>
+                </div>
+                <div className="flex gap-3 mt-6">
+                  <button
+                    onClick={() => {
+                      setShowPaymentModal(false);
+                      setSelectedRole(null);
+                    }}
+                    className="flex-1 px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 font-medium"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={submitPayment}
+                    disabled={paymentSubmitting}
+                    className="flex-1 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 font-medium disabled:opacity-50"
+                  >
+                    {paymentSubmitting ? "Recording…" : "Record Payment"}
+                  </button>
                 </div>
               </div>
-              <div className="flex gap-3 mt-6">
-                <button
-                  onClick={() => {
-                    setShowPaymentModal(false);
-                    setSelectedRole(null);
-                  }}
-                  className="flex-1 px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 font-medium"
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={submitPayment}
-                  disabled={paymentSubmitting}
-                  className="flex-1 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 font-medium disabled:opacity-50"
-                >
-                  {paymentSubmitting ? "Recording…" : "Record Payment"}
-                </button>
-              </div>
             </div>
-          </div>
-        )}
+          )
+        }
 
         {/* Adjustment Modal */}
-        {showAdjustmentModal && selectedRole && (
-          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-            <div className="bg-white rounded-xl shadow-xl max-w-md w-full p-6">
-              <h3 className="text-lg font-semibold text-gray-800 mb-4">
-                Add Missed Due / Adjustment – {selectedRole.charAt(0).toUpperCase() + selectedRole.slice(1)}
-              </h3>
-              <p className="text-sm text-gray-500 mb-4">
-                This will add an unresolved expense (due) to the selected role, increasing their total outstanding balance.
-              </p>
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Amount (₹)</label>
-                  <input
-                    type="number"
-                    value={adjustmentForm.amount}
-                    onChange={(e) => setAdjustmentForm((f) => ({ ...f, amount: e.target.value }))}
-                    placeholder="0"
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-                    min="0"
-                    step="0.01"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Date</label>
-                  <input
-                    type="date"
-                    value={adjustmentForm.date}
-                    onChange={(e) => setAdjustmentForm((f) => ({ ...f, date: e.target.value }))}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-                  />
-                </div>
-                {selectedRole === 'supervisor' && (
+        {
+          showAdjustmentModal && selectedRole && (
+            <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+              <div className="bg-white rounded-xl shadow-xl max-w-md w-full p-6">
+                <h3 className="text-lg font-semibold text-gray-800 mb-4">
+                  Add Missed Due / Adjustment – {selectedRole.charAt(0).toUpperCase() + selectedRole.slice(1)}
+                </h3>
+                <p className="text-sm text-gray-500 mb-4">
+                  This will add an unresolved expense (due) to the selected role, increasing their total outstanding balance.
+                </p>
+                <div className="space-y-4">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Select Supervisor</label>
-                    <select
-                      value={adjustmentForm.supervisorId}
-                      onChange={(e) => setAdjustmentForm(f => ({ ...f, supervisorId: e.target.value }))}
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Amount (₹)</label>
+                    <input
+                      type="number"
+                      value={adjustmentForm.amount}
+                      onChange={(e) => setAdjustmentForm((f) => ({ ...f, amount: e.target.value }))}
+                      placeholder="0"
                       className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-                    >
-                      <option value="">All Supervisors (General)</option>
-                      {supervisors.map((s) => (
-                        <option key={s.id} value={s.id}>
-                          {s.name}{" "}
-                          {s.cateringServiceName
-                            ? `(${s.cateringServiceName})`
-                            : "(Workforce)"}
-                        </option>
-                      ))}
-                    </select>
+                      min="0"
+                      step="0.01"
+                    />
                   </div>
-                )}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Details / Description <span className="text-red-500">*</span></label>
-                  <input
-                    type="text"
-                    value={adjustmentForm.description}
-                    onChange={(e) => setAdjustmentForm((f) => ({ ...f, description: e.target.value }))}
-                    placeholder="e.g., Missed wages for event on Tuesday"
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-                    required
-                  />
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Date</label>
+                    <input
+                      type="date"
+                      value={adjustmentForm.date}
+                      onChange={(e) => setAdjustmentForm((f) => ({ ...f, date: e.target.value }))}
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                    />
+                  </div>
+                  {selectedRole === 'supervisor' && (
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Select Supervisor</label>
+                      <select
+                        value={adjustmentForm.supervisorId}
+                        onChange={(e) => setAdjustmentForm(f => ({ ...f, supervisorId: e.target.value }))}
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                      >
+                        <option value="">All Supervisors (General)</option>
+                        {supervisors.map((s) => (
+                          <option key={s.id} value={s.id}>
+                            {s.name}{" "}
+                            {s.cateringServiceName
+                              ? `(${s.cateringServiceName})`
+                              : "(Workforce)"}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  )}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Details / Description <span className="text-red-500">*</span></label>
+                    <input
+                      type="text"
+                      value={adjustmentForm.description}
+                      onChange={(e) => setAdjustmentForm((f) => ({ ...f, description: e.target.value }))}
+                      placeholder="e.g., Missed wages for event on Tuesday"
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                      required
+                    />
+                  </div>
                 </div>
-              </div>
-              <div className="flex gap-3 mt-6">
-                <button
-                  onClick={() => {
-                    setShowAdjustmentModal(false);
-                    setSelectedRole(null);
-                  }}
-                  className="flex-1 px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 font-medium"
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={submitAdjustment}
-                  disabled={adjustmentSubmitting}
-                  className="flex-1 px-4 py-2 bg-amber-600 text-white rounded-lg hover:bg-amber-700 font-medium disabled:opacity-50"
-                >
-                  {adjustmentSubmitting ? "Adding…" : "Add Due"}
-                </button>
+                <div className="flex gap-3 mt-6">
+                  <button
+                    onClick={() => {
+                      setShowAdjustmentModal(false);
+                      setSelectedRole(null);
+                    }}
+                    className="flex-1 px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 font-medium"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={submitAdjustment}
+                    disabled={adjustmentSubmitting}
+                    className="flex-1 px-4 py-2 bg-amber-600 text-white rounded-lg hover:bg-amber-700 font-medium disabled:opacity-50"
+                  >
+                    {adjustmentSubmitting ? "Adding…" : "Add Due"}
+                  </button>
+                </div>
               </div>
             </div>
-          </div>
-        )}
-      </div>
-    </RoleGuard>
+          )
+        }
+      </div >
+    </RoleGuard >
   );
 }

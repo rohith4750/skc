@@ -194,14 +194,30 @@ export default function FinancialTrackingPage() {
     return Math.max(0, current + add)
   }
 
-  const syncPlateBasedMembers = (mealType: any, updates: Record<string, string>) => {
+  const syncFinancials = (mealType: any, updates: Record<string, string>) => {
+    const prevMembers = calculateMembers(mealType)
     const next = { ...mealType, ...updates }
-    if (next.pricingMethod !== 'plate-based') return next
-    const totalMembers = calculateMembers(next)
-    return {
-      ...next,
-      numberOfPlates: totalMembers ? totalMembers.toString() : '',
+    const nextMembers = calculateMembers(next)
+
+    if (next.pricingMethod === 'plate-based') {
+      return {
+        ...next,
+        numberOfPlates: nextMembers ? nextMembers.toString() : '',
+      }
     }
+
+    if (next.pricingMethod === 'manual' && prevMembers > 0 && nextMembers !== prevMembers) {
+      const currentManualAmount = parseFloat(mealType.manualAmount) || 0
+      if (currentManualAmount > 0) {
+        const unitRate = currentManualAmount / prevMembers
+        const newAmount = Math.round(unitRate * nextMembers)
+        return {
+          ...next,
+          manualAmount: newAmount.toString()
+        }
+      }
+    }
+    return next
   }
 
   const buildMealTypeAmounts = () => {
@@ -460,7 +476,7 @@ export default function FinancialTrackingPage() {
                                       value={mealType.numberOfMembers}
                                       onChange={(e) => {
                                         const updated = [...formData.mealTypes]
-                                        updated[index] = syncPlateBasedMembers(mealType, { numberOfMembers: e.target.value })
+                                        updated[index] = syncFinancials(mealType, { numberOfMembers: e.target.value })
                                         setFormData({ ...formData, mealTypes: updated })
                                       }}
                                       className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-[5px] text-sm font-bold text-slate-700 outline-none focus:ring-2 focus:ring-primary-500"
@@ -474,7 +490,7 @@ export default function FinancialTrackingPage() {
                                       value={mealType.addMembers}
                                       onChange={(e) => {
                                         const updated = [...formData.mealTypes]
-                                        updated[index] = syncPlateBasedMembers(mealType, { addMembers: e.target.value })
+                                        updated[index] = syncFinancials(mealType, { addMembers: e.target.value })
                                         setFormData({ ...formData, mealTypes: updated })
                                       }}
                                       className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-[5px] text-sm font-bold text-slate-700 outline-none focus:ring-2 focus:ring-primary-500"
@@ -488,7 +504,7 @@ export default function FinancialTrackingPage() {
                                       value={mealType.pricingMethod}
                                       onChange={(e) => {
                                         const updated = [...formData.mealTypes]
-                                        updated[index] = syncPlateBasedMembers(mealType, { pricingMethod: e.target.value })
+                                        updated[index] = syncFinancials(mealType, { pricingMethod: e.target.value })
                                         setFormData({ ...formData, mealTypes: updated })
                                       }}
                                       className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-[5px] text-sm font-bold text-slate-700 outline-none focus:ring-2 focus:ring-primary-500"
