@@ -145,25 +145,42 @@ export default function ExpensesPage() {
 
     // Month/Year filter
     filtered = filtered.filter(expense => {
-      // Determine the best date to filter by (Event Date > Order Date > Payment Date)
-      let targetDateStr: string | Date | null | undefined = expense.eventDate
-      if (!targetDateStr && expense.order) {
-        targetDateStr = getOrderDate(expense.order)
+      // Gather all potential target dates for this expense
+      const targetDates: Date[] = [];
+
+      let primaryDateStr: string | Date | null | undefined = expense.eventDate
+      if (!primaryDateStr && expense.order) {
+        primaryDateStr = getOrderDate(expense.order)
       }
-      if (!targetDateStr) {
-        targetDateStr = expense.paymentDate
+      if (!primaryDateStr) {
+        primaryDateStr = expense.paymentDate
+      }
+      targetDates.push(new Date(primaryDateStr || expense.createdAt));
+
+      // If it's a bulk expense, it can belong to multiple events/dates!
+      if (expense.isBulkExpense && Array.isArray(expense.bulkAllocations)) {
+        expense.bulkAllocations.forEach((alloc: any) => {
+          if (alloc.orderId) {
+            const allocOrder = orders.find(o => o.id === alloc.orderId);
+            if (allocOrder) {
+              targetDates.push(new Date(getOrderDate(allocOrder)));
+            }
+          }
+        });
       }
 
-      const targetDate = new Date(targetDateStr || expense.createdAt)
-
+      // If specific date is set, check if ANY target date matches
       if (filterDate) {
-        const y = targetDate.getFullYear()
-        const m = String(targetDate.getMonth() + 1).padStart(2, '0')
-        const day = String(targetDate.getDate()).padStart(2, '0')
-        return `${y}-${m}-${day}` === filterDate
+        return targetDates.some(td => {
+          const y = td.getFullYear()
+          const m = String(td.getMonth() + 1).padStart(2, '0')
+          const day = String(td.getDate()).padStart(2, '0')
+          return `${y}-${m}-${day}` === filterDate
+        });
       }
 
-      return (targetDate.getMonth() + 1) === selectedMonth && targetDate.getFullYear() === selectedYear
+      // Check month and year
+      return targetDates.some(td => (td.getMonth() + 1) === selectedMonth && td.getFullYear() === selectedYear);
     })
 
     return filtered.sort((a, b) => {
@@ -451,7 +468,10 @@ export default function ExpensesPage() {
                   <div className="space-y-1">
                     {allocations.map((a: any) => (
                       <div key={a.orderId} className="flex justify-between text-xs">
-                        <span className="text-gray-700 truncate max-w-[140px]">{a.orderName?.split(' - ')[0] || 'Unknown'}</span>
+                        <span className="text-gray-700 truncate max-w-[140px]">
+                          {a.orderName?.split(' - ')[0] || 'Unknown'}
+                          {row.allocationMethod === 'by-plates' && a.plates ? ` (${a.plates} plates)` : ''}
+                        </span>
                         <span className="font-medium text-indigo-700">{formatCurrency(a.amount)}</span>
                       </div>
                     ))}
