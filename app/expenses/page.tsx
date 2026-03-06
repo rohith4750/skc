@@ -182,7 +182,7 @@ export default function ExpensesPage() {
   }, [filteredExpenses])
 
   const handleEdit = (expense: Expense) => {
-    router.push(`/expenses/create?id=${expense.id}`)
+    router.push(`/expenses/edit/${expense.id}`)
   }
 
   const handleDelete = (id: string) => {

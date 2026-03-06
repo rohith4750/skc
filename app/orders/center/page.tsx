@@ -995,7 +995,7 @@ export default function OrderCenterPage() {
                     </div>
                     <div className="flex flex-wrap gap-2 pt-4 border-t border-slate-50">
                       <button onClick={() => handleOpenPreview(order)} className="p-2.5 bg-indigo-50 text-indigo-600 rounded-xl hover:bg-indigo-100 transition-colors" title="Preview Summary"><FaChartLine /></button>
-                      <Link href={`/orders?edit=${order.id}`} className="p-2.5 bg-slate-50 text-slate-600 rounded-xl hover:bg-slate-100 transition-colors" title="Edit"><FaEdit /></Link>
+                      <Link href={`/orders/edit/${order.id}`} className="p-2.5 bg-slate-50 text-slate-600 rounded-xl hover:bg-slate-100 transition-colors" title="Edit"><FaEdit /></Link>
                       <button onClick={() => setPdfLanguageModal({ isOpen: true, order })} className="p-2.5 bg-slate-50 text-slate-600 rounded-xl hover:bg-slate-100 transition-colors" title="PDF"><FaFilePdf /></button>
                       <button onClick={() => handleGenerateImage(order, 'english')} className="p-2.5 bg-slate-50 text-slate-600 rounded-xl hover:bg-slate-100 transition-colors" title="Image"><FaFileImage /></button>
                       <button onClick={() => order.customer?.email ? setEmailModal({ isOpen: true, order }) : toast.error('Customer email not available')} className="p-2.5 bg-slate-50 text-slate-600 rounded-xl hover:bg-slate-100 transition-colors" title="Email"><FaEnvelope /></button>
@@ -1241,7 +1241,7 @@ export default function OrderCenterPage() {
                               <FaChartLine />
                             </Link>
                             <Link
-                              href={`/orders?edit=${order.id}`}
+                              href={`/orders/edit/${order.id}`}
                               className="text-yellow-600 hover:text-yellow-900 p-2 hover:bg-yellow-50 rounded transition-colors"
                               title="Edit Order"
                             >

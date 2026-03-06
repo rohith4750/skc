@@ -36,7 +36,7 @@ export default function CustomersPage() {
   }
 
   const handleEdit = (customer: Customer) => {
-    router.push(`/customers/create?id=${customer.id}`)
+    router.push(`/customers/edit/${customer.id}`)
   }
 
   const handleDelete = (id: string) => {
@@ -64,7 +64,6 @@ export default function CustomersPage() {
       setDeleteConfirm({ isOpen: false, id: null })
     }
   }
-
 
   const filteredCustomers = useMemo(() => {
     if (!searchTerm.trim()) return customers

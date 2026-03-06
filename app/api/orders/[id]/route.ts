@@ -4,7 +4,7 @@ import { isNonEmptyString, isNonNegativeNumber } from "@/lib/validation";
 import { publishNotification } from "@/lib/notifications";
 import { transformDecimal } from "@/lib/decimal-utils";
 import { sendPaymentReceivedAlert } from "@/lib/email-alerts";
-import { formatCurrency, generateId } from "@/lib/utils";
+import { formatCurrency, generateId, sanitizeMealLabel } from "@/lib/utils";
 
 export async function GET(
   request: NextRequest,
@@ -236,15 +236,8 @@ export async function PUT(
         const priceSign = priceDiff > 0 ? "+" : "";
 
         // Resolve a human-readable label for the meal type
-        let label = newType.menuType || newType.eventName || type;
-        if (type.startsWith("session_")) {
-          const parts = type.split("_");
-          if (parts.length > 1 && parts[1] !== "merged") {
-            label = parts[1];
-          }
-        }
-        // Capitalize label
-        label = label.charAt(0).toUpperCase() + label.slice(1);
+        const rawLabel = newType.menuType || newType.eventName || type;
+        const label = sanitizeMealLabel(rawLabel);
 
         mealTypeChanges.push(
           `${label}: ${oldMemberCount} → ${newMemberCount} (${diffSign}${memberDiff} members, ${priceSign}${priceDiff.toFixed(2)} price)`,

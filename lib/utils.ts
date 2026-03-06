@@ -98,12 +98,11 @@ export function sendSMS(phone: string, message: string) {
 export function sanitizeMealLabel(label: string): string {
   if (!label) return "";
 
-  // If it's a long string with hyphens (likely a UUID), return generic label
-  if (label.length > 20 && label.includes("-")) return "Meal";
-
-  if (label.length > 20 && label.includes("-")) return "Meal";
-
   let workingLabel = String(label);
+
+  // If it's a long string with hyphens (likely a UUID), return generic label
+  if (workingLabel.length > 20 && workingLabel.includes("-")) return "Meal";
+
   // Strip tracking suffixes like session_NAME_serial
   if (workingLabel.startsWith("session_")) {
     const parts = workingLabel.split("_");
@@ -112,6 +111,11 @@ export function sanitizeMealLabel(label: string): string {
     } else {
       workingLabel = "Meal";
     }
+  }
+
+  // Handle merged suffixes
+  if (workingLabel.toLowerCase().includes("_merged")) {
+    workingLabel = workingLabel.split("_")[0];
   }
 
   const cleanLabel = workingLabel.split("_")[0];

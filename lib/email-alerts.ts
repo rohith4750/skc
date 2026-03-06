@@ -5,7 +5,7 @@
 
 import { sendEmail } from "./email-server";
 import { prisma } from "./prisma";
-import { formatCurrency, formatDateTime } from "./utils";
+import { formatCurrency, formatDateTime, sanitizeMealLabel } from "./utils";
 
 interface AlertEmailData {
   type:
@@ -324,11 +324,23 @@ export async function checkTomorrowOrders(): Promise<void> {
     const orderDetails: Record<string, string> = {};
     tomorrowOrders.forEach((order, index) => {
       const customerName = order.customer?.name || "Unknown";
-      const mealTypes = order.mealTypeAmounts
-        ? Object.keys(order.mealTypeAmounts as Record<string, any>).join(", ")
-        : "N/A";
+      const mealTypeAmounts = (order.mealTypeAmounts || {}) as Record<
+        string,
+        any
+      >;
+      const mealTypeNames = Object.entries(mealTypeAmounts)
+        .map(([key, data]) => {
+          // If data is an object, try our new structure, fallback to key
+          const label = (data as any)?.menuType || key;
+          return sanitizeMealLabel(label);
+        })
+        .filter((v, i, a) => a.indexOf(v) === i); // Unique
 
-      orderDetails[`Order ${index + 1}`] = `${customerName} - ${mealTypes}`;
+      const mealTypesDisplay =
+        mealTypeNames.length > 0 ? mealTypeNames.join(", ") : "N/A";
+
+      orderDetails[`Order ${index + 1}`] =
+        `${customerName} - ${mealTypesDisplay}`;
     });
 
     await sendAlertToUsers({
@@ -367,20 +379,18 @@ export async function sendOrderCreatedAlert(orderId: string): Promise<void> {
 
     if (mealTypeAmounts) {
       Object.entries(mealTypeAmounts).forEach(([type, data]) => {
-        let label = (data as any)?.menuType || (data as any)?.eventName || type;
-        if (type.startsWith("session_")) {
-          const parts = type.split("_");
-          if (parts.length > 1 && parts[1] !== "merged") {
-            label = parts[1];
-          }
-        }
-        mealTypes.push(label.charAt(0).toUpperCase() + label.slice(1));
+        const rawLabel =
+          (data as any)?.menuType || (data as any)?.eventName || type;
+        const sanitized = sanitizeMealLabel(rawLabel);
+        if (sanitized) mealTypes.push(sanitized);
 
         if (data && typeof data === "object" && (data as any).date) {
           eventDates.push(new Date((data as any).date).toLocaleDateString());
         }
       });
     }
+    // Make unique
+    const uniqueMealTypes = mealTypes.filter((v, i, a) => a.indexOf(v) === i);
 
     await sendAlertToUsers({
       type: "order_created",
@@ -390,8 +400,10 @@ export async function sendOrderCreatedAlert(orderId: string): Promise<void> {
         Customer: customerName,
         "Customer Phone": order.customer?.phone || "N/A",
         "Event Name": (order as any).eventName || "N/A",
-        "Meal Types": mealTypes.join(", ") || "N/A",
-        "Event Dates": eventDates.join(", ") || "N/A",
+        "Meal Types": uniqueMealTypes.join(", ") || "N/A",
+        "Event Dates":
+          eventDates.filter((v, i, a) => a.indexOf(v) === i).join(", ") ||
+          "N/A",
         "Total Amount": formatCurrency(totalAmount),
         "Advance Paid": formatCurrency(Number(order.advancePaid || 0)),
         Balance: formatCurrency(totalAmount - Number(order.advancePaid || 0)),
