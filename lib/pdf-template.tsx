@@ -62,6 +62,7 @@ export interface PDFTemplateData {
     expenses?: Array<{
       date: string
       amount: number
+      balance?: number
       description?: string
       status?: string
       orderName?: string
@@ -842,6 +843,7 @@ function generateWorkforceContent(data: PDFTemplateData): string {
               ${role === 'chef' ? '<th>Plates</th>' : ''}
               ${role === 'chef' ? '<th>Rate</th>' : ''}
               <th class="text-right">Amount</th>
+              <th class="text-right">Balance</th>
             </tr>
           </thead>
           <tbody>
@@ -853,6 +855,7 @@ function generateWorkforceContent(data: PDFTemplateData): string {
         customerName: alloc.customerName || '',
         venueAddress: alloc.venueAddress || '',
         amount: alloc.amount,
+        balance: exp.balance,
         plates: alloc.plates,
         rate: exp.calculationDetails?.perPlateAmount,
         description: exp.description,
@@ -865,6 +868,7 @@ function generateWorkforceContent(data: PDFTemplateData): string {
       customerName: exp.customerName,
       venueAddress: exp.venueAddress,
       amount: exp.amount,
+      balance: exp.balance,
       plates: exp.calculationDetails?.plates,
       rate: exp.calculationDetails?.perPlateAmount,
       description: exp.description,
@@ -884,6 +888,7 @@ function generateWorkforceContent(data: PDFTemplateData): string {
                   ${role === 'chef' ? `<td>${item.plates || '-'}</td>` : ''}
                   ${role === 'chef' ? `<td>${item.rate ? formatCurrency(item.rate) : '-'}</td>` : ''}
                   <td class="text-right">${formatCurrency(item.amount)}</td>
+                  <td class="text-right" style="font-weight: 600;">${item.balance !== undefined ? formatCurrency(item.balance) : '-'}</td>
                 </tr>
               `
   }).join('')}
@@ -899,6 +904,10 @@ function generateWorkforceContent(data: PDFTemplateData): string {
                 <span class="form-value">${formatDate(exp.date)}</span>
                 <span style="margin-left: 20px;" class="form-label">Amount:</span>
                 <span class="form-value">${formatCurrency(exp.amount)}</span>
+                ${exp.balance !== undefined ? `
+                <span style="margin-left: 20px;" class="form-label">Balance:</span>
+                <span class="form-value" style="font-weight: 600;">${formatCurrency(exp.balance)}</span>
+                ` : ''}
               </div>
               
               ${role === 'boys' && (calc.method === 'per-member-type' || (calc.dressedBoys !== undefined)) ? `

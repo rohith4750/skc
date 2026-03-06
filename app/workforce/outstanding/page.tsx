@@ -21,6 +21,9 @@ import { formatCurrency, formatDate, getLocalISODate } from "@/lib/utils";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import RoleGuard from "@/components/RoleGuard";
+import jsPDF from 'jspdf';
+import html2canvas from 'html2canvas';
+import { generatePDFTemplate } from '@/lib/pdf-template';
 
 const roleIcons: Record<string, any> = {
   chef: FaUtensils,
@@ -135,6 +138,140 @@ export default function OutstandingPage() {
     new Date().getFullYear().toString(),
   );
   const [filterDate, setFilterDate] = useState<string>("");
+
+  const handleDownloadRolePDF = async (role: string) => {
+    const r = roleSummary.find(item => item.role === role);
+    if (!r) return;
+
+    const toastId = toast.loading(`Generating PDF for ${role}...`);
+    try {
+      const statement = buildStatement(r);
+      const pdfData: any = {
+        type: 'workforce',
+        date: new Date().toISOString(),
+        billNumber: `WF-${role.slice(0, 3).toUpperCase()}-${new Date().getTime().toString().slice(-6)}`,
+        workforceDetails: {
+          name: role.charAt(0).toUpperCase() + role.slice(1),
+          role: role,
+          totalAmount: r.totalDues,
+          totalPaid: r.totalPaid,
+          expenses: statement.map(line => ({
+            date: line.date,
+            amount: line.amount,
+            balance: line.balance,
+            description: line.desc,
+            status: line.status || 'paid',
+            type: line.type
+          }))
+        }
+      };
+
+      const htmlContent = generatePDFTemplate(pdfData);
+      const tempDiv = document.createElement('div');
+      tempDiv.style.position = 'absolute';
+      tempDiv.style.left = '-9999px';
+      tempDiv.style.width = '210mm';
+      tempDiv.style.padding = '10mm';
+      tempDiv.style.background = 'white';
+      tempDiv.innerHTML = htmlContent;
+      document.body.appendChild(tempDiv);
+
+      await new Promise(resolve => setTimeout(resolve, 500));
+
+      const canvas = await html2canvas(tempDiv, {
+        scale: 3.5,
+        useCORS: true,
+        logging: false,
+        backgroundColor: '#ffffff',
+      });
+
+      document.body.removeChild(tempDiv);
+
+      const imgData = canvas.toDataURL('image/jpeg', 0.95);
+      const pdf = new jsPDF('p', 'mm', 'a4');
+      const imgWidth = 210;
+      const imgHeight = (canvas.height * imgWidth) / canvas.width;
+
+      pdf.addImage(imgData, 'JPEG', 0, 0, imgWidth, imgHeight);
+      pdf.save(`SKC-${role}-Statement.pdf`);
+
+      toast.success('PDF downloaded successfully', { id: toastId });
+    } catch (error) {
+      console.error(error);
+      toast.error('Failed to generate PDF', { id: toastId });
+    }
+  };
+
+  const handleDownloadAllPDF = async () => {
+    const activeRoles = roleSummary.filter(r => r.outstanding > 0 || (r.payments?.length || 0) > 0);
+    if (activeRoles.length === 0) {
+      toast.error('No outstanding data to export');
+      return;
+    }
+
+    const toastId = toast.loading('Generating Bulk PDF Statements...');
+    try {
+      const pdf = new jsPDF('p', 'mm', 'a4');
+      const imgWidth = 210;
+
+      for (let i = 0; i < activeRoles.length; i++) {
+        const r = activeRoles[i];
+        const statement = buildStatement(r);
+        const pdfData: any = {
+          type: 'workforce',
+          date: new Date().toISOString(),
+          billNumber: `WF-ALL-${new Date().getTime().toString().slice(-6)}`,
+          workforceDetails: {
+            name: r.role.charAt(0).toUpperCase() + r.role.slice(1),
+            role: r.role,
+            totalAmount: r.totalDues,
+            totalPaid: r.totalPaid,
+            expenses: statement.map(line => ({
+              date: line.date,
+              amount: line.amount,
+              balance: line.balance,
+              description: line.desc,
+              status: line.status || 'paid',
+              type: line.type
+            }))
+          }
+        };
+
+        const htmlContent = generatePDFTemplate(pdfData);
+        const tempDiv = document.createElement('div');
+        tempDiv.style.position = 'absolute';
+        tempDiv.style.left = '-9999px';
+        tempDiv.style.width = '210mm';
+        tempDiv.style.padding = '10mm';
+        tempDiv.style.background = 'white';
+        tempDiv.innerHTML = htmlContent;
+        document.body.appendChild(tempDiv);
+
+        await new Promise(resolve => setTimeout(resolve, 500));
+
+        const canvas = await html2canvas(tempDiv, {
+          scale: 3.5,
+          useCORS: true,
+          logging: false,
+          backgroundColor: '#ffffff',
+        });
+
+        document.body.removeChild(tempDiv);
+
+        const imgData = canvas.toDataURL('image/jpeg', 0.95);
+        const imgHeight = (canvas.height * imgWidth) / canvas.width;
+
+        if (i > 0) pdf.addPage();
+        pdf.addImage(imgData, 'JPEG', 0, 0, imgWidth, imgHeight);
+      }
+
+      pdf.save(`SKC-All-Workforce-Statements-${new Date().toLocaleDateString()}.pdf`);
+      toast.success('Bulk PDF downloaded successfully', { id: toastId });
+    } catch (error) {
+      console.error(error);
+      toast.error('Failed to generate bulk PDF', { id: toastId });
+    }
+  };
 
   const buildStatement = (r: RoleSummary) => {
     const lines: {
@@ -483,6 +620,13 @@ export default function OutstandingPage() {
             </p>
           </div>
           <div className="flex items-center gap-3 w-full sm:w-auto">
+            <button
+              onClick={handleDownloadAllPDF}
+              className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-indigo-600 text-white text-sm font-medium hover:bg-indigo-700 shadow-sm transition-all"
+              title="Download All Statements as a single PDF"
+            >
+              <FaFileAlt className="w-4 h-4" /> Download All (PDF)
+            </button>
             {from === "expenses" && (
               <Link
                 href="/expenses"
@@ -799,6 +943,13 @@ export default function OutstandingPage() {
                                     Statement
                                   </>
                                 )}
+                              </button>
+                              <button
+                                onClick={() => handleDownloadRolePDF(r.role)}
+                                className="inline-flex items-center gap-1 px-2 py-1.5 rounded-lg border border-indigo-300 text-indigo-700 text-sm hover:bg-indigo-50"
+                                title="Download Statement PDF"
+                              >
+                                <FaFileAlt className="w-4 h-4" /> PDF
                               </button>
                               <button
                                 onClick={() => openPaymentModal(r.role)}
