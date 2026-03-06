@@ -97,7 +97,7 @@ export default function StoreCalculatorPage() {
                     paidAmount: typeof e.paidAmount === 'string' ? parseFloat(e.paidAmount) : Number(e.paidAmount || 0),
                     createdAt: e.createdAt,
                 }))
-                .sort((a: StoreEntry, b: StoreEntry) => new Date(b.paymentDate).getTime() - new Date(a.paymentDate).getTime())
+                .sort((a: StoreEntry, b: StoreEntry) => new Date(a.paymentDate).getTime() - new Date(b.paymentDate).getTime())
             setEntries(storeExpenses)
         } catch (error) {
             console.error('Failed to load store entries:', error)

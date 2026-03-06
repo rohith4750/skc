@@ -245,13 +245,16 @@ export default function OutstandingPage() {
       line.balance = runningBalance;
     });
 
-    // Sort by date descending for UI display (same stable tiebreaker, reversed)
+    // Sort by date ascending for UI display (beginning of month at top)
     lines.sort((a, b) => {
-      const dateDiff = new Date(b.date).getTime() - new Date(a.date).getTime();
+      const dateDiff = new Date(a.date).getTime() - new Date(b.date).getTime();
       if (dateDiff !== 0) return dateDiff;
-      // On same date: dues first (highest balance at top), then payments
-      if (a.type === 'due') return -1;
-      if (b.type === 'due') return 1;
+      // On same date: Opening balance must be absolute first
+      if (a.method === "Opening") return -1;
+      if (b.method === "Opening") return 1;
+      // Then payments before dues for a logical ledger flow
+      if (a.type === 'workforce' || a.type === 'expense') return -1;
+      if (b.type === 'workforce' || b.type === 'expense') return 1;
       return 0;
     });
     return lines;
