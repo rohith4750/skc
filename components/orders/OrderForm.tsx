@@ -763,45 +763,46 @@ export default function OrderForm({ orderId, isEditMode = false, initialOrderTyp
                                         </div>
 
                                         {(menuItemSearch[mt.id] || mt.menuType) && (
-                                            <div className="mt-2 grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-6 gap-1.5">
-                                                {menuItems
-                                                    .filter(item => {
-                                                        const search = (menuItemSearch[mt.id] || '').toLowerCase()
-                                                        const matchesSearch = item.name.toLowerCase().includes(search)
-                                                        const itemTypes = Array.isArray(item.type) ? item.type : [(item.type as any)]
-                                                        const matchesType = !mt.menuType || itemTypes.some((t: string) => t?.toLowerCase() === mt.menuType.toLowerCase())
-                                                        return matchesSearch && matchesType
-                                                    })
-                                                    .slice(0, 18)
-                                                    .map(item => (
-                                                        <button
-                                                            key={item.id}
-                                                            type="button"
-                                                            onClick={() => handleMenuItemToggle(mt.id, item.id)}
-                                                            className={`p-2 text-left rounded-lg border transition-all ${mt.selectedMenuItems.includes(item.id)
-                                                                ? 'bg-primary-600 border-primary-600 text-white font-black shadow-md shadow-primary-200 scale-[1.02]'
-                                                                : 'bg-white border-gray-50 text-gray-700 hover:border-primary-300 hover:bg-primary-50 font-bold'}`}
-                                                        >
-                                                            <div className="text-[10px] font-black leading-tight mb-0.5 line-clamp-2">{item.name}</div>
-                                                            {item.description && (
-                                                                <div className={`text-[8px] line-clamp-1 italic ${mt.selectedMenuItems.includes(item.id) ? 'text-primary-100' : 'text-gray-400 font-normal'}`}>
-                                                                    {item.description}
-                                                                </div>
-                                                            )}
-                                                        </button>
-                                                    ))}
-                                                <button
-                                                    type="button"
-                                                    onClick={() => {
-                                                        setQuickAddMealTypeId(mt.id)
-                                                        setShowQuickAddModal(true)
-                                                    }}
-                                                    className="p-2 text-[10px] font-black text-center text-primary-600 border border-dashed border-primary-100 rounded-lg hover:bg-primary-50"
-                                                >
-                                                    + Quick Add
-                                                </button>
+                                            <div className="mt-2 max-h-[350px] overflow-y-auto pr-1">
+                                                <div className="grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-6 gap-1.5 pt-1">
+                                                    {menuItems
+                                                        .filter(item => {
+                                                            const search = (menuItemSearch[mt.id] || '').toLowerCase()
+                                                            const matchesSearch = item.name.toLowerCase().includes(search)
+                                                            const itemTypes = Array.isArray(item.type) ? item.type : [(item.type as any)]
+                                                            const matchesType = !mt.menuType || itemTypes.some((t: string) => t?.toLowerCase() === mt.menuType.toLowerCase())
+                                                            return matchesSearch && matchesType
+                                                        })
+                                                        .map(item => (
+                                                            <button
+                                                                key={item.id}
+                                                                type="button"
+                                                                onClick={() => handleMenuItemToggle(mt.id, item.id)}
+                                                                className={`p-2 text-left rounded-lg border transition-all ${mt.selectedMenuItems.includes(item.id)
+                                                                    ? 'bg-primary-600 border-primary-600 text-white font-black shadow-md shadow-primary-200 scale-[1.02]'
+                                                                    : 'bg-white border-gray-50 text-gray-700 hover:border-primary-300 hover:bg-primary-50 font-bold'}`}
+                                                            >
+                                                                <div className="text-[10px] font-black leading-tight mb-0.5 line-clamp-2">{item.name}</div>
+                                                                {item.description && (
+                                                                    <div className={`text-[8px] line-clamp-1 italic ${mt.selectedMenuItems.includes(item.id) ? 'text-primary-100' : 'text-gray-400 font-normal'}`}>
+                                                                        {item.description}
+                                                                    </div>
+                                                                )}
+                                                            </button>
+                                                        ))}
+                                                </div>
                                             </div>
                                         )}
+                                        <button
+                                            type="button"
+                                            onClick={() => {
+                                                setQuickAddMealTypeId(mt.id)
+                                                setShowQuickAddModal(true)
+                                            }}
+                                            className="p-2 text-[10px] font-black text-center text-primary-600 border border-dashed border-primary-100 rounded-lg hover:bg-primary-50"
+                                        >
+                                            + Quick Add
+                                        </button>
                                     </div>
 
                                     <h4 className="font-bold text-gray-800 flex items-center justify-between border-t border-gray-50 pt-4">

@@ -73,6 +73,7 @@ export default function OrdersOverviewPage() {
       orderId: string
       customerName: string
       mealType: string
+      memberCount?: number | string
     }> = []
 
     filteredOrders.forEach(order => {
@@ -93,6 +94,7 @@ export default function OrdersOverviewPage() {
           meals.push({
             orderId: order.id,
             customerName: order.customer?.name || 'Unknown',
+            memberCount: data.numberOfMembers || '',
             mealType: (() => {
               let label = data.menuType || type
 
@@ -306,7 +308,14 @@ export default function OrdersOverviewPage() {
                                     className={`block text-[10px] px-2 py-1.5 rounded-md border shadow-sm transition-all hover:scale-[1.02] truncate flex flex-col gap-0.5 ${getMealColor(meal.mealType)}`}
                                     title={`${meal.mealType}: ${meal.customerName}`}
                                   >
-                                    <span className="font-bold opacity-90">{meal.customerName}</span>
+                                    <div className="flex justify-between items-center gap-1">
+                                      <span className="font-bold opacity-90 truncate">{meal.customerName}</span>
+                                      {meal.memberCount && (
+                                        <span className="shrink-0 font-black px-1 py-0.5 bg-white/40 rounded text-[8px]">
+                                          {meal.memberCount}
+                                        </span>
+                                      )}
+                                    </div>
                                   </Link>
                                 ))}
                               </div>
