@@ -879,31 +879,31 @@ export default function OutstandingPage() {
                                   </tbody>
                                   <tfoot>
                                     <tr className="bg-slate-50 border-t-2 border-slate-200">
-                                      <td colSpan={3} className="px-4 py-3">
-                                        <div className="font-black text-[10px] text-slate-400 uppercase tracking-widest">
-                                          Total Calculation Summary
-                                        </div>
-                                      </td>
-                                      <td className="px-4 py-8 text-right min-w-[200px]">
-                                        <div className="space-y-4">
-                                          <div>
-                                            <div className="text-[10px] font-black text-slate-400 uppercase tracking-tight mb-1">Total Dues</div>
-                                            <div className="text-sm font-black text-amber-700">
-                                              + {formatCurrency(statement.reduce((sum, line) => line.type === 'due' ? sum + line.amount : sum, 0))}
-                                            </div>
+                                      <td colSpan={5} className="px-4 py-8 text-right">
+                                        <div className="flex flex-col items-end w-full">
+                                          <div className="font-black text-[10px] text-slate-400 uppercase tracking-widest mb-6">
+                                            Total Calculation Summary
                                           </div>
-
-                                          <div className="pt-2 border-t border-slate-200">
-                                            <div className="text-[10px] font-black text-slate-400 uppercase tracking-tight mb-1">Total Paid</div>
-                                            <div className="text-sm font-black text-green-600">
-                                              - {formatCurrency(statement.reduce((sum, line) => line.type !== 'due' ? sum + line.amount : sum, 0))}
+                                          <div className="space-y-4 min-w-[200px]">
+                                            <div>
+                                              <div className="text-[10px] font-black text-slate-400 uppercase tracking-tight mb-1">Total Dues</div>
+                                              <div className="text-sm font-black text-amber-700">
+                                                + {formatCurrency(statement.reduce((sum, line) => line.type === 'due' ? sum + line.amount : sum, 0))}
+                                              </div>
                                             </div>
-                                          </div>
 
-                                          <div className="pt-2 border-t-2 border-slate-300">
-                                            <div className="text-[10px] font-black text-primary-500 uppercase tracking-tight mb-1">Final Outstanding</div>
-                                            <div className="text-lg font-black text-slate-900 underline decoration-primary-500/30 underline-offset-4">
-                                              {formatCurrency(statement.length > 0 ? statement[0].balance : 0)}
+                                            <div className="pt-2 border-t border-slate-200">
+                                              <div className="text-[10px] font-black text-slate-400 uppercase tracking-tight mb-1">Total Paid</div>
+                                              <div className="text-sm font-black text-green-600">
+                                                - {formatCurrency(statement.reduce((sum, line) => line.type !== 'due' ? sum + line.amount : sum, 0))}
+                                              </div>
+                                            </div>
+
+                                            <div className="pt-2 border-t-2 border-slate-300">
+                                              <div className="text-[10px] font-black text-primary-500 uppercase tracking-tight mb-1">Final Outstanding</div>
+                                              <div className="text-lg font-black text-slate-900 underline decoration-primary-500/30 underline-offset-4">
+                                                {formatCurrency(statement.length > 0 ? statement[0].balance : 0)}
+                                              </div>
                                             </div>
                                           </div>
                                         </div>
