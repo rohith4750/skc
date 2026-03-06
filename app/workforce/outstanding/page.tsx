@@ -583,7 +583,7 @@ export default function OutstandingPage() {
                       <td className="px-4 py-3 text-gray-600">
                         {ev.customerName || "—"}
                       </td>
-                      <td className="px-4 py-3 text-right font-medium">
+                      <td className="px-4 py-3 text-right font-medium text-gray-600">
                         {formatCurrency(ev.totalAmount)}
                       </td>
                     </tr>
@@ -658,7 +658,7 @@ export default function OutstandingPage() {
                         <td className="px-4 py-3 text-gray-600">
                           {formatDate(exp.paymentDate || exp.createdAt)}
                         </td>
-                        <td className="px-4 py-3 text-right font-medium">
+                        <td className="px-4 py-3 text-right text-gray-600 font-medium">
                           {formatCurrency(Number(exp.amount || 0))}
                         </td>
                       </tr>
