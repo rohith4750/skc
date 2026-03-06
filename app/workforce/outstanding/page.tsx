@@ -208,10 +208,15 @@ export default function OutstandingPage() {
       }
     });
 
-    // Sort by date ascending to calculate running balance
-    lines.sort(
-      (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime(),
-    );
+    // Sort by date ascending (with createdAt as stable tiebreaker) to calculate running balance correctly
+    lines.sort((a, b) => {
+      const dateDiff = new Date(a.date).getTime() - new Date(b.date).getTime();
+      if (dateDiff !== 0) return dateDiff;
+      // Stable tiebreaker: dues come after payments on the same day (payments reduce balance first)
+      if (a.type === 'workforce' || a.type === 'expense') return -1;
+      if (b.type === 'workforce' || b.type === 'expense') return 1;
+      return 0;
+    });
 
     let runningBalance = 0;
     lines.forEach((line) => {
@@ -223,10 +228,15 @@ export default function OutstandingPage() {
       line.balance = runningBalance;
     });
 
-    // Sort by date descending for UI display
-    lines.sort(
-      (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime(),
-    );
+    // Sort by date descending for UI display (same stable tiebreaker, reversed)
+    lines.sort((a, b) => {
+      const dateDiff = new Date(b.date).getTime() - new Date(a.date).getTime();
+      if (dateDiff !== 0) return dateDiff;
+      // On same date: dues first (highest balance at top), then payments
+      if (a.type === 'due') return -1;
+      if (b.type === 'due') return 1;
+      return 0;
+    });
     return lines;
   };
 
@@ -902,7 +912,7 @@ export default function OutstandingPage() {
                                             <div className="pt-2 border-t-2 border-slate-300">
                                               <div className="text-[10px] font-black text-primary-500 uppercase tracking-tight mb-1">Final Outstanding</div>
                                               <div className="text-lg font-black text-slate-900 underline decoration-primary-500/30 underline-offset-4">
-                                                {formatCurrency(statement.length > 0 ? statement[0].balance : 0)}
+                                                {formatCurrency(statement.reduce((sum, line) => line.type === 'due' ? sum + line.amount : sum - line.amount, 0))}
                                               </div>
                                             </div>
                                           </div>

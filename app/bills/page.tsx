@@ -15,6 +15,7 @@ import html2canvas from 'html2canvas'
 import { generatePDFTemplate } from '@/lib/pdf-template'
 import { buildOrderPdfHtml } from '@/lib/order-pdf-html'
 import ConfirmModal from '@/components/ConfirmModal'
+import Logo from '@/components/Logo'
 
 interface ExtendedBill {
   id: string;
@@ -841,7 +842,7 @@ export default function BillsPage() {
         isPaymentModalOpen && (
           <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
             <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-md" onClick={() => setIsPaymentModalOpen(false)} />
-            <div className="relative bg-white rounded-3xl w-full max-w-md shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200">
+            <div className="relative bg-white rounded-1xl w-full max-w-md shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200">
               <div className="p-8 space-y-6">
                 <div className="text-center">
                   <div className="w-16 h-16 bg-emerald-50 rounded-full flex items-center justify-center text-emerald-600 text-2xl mx-auto mb-4">
@@ -858,7 +859,7 @@ export default function BillsPage() {
                       type="number"
                       value={paymentData.amount || ''}
                       onChange={(e) => setPaymentData({ ...paymentData, amount: parseFloat(e.target.value) || 0 })}
-                      className="w-full text-3xl font-black px-4 py-4 bg-slate-50 border-2 border-slate-100 rounded-2xl focus:border-indigo-500 focus:bg-white outline-none transition-all text-center placeholder:text-slate-200"
+                      className="w-full text-3xl font-black px-4 py-4 bg-slate-50 border-2 border-slate-100 rounded-xl focus:border-indigo-500 focus:bg-white outline-none transition-all text-center placeholder:text-slate-200"
                       placeholder="0.00"
                     />
                   </div>
@@ -891,13 +892,13 @@ export default function BillsPage() {
                 <div className="flex gap-3 pt-2">
                   <button
                     onClick={() => setIsPaymentModalOpen(false)}
-                    className="flex-1 py-4 bg-slate-100 text-slate-600 rounded-2xl font-bold hover:bg-slate-200 transition-all"
+                    className="flex-1 py-4 bg-slate-100 text-slate-600 rounded-xl font-bold hover:bg-slate-200 transition-all"
                   >
                     Cancel
                   </button>
                   <button
                     onClick={handleRecordPayment}
-                    className="flex-1 py-4 bg-indigo-600 text-white rounded-2xl font-black shadow-lg shadow-indigo-200 hover:bg-indigo-700 transition-all active:scale-95"
+                    className="flex-1 py-4 bg-indigo-600 text-white rounded-xl font-black shadow-lg shadow-indigo-200 hover:bg-indigo-700 transition-all active:scale-95"
                   >
                     Confirm Payment
                   </button>
@@ -944,21 +945,23 @@ function BillCard({ bill, onOpen, onDownload, onDownloadImage, onWhatsApp, onEma
   return (
     <div
       onClick={onOpen}
-      className="bg-white border border-slate-100 rounded-[2rem] p-6 shadow-sm hover:shadow-xl hover:border-indigo-100 transition-all cursor-pointer group active:scale-[0.98] relative overflow-hidden"
+      className={`bg-white border-2 rounded-2xl p-6 shadow-sm hover:shadow-xl transition-all cursor-pointer group active:scale-[0.98] relative overflow-hidden ${bill.status === 'paid' ? 'border-emerald-500' :
+        bill.status === 'partial' ? 'border-amber-500' : 'border-rose-500'
+        }`}
     >
       <div className="absolute top-0 right-0 w-24 h-24 bg-slate-50 rounded-full -mr-12 -mt-12 group-hover:bg-indigo-50/50 transition-colors" />
 
       <div className="flex justify-between items-start mb-6 relative z-10">
         <div className="flex gap-4">
-          <div className="w-14 h-14 bg-slate-50 rounded-2xl flex items-center justify-center text-slate-400 text-2xl group-hover:bg-indigo-600 group-hover:text-white transition-all shadow-sm">
-            <FaUser />
+          <div className="w-14 h-14 flex items-center justify-center transition-all">
+            <Logo variant="icon" size="sm" className="w-full h-full" />
           </div>
           <div>
             <h3 className="font-bold text-slate-900 text-lg leading-tight group-hover:text-indigo-600 transition-colors">{bill.order.customer.name}</h3>
             <p className="text-slate-400 text-xs font-bold uppercase tracking-widest mt-1">{bill.order.customer.phone}</p>
           </div>
         </div>
-        <div className={`px-3 py-1 rounded-xl text-[10px] font-black uppercase tracking-widest shadow-sm ${bill.status === 'paid' ? 'bg-emerald-500 text-white' :
+        <div className={`px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-widest shadow-sm ${bill.status === 'paid' ? 'bg-emerald-500 text-white' :
           bill.status === 'partial' ? 'bg-amber-500 text-white' : 'bg-rose-500 text-white'
           }`}>
           {bill.status}
@@ -969,28 +972,28 @@ function BillCard({ bill, onOpen, onDownload, onDownloadImage, onWhatsApp, onEma
       <div className="flex justify-end gap-1.5 mb-6 relative z-10">
         <button
           onClick={(e) => { e.stopPropagation(); onDownload(); }}
-          className="p-2.5 bg-slate-50 rounded-xl text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 transition-all active:scale-90"
+          className="p-2.5 bg-slate-50 rounded-lg text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 transition-all active:scale-90"
           title="Download PDF"
         >
           <FaFileInvoiceDollar className="w-4 h-4" />
         </button>
         <button
           onClick={(e) => { e.stopPropagation(); onDownloadImage(); }}
-          className="p-2.5 bg-slate-50 rounded-xl text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 transition-all active:scale-90"
+          className="p-2.5 bg-slate-50 rounded-lg text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 transition-all active:scale-90"
           title="Download Image"
         >
           <FaFileImage className="w-4 h-4" />
         </button>
         <button
           onClick={(e) => { e.stopPropagation(); onWhatsApp(); }}
-          className="p-2.5 bg-slate-50 rounded-xl text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 transition-all active:scale-90"
+          className="p-2.5 bg-slate-50 rounded-lg text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 transition-all active:scale-90"
           title="Send via WhatsApp"
         >
           <FaWhatsapp className="w-4 h-4" />
         </button>
         <button
           onClick={(e) => { e.stopPropagation(); onDelete(); }}
-          className="p-2.5 bg-slate-50 rounded-xl text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-all active:scale-90"
+          className="p-2.5 bg-slate-50 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-all active:scale-90"
           title="Delete Bill"
         >
           <FaTrash className="w-4 h-4" />
