@@ -145,19 +145,37 @@ export default function ExpensesPage() {
 
     // Month/Year filter
     filtered = filtered.filter(expense => {
-      const paymentDate = new Date(expense.paymentDate)
+      // Determine the best date to filter by (Event Date > Order Date > Payment Date)
+      let targetDateStr: string | Date | null | undefined = expense.eventDate
+      if (!targetDateStr && expense.order) {
+        targetDateStr = getOrderDate(expense.order)
+      }
+      if (!targetDateStr) {
+        targetDateStr = expense.paymentDate
+      }
+
+      const targetDate = new Date(targetDateStr || expense.createdAt)
 
       if (filterDate) {
-        const y = paymentDate.getFullYear()
-        const m = String(paymentDate.getMonth() + 1).padStart(2, '0')
-        const day = String(paymentDate.getDate()).padStart(2, '0')
+        const y = targetDate.getFullYear()
+        const m = String(targetDate.getMonth() + 1).padStart(2, '0')
+        const day = String(targetDate.getDate()).padStart(2, '0')
         return `${y}-${m}-${day}` === filterDate
       }
 
-      return (paymentDate.getMonth() + 1) === selectedMonth && paymentDate.getFullYear() === selectedYear
+      return (targetDate.getMonth() + 1) === selectedMonth && targetDate.getFullYear() === selectedYear
     })
 
-    return filtered.sort((a, b) => new Date(b.paymentDate).getTime() - new Date(a.paymentDate).getTime())
+    return filtered.sort((a, b) => {
+      // Sort using the same target date logic
+      const getSortDate = (exp: Expense) => {
+        let d: string | Date | null | undefined = exp.eventDate
+        if (!d && exp.order) d = getOrderDate(exp.order)
+        if (!d) d = exp.paymentDate
+        return new Date(d || exp.createdAt).getTime()
+      }
+      return getSortDate(b) - getSortDate(a)
+    })
   }, [expenses, selectedOrder, selectedCategory, searchTerm, selectedMonth, selectedYear, filterDate])
 
   const totalExpenses = useMemo(() => {
@@ -175,7 +193,16 @@ export default function ExpensesPage() {
   const monthlyExpenses = useMemo(() => {
     const monthly: Record<string, number> = {}
     filteredExpenses.forEach(expense => {
-      const month = new Date(expense.paymentDate).toLocaleDateString('en-US', { year: 'numeric', month: 'short' })
+      let targetDateStr: string | Date | null | undefined = expense.eventDate
+      if (!targetDateStr && expense.order) {
+        targetDateStr = getOrderDate(expense.order)
+      }
+      if (!targetDateStr) {
+        targetDateStr = expense.paymentDate
+      }
+
+      const targetDate = new Date(targetDateStr || expense.createdAt)
+      const month = targetDate.toLocaleDateString('en-US', { year: 'numeric', month: 'short' })
       monthly[month] = (monthly[month] || 0) + expense.amount
     })
     return monthly

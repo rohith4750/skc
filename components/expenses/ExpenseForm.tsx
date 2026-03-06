@@ -942,8 +942,8 @@ export default function ExpenseForm({ id: expenseId }: ExpenseFormProps) {
                                     </div>
                                 </div>
                             )}
-                            <div className="bg-primary-50 p-4 rounded-lg">
-                                <p className="text-sm font-semibold">Total Amount: {formatCurrency(calculatedAmount)}</p>
+                            <div className="bg-gray-100 border border-gray-200 p-4 rounded-lg">
+                                <p className="text-sm font-semibold text-gray-800">Total Amount: {formatCurrency(calculatedAmount)}</p>
                             </div>
                         </>
                     )}
@@ -1011,8 +1011,8 @@ export default function ExpenseForm({ id: expenseId }: ExpenseFormProps) {
                                     />
                                 </div>
                             </div>
-                            <div className="bg-primary-50 p-4 rounded-lg">
-                                <p className="text-sm font-semibold">Total Amount: {formatCurrency(calculatedAmount)}</p>
+                            <div className="bg-gray-100 border border-gray-200 p-4 rounded-lg">
+                                <p className="text-sm font-semibold text-gray-800">Total Amount: {formatCurrency(calculatedAmount)}</p>
                             </div>
                         </>
                     )}
@@ -1063,8 +1063,8 @@ export default function ExpenseForm({ id: expenseId }: ExpenseFormProps) {
                                     <input type="number" step="0.01" value={formData.dinnerAmount} onChange={(e) => setFormData({ ...formData, dinnerAmount: e.target.value })} className="w-full px-4 py-2.5 border border-gray-300 rounded-lg" />
                                 </div>
                             </div>
-                            <div className="bg-primary-50 p-4 rounded-lg">
-                                <p className="text-sm font-semibold">Total Amount: {formatCurrency(calculatedAmount)}</p>
+                            <div className="bg-gray-100 border border-gray-200 p-4 rounded-lg">
+                                <p className="text-sm font-semibold text-gray-800">Total Amount: {formatCurrency(calculatedAmount)}</p>
                             </div>
                         </>
                     )}
@@ -1160,13 +1160,13 @@ export default function ExpenseForm({ id: expenseId }: ExpenseFormProps) {
 
                 {/* Bulk Allocation */}
                 {isBulkExpense && formData.category !== 'labours' && selectedOrderIds.length >= 2 && calculatedAmount > 0 && (
-                    <div className="bg-indigo-50 rounded-lg border border-indigo-200 overflow-hidden">
-                        <div className="bg-indigo-100 px-4 py-3 cursor-pointer flex justify-between items-center" onClick={() => setShowAllocationDetails(!showAllocationDetails)}>
+                    <div className="bg-slate-50 rounded-lg border border-slate-200 overflow-hidden">
+                        <div className="bg-slate-100 px-4 py-3 cursor-pointer flex justify-between items-center" onClick={() => setShowAllocationDetails(!showAllocationDetails)}>
                             <div className="flex items-center gap-2">
-                                <FaLayerGroup className="text-indigo-600" />
-                                <h3 className="font-semibold text-indigo-900">Allocation Breakdown</h3>
+                                <FaLayerGroup className="text-slate-600" />
+                                <h3 className="font-semibold text-slate-900">Allocation Breakdown</h3>
                             </div>
-                            {showAllocationDetails ? <FaChevronUp /> : <FaChevronDown />}
+                            {showAllocationDetails ? <FaChevronUp className="text-slate-600" /> : <FaChevronDown className="text-slate-600" />}
                         </div>
                         {showAllocationDetails && (
                             <div className="p-4 space-y-4">
@@ -1179,18 +1179,18 @@ export default function ExpenseForm({ id: expenseId }: ExpenseFormProps) {
                                 </div>
                                 <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
                                     <table className="w-full text-xs">
-                                        <thead className="bg-gray-50">
+                                        <thead className="bg-gray-100">
                                             <tr>
-                                                <th className="px-4 py-2 text-left">Event</th>
-                                                {allocationMethod === 'by-plates' && <th className="px-4 py-2 text-center">Plates</th>}
-                                                {allocationMethod === 'by-percentage' && <th className="px-4 py-2 text-center">%</th>}
-                                                <th className="px-4 py-2 text-right">Amount</th>
+                                                <th className="px-4 py-2 text-left font-semibold text-gray-700">Event</th>
+                                                {allocationMethod === 'by-plates' && <th className="px-4 py-2 text-center font-semibold text-gray-700">Plates</th>}
+                                                {allocationMethod === 'by-percentage' && <th className="px-4 py-2 text-center font-semibold text-gray-700">%</th>}
+                                                <th className="px-4 py-2 text-right font-semibold text-gray-700">Amount</th>
                                             </tr>
                                         </thead>
                                         <tbody className="divide-y divide-gray-200">
                                             {bulkAllocations.map(a => (
                                                 <tr key={a.orderId}>
-                                                    <td className="px-4 py-2 truncate">{a.orderName}</td>
+                                                    <td className="px-4 py-2 truncate text-gray-800">{a.orderName}</td>
                                                     {allocationMethod === 'by-plates' && <td className="px-4 py-2 text-center">{a.plates}</td>}
                                                     {allocationMethod === 'by-percentage' && (
                                                         <td className="px-4 py-2">
