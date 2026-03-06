@@ -176,6 +176,19 @@ export async function GET(request: NextRequest) {
     });
 
     expenses.forEach((exp: any) => {
+      // If bulk expense, extract unique event dates from resolved orders
+      if (exp.isBulkExpense && exp.bulkAllocations) {
+        const dates = new Set<string>();
+        (exp.bulkAllocations as any[]).forEach((a: any) => {
+          if (a.orderId && orderById[a.orderId]?.eventDate) {
+            dates.add(new Date(orderById[a.orderId].eventDate).toISOString());
+          }
+        });
+        if (dates.size > 0) {
+          exp.bulkEventDates = Array.from(dates);
+        }
+      }
+
       const cat = (exp.category || "other").toLowerCase();
       const role = WORKFORCE_ROLES.includes(cat) ? cat : "other";
       if (!byRole[role])

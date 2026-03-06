@@ -138,7 +138,7 @@ export default function OutstandingPage() {
   const buildStatement = (r: RoleSummary) => {
     const lines: {
       date: string;
-      eventDate?: string | null;
+      eventDateDisplay?: string | null;
       desc: string;
       amount: number;
       method: string;
@@ -170,15 +170,19 @@ export default function OutstandingPage() {
 
       const paymentDateStr = e.paymentDate || e.createdAt;
 
-      let eventDateStr = e.eventDate;
-      if (!eventDateStr && e.order) {
-        eventDateStr = e.order.eventDate || null;
+      let eventDateDisplay = null;
+      if (e.eventDate) {
+        eventDateDisplay = formatDate(e.eventDate);
+      } else if (e.order?.eventDate) {
+        eventDateDisplay = formatDate(e.order.eventDate);
+      } else if (e.bulkEventDates && Array.isArray(e.bulkEventDates) && e.bulkEventDates.length > 0) {
+        eventDateDisplay = e.bulkEventDates.map((d: string) => formatDate(d)).join(', ');
       }
 
       // Record the due amount (Total expense)
       lines.push({
         date: paymentDateStr,
-        eventDate: eventDateStr,
+        eventDateDisplay,
         desc: `${desc} (Total Due)`,
         amount: total,
         method: "Due",
@@ -190,7 +194,7 @@ export default function OutstandingPage() {
       if (paid > 0) {
         lines.push({
           date: paymentDateStr,
-          eventDate: eventDateStr,
+          eventDateDisplay,
           desc: `${desc} (Paid)`,
           amount: paid,
           method: "Expense Pymt",
@@ -816,9 +820,9 @@ export default function OutstandingPage() {
                                       >
                                         <td className="px-4 py-2 text-gray-700 align-top">
                                           <div className="font-medium">{formatDate(line.date)}</div>
-                                          {line.eventDate && (
+                                          {line.eventDateDisplay && (
                                             <div className="text-[11px] font-medium text-amber-600 mt-0.5">
-                                              Event: {formatDate(line.eventDate)}
+                                              Event: {line.eventDateDisplay}
                                             </div>
                                           )}
                                         </td>
