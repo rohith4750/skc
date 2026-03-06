@@ -143,44 +143,20 @@ export default function ExpensesPage() {
       )
     }
 
-    // Month/Year filter
+    // Month/Year filter based strictly on paymentDate
     filtered = filtered.filter(expense => {
-      // Gather all potential target dates for this expense
-      const targetDates: Date[] = [];
+      const pDate = new Date(expense.paymentDate || expense.createdAt)
 
-      let primaryDateStr: string | Date | null | undefined = expense.eventDate
-      if (!primaryDateStr && expense.order) {
-        primaryDateStr = getOrderDate(expense.order)
-      }
-      if (!primaryDateStr) {
-        primaryDateStr = expense.paymentDate
-      }
-      targetDates.push(new Date(primaryDateStr || expense.createdAt));
-
-      // If it's a bulk expense, it can belong to multiple events/dates!
-      if (expense.isBulkExpense && Array.isArray(expense.bulkAllocations)) {
-        expense.bulkAllocations.forEach((alloc: any) => {
-          if (alloc.orderId) {
-            const allocOrder = orders.find(o => o.id === alloc.orderId);
-            if (allocOrder) {
-              targetDates.push(new Date(getOrderDate(allocOrder)));
-            }
-          }
-        });
-      }
-
-      // If specific date is set, check if ANY target date matches
+      // If specific date is set, check if it matches
       if (filterDate) {
-        return targetDates.some(td => {
-          const y = td.getFullYear()
-          const m = String(td.getMonth() + 1).padStart(2, '0')
-          const day = String(td.getDate()).padStart(2, '0')
-          return `${y}-${m}-${day}` === filterDate
-        });
+        const y = pDate.getFullYear()
+        const m = String(pDate.getMonth() + 1).padStart(2, '0')
+        const day = String(pDate.getDate()).padStart(2, '0')
+        return `${y}-${m}-${day}` === filterDate
       }
 
       // Check month and year
-      return targetDates.some(td => (td.getMonth() + 1) === selectedMonth && td.getFullYear() === selectedYear);
+      return (pDate.getMonth() + 1) === selectedMonth && pDate.getFullYear() === selectedYear;
     })
 
     return filtered.sort((a, b) => {

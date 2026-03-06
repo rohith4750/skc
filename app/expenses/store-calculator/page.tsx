@@ -41,7 +41,16 @@ export default function StoreCalculatorPage() {
 
     // Filters
     const [searchTerm, setSearchTerm] = useState('')
-    const [dateRange, setDateRange] = useState({ start: '', end: '' })
+    const [dateRange, setDateRange] = useState({
+        start: (() => {
+            const d = new Date();
+            return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-01`;
+        })(),
+        end: (() => {
+            const d = new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0);
+            return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+        })()
+    })
     const [showFilters, setShowFilters] = useState(false)
     const [statusFilter, setStatusFilter] = useState<'all' | 'paid' | 'pending'>('all')
 
@@ -182,7 +191,7 @@ export default function StoreCalculatorPage() {
         }
     }, [filteredEntries, statusFilter, totalAmount])
 
-    // Monthly breakdown (based on status filter or base? Usually base context is better)
+    // Monthly breakdown
     const monthlyBreakdown = useMemo(() => {
         const monthly: Record<string, number> = {}
         baseFilteredEntries.forEach(e => {
@@ -237,9 +246,8 @@ export default function StoreCalculatorPage() {
             if (formData.paymentStatus === 'pending') {
                 finalPaidAmount = 0
             } else if (formData.paymentStatus === 'paid') {
-                finalPaidAmount = amount // Full amount
+                finalPaidAmount = amount
             } else {
-                // Partial
                 finalPaidAmount = formData.paidAmount ? parseFloat(formData.paidAmount) : 0
             }
 
@@ -399,7 +407,6 @@ export default function StoreCalculatorPage() {
 
             {/* Summary Cards */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-4 sm:mb-6">
-                {/* Total Store Expenses */}
                 <div
                     onClick={() => setStatusFilter('all')}
                     className={`bg-gradient-to-br from-indigo-500 to-indigo-600 rounded-xl shadow-lg p-4 sm:p-5 text-white relative overflow-hidden cursor-pointer transition-all transform hover:scale-[1.02] active:scale-[0.98] ${statusFilter === 'all' ? 'ring-4 ring-indigo-200 ring-offset-2' : ''}`}
@@ -414,7 +421,6 @@ export default function StoreCalculatorPage() {
                     </div>
                 </div>
 
-                {/* Total Paid */}
                 <div
                     onClick={() => setStatusFilter('paid')}
                     className={`bg-gradient-to-br from-green-500 to-green-600 rounded-xl shadow-lg p-4 sm:p-5 text-white relative overflow-hidden cursor-pointer transition-all transform hover:scale-[1.02] active:scale-[0.98] ${statusFilter === 'paid' ? 'ring-4 ring-green-200 ring-offset-2' : ''}`}
@@ -428,7 +434,6 @@ export default function StoreCalculatorPage() {
                     </div>
                 </div>
 
-                {/* Pending */}
                 <div
                     onClick={() => setStatusFilter('pending')}
                     className={`bg-gradient-to-br from-amber-500 to-orange-500 rounded-xl shadow-lg p-4 sm:p-5 text-white relative overflow-hidden cursor-pointer transition-all transform hover:scale-[1.02] active:scale-[0.98] ${statusFilter === 'pending' ? 'ring-4 ring-orange-200 ring-offset-2' : ''}`}
@@ -442,7 +447,6 @@ export default function StoreCalculatorPage() {
                     </div>
                 </div>
 
-                {/* This Month */}
                 <div className="bg-gradient-to-br from-violet-500 to-purple-600 rounded-xl shadow-lg p-4 sm:p-5 text-white relative overflow-hidden">
                     <div className="bg-white bg-opacity-20 absolute top-0 right-0 p-3 rounded-bl-2xl">
                         <FaChartBar className="w-5 h-5" />
@@ -474,6 +478,31 @@ export default function StoreCalculatorPage() {
                             Filters
                         </h3>
                         <div className="flex items-center gap-2">
+                            <button
+                                onClick={() => {
+                                    const now = new Date();
+                                    const start = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`;
+                                    const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+                                    const end = `${lastDay.getFullYear()}-${String(lastDay.getMonth() + 1).padStart(2, '0')}-${String(lastDay.getDate()).padStart(2, '0')}`;
+                                    setDateRange({ start, end });
+                                }}
+                                className="px-2 py-1 bg-indigo-50 text-indigo-700 rounded text-[10px] font-bold uppercase hover:bg-indigo-100 transition-colors"
+                            >
+                                This Month
+                            </button>
+                            <button
+                                onClick={() => {
+                                    const now = new Date();
+                                    const startProv = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+                                    const start = `${startProv.getFullYear()}-${String(startProv.getMonth() + 1).padStart(2, '0')}-01`;
+                                    const lastDay = new Date(now.getFullYear(), now.getMonth(), 0);
+                                    const end = `${lastDay.getFullYear()}-${String(lastDay.getMonth() + 1).padStart(2, '0')}-${String(lastDay.getDate()).padStart(2, '0')}`;
+                                    setDateRange({ start, end });
+                                }}
+                                className="px-2 py-1 bg-slate-100 text-slate-700 rounded text-[10px] font-bold uppercase hover:bg-slate-200 transition-colors"
+                            >
+                                Last Month
+                            </button>
                             {(searchTerm || dateRange.start || dateRange.end || statusFilter !== 'all') && (
                                 <button onClick={() => { clearFilters(); setStatusFilter('all'); }} className="text-xs text-indigo-600 hover:text-indigo-700 font-medium">
                                     Clear All
@@ -520,7 +549,7 @@ export default function StoreCalculatorPage() {
                 </div>
             )}
 
-            {/* Add/Edit Entry Form */}
+            {/* Add/Edit Form */}
             {showForm && (
                 <div className="mb-4 sm:mb-6 bg-white rounded-xl shadow-lg border border-indigo-100 overflow-hidden">
                     <div className="bg-gradient-to-r from-indigo-500 to-indigo-600 px-4 sm:px-6 py-3 sm:py-4">
@@ -535,31 +564,24 @@ export default function StoreCalculatorPage() {
                         </div>
                     </div>
                     <form onSubmit={handleSubmit} className="p-4 sm:p-6 space-y-4">
-                        {/* Description + Amount — Main row */}
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                             <div className="md:col-span-2">
-                                <label className="block text-sm font-semibold text-gray-700 mb-1.5">
-                                    Description *
-                                </label>
+                                <label className="block text-sm font-semibold text-gray-700 mb-1.5">Description *</label>
                                 <input
                                     type="text"
                                     required
                                     value={formData.description}
                                     onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                                     className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm"
-                                    placeholder="e.g., Vegetables, Oil, Rice, Monthly Supplies..."
+                                    placeholder="e.g., Vegetables, Oil, Rice..."
                                 />
-                                {/* Quick suggestions */}
                                 <div className="flex flex-wrap gap-1.5 mt-2">
                                     {['Vegetables', 'Oil', 'Rice', 'Spices', 'Groceries', 'Disposables', 'Cleaning Supplies', 'Gas Cylinder'].map(s => (
                                         <button
                                             key={s}
                                             type="button"
                                             onClick={() => setFormData({ ...formData, description: s })}
-                                            className={`px-2.5 py-1 text-xs rounded-full border transition-colors ${formData.description === s
-                                                ? 'bg-indigo-100 text-indigo-700 border-indigo-300 font-medium'
-                                                : 'bg-gray-50 text-gray-600 border-gray-200 hover:bg-gray-100'
-                                                }`}
+                                            className={`px-2.5 py-1 text-xs rounded-full border transition-colors ${formData.description === s ? 'bg-indigo-100 text-indigo-700 border-indigo-300 font-medium' : 'bg-gray-50 text-gray-600 border-gray-200 hover:bg-gray-100'}`}
                                         >
                                             {s}
                                         </button>
@@ -567,9 +589,7 @@ export default function StoreCalculatorPage() {
                                 </div>
                             </div>
                             <div>
-                                <label className="block text-sm font-semibold text-gray-700 mb-1.5">
-                                    Amount (₹) *
-                                </label>
+                                <label className="block text-sm font-semibold text-gray-700 mb-1.5">Amount (₹) *</label>
                                 <input
                                     type="number"
                                     step="0.01"
@@ -578,11 +598,7 @@ export default function StoreCalculatorPage() {
                                     value={formData.amount}
                                     onChange={(e) => {
                                         const val = e.target.value
-                                        setFormData({
-                                            ...formData,
-                                            amount: val,
-                                            paidAmount: val, // auto-set paid = amount for convenience
-                                        })
+                                        setFormData({ ...formData, amount: val, paidAmount: val })
                                     }}
                                     className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm"
                                     placeholder="45000"
@@ -590,12 +606,9 @@ export default function StoreCalculatorPage() {
                             </div>
                         </div>
 
-                        {/* Date, Vendor, Payment Status */}
                         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
                             <div>
-                                <label className="block text-sm font-semibold text-gray-700 mb-1.5">
-                                    Date *
-                                </label>
+                                <label className="block text-sm font-semibold text-gray-700 mb-1.5">Date *</label>
                                 <input
                                     type="date"
                                     required
@@ -605,9 +618,7 @@ export default function StoreCalculatorPage() {
                                 />
                             </div>
                             <div>
-                                <label className="block text-sm font-semibold text-gray-700 mb-1.5">
-                                    Vendor / Shop
-                                </label>
+                                <label className="block text-sm font-semibold text-gray-700 mb-1.5">Vendor / Shop</label>
                                 <input
                                     type="text"
                                     value={formData.recipient}
@@ -617,9 +628,7 @@ export default function StoreCalculatorPage() {
                                 />
                             </div>
                             <div>
-                                <label className="block text-sm font-semibold text-gray-700 mb-1.5">
-                                    Payment Status
-                                </label>
+                                <label className="block text-sm font-semibold text-gray-700 mb-1.5">Payment Status</label>
                                 <select
                                     value={formData.paymentStatus}
                                     onChange={(e) => setFormData({ ...formData, paymentStatus: e.target.value as any })}
@@ -631,9 +640,7 @@ export default function StoreCalculatorPage() {
                                 </select>
                             </div>
                             <div>
-                                <label className="block text-sm font-semibold text-gray-700 mb-1.5">
-                                    Paid Amount (₹)
-                                </label>
+                                <label className="block text-sm font-semibold text-gray-700 mb-1.5">Paid Amount (₹)</label>
                                 <input
                                     type="number"
                                     step="0.01"
@@ -653,11 +660,8 @@ export default function StoreCalculatorPage() {
                             </div>
                         </div>
 
-                        {/* Notes */}
                         <div>
-                            <label className="block text-sm font-semibold text-gray-700 mb-1.5">
-                                Notes
-                            </label>
+                            <label className="block text-sm font-semibold text-gray-700 mb-1.5">Notes</label>
                             <textarea
                                 value={formData.notes}
                                 onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
@@ -667,13 +671,10 @@ export default function StoreCalculatorPage() {
                             />
                         </div>
 
-                        {/* Amount Preview + Buttons */}
                         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 pt-2 border-t border-gray-100">
                             <div className="bg-indigo-50 border border-indigo-200 rounded-lg px-4 py-2.5">
                                 <span className="text-xs text-indigo-600 font-medium">Total Amount: </span>
-                                <span className="text-lg font-bold text-indigo-700">
-                                    {formatCurrency(parseFloat(formData.amount) || 0)}
-                                </span>
+                                <span className="text-lg font-bold text-indigo-700">{formatCurrency(parseFloat(formData.amount) || 0)}</span>
                             </div>
                             <div className="flex items-center gap-2 w-full sm:w-auto">
                                 <button
@@ -799,7 +800,6 @@ export default function StoreCalculatorPage() {
                                         )
                                     })}
                                 </tbody>
-                                {/* Total Row */}
                                 <tfoot>
                                     <tr className="bg-indigo-50 border-t-2 border-indigo-200">
                                         <td colSpan={3} className="px-4 py-3 text-sm font-bold text-indigo-900">
@@ -831,34 +831,21 @@ export default function StoreCalculatorPage() {
                                                     </span>
                                                 </div>
                                                 <h3 className="text-sm font-semibold text-gray-900">{entry.description}</h3>
-                                                {entry.recipient && (
-                                                    <p className="text-xs text-gray-500 mt-0.5">{entry.recipient}</p>
-                                                )}
-                                                {entry.notes && (
-                                                    <p className="text-xs text-gray-400 mt-0.5 truncate">{entry.notes}</p>
-                                                )}
+                                                {entry.recipient && <p className="text-xs text-gray-500 mt-0.5">{entry.recipient}</p>}
+                                                {entry.notes && <p className="text-xs text-gray-400 mt-0.5 truncate">{entry.notes}</p>}
                                             </div>
                                             <div className="text-right flex-shrink-0">
                                                 <p className="text-sm font-bold text-gray-900">{formatCurrency(entry.amount)}</p>
                                                 <div className="flex items-center gap-1 mt-1.5 justify-end">
                                                     {entry.paymentStatus !== 'paid' && (
-                                                        <button
-                                                            onClick={() => handleMarkAsPaid(entry)}
-                                                            className="p-1.5 text-green-600 hover:bg-green-50 rounded-lg"
-                                                        >
+                                                        <button onClick={() => handleMarkAsPaid(entry)} className="p-1.5 text-green-600">
                                                             <FaCheckCircle className="w-3 h-3" />
                                                         </button>
                                                     )}
-                                                    <button
-                                                        onClick={() => handleEdit(entry)}
-                                                        className="p-1.5 text-indigo-600 hover:bg-indigo-50 rounded-lg"
-                                                    >
+                                                    <button onClick={() => handleEdit(entry)} className="p-1.5 text-indigo-600">
                                                         <FaEdit className="w-3 h-3" />
                                                     </button>
-                                                    <button
-                                                        onClick={() => handleDelete(entry.id)}
-                                                        className="p-1.5 text-red-500 hover:bg-red-50 rounded-lg"
-                                                    >
+                                                    <button onClick={() => handleDelete(entry.id)} className="p-1.5 text-red-500">
                                                         <FaTrash className="w-3 h-3" />
                                                     </button>
                                                 </div>
@@ -867,23 +854,15 @@ export default function StoreCalculatorPage() {
                                     </div>
                                 )
                             })}
-                            {/* Mobile Total */}
-                            <div className="p-4 bg-indigo-50 border-t-2 border-indigo-200">
-                                <div className="flex justify-between items-center">
-                                    <span className="text-sm font-bold text-indigo-900">{visibleTotalLabel}</span>
-                                    <span className="text-base font-bold text-indigo-700">{formatCurrency(visibleTotal)}</span>
-                                </div>
-                            </div>
                         </div>
                     </>
                 )}
             </div>
 
-            {/* Delete Confirmation */}
             <ConfirmModal
                 isOpen={deleteConfirm.isOpen}
                 title="Delete Store Entry"
-                message="Are you sure you want to delete this entry? This action cannot be undone."
+                message="Are you sure you want to delete this entry?"
                 confirmText="Delete"
                 cancelText="Cancel"
                 onConfirm={confirmDelete}

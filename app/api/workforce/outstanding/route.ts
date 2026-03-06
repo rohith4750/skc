@@ -23,6 +23,60 @@ export async function GET(request: NextRequest) {
     const year = searchParams.get("year");
     const date = searchParams.get("date");
 
+    // --- Opening Balance Calculation (Prior to filter period) ---
+    let openingExpenseWhere: any = {};
+    let openingPaymentWhere: any = {};
+    let hasFilter = false;
+
+    if (date) {
+      const d = new Date(date);
+      const startDate = new Date(
+        d.getFullYear(),
+        d.getMonth(),
+        d.getDate(),
+        0,
+        0,
+        0,
+      );
+      openingExpenseWhere.paymentDate = { lt: startDate };
+      openingPaymentWhere.paymentDate = { lt: startDate };
+      hasFilter = true;
+    } else if (year && year !== "all") {
+      const y = parseInt(year);
+      const m = month && month !== "all" ? parseInt(month) : 0;
+      const startDate = new Date(y, m, 1);
+      openingExpenseWhere.paymentDate = { lt: startDate };
+      openingPaymentWhere.paymentDate = { lt: startDate };
+      hasFilter = true;
+    }
+
+    let roleOpeningBalances: Record<string, number> = {};
+    WORKFORCE_ROLES.forEach((r) => (roleOpeningBalances[r] = 0)); // Initialize all roles to 0
+    if (hasFilter) {
+      const priorExpenses = await (prisma as any).expense.findMany({
+        where: openingExpenseWhere,
+        select: { amount: true, paidAmount: true, category: true },
+      });
+      const priorPayments = await (prisma as any).workforcePayment.findMany({
+        where: openingPaymentWhere,
+        select: { amount: true, role: true },
+      });
+
+      priorExpenses.forEach((e: any) => {
+        const role = (e.category || "other").toLowerCase();
+        const r = WORKFORCE_ROLES.includes(role) ? role : "other";
+        roleOpeningBalances[r] =
+          (roleOpeningBalances[r] || 0) +
+          (Number(e.amount) - Number(e.paidAmount || 0));
+      });
+      priorPayments.forEach((p: any) => {
+        const role = (p.role || "other").toLowerCase();
+        const r = WORKFORCE_ROLES.includes(role) ? role : "other";
+        roleOpeningBalances[r] =
+          (roleOpeningBalances[r] || 0) - Number(p.amount);
+      });
+    }
+
     let expenseWhere: any = {};
     let paymentWhere: any = {};
 
@@ -249,6 +303,7 @@ export async function GET(request: NextRequest) {
       totalOutstanding,
       totalDues,
       totalPaid,
+      roleOpeningBalances,
     });
   } catch (error: any) {
     console.error("Failed to fetch outstanding:", error);

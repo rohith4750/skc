@@ -103,6 +103,7 @@ export default function OutstandingPage() {
   const [totalPaid, setTotalPaid] = useState(0);
   const [events, setEvents] = useState<EventItem[]>([]);
   const [roleSummary, setRoleSummary] = useState<RoleSummary[]>([]);
+  const [roleOpeningBalances, setRoleOpeningBalances] = useState<Record<string, number>>({});
   const [supervisors, setSupervisors] = useState<any[]>([]);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [selectedRole, setSelectedRole] = useState<string | null>(null);
@@ -146,6 +147,20 @@ export default function OutstandingPage() {
       type: "workforce" | "expense" | "due";
       balance: number;
     }[] = [];
+
+    // Opening Balance (Brought Forward)
+    const openingBal = roleOpeningBalances[r.role] || 0;
+    if (openingBal !== 0 || (filterYear !== "all" || filterMonth !== "all" || filterDate !== "")) {
+      lines.push({
+        date: filterDate || (filterYear !== "all" ? `${filterYear}-${filterMonth !== "all" ? String(Number(filterMonth) + 1).padStart(2, '0') : '01'}-01` : new Date().toISOString()),
+        desc: "Balance Brought Forward (Opening)",
+        amount: Math.abs(openingBal),
+        method: "Opening",
+        status: "paid",
+        type: openingBal > 0 ? "due" : "workforce", // workforce means credit/payment
+        balance: openingBal,
+      });
+    }
 
     // Recorded payments (Workforce payments)
     r.payments?.forEach((p: any) => {
@@ -220,7 +235,9 @@ export default function OutstandingPage() {
 
     let runningBalance = 0;
     lines.forEach((line) => {
-      if (line.type === "due") {
+      if (line.method === "Opening") {
+        runningBalance = line.balance;
+      } else if (line.type === "due") {
         runningBalance += line.amount;
       } else {
         runningBalance -= line.amount;
@@ -271,6 +288,7 @@ export default function OutstandingPage() {
       setTotalPaid(data.totalPaid ?? 0);
       setEvents(data.events ?? []);
       setRoleSummary(data.roleSummary ?? []);
+      setRoleOpeningBalances(data.roleOpeningBalances ?? {});
     } catch (e: any) {
       toast.error(e.message || "Failed to load outstanding");
     } finally {
