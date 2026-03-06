@@ -18,6 +18,7 @@ import {
 } from "react-icons/fa";
 import toast from "react-hot-toast";
 import { formatCurrency, formatDate, getLocalISODate } from "@/lib/utils";
+import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import RoleGuard from "@/components/RoleGuard";
 
@@ -94,6 +95,8 @@ interface EventItem {
 }
 
 export default function OutstandingPage() {
+  const searchParams = useSearchParams();
+  const from = searchParams.get("from");
   const [loading, setLoading] = useState(true);
   const [totalOutstanding, setTotalOutstanding] = useState(0);
   const [totalDues, setTotalDues] = useState(0);
@@ -431,12 +434,22 @@ export default function OutstandingPage() {
             </p>
           </div>
           <div className="flex items-center gap-3 w-full sm:w-auto">
-            <Link
-              href="/workforce"
-              className="text-primary-600 hover:text-primary-700 font-medium text-sm whitespace-nowrap"
-            >
-              ← Workforce
-            </Link>
+            {from === "expenses" && (
+              <Link
+                href="/expenses"
+                className="text-indigo-600 hover:text-indigo-700 font-medium text-sm whitespace-nowrap"
+              >
+                ← Back to Expenses
+              </Link>
+            )}
+            {from === "workforce" && (
+              <Link
+                href="/workforce"
+                className="text-primary-600 hover:text-primary-700 font-medium text-sm whitespace-nowrap"
+              >
+                ← Workforce
+              </Link>
+            )}
           </div>
         </div>
 

@@ -530,7 +530,7 @@ export default function WorkforcePage() {
         </div>
         <div className="flex items-center gap-2">
           <Link
-            href="/workforce/outstanding"
+            href="/workforce/outstanding?from=workforce"
             className="text-sm text-amber-700 hover:text-amber-800 font-medium"
           >
             Outstanding →

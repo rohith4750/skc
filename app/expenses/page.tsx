@@ -563,6 +563,13 @@ export default function ExpensesPage() {
             )}
           </button>
           <Link
+            href="/workforce/outstanding?from=expenses"
+            className="flex items-center justify-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 active:scale-95 transition-all shadow-lg text-sm flex-1 md:flex-initial font-bold"
+          >
+            <FaUsers className="w-3.5 h-3.5" />
+            View Outstanding
+          </Link>
+          <Link
             href="/expenses/create"
             className="flex items-center justify-center gap-2 px-4 py-2 bg-slate-900 text-white rounded-xl hover:bg-slate-800 active:scale-95 transition-all shadow-lg text-sm flex-1 md:flex-initial font-bold"
           >
