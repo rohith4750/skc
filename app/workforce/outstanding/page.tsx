@@ -167,9 +167,21 @@ export default function OutstandingPage() {
         ? `Expense – ${e.recipient}`
         : e.description || "Expense";
 
+      // Determine target date (Event > Payment > Created)
+      // Check if expense has an eventDate from the API or an order
+      let targetDateStr = e.eventDate
+      if (!targetDateStr && e.order) {
+        targetDateStr = e.order.eventDate || null
+      }
+      if (!targetDateStr) {
+        targetDateStr = e.paymentDate
+      }
+
+      const statementDate = targetDateStr || e.createdAt
+
       // Record the due amount (Total expense)
       lines.push({
-        date: e.paymentDate || e.createdAt,
+        date: statementDate,
         desc: `${desc} (Total Due)`,
         amount: total,
         method: "Due",
@@ -180,7 +192,7 @@ export default function OutstandingPage() {
       // If any amount was paid towards this expense, record it as a credit
       if (paid > 0) {
         lines.push({
-          date: e.paymentDate || e.createdAt,
+          date: statementDate,
           desc: `${desc} (Paid)`,
           amount: paid,
           method: "Expense Pymt",
