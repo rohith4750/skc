@@ -52,6 +52,7 @@ export type IconKey =
   | "users"
   | "audit"
   | "enquiries"
+  | "regular"
   | "profile";
 
 export interface RouteConfigItem {
@@ -104,10 +105,19 @@ export const menuData: RouteConfigItem[] = [
     section: "core",
   },
   {
-    name: "All Orders",
-    route: "/orders",
-    file: "app/orders/page.tsx",
+    name: "Create Order",
+    route: "/orders/create",
+    file: "app/orders/create/page.tsx",
     icon: "orders",
+    permissions: "AUTHENTICATED",
+    showInSideMenu: true,
+    section: "core",
+  },
+  {
+    name: "Regular Orders",
+    route: "/orders/regular",
+    file: "app/orders/regular/page.tsx",
+    icon: "regular",
     permissions: "AUTHENTICATED",
     showInSideMenu: true,
     section: "core",
@@ -343,13 +353,6 @@ const hiddenAdminRoutes: RouteConfigItem[] = [
     permissions: "SUPER_ADMIN_ONLY",
     showInSideMenu: false,
     roles: ["super_admin"],
-  },
-  {
-    name: "Create Order",
-    route: "/orders/create",
-    file: "app/orders/create/page.tsx",
-    permissions: "AUTHENTICATED",
-    showInSideMenu: false,
   },
   {
     name: "Edit Order",

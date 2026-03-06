@@ -285,6 +285,7 @@ export async function PUT(
       advancePaid,
       remainingAmount: finalRemainingAmount,
       status: data.status,
+      orderType: data.orderType || "EVENT",
       eventName: data.eventName || null,
       eventDate: data.eventDate
         ? new Date(data.eventDate)

@@ -13,9 +13,10 @@ import { Storage } from '@/lib/storage-api'
 interface OrderFormProps {
     orderId?: string | null;
     isEditMode?: boolean;
+    initialOrderType?: 'EVENT' | 'LUNCH_PACK';
 }
 
-export default function OrderForm({ orderId, isEditMode = false }: OrderFormProps) {
+export default function OrderForm({ orderId, isEditMode = false, initialOrderType = 'EVENT' }: OrderFormProps) {
     const router = useRouter()
     const [customers, setCustomers] = useState<Customer[]>([])
     const [menuItems, setMenuItems] = useState<MenuItem[]>([])
@@ -43,10 +44,22 @@ export default function OrderForm({ orderId, isEditMode = false }: OrderFormProp
     const [showQuickAddModal, setShowQuickAddModal] = useState(false)
     const [quickAddMealTypeId, setQuickAddMealTypeId] = useState<string | null>(null)
     const [quickAddFormData, setQuickAddFormData] = useState({ name: '', description: '' })
+    const [confirmModal, setConfirmModal] = useState<{
+        isOpen: boolean;
+        title: string;
+        message: string;
+        onConfirm: () => void;
+    }>({
+        isOpen: false,
+        title: '',
+        message: '',
+        onConfirm: () => { },
+    })
 
     const [formData, setFormData] = useState({
         customerId: '',
         eventName: '',
+        orderType: initialOrderType as 'EVENT' | 'LUNCH_PACK',
         mealTypes: [] as Array<{
             id: string
             eventName: string
@@ -169,6 +182,7 @@ export default function OrderForm({ orderId, isEditMode = false }: OrderFormProp
             setFormData({
                 customerId: order.customerId,
                 eventName: order.eventName || '',
+                orderType: order.orderType || 'EVENT',
                 mealTypes: mealTypesArray,
                 stalls: stallsArray,
                 discount: (order.discount || 0).toString(),
@@ -304,12 +318,18 @@ export default function OrderForm({ orderId, isEditMode = false }: OrderFormProp
     }
 
     const handleRemoveMealType = (id: string) => {
-        if (confirm('Are you sure you want to remove this meal type?')) {
-            setFormData(prev => ({
-                ...prev,
-                mealTypes: prev.mealTypes.filter(mt => mt.id !== id)
-            }))
-        }
+        setConfirmModal({
+            isOpen: true,
+            title: 'Remove Session',
+            message: 'Are you sure you want to remove this meal session?',
+            onConfirm: () => {
+                setFormData(prev => ({
+                    ...prev,
+                    mealTypes: prev.mealTypes.filter(mt => mt.id !== id)
+                }))
+                setConfirmModal(p => ({ ...p, isOpen: false }))
+            }
+        })
     }
 
     const handleMenuItemToggle = (mealTypeId: string, itemId: string) => {
@@ -402,6 +422,7 @@ export default function OrderForm({ orderId, isEditMode = false }: OrderFormProp
             const finalData: any = {
                 customerId: formData.customerId,
                 eventName: formData.eventName,
+                orderType: formData.orderType,
                 items: orderItems,
                 totalAmount: totals.total,
                 advancePaid: isEditMode ? originalAdvancePaid + (parseFloat(formData.advancePaid) || 0) : (parseFloat(formData.advancePaid) || 0),
@@ -450,11 +471,11 @@ export default function OrderForm({ orderId, isEditMode = false }: OrderFormProp
                     <FaUser className="text-primary-500" /> Customer Information
                 </h2>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div className="relative" ref={customerSearchRef}>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">Search Customer</label>
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
+                    <div className="md:col-span-2 relative" ref={customerSearchRef}>
+                        <label className="block text-[10px] font-black text-gray-400 mb-1.5 uppercase tracking-widest">Search Customer</label>
                         <div className="relative">
-                            <FaSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                            <FaSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs" />
                             <input
                                 type="text"
                                 value={customerSearchTerm}
@@ -463,20 +484,22 @@ export default function OrderForm({ orderId, isEditMode = false }: OrderFormProp
                                     setShowCustomerDropdown(true)
                                 }}
                                 onFocus={() => setShowCustomerDropdown(true)}
-                                className="w-full pl-10 pr-4 py-2 bg-gray-50 border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary-500 outline-none transition-all"
+                                className="w-full pl-9 pr-4 py-2 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary-500 outline-none transition-all text-sm font-bold"
                                 placeholder="Name or Phone Number"
                             />
                         </div>
 
                         {showCustomerDropdown && (
-                            <div className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-xl max-h-60 overflow-y-auto">
-                                <button
-                                    type="button"
-                                    onClick={() => setShowAddCustomerForm(true)}
-                                    className="w-full px-4 py-3 text-left text-primary-600 font-medium hover:bg-primary-50 flex items-center gap-2 sticky top-0 bg-white border-b"
-                                >
-                                    <FaPlus /> Add New Customer
-                                </button>
+                            <div className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-xl shadow-2xl max-h-60 overflow-y-auto">
+                                {!isEditMode && (
+                                    <button
+                                        type="button"
+                                        onClick={() => setShowAddCustomerForm(true)}
+                                        className="w-full px-4 py-2.5 text-left text-primary-600 font-bold text-xs hover:bg-primary-50 flex items-center gap-2 sticky top-0 bg-white border-b border-gray-100"
+                                    >
+                                        <FaPlus /> Add New Customer
+                                    </button>
+                                )}
                                 {filteredCustomers.map(c => (
                                     <button
                                         key={c.id}
@@ -486,10 +509,10 @@ export default function OrderForm({ orderId, isEditMode = false }: OrderFormProp
                                             setCustomerSearchTerm(c.name)
                                             setShowCustomerDropdown(false)
                                         }}
-                                        className="w-full px-4 py-3 text-left hover:bg-gray-50 border-b last:border-0"
+                                        className="w-full px-4 py-2.5 text-left hover:bg-gray-50 border-b border-gray-50 last:border-0"
                                     >
-                                        <div className="font-medium text-gray-800">{c.name}</div>
-                                        <div className="text-sm text-gray-500">{c.phone}</div>
+                                        <div className="font-bold text-gray-800 text-xs">{c.name}</div>
+                                        <div className="text-[10px] text-gray-500">{c.phone}</div>
                                     </button>
                                 ))}
                             </div>
@@ -497,22 +520,51 @@ export default function OrderForm({ orderId, isEditMode = false }: OrderFormProp
                     </div>
 
                     <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">Event Title</label>
+                        <label className="block text-[10px] font-black text-gray-400 mb-1.5 uppercase tracking-widest">
+                            {formData.orderType === 'EVENT' ? 'Event Name / Title' : 'Order Title (Regular)'}
+                        </label>
                         <input
                             type="text"
                             value={formData.eventName}
                             onChange={(e) => setFormData(prev => ({ ...prev, eventName: e.target.value }))}
-                            className="w-full px-4 py-2 bg-gray-50 border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary-500 outline-none"
-                            placeholder="e.g., Ramesh & Sitha Wedding"
+                            className="w-full px-4 py-2 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary-500 outline-none font-bold text-gray-800 text-sm"
+                            placeholder={formData.orderType === 'EVENT' ? "e.g., Ramesh & Sitha Wedding" : "e.g., Daily Prasadam / Lunch Packs"}
                         />
+                    </div>
+
+                    <div>
+                        <label className="block text-[10px] font-black text-gray-400 mb-1.5 uppercase tracking-widest">Status</label>
+                        <select
+                            value={currentOrderStatus}
+                            onChange={(e) => setCurrentOrderStatus(e.target.value)}
+                            className={`w-full px-4 py-2 rounded-xl border border-gray-200 outline-none font-black text-xs transition-all ${currentOrderStatus === 'completed' ? 'bg-green-50 text-green-700 border-green-200' :
+                                currentOrderStatus === 'in_progress' ? 'bg-blue-50 text-blue-700 border-blue-200' :
+                                    currentOrderStatus === 'cancelled' ? 'bg-red-50 text-red-700 border-red-200' :
+                                        'bg-orange-50 text-orange-700 border-orange-200'
+                                }`}
+                        >
+                            <option value="pending">Pending</option>
+                            <option value="in_progress">In Progress</option>
+                            <option value="completed">Completed</option>
+                            <option value="cancelled">Cancelled</option>
+                        </select>
                     </div>
                 </div>
 
                 {selectedCustomer && (
-                    <div className="mt-6 p-4 bg-primary-50 rounded-lg border border-primary-100 grid grid-cols-1 md:grid-cols-3 gap-4">
-                        <div><span className="text-sm text-primary-600 font-medium uppercase block">Name</span> {selectedCustomer.name}</div>
-                        <div><span className="text-sm text-primary-600 font-medium uppercase block">Phone</span> {selectedCustomer.phone}</div>
-                        <div><span className="text-sm text-primary-600 font-medium uppercase block">Address</span> {selectedCustomer.address}</div>
+                    <div className="mt-6 p-5 bg-gray-50 rounded-2xl border border-gray-100 grid grid-cols-1 md:grid-cols-3 gap-6 shadow-inner">
+                        <div>
+                            <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest block mb-1">Customer Name</span>
+                            <div className="font-bold text-gray-900">{selectedCustomer.name}</div>
+                        </div>
+                        <div>
+                            <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest block mb-1">Phone Number</span>
+                            <div className="font-bold text-gray-900">{selectedCustomer.phone}</div>
+                        </div>
+                        <div>
+                            <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest block mb-1">Delivery Address</span>
+                            <div className="font-bold text-gray-900">{selectedCustomer.address}</div>
+                        </div>
                     </div>
                 )}
             </div>
@@ -598,7 +650,7 @@ export default function OrderForm({ orderId, isEditMode = false }: OrderFormProp
                                         </select>
                                     </div>
                                     <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-2">Venue</label>
+                                        <label className="block text-sm font-medium text-gray-700 mb-2">{formData.orderType === 'EVENT' ? 'Venue' : 'Delivery/Pickup Venue'}</label>
                                         <input
                                             type="text"
                                             value={mt.venue}
@@ -628,7 +680,7 @@ export default function OrderForm({ orderId, isEditMode = false }: OrderFormProp
                                         />
                                     </div>
                                     <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-2">Members Group Count</label>
+                                        <label className="block text-sm font-medium text-gray-700 mb-2">{formData.orderType === 'EVENT' ? 'Members Group Count' : 'Requested Quantity'}</label>
                                         <input
                                             type="number"
                                             value={mt.numberOfMembers}
@@ -660,7 +712,7 @@ export default function OrderForm({ orderId, isEditMode = false }: OrderFormProp
                                 {mt.pricingMethod === 'plate-based' ? (
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6 p-4 bg-gray-50 rounded-lg border border-gray-100">
                                         <div>
-                                            <label className="block text-sm font-medium text-gray-700 mb-2">Number of Plates</label>
+                                            <label className="block text-sm font-medium text-gray-700 mb-2">{formData.orderType === 'EVENT' ? 'Number of Plates' : 'Quantity / Packs'}</label>
                                             <input
                                                 type="number"
                                                 value={mt.numberOfPlates}
@@ -669,7 +721,7 @@ export default function OrderForm({ orderId, isEditMode = false }: OrderFormProp
                                             />
                                         </div>
                                         <div>
-                                            <label className="block text-sm font-medium text-gray-700 mb-2">Price per Plate</label>
+                                            <label className="block text-sm font-medium text-gray-700 mb-2">{formData.orderType === 'EVENT' ? 'Price per Plate' : 'Unit Price'}</label>
                                             <div className="relative">
                                                 <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">₹</span>
                                                 <input
@@ -697,8 +749,62 @@ export default function OrderForm({ orderId, isEditMode = false }: OrderFormProp
                                     </div>
                                 )}
 
-                                <div className="space-y-4">
-                                    <h4 className="font-bold text-gray-800 flex items-center justify-between">
+                                <div className="space-y-6">
+                                    <div className="space-y-3">
+                                        <div className="relative">
+                                            <FaSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                                            <input
+                                                type="text"
+                                                className="w-full pl-10 pr-4 py-2.5 bg-gray-50 border border-gray-100 rounded-xl outline-none focus:ring-2 focus:ring-primary-500 transition-all font-bold"
+                                                placeholder={`Search and pick ${mt.menuType || 'items'}...`}
+                                                value={menuItemSearch[mt.id] || ''}
+                                                onChange={(e) => setMenuItemSearch(p => ({ ...p, [mt.id]: e.target.value }))}
+                                            />
+                                        </div>
+
+                                        {(menuItemSearch[mt.id] || mt.menuType) && (
+                                            <div className="mt-2 grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-6 gap-1.5">
+                                                {menuItems
+                                                    .filter(item => {
+                                                        const search = (menuItemSearch[mt.id] || '').toLowerCase()
+                                                        const matchesSearch = item.name.toLowerCase().includes(search)
+                                                        const itemTypes = Array.isArray(item.type) ? item.type : [(item.type as any)]
+                                                        const matchesType = !mt.menuType || itemTypes.some((t: string) => t?.toLowerCase() === mt.menuType.toLowerCase())
+                                                        return matchesSearch && matchesType
+                                                    })
+                                                    .slice(0, 18)
+                                                    .map(item => (
+                                                        <button
+                                                            key={item.id}
+                                                            type="button"
+                                                            onClick={() => handleMenuItemToggle(mt.id, item.id)}
+                                                            className={`p-2 text-left rounded-lg border transition-all ${mt.selectedMenuItems.includes(item.id)
+                                                                ? 'bg-primary-600 border-primary-600 text-white font-black shadow-md shadow-primary-200 scale-[1.02]'
+                                                                : 'bg-white border-gray-50 text-gray-700 hover:border-primary-300 hover:bg-primary-50 font-bold'}`}
+                                                        >
+                                                            <div className="text-[10px] font-black leading-tight mb-0.5 line-clamp-2">{item.name}</div>
+                                                            {item.description && (
+                                                                <div className={`text-[8px] line-clamp-1 italic ${mt.selectedMenuItems.includes(item.id) ? 'text-primary-100' : 'text-gray-400 font-normal'}`}>
+                                                                    {item.description}
+                                                                </div>
+                                                            )}
+                                                        </button>
+                                                    ))}
+                                                <button
+                                                    type="button"
+                                                    onClick={() => {
+                                                        setQuickAddMealTypeId(mt.id)
+                                                        setShowQuickAddModal(true)
+                                                    }}
+                                                    className="p-2 text-[10px] font-black text-center text-primary-600 border border-dashed border-primary-100 rounded-lg hover:bg-primary-50"
+                                                >
+                                                    + Quick Add
+                                                </button>
+                                            </div>
+                                        )}
+                                    </div>
+
+                                    <h4 className="font-bold text-gray-800 flex items-center justify-between border-t border-gray-50 pt-4">
                                         Selected Menu Items ({mt.selectedMenuItems.length})
                                         <button
                                             type="button"
@@ -713,7 +819,7 @@ export default function OrderForm({ orderId, isEditMode = false }: OrderFormProp
                                         <DragDropContext onDragEnd={handleDragEnd}>
                                             <Droppable droppableId={mt.id}>
                                                 {(provided) => (
-                                                    <div {...provided.droppableProps} ref={provided.innerRef} className="space-y-3">
+                                                    <div {...provided.droppableProps} ref={provided.innerRef} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
                                                         {mt.selectedMenuItems.map((itemId, idx) => {
                                                             const item = menuItems.find(m => m.id === itemId)
                                                             if (!item) return null
@@ -723,16 +829,16 @@ export default function OrderForm({ orderId, isEditMode = false }: OrderFormProp
                                                                         <div
                                                                             ref={provided.innerRef}
                                                                             {...provided.draggableProps}
-                                                                            className="flex items-center gap-4 p-3 bg-white border border-gray-200 rounded-lg group shadow-sm"
+                                                                            className="flex items-center gap-2 p-2 bg-white border border-gray-100 rounded-lg group shadow-sm hover:border-primary-200 transition-all"
                                                                         >
-                                                                            <div {...provided.dragHandleProps} className="text-gray-300 group-hover:text-gray-500">
-                                                                                <FaGripLines />
+                                                                            <div {...provided.dragHandleProps} className="text-gray-300 group-hover:text-gray-400 cursor-grab active:cursor-grabbing">
+                                                                                <FaGripLines size={12} />
                                                                             </div>
                                                                             <div className="flex-1 min-w-0">
-                                                                                <div className="font-medium text-gray-800 truncate">{item.name}</div>
+                                                                                <div className="font-bold text-gray-800 text-xs truncate leading-tight">{item.name}</div>
                                                                                 <input
                                                                                     type="text"
-                                                                                    placeholder="Add customization (e.g., Less spicy)"
+                                                                                    placeholder="Customization..."
                                                                                     value={mt.itemCustomizations[itemId] || ''}
                                                                                     onChange={(e) => {
                                                                                         const val = e.target.value
@@ -741,33 +847,16 @@ export default function OrderForm({ orderId, isEditMode = false }: OrderFormProp
                                                                                             mealTypes: prev.mealTypes.map(m => m.id === mt.id ? { ...m, itemCustomizations: { ...m.itemCustomizations, [itemId]: val } } : m)
                                                                                         }))
                                                                                     }}
-                                                                                    className="text-xs w-full mt-1 text-gray-500 bg-transparent border-b border-transparent focus:border-primary-300 outline-none"
+                                                                                    className="text-[10px] w-full mt-0.5 text-gray-500 bg-transparent border-b border-transparent focus:border-primary-300 outline-none placeholder:text-gray-300"
                                                                                 />
                                                                             </div>
-                                                                            <div className="flex items-center gap-3">
-                                                                                <div className="flex items-center gap-1 bg-gray-50 px-2 py-1 rounded">
-                                                                                    <span className="text-xs text-gray-400">Qty:</span>
-                                                                                    <input
-                                                                                        type="number"
-                                                                                        value={mt.itemQuantities[itemId] || '1'}
-                                                                                        onChange={(e) => {
-                                                                                            const val = e.target.value
-                                                                                            setFormData(prev => ({
-                                                                                                ...prev,
-                                                                                                mealTypes: prev.mealTypes.map(m => m.id === mt.id ? { ...m, itemQuantities: { ...m.itemQuantities, [itemId]: val } } : m)
-                                                                                            }))
-                                                                                        }}
-                                                                                        className="w-10 text-center text-sm font-bold bg-transparent outline-none"
-                                                                                    />
-                                                                                </div>
-                                                                                <button
-                                                                                    type="button"
-                                                                                    onClick={() => handleMenuItemToggle(mt.id, itemId)}
-                                                                                    className="text-red-400 hover:text-red-600 p-1"
-                                                                                >
-                                                                                    <FaTimes />
-                                                                                </button>
-                                                                            </div>
+                                                                            <button
+                                                                                type="button"
+                                                                                onClick={() => handleMenuItemToggle(mt.id, itemId)}
+                                                                                className="text-gray-300 hover:text-red-500 p-1"
+                                                                            >
+                                                                                <FaTimes size={14} />
+                                                                            </button>
                                                                         </div>
                                                                     )}
                                                                 </Draggable>
@@ -779,51 +868,6 @@ export default function OrderForm({ orderId, isEditMode = false }: OrderFormProp
                                             </Droppable>
                                         </DragDropContext>
                                     )}
-
-                                    <div className="relative">
-                                        <FaSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-                                        <input
-                                            type="text"
-                                            className="w-full pl-10 pr-4 py-2 bg-gray-50 border border-gray-200 rounded-lg outline-none"
-                                            placeholder={`Search ${mt.menuType || 'items'}...`}
-                                            value={menuItemSearch[mt.id] || ''}
-                                            onChange={(e) => setMenuItemSearch(p => ({ ...p, [mt.id]: e.target.value }))}
-                                        />
-
-                                        {(menuItemSearch[mt.id] || mt.menuType) && (
-                                            <div className="mt-3 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2">
-                                                {menuItems
-                                                    .filter(item => {
-                                                        const search = (menuItemSearch[mt.id] || '').toLowerCase()
-                                                        const matchesSearch = item.name.toLowerCase().includes(search)
-                                                        const itemTypes = Array.isArray(item.type) ? item.type : [(item.type as any)]
-                                                        const matchesType = !mt.menuType || itemTypes.some((t: string) => t?.toLowerCase() === mt.menuType.toLowerCase())
-                                                        return matchesSearch && matchesType
-                                                    })
-                                                    .slice(0, 12)
-                                                    .map(item => (
-                                                        <button
-                                                            key={item.id}
-                                                            type="button"
-                                                            onClick={() => handleMenuItemToggle(mt.id, item.id)}
-                                                            className={`p-2 text-xs text-left rounded-lg border transition-all ${mt.selectedMenuItems.includes(item.id) ? 'bg-primary-50 border-primary-200 text-primary-700 font-bold' : 'bg-white border-gray-100 hover:border-primary-200'}`}
-                                                        >
-                                                            {item.name}
-                                                        </button>
-                                                    ))}
-                                                <button
-                                                    type="button"
-                                                    onClick={() => {
-                                                        setQuickAddMealTypeId(mt.id)
-                                                        setShowQuickAddModal(true)
-                                                    }}
-                                                    className="p-2 text-xs font-bold text-center text-primary-600 border border-dashed border-primary-200 rounded-lg hover:bg-primary-50"
-                                                >
-                                                    + Quick Add
-                                                </button>
-                                            </div>
-                                        )}
-                                    </div>
                                 </div>
                             </div>
                         )}
@@ -887,25 +931,25 @@ export default function OrderForm({ orderId, isEditMode = false }: OrderFormProp
                     </div>
                 </div>
 
-                <div className="mt-8 p-6 bg-gray-900 rounded-xl text-white grid grid-cols-1 md:grid-cols-3 gap-6 shadow-xl">
-                    <div className="text-center md:text-left">
-                        <div className="text-xs text-gray-400 uppercase tracking-widest font-bold">Total Bill</div>
-                        <div className="text-3xl font-black mt-1 text-primary-400">{formatCurrency(totals.total)}</div>
+                <div className="mt-8 p-8 bg-white rounded-3xl border border-gray-100 grid grid-cols-1 md:grid-cols-3 gap-8 shadow-xl shadow-gray-100/50">
+                    <div className="text-center md:text-left space-y-1">
+                        <div className="text-[10px] text-gray-400 uppercase tracking-widest font-black">Total Bill Amount</div>
+                        <div className="text-4xl font-black text-gray-800 tracking-tight">{formatCurrency(totals.total)}</div>
                     </div>
-                    <div className="text-center border-y md:border-y-0 md:border-x border-gray-800 py-4 md:py-0">
-                        <div className="text-xs text-gray-400 uppercase tracking-widest font-bold">Total Advance</div>
-                        <div className="text-3xl font-black mt-1 text-green-400">
+                    <div className="text-center md:border-x border-gray-50 py-4 md:py-0 space-y-1">
+                        <div className="text-[10px] text-green-500 uppercase tracking-widest font-black">Total Received</div>
+                        <div className="text-4xl font-black text-green-600 tracking-tight">
                             {formatCurrency(isEditMode ? originalAdvancePaid + (parseFloat(formData.advancePaid) || 0) : (parseFloat(formData.advancePaid) || 0))}
                         </div>
                     </div>
-                    <div className="text-center md:text-right">
-                        <div className="text-xs text-gray-400 uppercase tracking-widest font-bold">Balance Due</div>
-                        <div className="text-3xl font-black mt-1 text-orange-400">{formatCurrency(totals.balance)}</div>
+                    <div className="text-center md:text-right space-y-1">
+                        <div className="text-[10px] text-orange-500 uppercase tracking-widest font-black">Balance Due</div>
+                        <div className="text-4xl font-black text-orange-600 tracking-tight">{formatCurrency(totals.balance)}</div>
                     </div>
                 </div>
             </div>
 
-            <div className="fixed bottom-0 left-0 right-0 p-4 bg-white border-t border-gray-200 shadow-2xl z-40 flex justify-between items-center sm:px-20">
+            <div className="fixed bottom-0 left-0 lg:left-72 right-0 p-4 bg-white border-t border-gray-200 shadow-2xl z-40 flex justify-between items-center sm:px-20 transition-all duration-300">
                 <button
                     type="button"
                     onClick={() => router.back()}
@@ -1018,6 +1062,31 @@ export default function OrderForm({ orderId, isEditMode = false }: OrderFormProp
                                 className="flex-1 py-3 bg-primary-600 text-white rounded-xl font-bold"
                             >
                                 {isSavingCustomer ? 'Saving...' : 'Add Customer'}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {confirmModal.isOpen && (
+                <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+                    <div className="bg-white rounded-2xl shadow-2xl max-w-sm w-full p-8 animate-in zoom-in-95 duration-200">
+                        <h3 className="text-xl font-black text-gray-800 mb-2">{confirmModal.title}</h3>
+                        <p className="text-gray-500 text-sm mb-8">{confirmModal.message}</p>
+                        <div className="flex gap-4">
+                            <button
+                                type="button"
+                                onClick={() => setConfirmModal(p => ({ ...p, isOpen: false }))}
+                                className="flex-1 py-3 text-gray-600 font-bold text-sm"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                type="button"
+                                onClick={confirmModal.onConfirm}
+                                className="flex-1 py-3 bg-red-500 text-white rounded-xl font-bold text-sm hover:bg-red-600 shadow-lg shadow-red-100"
+                            >
+                                Confirm
                             </button>
                         </div>
                     </div>

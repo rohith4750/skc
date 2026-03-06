@@ -742,7 +742,7 @@ export default function OrderCenterPage() {
           </button>
 
           <Link
-            href="/orders"
+            href="/orders/create"
             className="flex items-center justify-center gap-2 px-4 py-2 bg-white border border-slate-200 text-slate-700 rounded-xl hover:bg-slate-50 active:scale-95 transition-all shadow-sm text-sm font-bold"
           >
             <FaPlus className="w-3 h-3 text-indigo-500" />

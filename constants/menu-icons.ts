@@ -1,4 +1,4 @@
-import type { IconType } from 'react-icons'
+import type { IconType } from "react-icons";
 import {
   FaBell,
   FaBox,
@@ -13,14 +13,15 @@ import {
   FaMoneyBillWave,
   FaShoppingCart,
   FaStore,
+  FaTag,
   FaUserCircle,
   FaUserShield,
   FaUserTie,
   FaUsers,
   FaUtensils,
   FaWarehouse,
-} from 'react-icons/fa'
-import type { IconKey } from '@/constants/menu'
+} from "react-icons/fa";
+import type { IconKey } from "@/constants/menu";
 
 export const MENU_ICON_MAP: Record<IconKey, IconType> = {
   dashboard: FaHome,
@@ -42,5 +43,6 @@ export const MENU_ICON_MAP: Record<IconKey, IconType> = {
   users: FaUserShield,
   audit: FaClipboardList,
   enquiries: FaEnvelope,
+  regular: FaTag,
   profile: FaUserCircle,
-}
+};
