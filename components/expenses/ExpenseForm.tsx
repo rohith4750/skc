@@ -1193,7 +1193,7 @@ export default function ExpenseForm({ id: expenseId }: ExpenseFormProps) {
                                                     <td className="px-4 py-2 truncate text-gray-800">{a.orderName}</td>
                                                     {allocationMethod === 'by-plates' && <td className="px-4 py-2 text-center text-gray-800">{a.plates}</td>}
                                                     {allocationMethod === 'by-percentage' && (
-                                                        <td className="px-4 py-2" text-gray-800>
+                                                        <td className="px-4 py-2 text-gray-800">
                                                             <input type="number" step="0.1" value={a.percentage} onChange={(e) => handlePercentageChange(a.orderId, parseFloat(e.target.value) || 0)} className="w-16 px-1 py-0.5 border rounded text-center" />
                                                         </td>
                                                     )}

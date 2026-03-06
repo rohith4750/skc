@@ -138,6 +138,7 @@ export default function OutstandingPage() {
   const buildStatement = (r: RoleSummary) => {
     const lines: {
       date: string;
+      eventDate?: string | null;
       desc: string;
       amount: number;
       method: string;
@@ -174,15 +175,11 @@ export default function OutstandingPage() {
         eventDateStr = e.order.eventDate || null;
       }
 
-      let finalDesc = desc;
-      if (eventDateStr) {
-        finalDesc += ` (Event: ${formatDate(eventDateStr)})`;
-      }
-
       // Record the due amount (Total expense)
       lines.push({
         date: paymentDateStr,
-        desc: `${finalDesc} (Total Due)`,
+        eventDate: eventDateStr,
+        desc: `${desc} (Total Due)`,
         amount: total,
         method: "Due",
         type: "due",
@@ -193,7 +190,8 @@ export default function OutstandingPage() {
       if (paid > 0) {
         lines.push({
           date: paymentDateStr,
-          desc: `${finalDesc} (Paid)`,
+          eventDate: eventDateStr,
+          desc: `${desc} (Paid)`,
           amount: paid,
           method: "Expense Pymt",
           type: "expense",
@@ -816,10 +814,15 @@ export default function OutstandingPage() {
                                         key={i}
                                         className="border-t border-gray-100"
                                       >
-                                        <td className="px-4 py-2 text-gray-700">
-                                          {formatDate(line.date)}
+                                        <td className="px-4 py-2 text-gray-700 align-top">
+                                          <div className="font-medium">{formatDate(line.date)}</div>
+                                          {line.eventDate && (
+                                            <div className="text-[11px] font-medium text-amber-600 mt-0.5">
+                                              Event: {formatDate(line.eventDate)}
+                                            </div>
+                                          )}
                                         </td>
-                                        <td className="px-4 py-2 text-gray-700">
+                                        <td className="px-4 py-2 text-gray-700 align-top">
                                           {line.desc}
                                         </td>
                                         <td className="px-4 py-2 text-gray-600 capitalize">
