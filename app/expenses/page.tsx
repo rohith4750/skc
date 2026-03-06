@@ -347,7 +347,7 @@ export default function ExpensesPage() {
     try {
       // Convert HTML to canvas
       const canvas = await html2canvas(tempDiv, {
-        scale: 2,
+        scale: 3,
         useCORS: true,
         logging: false,
         backgroundColor: '#ffffff',

@@ -322,7 +322,7 @@ export default function BillsPage() {
       const w = tempDiv.scrollWidth
       const h = Math.max(tempDiv.scrollHeight + 20, 1)
       const canvas = await html2canvas(tempDiv, {
-        scale: 2,
+        scale: 3,
         useCORS: true,
         logging: false,
         backgroundColor: '#ffffff',

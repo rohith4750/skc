@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useState, useMemo } from 'react'
 import { formatCurrency } from '@/lib/utils'
-import { 
+import {
   FaFileInvoiceDollar,
   FaCalculator,
   FaDownload,
@@ -222,7 +222,7 @@ export default function TaxPage() {
         return
       }
 
-      const canvas = await html2canvas(element, { scale: 2 })
+      const canvas = await html2canvas(element, { scale: 3.5 })
       const imgData = canvas.toDataURL('image/png')
 
       const pdf = new jsPDF('p', 'mm', 'a4')

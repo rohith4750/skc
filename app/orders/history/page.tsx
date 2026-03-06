@@ -516,7 +516,7 @@ export default function OrderHistoryPage() {
       const w = tempDiv.scrollWidth
       const h = Math.max(tempDiv.scrollHeight + 20, 1)
       const canvas = await html2canvas(tempDiv, {
-        scale: 2, // Increased scale for better quality
+        scale: 3, // Increased scale for better quality
         useCORS: true,
         logging: false,
         backgroundColor: '#ffffff',
@@ -599,7 +599,7 @@ export default function OrderHistoryPage() {
       const w = tempDiv.scrollWidth
       const h = Math.max(tempDiv.scrollHeight + 20, 1)
       const canvas = await html2canvas(tempDiv, {
-        scale: 2.5, // High quality for images
+        scale: 3.5, // High quality for images
         useCORS: true,
         logging: false,
         backgroundColor: '#ffffff',
