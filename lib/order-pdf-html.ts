@@ -118,7 +118,7 @@ export function buildOrderPdfHtml(
                 <tr>
                     <td style="padding: 5px 10px; font-size: 11px; font-weight: 600; border-bottom: 1px solid #ddd;">
                         ${meal.label} No of Persons: <span style="font-weight: 500;">${meal.count}</span>
-                        <div style="font-size: 9px; color: #666; font-weight: 400; margin-top: 1px;">${formatDate(dateStr)}</div>
+                        <div style="font-size: 9px; color: #000; font-weight: 400; margin-top: 1px;">${formatDate(dateStr)}</div>
                     </td>
                     <td style="padding: 5px 10px; font-size: 11px; border-bottom: 1px solid #ddd; text-align: center;">
                         ${meal.count}
@@ -178,18 +178,27 @@ export function buildOrderPdfHtml(
     <div style="width: 100%; padding: 8px; color: #000;">
         
         <!-- HEADER -->
-        <div style="text-align: center; margin-bottom: 15px;">
-             <div style="font-size: 9px; font-weight: 600; float: left;">Telidevara Rajendraprasad</div>
-             <div style="font-size: 9px; font-weight: 600; float: right;">ART FOOD ZONE</div>
-             <div style="clear: both;"></div>
+        <div style="margin-bottom: 25px;">
+             <!-- Top Info -->
+             <div style="font-size: 10px; font-weight: 600; display: flex; justify-content: space-between; margin-bottom: 12px; color: #000;">
+                <span>Telidevara Rajendraprasad</span>
+                <span>ART FOOD ZONE</span>
+             </div>
+
+             <!-- Branding Row: Logo + Company Name -->
+             <div style="position: relative; text-align: center; width: 100%; min-height: 80px; display: flex; flex-direction: column; justify-content: center; margin-bottom: 5px;">
+                  <img src="${window.location.origin}/images/logo.jpg" alt="SKC Logo" style="position: absolute; left: 20px; top: 0; width: 75px; height: 75px; object-fit: contain; border-radius: 50%;" />
+                  <div style="width: 100%; text-align: center;">
+                      <h1 style="font-size: 24px; font-weight: 800; margin: 0; letter-spacing: 0.5px; text-transform: uppercase; color: #000;">SRIVATSASA & KOUNDINYA CATERERS</h1>
+                      <div style="font-size: 13px; font-style: italic; font-weight: 600; color: #000; margin-top: 2px;">(Pure Vegetarian)</div>
+                  </div>
+             </div>
              
-             <h1 style="font-size: 20px; font-weight: 800; margin: 6px 0 3px; letter-spacing: 0.5px; text-transform: uppercase;">SRIVATSASA & KOUNDINYA CATERERS</h1>
-             <div style="font-size: 10px; font-style: italic; font-weight: 500; margin-bottom: 4px;">(Pure Vegetarian)</div>
-             
-             <div style="font-size: 8px; line-height: 1.3; color: #333;">
-                <div>Regd. No. 23619301000331</div>
+             <!-- Registration & Address -->
+             <div style="text-align: center; font-size: 9px; line-height: 1.5; color: #000; max-width: 600px; margin: 0 auto; border-top: 1px solid #eee; padding-top: 8px; margin-top: 10px;">
+                <div style="font-weight: 700;">Regd. No. 23619301000331</div>
                 <div>Plot No. 115, Padmavathi Nagar, Bank Colony, Saheb Nagar, Vanasthalipuram, Hyderabad - 500070.</div>
-                <div>Email: pujyasri1989cya@gmail.com, Cell: 9866525102, 9963691393, 9390015302</div>
+                <div style="font-weight: 600; margin-top: 2px;">Email: pujyasri1989cya@gmail.com, Cell: 9866525102, 9963691393, 9390015302</div>
              </div>
         </div>
 
@@ -260,7 +269,7 @@ export function buildOrderPdfHtml(
                     <div>Water Bottles:</div>
                     <div>${order.waterBottlesCost && Number(order.waterBottlesCost) > 0 ? formatCurrency(Number(order.waterBottlesCost)) : "-"}</div>
                  </div>
-                 <div style="display: flex; justify-content: space-between; padding: 4px 12px; font-size: 11px; font-weight: 700; color: #d32f2f;">
+                 <div style="display: flex; justify-content: space-between; padding: 4px 12px; font-size: 11px; font-weight: 700; color: #000;">
                     <div>Discount:</div>
                     <div>${order.discount && Number(order.discount) > 0 ? `-${formatCurrency(Number(order.discount))}` : "-"}</div>
                  </div>
@@ -272,7 +281,7 @@ export function buildOrderPdfHtml(
                     <div>Grand Total:</div>
                     <div>${formatCurrency(finalTotal)}</div>
                  </div>
-                 <div style="display: flex; justify-content: space-between; padding: 5px 12px; font-size: 12px; font-weight: 800; color: #2e7d32;">
+                 <div style="display: flex; justify-content: space-between; padding: 5px 12px; font-size: 12px; font-weight: 800; color: #000;">
                     <div>Balance Amount:</div>
                     <div>${formatCurrency(finalRemaining)}</div>
                  </div>
@@ -293,7 +302,7 @@ export function buildOrderPdfHtml(
         <!-- TERMS & CONDITIONS -->
         <div style="margin-top: 15px;">
             <div style="font-weight: 700; font-size: 11px; text-align: center; text-transform: uppercase; margin-bottom: 6px;">TERMS & CONDITIONS</div>
-            <div style="font-size: 9px; line-height: 1.4; color: #333;">
+            <div style="font-size: 9px; line-height: 1.4; color: #000;">
                 <div style="margin-bottom: 2px;">70% Advance Amount should be paid at the time of booking.</div>
                 <div style="margin-bottom: 2px;">The Remaining 30% will be paid after the function based on the party menu.</div>
                 <div style="margin-bottom: 2px;">Advance amount will not be refunded. (4) Childrens will be charged as same as adults.</div>

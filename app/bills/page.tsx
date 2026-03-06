@@ -5,7 +5,7 @@ import { Bill, Order, Customer } from '@/types'
 import {
   FaPrint, FaCheck, FaEdit, FaFilter, FaChartLine, FaWallet,
   FaPercent, FaCalendarAlt, FaEnvelope, FaWhatsapp, FaFileImage,
-  FaChevronLeft, FaChevronRight, FaHistory, FaPlus, FaUser, FaUsers, FaInfoCircle, FaFileInvoiceDollar, FaTimes, FaTrash
+  FaChevronLeft, FaChevronRight, FaHistory, FaPlus, FaUser, FaUsers, FaInfoCircle, FaFileInvoiceDollar, FaTimes, FaTrash, FaEye
 } from 'react-icons/fa'
 import toast from 'react-hot-toast'
 import { getRequest, postRequest, putRequest, deleteRequest } from '@/lib/api/api'
@@ -344,6 +344,30 @@ export default function BillsPage() {
     }
   }
 
+  const handleViewBillPDF = async (bill: ExtendedBill) => {
+    const toastId = toast.loading('Opening preview...')
+    try {
+      const pdfBase64 = await renderBillToPdf(bill)
+      if (pdfBase64) {
+        const byteCharacters = atob(pdfBase64)
+        const byteNumbers = new Array(byteCharacters.length)
+        for (let i = 0; i < byteCharacters.length; i++) {
+          byteNumbers[i] = byteCharacters.charCodeAt(i)
+        }
+        const byteArray = new Uint8Array(byteNumbers)
+        const file = new Blob([byteArray], { type: 'application/pdf' })
+        const fileURL = URL.createObjectURL(file)
+        window.open(fileURL)
+        toast.dismiss(toastId)
+      } else {
+        toast.error('Failed to generate PDF preview', { id: toastId })
+      }
+    } catch (error) {
+      console.error(error)
+      toast.error('Error opening preview', { id: toastId })
+    }
+  }
+
   const handleDownloadBillPDF = async (bill: ExtendedBill) => {
 
     const toastId = toast.loading('Generating PDF...')
@@ -583,6 +607,7 @@ export default function BillsPage() {
               key={bill.id}
               bill={bill}
               onOpen={() => handleOpenDrawer(bill)}
+              onView={() => handleViewBillPDF(bill)}
               onDownload={() => handleDownloadBillPDF(bill)}
               onDownloadImage={() => handleDownloadBillImage(bill)}
               onWhatsApp={() => handleSendBillWhatsApp(bill)}
@@ -927,9 +952,10 @@ export default function BillsPage() {
 
 
 
-function BillCard({ bill, onOpen, onDownload, onDownloadImage, onWhatsApp, onEmail, onDelete }: {
+function BillCard({ bill, onOpen, onView, onDownload, onDownloadImage, onWhatsApp, onEmail, onDelete }: {
   bill: ExtendedBill,
   onOpen: () => void,
+  onView: () => void,
   onDownload: () => void,
   onDownloadImage: () => void,
   onWhatsApp: () => void,
@@ -976,6 +1002,13 @@ function BillCard({ bill, onOpen, onDownload, onDownloadImage, onWhatsApp, onEma
           title="Download PDF"
         >
           <FaFileInvoiceDollar className="w-4 h-4" />
+        </button>
+        <button
+          onClick={(e) => { e.stopPropagation(); onView(); }}
+          className="p-2.5 bg-slate-50 rounded-lg text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 transition-all active:scale-90"
+          title="View PDF"
+        >
+          <FaEye className="w-4 h-4" />
         </button>
         <button
           onClick={(e) => { e.stopPropagation(); onDownloadImage(); }}

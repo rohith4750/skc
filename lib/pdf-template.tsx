@@ -161,33 +161,62 @@ export function generatePDFTemplate(data: PDFTemplateData): string {
           overflow: visible;
         }
         .header {
-          text-align: center;
-          margin-bottom: 15px;
-          padding-bottom: 10px;
+          margin-bottom: 25px;
+          position: relative;
         }
         .header-top {
           display: flex;
           justify-content: space-between;
           font-size: 10px;
-          margin-bottom: 8px;
-          font-weight: 500;
+          margin-bottom: 15px;
+          font-weight: 600;
+          color: #000;
+        }
+        .header-branding {
+          position: relative;
+          text-align: center;
+          width: 100%;
+          min-height: 80px;
+          display: flex;
+          flex-direction: column;
+          justify-content: center;
+          margin-bottom: 5px;
+        }
+        .header-logo {
+          position: absolute;
+          left: 20px;
+          top: 0;
+          width: 75px;
+          height: 75px;
+          object-fit: contain;
+        }
+        .title-container {
+          width: 100%;
+          text-align: center;
         }
         .header-main {
-          font-size: 28px;
+          font-size: 24px;
           font-weight: bold;
-          margin: 10px 0 5px 0;
-          letter-spacing: 2px;
+          margin: 0 auto;
+          letter-spacing: 0.5px;
           text-transform: uppercase;
+          color: #000;
         }
         .header-subtitle {
-          font-size: 14px;
-          margin-bottom: 8px;
+          font-size: 13px;
+          margin: 2px auto 0 auto;
           font-style: italic;
+          font-weight: 600;
+          color: #000;
         }
         .header-details {
+          text-align: center;
           font-size: 9px;
           line-height: 1.6;
-          margin-top: 8px;
+          padding-top: 8px;
+          border-top: 1px solid #eee;
+          color: #000;
+          margin-top: 10px;
         }
         .header-details div {
           margin-bottom: 3px;
@@ -353,6 +382,7 @@ export function generatePDFTemplate(data: PDFTemplateData): string {
           font-weight: bold;
           text-transform: uppercase;
           font-size: 10px;
+          color: #000;
         }
         .text-right { text-align: right !important; }
         .stamp-image {
@@ -379,12 +409,17 @@ export function generatePDFTemplate(data: PDFTemplateData): string {
             <div>${topLeft}</div>
             <div>${topRight}</div>
           </div>
-          <div class="header-main">${companyName}</div>
-          <div class="header-subtitle">${subtitle}</div>
+          <div class="header-branding">
+             <img src="/images/logo.jpg" class="header-logo" alt="Logo" />
+             <div class="title-container">
+               <div class="header-main">${companyName}</div>
+               <div class="header-subtitle">${subtitle}</div>
+             </div>
+          </div>
           <div class="header-details">
-            <div>${regdNo}</div>
+            <div style="font-weight: bold;">${regdNo}</div>
             <div>${address}</div>
-            <div>${contact}</div>
+            <div style="font-weight: 600; margin-top: 2px;">${contact}</div>
           </div>
         </div>
 
@@ -843,8 +878,8 @@ function generateWorkforceContent(data: PDFTemplateData): string {
                   <td>${formatDate(item.date)}</td>
                   <td>
                     <div style="font-weight: bold;">${eventInfo || 'General Expense'}</div>
-                    ${item.venueAddress ? `<div style="font-size: 9px; color: #444; margin-top: 2px;">📍 ${item.venueAddress}</div>` : ''}
-                    ${item.description ? `<div style="font-size: 9px; color: #666; margin-top: 2px;">${item.description}</div>` : ''}
+                    ${item.venueAddress ? `<div style="font-size: 9px; color: #000; margin-top: 2px;">📍 ${item.venueAddress}</div>` : ''}
+                    ${item.description ? `<div style="font-size: 9px; color: #000; margin-top: 2px;">${item.description}</div>` : ''}
                   </td>
                   ${role === 'chef' ? `<td>${item.plates || '-'}</td>` : ''}
                   ${role === 'chef' ? `<td>${item.rate ? formatCurrency(item.rate) : '-'}</td>` : ''}
@@ -867,7 +902,7 @@ function generateWorkforceContent(data: PDFTemplateData): string {
               </div>
               
               ${role === 'boys' && (calc.method === 'per-member-type' || (calc.dressedBoys !== undefined)) ? `
-                <div class="form-row" style="font-size: 10px; color: #666; margin-top: 2px;">
+                <div class="form-row" style="font-size: 10px; color: #000; margin-top: 2px;">
                   <span>Dressed: ${calc.dressedBoys || 0} (@ ${formatCurrency(calc.dressedBoyAmount || 0)})</span>
                   <span style="margin-left: 15px;">Non-Dressed: ${calc.nonDressedBoys || 0} (@ ${formatCurrency(calc.nonDressedBoyAmount || 0)})</span>
                 </div>
@@ -881,7 +916,7 @@ function generateWorkforceContent(data: PDFTemplateData): string {
               ` : ''}
               
               ${exp.orderName ? `
-              <div class="form-row" style="font-size: 10px; color: #444;">
+              <div class="form-row" style="font-size: 10px; color: #000;">
                 <span class="form-label">Event:</span>
                 <span class="form-value">${exp.orderName} ${exp.customerName ? `(${exp.customerName})` : ''}</span>
               </div>
@@ -1006,14 +1041,14 @@ function generateStatementContent(data: PDFTemplateData): string {
         <tr style="background-color: #f8fafc; font-weight: bold;">
           <td colspan="3" style="text-align: right; padding: 10px;">GRAND TOTAL:</td>
           <td style="text-align: right; padding: 10px;">${formatCurrency(details.grandTotal)}</td>
-          <td style="text-align: right; padding: 10px; color: #10b981;">${formatCurrency(details.totalPaid)}</td>
-          <td style="text-align: right; padding: 10px; color: #ef4444; font-size: 16px;">${formatCurrency(details.totalBalance)}</td>
+          <td style="text-align: right; padding: 10px; color: #000;">${formatCurrency(details.totalPaid)}</td>
+          <td style="text-align: right; padding: 10px; color: #000; font-size: 16px;">${formatCurrency(details.totalBalance)}</td>
         </tr>
       </tfoot>
     </table>
 
     <div style="margin-top: 30px; border-top: 1px dashed #ccc; padding-top: 20px;">
-      <div style="font-size: 10px; color: #666; font-style: italic;">
+      <div style="font-size: 10px; color: #000; font-style: italic;">
         * This statement summarizes the selected outstanding and paid bills for the customer listed above.
       </div>
     </div>
@@ -1046,7 +1081,7 @@ function generateInventoryContent(data: PDFTemplateData): string {
           <tr style="border-bottom: 1px solid #eee;">
             <td style="padding: 10px; border: 1px solid #000;">
               <div style="font-weight: bold;">${item.name}</div>
-              <div style="font-size: 9px; color: #666; text-transform: capitalize;">${item.category.replace('_', ' ')} | ${item.location || '-'}</div>
+              <div style="font-size: 9px; color: #000; text-transform: capitalize;">${item.category.replace('_', ' ')} | ${item.location || '-'}</div>
             </td>
             <td style="padding: 10px; border: 1px solid #000; text-align: center; font-weight: bold;">${item.quantity} ${item.unit}</td>
             <td style="padding: 10px; border: 1px solid #000; text-align: right;">${item.pricePerUnit ? formatCurrency(item.pricePerUnit) : '-'}</td>
@@ -1059,7 +1094,7 @@ function generateInventoryContent(data: PDFTemplateData): string {
       <tfoot>
         <tr style="background-color: #f8fafc; font-weight: bold;">
           <td colspan="3" style="text-align: right; padding: 10px; border: 1px solid #000;">GRAND TOTAL VALUE:</td>
-          <td style="text-align: right; padding: 10px; border: 1px solid #000; font-size: 14px; color: #3366ff;">${formatCurrency(details.grandTotalValue)}</td>
+          <td style="text-align: right; padding: 10px; border: 1px solid #000; font-size: 14px; color: #000;">${formatCurrency(details.grandTotalValue)}</td>
           <td style="border: 1px solid #000;"></td>
         </tr>
       </tfoot>
