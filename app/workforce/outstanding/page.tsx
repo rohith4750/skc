@@ -811,6 +811,9 @@ export default function OutstandingPage() {
                                       <th className="px-4 py-2 font-medium">
                                         Method
                                       </th>
+                                      <th className="px-4 py-2 font-medium">
+                                        Status
+                                      </th>
                                       <th className="px-4 py-2 font-medium text-right">
                                         Amount / Bal
                                       </th>
@@ -833,31 +836,31 @@ export default function OutstandingPage() {
                                         <td className="px-4 py-2 text-gray-700 align-top">
                                           {line.desc}
                                         </td>
-                                        <td className="px-4 py-2 text-gray-600 capitalize">
-                                          <div className="flex flex-col items-start gap-1 mt-0.5">
+                                        <td className="px-4 py-2 text-gray-600 capitalize align-top">
+                                          <span
+                                            className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase ${line.type === "due"
+                                              ? "bg-amber-100 text-amber-700"
+                                              : line.type === "workforce"
+                                                ? "bg-green-100 text-green-700"
+                                                : "bg-blue-100 text-blue-700"
+                                              }`}
+                                          >
+                                            {line.method}
+                                          </span>
+                                        </td>
+                                        <td className="px-4 py-2 text-gray-600 capitalize align-top">
+                                          {line.status && (
                                             <span
-                                              className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase ${line.type === "due"
-                                                ? "bg-amber-100 text-amber-700"
-                                                : line.type === "workforce"
-                                                  ? "bg-green-100 text-green-700"
-                                                  : "bg-blue-100 text-blue-700"
+                                              className={`px-2 py-0.5 rounded text-[9px] font-bold uppercase ${line.status.toLowerCase() === "paid"
+                                                ? "bg-emerald-50 text-emerald-600 border border-emerald-200"
+                                                : line.status.toLowerCase() === "partial"
+                                                  ? "bg-sky-50 text-sky-600 border border-sky-200"
+                                                  : "bg-rose-50 text-rose-600 border border-rose-200"
                                                 }`}
                                             >
-                                              {line.method}
+                                              {line.status}
                                             </span>
-                                            {line.status && (
-                                              <span
-                                                className={`px-2 py-0.5 rounded text-[9px] font-bold uppercase ${line.status.toLowerCase() === "paid"
-                                                  ? "bg-emerald-50 text-emerald-600 border border-emerald-200"
-                                                  : line.status.toLowerCase() === "partial"
-                                                    ? "bg-sky-50 text-sky-600 border border-sky-200"
-                                                    : "bg-rose-50 text-rose-600 border border-rose-200"
-                                                  }`}
-                                              >
-                                                {line.status}
-                                              </span>
-                                            )}
-                                          </div>
+                                          )}
                                         </td>
                                         <td
                                           className="px-4 py-2 text-right"
