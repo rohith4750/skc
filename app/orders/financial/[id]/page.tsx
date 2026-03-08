@@ -314,6 +314,12 @@ export default function FinancialTrackingPage() {
       // but only changing the financial bits. 
       // The API route is generic enough to handle this.
 
+      // Calculate the peak member count across all sessions to sync with top-level field
+      const maxMembers = formData.mealTypes.reduce((max, mt) => {
+        const count = calculateMembers(mt)
+        return count > max ? count : max
+      }, 0)
+
       const payload = {
         ...order, // Keep everything else (logistics) same
         transportCost: parseFloat(formData.transportCost) || 0,
@@ -328,6 +334,7 @@ export default function FinancialTrackingPage() {
         totalAmount: calculatedTotals.total,
         advancePaid: calculatedTotals.paid,
         remainingAmount: calculatedTotals.remaining,
+        numberOfMembers: maxMembers > 0 ? maxMembers : order.numberOfMembers,
       }
 
       try {

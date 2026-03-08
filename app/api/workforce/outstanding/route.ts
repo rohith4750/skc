@@ -15,9 +15,10 @@ const WORKFORCE_ROLES = [
 ];
 
 export async function GET(request: NextRequest) {
-  const auth = await requireAuth(request);
-  if (auth.response) return auth.response;
   try {
+    const auth = await requireAuth(request);
+    if (auth.response) return auth.response;
+
     const { searchParams } = new URL(request.url);
     const month = searchParams.get("month");
     const year = searchParams.get("year");

@@ -39,16 +39,22 @@ const getBillNoteFromBill = (bill: ExtendedBill | null): string => {
 }
 
 const getGuestCount = (order: Order) => {
-  if (order.numberOfMembers) return Number(order.numberOfMembers);
+  const topLevelCount = Number(order.numberOfMembers || 0);
   const mealTypeAmounts = order.mealTypeAmounts as Record<string, any>;
-  if (!mealTypeAmounts || typeof mealTypeAmounts !== 'object') return 0;
 
-  const counts = Object.values(mealTypeAmounts).map((mt: any) => {
-    // Check for plate count or member count
-    return Number(mt?.numberOfPlates || mt?.numberOfMembers || 0);
-  });
+  let maxMealCount = 0;
+  if (mealTypeAmounts && typeof mealTypeAmounts === 'object') {
+    const counts = Object.values(mealTypeAmounts).map((mt: any) => {
+      // Check for plate count or member count
+      return Number(mt?.numberOfPlates || mt?.numberOfMembers || 0);
+    });
+    if (counts.length > 0) {
+      maxMealCount = Math.max(...counts);
+    }
+  }
 
-  return counts.length > 0 ? Math.max(...counts) : 0;
+  // Return the maximum of top-level or any specific session count
+  return Math.max(topLevelCount, maxMealCount);
 }
 
 export default function BillsPage() {

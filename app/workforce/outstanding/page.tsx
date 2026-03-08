@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState, Fragment } from "react";
+import { useEffect, useState, Fragment, Suspense } from "react";
 import {
   FaDollarSign,
   FaUtensils,
@@ -97,7 +97,7 @@ interface EventItem {
   totalAmount: number;
 }
 
-export default function OutstandingPage() {
+function OutstandingContent() {
   const searchParams = useSearchParams();
   const from = searchParams.get("from");
   const [loading, setLoading] = useState(true);
@@ -1385,5 +1385,20 @@ export default function OutstandingPage() {
         }
       </div >
     </RoleGuard >
+  );
+}
+
+export default function OutstandingPage() {
+  return (
+    <Suspense fallback={
+      <div className="p-4 sm:p-6 lg:p-8 bg-gray-50 min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mx-auto mb-4"></div>
+          <p className="text-gray-500 font-medium">Loading workforce data...</p>
+        </div>
+      </div>
+    }>
+      <OutstandingContent />
+    </Suspense>
   );
 }
