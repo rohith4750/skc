@@ -45,8 +45,13 @@ const getGuestCount = (order: Order) => {
   let maxMealCount = 0;
   if (mealTypeAmounts && typeof mealTypeAmounts === 'object') {
     const counts = Object.values(mealTypeAmounts).map((mt: any) => {
-      // Check for plate count or member count
-      return Number(mt?.numberOfPlates || mt?.numberOfMembers || 0);
+      // If it's an object, check for plate count and member count
+      if (typeof mt === 'object' && mt !== null) {
+        const plates = Number(mt.numberOfPlates || 0);
+        const members = Number(mt.numberOfMembers || 0);
+        return Math.max(plates, members);
+      }
+      return 0;
     });
     if (counts.length > 0) {
       maxMealCount = Math.max(...counts);
