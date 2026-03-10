@@ -834,7 +834,7 @@ export default function AnalyticsPage() {
               <FaChartLine className="text-primary-500" />
               Financial Trends (Last 12 Months)
             </h2>
-            <div className="overflow-x-auto">
+            <div className="hidden md:block overflow-x-auto">
               <table className="w-full text-sm min-w-full">
                 <thead>
                   <tr className="border-b border-gray-200">
@@ -866,6 +866,39 @@ export default function AnalyticsPage() {
                   })}
                 </tbody>
               </table>
+            </div>
+
+            {/* Mobile Trends Cards */}
+            <div className="md:hidden space-y-4">
+              {monthlyTrends.map((trend, index) => {
+                const margin = trend.revenue > 0 ? ((trend.profit / trend.revenue) * 100) : 0
+                return (
+                  <div key={index} className="p-4 bg-slate-50 rounded-2xl border border-slate-100 shadow-sm">
+                    <div className="flex justify-between items-center mb-3">
+                      <span className="text-sm font-black text-slate-800 uppercase tracking-widest">
+                        {new Date(trend.month + '-01').toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}
+                      </span>
+                      <span className={`text-[10px] font-black uppercase px-2 py-0.5 rounded-md ${margin >= 0 ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+                        {margin.toFixed(1)}% Margin
+                      </span>
+                    </div>
+                    <div className="grid grid-cols-3 gap-2">
+                      <div className="text-center bg-white p-2 rounded-xl border border-slate-200/50">
+                        <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">Revenue</p>
+                        <p className="text-xs font-bold text-green-600">{formatCurrency(trend.revenue)}</p>
+                      </div>
+                      <div className="text-center bg-white p-2 rounded-xl border border-slate-200/50">
+                        <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">Expenses</p>
+                        <p className="text-xs font-bold text-red-600">{formatCurrency(trend.expenses)}</p>
+                      </div>
+                      <div className="text-center bg-white p-2 rounded-xl border border-slate-200/50">
+                        <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">Profit</p>
+                        <p className={`text-xs font-bold ${trend.profit >= 0 ? 'text-blue-600' : 'text-orange-600'}`}>{formatCurrency(trend.profit)}</p>
+                      </div>
+                    </div>
+                  </div>
+                )
+              })}
             </div>
           </div>
         </>
@@ -905,7 +938,7 @@ export default function AnalyticsPage() {
               <FaCalculator className="text-primary-500" />
               Order-wise P&L Breakdown
             </h2>
-            <div className="overflow-x-auto">
+            <div className="hidden lg:block overflow-x-auto">
               <table className="w-full text-sm min-w-[1000px]">
                 <thead>
                   <tr className="border-b border-gray-200">
@@ -944,6 +977,55 @@ export default function AnalyticsPage() {
                   ))}
                 </tbody>
               </table>
+            </div>
+
+            {/* Mobile P&L Cards */}
+            <div className="lg:hidden space-y-4">
+              {plMetrics.orderPlates.map((order, index) => (
+                <div key={index} className="bg-slate-50 rounded-2xl p-5 border border-slate-100 shadow-sm relative overflow-hidden">
+                  <div className={`absolute top-0 left-0 w-1.5 h-full ${order.profit >= 0 ? 'bg-green-500' : 'bg-red-500'}`} />
+                  <div className="flex justify-between items-start mb-4">
+                    <div className="flex-1 min-w-0 mr-2">
+                      <h3 className="font-bold text-slate-900 leading-tight truncate">{order.orderName}</h3>
+                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1 truncate">{order.customerName}</p>
+                    </div>
+                    <div className="text-right">
+                      <p className={`text-sm font-black ${order.profit >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                        {formatCurrency(order.profit)}
+                      </p>
+                      <p className="text-[10px] font-bold text-slate-400">Total Profit</p>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3 mb-4">
+                    <div className="bg-white p-2.5 rounded-xl border border-slate-200/50">
+                      <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">Plates</p>
+                      <p className="text-xs font-bold text-slate-700">{order.members || 'N/A'}</p>
+                    </div>
+                    <div className="bg-white p-2.5 rounded-xl border border-slate-200/50">
+                      <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">Margin</p>
+                      <p className={`text-xs font-bold ${order.margin >= 0 ? 'text-green-600' : 'text-red-600'}`}>{order.margin.toFixed(1)}%</p>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-3 gap-2">
+                    <div className="text-center">
+                      <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Rev/Pl</p>
+                      <p className="text-[10px] font-bold text-green-600">{order.members > 0 ? formatCurrency(order.revenuePerPlate) : '-'}</p>
+                    </div>
+                    <div className="text-center">
+                      <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Cost/Pl</p>
+                      <p className="text-[10px] font-bold text-red-600">{order.members > 0 ? formatCurrency(order.costPerPlate) : '-'}</p>
+                    </div>
+                    <div className="text-center">
+                      <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Prof/Pl</p>
+                      <p className={`text-[10px] font-bold ${order.profit >= 0 ? 'text-blue-600' : 'text-orange-600'}`}>
+                        {order.members > 0 ? formatCurrency(order.profitPerPlate) : '-'}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              ))}
             </div>
           </div>
         </>

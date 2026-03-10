@@ -822,8 +822,8 @@ export default function ExpensesPage() {
         </div>
       )}
 
-      {/* Expenses Table */}
-      <div className="bg-white rounded-xl shadow-md border border-gray-200 overflow-hidden">
+      {/* Desktop Table View */}
+      <div className="hidden sm:block bg-white rounded-xl shadow-md border border-gray-200 overflow-hidden">
         <Table
           columns={columns}
           data={filteredExpenses}
@@ -875,6 +875,123 @@ export default function ExpensesPage() {
             )
           }}
         />
+      </div>
+
+      {/* Mobile Card View */}
+      <div className="sm:hidden space-y-4 pb-20">
+        {filteredExpenses.length === 0 && !loading && (
+          <div className="bg-white rounded-xl p-8 text-center border border-gray-200">
+            <p className="text-gray-500">No expenses found.</p>
+          </div>
+        )}
+        {filteredExpenses
+          .slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage)
+          .map((expense: Expense) => {
+            const Icon = CATEGORY_ICONS[expense.category] || FaBox
+            const colorClass = CATEGORY_COLORS[expense.category] || CATEGORY_COLORS.other
+            const isPaid = expense.paymentStatus === 'paid'
+
+            return (
+              <div key={expense.id} className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 active:scale-[0.98] transition-all">
+                <div className="flex justify-between items-start mb-4">
+                  <div className="flex items-center gap-3">
+                    <div className={`p-2.5 rounded-xl ${colorClass.split(' ')[0]} ${colorClass.split(' ')[1]}`}>
+                      <Icon size={18} />
+                    </div>
+                    <div>
+                      <h3 className="font-bold text-slate-900 leading-tight capitalize">{expense.category}</h3>
+                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-0.5">
+                        {expense.paymentDate ? formatDate(expense.paymentDate) : 'No date'}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <p className="font-black text-slate-900">{formatCurrency(expense.amount)}</p>
+                    <span className={`text-[10px] font-black uppercase px-2 py-0.5 rounded-md ${isPaid ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+                      {expense.paymentStatus || 'pending'}
+                    </span>
+                  </div>
+                </div>
+
+                <div className="bg-slate-50 rounded-xl p-3 border border-slate-100 mb-4 space-y-2">
+                  <div className="flex justify-between items-center">
+                    <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Recipient</span>
+                    <span className="text-xs font-bold text-slate-700">{expense.recipient || '-'}</span>
+                  </div>
+                  {expense.order?.customer && (
+                    <div className="flex justify-between items-center">
+                      <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Event</span>
+                      <span className="text-xs font-bold text-slate-700 truncate max-w-[150px]">
+                        {expense.order.customer.name}
+                      </span>
+                    </div>
+                  )}
+                  {expense.description && (
+                    <div className="pt-2 border-t border-slate-200/50">
+                      <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Description</p>
+                      <p className="text-xs text-slate-600 leading-relaxed italic line-clamp-2">{expense.description}</p>
+                    </div>
+                  )}
+                </div>
+
+                <div className="grid grid-cols-4 gap-2">
+                  <button
+                    onClick={() => handleGeneratePDF(expense)}
+                    className="flex flex-col items-center gap-1.5 p-2 bg-indigo-50 text-indigo-600 rounded-xl hover:bg-indigo-100"
+                  >
+                    <FaPrint size={14} />
+                    <span className="text-[9px] font-bold uppercase">Bill</span>
+                  </button>
+                  {!isPaid && (
+                    <button
+                      onClick={() => handleMarkAsPaid(expense)}
+                      className="flex flex-col items-center gap-1.5 p-2 bg-green-50 text-green-600 rounded-xl hover:bg-green-100"
+                    >
+                      <FaCheckCircle size={14} />
+                      <span className="text-[9px] font-bold uppercase">Pay</span>
+                    </button>
+                  )}
+                  <button
+                    onClick={() => handleEdit(expense)}
+                    className="flex flex-col items-center gap-1.5 p-2 bg-yellow-50 text-yellow-600 rounded-xl hover:bg-yellow-100"
+                  >
+                    <FaEdit size={14} />
+                    <span className="text-[9px] font-bold uppercase">Edit</span>
+                  </button>
+                  <button
+                    onClick={() => handleDelete(expense.id)}
+                    className="flex flex-col items-center gap-1.5 p-2 bg-red-50 text-red-600 rounded-xl hover:bg-red-100"
+                  >
+                    <FaTrash size={14} />
+                    <span className="text-[9px] font-bold uppercase">Del</span>
+                  </button>
+                </div>
+              </div>
+            )
+          })}
+
+        {/* Mobile Pagination */}
+        {filteredExpenses.length > itemsPerPage && (
+          <div className="flex items-center justify-between px-2 pt-4 pb-20">
+            <button
+              onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+              disabled={currentPage === 1}
+              className="p-3 bg-white rounded-xl border border-slate-200 text-slate-600 disabled:opacity-30"
+            >
+              <FaChevronDown className="rotate-90" />
+            </button>
+            <span className="text-xs font-bold text-slate-500 uppercase tracking-widest">
+              Page {currentPage} of {Math.ceil(filteredExpenses.length / itemsPerPage)}
+            </span>
+            <button
+              onClick={() => setCurrentPage(p => Math.min(Math.ceil(filteredExpenses.length / itemsPerPage), p + 1))}
+              disabled={currentPage >= Math.ceil(filteredExpenses.length / itemsPerPage)}
+              className="p-3 bg-white rounded-xl border border-slate-200 text-slate-600 disabled:opacity-30"
+            >
+              <FaChevronDown className="-rotate-90" />
+            </button>
+          </div>
+        )}
       </div>
 
       <ConfirmModal
