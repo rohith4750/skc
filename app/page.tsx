@@ -54,6 +54,10 @@ export default function Dashboard() {
     pendingBills: 0,
     pendingExpenses: 0,
     outstandingExpenses: 0,
+    avgRevenuePerPlate: 0,
+    avgCostPerPlate: 0,
+    avgProfitPerPlate: 0,
+    totalPlates: 0,
   });
   const [loading, setLoading] = useState(true);
   const [isSuperAdminUser, setIsSuperAdminUser] = useState(false);
@@ -162,6 +166,28 @@ export default function Dashboard() {
           0,
         );
 
+        // --- P&L PER PLATE CALCULATIONS ---
+        let totalPlates = 0;
+        let totalRevenueForPlates = 0;
+        let totalCostForPlates = 0;
+
+        orders.forEach((order: any) => {
+          const members = parseInt(order.numberOfMembers) || 0;
+          if (members > 0) {
+            totalPlates += members;
+            totalRevenueForPlates += parseFloat(order.totalAmount) || 0;
+
+            // Sum all expenses specifically linked to this order
+            const orderExpenses = rawExpenses.filter((e: any) => e.orderId === order.id);
+            const totalOrderExpense = orderExpenses.reduce((sum: number, e: any) => sum + (parseFloat(e.amount) || 0), 0);
+            totalCostForPlates += totalOrderExpense;
+          }
+        });
+
+        const avgRevenuePerPlate = totalPlates > 0 ? totalRevenueForPlates / totalPlates : 0;
+        const avgCostPerPlate = totalPlates > 0 ? totalCostForPlates / totalPlates : 0;
+        const avgProfitPerPlate = avgRevenuePerPlate - avgCostPerPlate;
+
         // Get user and workforce counts (only for super admin)
         let usersCount = 0;
         let workforceCount = 0;
@@ -227,6 +253,10 @@ export default function Dashboard() {
           pendingBills,
           pendingExpenses,
           outstandingExpenses,
+          avgRevenuePerPlate,
+          avgCostPerPlate,
+          avgProfitPerPlate,
+          totalPlates,
         });
       } catch (error) {
         console.error("Failed to load stats:", error);
@@ -523,6 +553,36 @@ export default function Dashboard() {
           </div>
         </div>
       )}
+
+      {/* Profit & Loss per Plate Analytics */}
+      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 mb-8">
+        <div className="flex items-center gap-3 mb-6">
+          <div className="bg-green-50 p-2.5 rounded-xl">
+            <svg className="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+            </svg>
+          </div>
+          <h2 className="text-lg font-bold text-gray-800">Profit & Loss (Per Plate)</h2>
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="bg-blue-50/50 rounded-xl p-4 border border-blue-100">
+            <p className="text-xs font-bold text-blue-400 uppercase mb-2 tracking-tight">Avg Revenue / Plate</p>
+            <p className="text-lg font-bold text-blue-700">₹{stats.avgRevenuePerPlate.toFixed(2)}</p>
+          </div>
+          <div className="bg-red-50/50 rounded-xl p-4 border border-red-100">
+            <p className="text-xs font-bold text-red-400 uppercase mb-2 tracking-tight">Avg Cost / Plate</p>
+            <p className="text-lg font-bold text-red-700">₹{stats.avgCostPerPlate.toFixed(2)}</p>
+          </div>
+          <div className={`rounded-xl p-4 border ${stats.avgProfitPerPlate >= 0 ? 'bg-green-50/50 border-green-100' : 'bg-orange-50/50 border-orange-100'}`}>
+            <p className={`text-xs font-bold uppercase mb-2 tracking-tight ${stats.avgProfitPerPlate >= 0 ? 'text-green-400' : 'text-orange-400'}`}>Avg Profit / Plate</p>
+            <p className={`text-lg font-bold ${stats.avgProfitPerPlate >= 0 ? 'text-green-700' : 'text-orange-700'}`}>₹{stats.avgProfitPerPlate.toFixed(2)}</p>
+          </div>
+          <div className="bg-gray-50/50 rounded-xl p-4 border border-gray-100">
+            <p className="text-xs font-bold text-gray-400 uppercase mb-2 tracking-tight">Total Plates (Filtered)</p>
+            <p className="text-lg font-bold text-gray-700">{stats.totalPlates}</p>
+          </div>
+        </div>
+      </div>
 
       {/* Quick Links */}
       <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">

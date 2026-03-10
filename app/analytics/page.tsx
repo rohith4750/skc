@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useState, useMemo } from 'react'
-import { formatCurrency, formatDateTime, formatDate , getOrderDate} from '@/lib/utils'
+import { formatCurrency, formatDateTime, formatDate, getOrderDate } from '@/lib/utils'
 import {
   FaChartLine,
   FaChartBar,
@@ -26,7 +26,8 @@ import {
   FaUtensils,
   FaRetweet,
   FaStopwatch,
-  FaCalendarWeek
+  FaCalendarWeek,
+  FaCalculator
 } from 'react-icons/fa'
 import toast from 'react-hot-toast'
 import { fetchWithLoader } from '@/lib/fetch-with-loader'
@@ -100,7 +101,7 @@ export default function AnalyticsPage() {
   const [dateFilter, setDateFilter] = useState<'all' | 'month' | 'year'>('all')
   const [selectedMonth, setSelectedMonth] = useState(new Date().toISOString().slice(0, 7))
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear().toString())
-  const [activeTab, setActiveTab] = useState<'overview' | 'financial' | 'operations' | 'customers' | 'predictive'>('overview')
+  const [activeTab, setActiveTab] = useState<'overview' | 'financial' | 'pl_analytics' | 'operations' | 'customers' | 'predictive'>('overview')
 
   useEffect(() => {
     loadData()
@@ -436,6 +437,50 @@ export default function AnalyticsPage() {
       .map(([mealType, amount]) => ({ mealType, amount }))
       .sort((a, b) => b.amount - a.amount)
   }, [filteredData])
+
+  // P&L Metrics per Plate
+  const plMetrics = useMemo(() => {
+    let totalPlates = 0;
+    let totalRevenue = 0;
+    let totalCost = 0;
+
+    const orderPlates = filteredData.orders.map((order: any) => {
+      const members = parseInt(order.numberOfMembers) || 0;
+      const revenue = parseFloat(order.totalAmount) || 0;
+
+      // Calculate cost from expenses linked to this order
+      const orderExpenses = data.expenses.filter((e: any) => e.orderId === order.id);
+      const cost = orderExpenses.reduce((sum: number, e: any) => sum + (parseFloat(e.amount) || 0), 0);
+
+      if (members > 0) {
+        totalPlates += members;
+        totalRevenue += revenue;
+        totalCost += cost;
+      }
+
+      return {
+        id: order.id,
+        orderName: order.eventName || `Order #${order.serialNumber}`,
+        customerName: order.customer?.name || 'Customer',
+        members,
+        revenue,
+        cost,
+        profit: revenue - cost,
+        revenuePerPlate: members > 0 ? revenue / members : 0,
+        costPerPlate: members > 0 ? cost / members : 0,
+        profitPerPlate: members > 0 ? (revenue - cost) / members : 0,
+        margin: revenue > 0 ? ((revenue - cost) / revenue) * 100 : 0
+      };
+    }).sort((a, b) => b.profit - a.profit);
+
+    return {
+      orderPlates,
+      avgRevenuePerPlate: totalPlates > 0 ? totalRevenue / totalPlates : 0,
+      avgCostPerPlate: totalPlates > 0 ? totalCost / totalPlates : 0,
+      avgProfitPerPlate: totalPlates > 0 ? (totalRevenue - totalCost) / totalPlates : 0,
+      totalPlates
+    };
+  }, [filteredData, data.expenses])
 
   // Helper to render trend indicator
   const renderTrend = (change: number, size: 'sm' | 'md' = 'md') => {
@@ -819,6 +864,84 @@ export default function AnalyticsPage() {
                       </tr>
                     )
                   })}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </>
+      )}
+
+      {/* P&L Analytics Tab */}
+      {activeTab === 'pl_analytics' && (
+        <>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+            <div className="bg-white rounded-lg shadow-md p-6 border-l-4 border-blue-500">
+              <h3 className="text-sm font-medium text-gray-600 mb-2">Avg Revenue / Plate</h3>
+              <p className="text-2xl font-bold text-blue-600">{formatCurrency(plMetrics.avgRevenuePerPlate)}</p>
+              <p className="text-xs text-gray-500 mt-1">Across {plMetrics.totalPlates} plates</p>
+            </div>
+            <div className="bg-white rounded-lg shadow-md p-6 border-l-4 border-red-500">
+              <h3 className="text-sm font-medium text-gray-600 mb-2">Avg Cost / Plate</h3>
+              <p className="text-2xl font-bold text-red-600">{formatCurrency(plMetrics.avgCostPerPlate)}</p>
+            </div>
+            <div className={`bg-white rounded-lg shadow-md p-6 border-l-4 ${plMetrics.avgProfitPerPlate >= 0 ? 'border-green-500' : 'border-orange-500'}`}>
+              <h3 className="text-sm font-medium text-gray-600 mb-2">Avg Profit / Plate</h3>
+              <p className={`text-2xl font-bold ${plMetrics.avgProfitPerPlate >= 0 ? 'text-green-600' : 'text-orange-600'}`}>
+                {formatCurrency(plMetrics.avgProfitPerPlate)}
+              </p>
+              <p className="text-xs text-gray-500 mt-1">
+                Margin: {plMetrics.avgRevenuePerPlate > 0 ? ((plMetrics.avgProfitPerPlate / plMetrics.avgRevenuePerPlate) * 100).toFixed(1) : 0}%
+              </p>
+            </div>
+            <div className="bg-white rounded-lg shadow-md p-6 border-l-4 border-primary-500">
+              <h3 className="text-sm font-medium text-gray-600 mb-2">Total Plates</h3>
+              <p className="text-2xl font-bold text-gray-800">{plMetrics.totalPlates}</p>
+              <p className="text-xs text-gray-500 mt-1">In filtered period</p>
+            </div>
+          </div>
+
+          <div className="bg-white rounded-lg shadow-md p-6">
+            <h2 className="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2">
+              <FaCalculator className="text-primary-500" />
+              Order-wise P&L Breakdown
+            </h2>
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm min-w-[1000px]">
+                <thead>
+                  <tr className="border-b border-gray-200">
+                    <th className="text-left py-3 px-4 font-medium text-gray-700">Order / Event</th>
+                    <th className="text-left py-3 px-4 font-medium text-gray-700">Customer</th>
+                    <th className="text-right py-3 px-4 font-medium text-gray-700">Plates</th>
+                    <th className="text-right py-3 px-4 font-medium text-gray-700">Rev/Plate</th>
+                    <th className="text-right py-3 px-4 font-medium text-gray-700">Cost/Plate</th>
+                    <th className="text-right py-3 px-4 font-medium text-gray-700">Profit/Plate</th>
+                    <th className="text-right py-3 px-4 font-medium text-gray-700">Total Profit</th>
+                    <th className="text-right py-3 px-4 font-medium text-gray-700">Margin</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {plMetrics.orderPlates.map((order, index) => (
+                    <tr key={index} className="border-b border-gray-100 hover:bg-gray-50">
+                      <td className="py-3 px-4 font-medium text-gray-800">{order.orderName}</td>
+                      <td className="py-3 px-4 text-gray-600">{order.customerName}</td>
+                      <td className="py-3 px-4 text-right text-gray-700">{order.members || 'N/A'}</td>
+                      <td className="py-3 px-4 text-right text-green-600 font-medium">
+                        {order.members > 0 ? formatCurrency(order.revenuePerPlate) : '-'}
+                      </td>
+                      <td className="py-3 px-4 text-right text-red-600 font-medium">
+                        {order.members > 0 ? formatCurrency(order.costPerPlate) : '-'}
+                      </td>
+                      <td className={`py-3 px-4 text-right font-bold ${order.profit >= 0 ? 'text-blue-600' : 'text-orange-600'}`}>
+                        {order.members > 0 ? formatCurrency(order.profitPerPlate) : '-'}
+                      </td>
+                      <td className={`py-3 px-4 text-right font-bold ${order.profit >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                        {formatCurrency(order.profit)}
+                      </td>
+                      <td className={`py-3 px-4 text-right font-medium ${order.margin >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                        {order.margin.toFixed(1)}%
+                      </td>
+                    </tr>
+                  ))}
                 </tbody>
               </table>
             </div>
