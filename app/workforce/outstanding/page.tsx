@@ -754,7 +754,7 @@ function OutstandingContent() {
               Linked to Orders
             </span>
           </div>
-          <div className="overflow-x-auto">
+          <div className="hidden md:block overflow-x-auto">
             <table className="w-full">
               <thead>
                 <tr className="bg-gray-50 text-left text-xs sm:text-sm text-gray-600">
@@ -798,6 +798,34 @@ function OutstandingContent() {
               </tbody>
             </table>
           </div>
+
+          {/* Mobile Card View for Events */}
+          <div className="md:hidden divide-y divide-gray-100">
+            {events.length === 0 ? (
+              <div className="px-4 py-8 text-center text-gray-500 text-sm">
+                No event-linked expenses yet
+              </div>
+            ) : (
+              events.map((ev) => (
+                <div key={ev.orderId} className="p-4 space-y-3">
+                  <div className="flex justify-between items-start">
+                    <div>
+                      <h3 className="font-bold text-gray-900">{ev.eventName || "Unnamed Event"}</h3>
+                      <p className="text-xs text-gray-500 mt-1">
+                        {ev.customerName || "No Customer"}
+                      </p>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-sm font-bold text-gray-900">{formatCurrency(ev.totalAmount)}</p>
+                      <p className="text-[10px] text-gray-400 mt-1 uppercase tracking-tight">
+                        {ev.eventDate ? formatDate(ev.eventDate) : "No Date"}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
         </div>
 
         {/* General Business Expenses */}
@@ -810,7 +838,7 @@ function OutstandingContent() {
               Not linked to orders
             </span>
           </div>
-          <div className="overflow-x-auto">
+          <div className="hidden md:block overflow-x-auto">
             <table className="w-full">
               <thead>
                 <tr className="bg-gray-50 text-left text-xs sm:text-sm text-gray-600">
@@ -873,6 +901,52 @@ function OutstandingContent() {
               </tbody>
             </table>
           </div>
+
+          {/* Mobile Card View for General Expenses */}
+          <div className="md:hidden divide-y divide-gray-100 text-sm">
+            {roleSummary
+              .map((r) =>
+                r.expenses.filter((e) => !e.orderId && !e.isBulkExpense),
+              )
+              .flat().length === 0 ? (
+              <div className="px-4 py-8 text-center text-gray-500">
+                No general expenses found
+              </div>
+            ) : (
+              roleSummary
+                .map((r) =>
+                  r.expenses.filter((e) => !e.orderId && !e.isBulkExpense),
+                )
+                .flat()
+                .sort(
+                  (a, b) =>
+                    new Date(b.paymentDate || b.createdAt).getTime() -
+                    new Date(a.paymentDate || a.createdAt).getTime(),
+                )
+                .map((exp: any) => (
+                  <div key={exp.id} className="p-4 space-y-2">
+                    <div className="flex justify-between items-start">
+                      <div className="flex-1 pr-4">
+                        <p className="font-bold text-gray-900">
+                          {exp.description || (exp.recipient ? `Expense – ${exp.recipient}` : "Expense")}
+                        </p>
+                        <div className="flex items-center gap-2 mt-1">
+                          <span className="capitalize text-[10px] font-bold bg-slate-100 text-slate-500 px-2 py-0.5 rounded uppercase">
+                            {exp.category}
+                          </span>
+                          <span className="text-[10px] text-gray-400">
+                            {formatDate(exp.paymentDate || exp.createdAt)}
+                          </span>
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <p className="font-bold text-gray-900">{formatCurrency(Number(exp.amount || 0))}</p>
+                      </div>
+                    </div>
+                  </div>
+                ))
+            )}
+          </div>
         </div>
 
         {/* Record Payment by Role */}
@@ -880,7 +954,7 @@ function OutstandingContent() {
           <h2 className="text-lg font-semibold text-gray-800 p-4 border-b border-gray-200">
             Outstanding by Role · Record Payment
           </h2>
-          <div className="overflow-x-auto">
+          <div className="hidden md:block overflow-x-auto">
             <table className="w-full">
               <thead>
                 <tr className="bg-gray-50 text-left text-xs sm:text-sm text-gray-600">
@@ -1111,6 +1185,135 @@ function OutstandingContent() {
                   })}
               </tbody>
             </table>
+          </div>
+
+          {/* Mobile Card View for Role Outstanding */}
+          <div className="md:hidden divide-y divide-gray-100">
+            {roleSummary
+              .filter((r) => r.totalDues > 0 || r.payments?.length > 0)
+              .map((r) => {
+                const Icon = roleIcons[r.role];
+                const statement = buildStatement(r);
+                const isExpanded = expandedStatement === r.role;
+                return (
+                  <div key={r.role} className="flex flex-col">
+                    <div className="p-4 space-y-4">
+                      <div className="flex justify-between items-start">
+                        <span className={`inline-flex items-center gap-2 px-2 py-1 rounded-full text-xs font-medium ${roleColors[r.role]}`}>
+                          {Icon && <Icon className="w-4 h-4" />}
+                          {r.role.charAt(0).toUpperCase() + r.role.slice(1)}
+                        </span>
+                        <div className="text-right">
+                          <p className="text-lg font-black text-amber-700">{formatCurrency(r.outstanding)}</p>
+                          <p className="text-[10px] text-slate-400 uppercase tracking-tight font-bold">Outstanding</p>
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="bg-slate-50 p-2 rounded-lg">
+                          <p className="text-[10px] text-slate-400 uppercase tracking-tight font-bold mb-0.5">Total Dues</p>
+                          <p className="text-xs font-bold text-slate-700">{formatCurrency(r.totalDues)}</p>
+                        </div>
+                        <div className="bg-emerald-50 p-2 rounded-lg">
+                          <p className="text-[10px] text-emerald-600/60 uppercase tracking-tight font-bold mb-0.5">Total Paid</p>
+                          <p className="text-xs font-bold text-emerald-700">{formatCurrency(r.totalPaid)}</p>
+                        </div>
+                      </div>
+
+                      <div className="flex flex-wrap gap-2">
+                        <button
+                          onClick={() => setExpandedStatement(isExpanded ? null : r.role)}
+                          className="flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl border border-slate-200 bg-white text-slate-700 text-xs font-bold shadow-sm active:scale-95 transition-all"
+                        >
+                          <FaFileAlt className="w-3.5 h-3.5" />
+                          {isExpanded ? "Hide Statement" : "View Statement"}
+                        </button>
+                        <button
+                          onClick={() => handleDownloadRolePDF(r.role)}
+                          className="inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl border border-indigo-100 bg-indigo-50 text-indigo-700 text-xs font-bold shadow-sm active:scale-95 transition-all"
+                        >
+                          <FaFileAlt className="w-3.5 h-3.5" /> PDF
+                        </button>
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-2">
+                        <button
+                          onClick={() => openPaymentModal(r.role)}
+                          disabled={r.outstanding <= 0}
+                          className="inline-flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl bg-emerald-600 text-white text-xs font-bold shadow-sm active:scale-95 transition-all disabled:opacity-50"
+                        >
+                          <FaReceipt className="w-3.5 h-3.5" /> Record Payment
+                        </button>
+                        <button
+                          onClick={() => openAdjustmentModal(r.role)}
+                          className="inline-flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl bg-amber-600 text-white text-xs font-bold shadow-sm active:scale-95 transition-all"
+                        >
+                          + Add Missed Due
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Expandable Mobile Ledger Statement */}
+                    {isExpanded && (
+                      <div className="bg-slate-50 border-t border-slate-100 p-3">
+                        <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm">
+                          <div className="px-4 py-3 bg-slate-100 border-b border-slate-200 flex justify-between items-center">
+                            <h4 className="text-xs font-black text-slate-800 uppercase tracking-widest">Statement</h4>
+                            <span className="text-[10px] font-bold text-slate-400">LEDGER FLOW</span>
+                          </div>
+                          {statement.length === 0 ? (
+                            <div className="p-8 text-center text-slate-400 text-xs italic">No history found</div>
+                          ) : (
+                            <div className="divide-y divide-slate-100">
+                              {statement.map((line, i) => (
+                                <div key={i} className="p-4 space-y-3">
+                                  <div className="flex justify-between items-start">
+                                    <div>
+                                      <p className="text-[10px] font-black text-slate-400 uppercase tracking-tighter">{formatDate(line.date)}</p>
+                                      <p className="text-sm font-bold text-slate-800 mt-1 leading-tight">{line.desc}</p>
+                                      {line.eventDateDisplay && (
+                                        <p className="text-[10px] font-bold text-amber-600 mt-1 uppercase">Event: {line.eventDateDisplay}</p>
+                                      )}
+                                    </div>
+                                    <div className="text-right">
+                                      <div className={`text-sm font-bold ${line.type === "due" ? "text-amber-700" : "text-emerald-600"}`}>
+                                        {line.type === "due" ? `+ ${formatCurrency(line.amount)}` : `- ${formatCurrency(line.amount)}`}
+                                      </div>
+                                      <div className="flex justify-end gap-1 mt-1">
+                                        <span className={`px-1.5 py-0.5 rounded-[4px] text-[9px] font-bold uppercase ${line.type === "due" ? "bg-amber-100 text-amber-700" : "bg-emerald-100 text-emerald-700"}`}>
+                                          {line.method}
+                                        </span>
+                                      </div>
+                                    </div>
+                                  </div>
+                                  <div className="flex justify-between items-center pt-2 border-t border-slate-50">
+                                    <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Running Bal</span>
+                                    <span className="text-xs font-black text-slate-600">{formatCurrency(line.balance)}</span>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                          <div className="p-4 bg-slate-50 border-t border-slate-200 space-y-2">
+                            <div className="flex justify-between text-[10px] font-bold">
+                              <span className="text-slate-400 uppercase">Total Dues</span>
+                              <span className="text-amber-700">+ {formatCurrency(statement.reduce((sum, line) => line.type === 'due' ? sum + line.amount : sum, 0))}</span>
+                            </div>
+                            <div className="flex justify-between text-[10px] font-bold">
+                              <span className="text-slate-400 uppercase">Total Paid</span>
+                              <span className="text-emerald-600">- {formatCurrency(statement.reduce((sum, line) => line.type !== 'due' ? sum + line.amount : sum, 0))}</span>
+                            </div>
+                            <div className="flex justify-between text-xs font-black pt-2 border-t border-slate-200">
+                              <span className="text-slate-800 uppercase tracking-tight">Final Balance</span>
+                              <span className="text-slate-900">{formatCurrency(statement.reduce((sum, line) => line.type === 'due' ? sum + line.amount : sum - line.amount, 0))}</span>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
           </div>
         </div>
 
