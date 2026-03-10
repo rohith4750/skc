@@ -44,6 +44,7 @@ export default function OrderCenterPage() {
   const [customerSearch, setCustomerSearch] = useState<string>('')
   const [selectedMonth, setSelectedMonth] = useState<number>(0) // 0 for All Months
   const [selectedYear, setSelectedYear] = useState<number>(0) // 0 for All Years
+  const [filterDate, setFilterDate] = useState<string>('')
   const [mealTypeFilter, setMealTypeFilter] = useState<string>('all')
   const [pdfLanguageModal, setPdfLanguageModal] = useState<{ isOpen: boolean; order: any | null }>({
     isOpen: false,
@@ -111,6 +112,14 @@ export default function OrderCenterPage() {
     // Month/Year filter - skip if 0
     filtered = filtered.filter(order => {
       const orderDate = new Date(getOrderDate(order))
+
+      if (filterDate) {
+        const y = orderDate.getFullYear()
+        const m = String(orderDate.getMonth() + 1).padStart(2, '0')
+        const d = String(orderDate.getDate()).padStart(2, '0')
+        return `${y}-${m}-${d}` === filterDate
+      }
+
       const monthMatch = selectedMonth === 0 || (orderDate.getMonth() + 1) === selectedMonth
       const yearMatch = selectedYear === 0 || orderDate.getFullYear() === selectedYear
       return monthMatch && yearMatch
@@ -129,7 +138,7 @@ export default function OrderCenterPage() {
     }
 
     return filtered.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
-  }, [orders, statusFilter, customerSearch, selectedMonth, selectedYear, mealTypeFilter])
+  }, [orders, statusFilter, customerSearch, selectedMonth, selectedYear, mealTypeFilter, filterDate])
 
   const statusSummary = useMemo(() => {
     const totalOrders = filteredOrders.length
@@ -859,6 +868,28 @@ export default function OrderCenterPage() {
               </div>
             </div>
 
+            {/* Specific Date Filter */}
+            <div>
+              <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Specific Date</label>
+              <div className="relative">
+                <input
+                  type="date"
+                  value={filterDate}
+                  onChange={(e) => setFilterDate(e.target.value)}
+                  className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-700 font-bold text-sm focus:ring-2 focus:ring-indigo-500 outline-none transition-all"
+                />
+                {filterDate && (
+                  <button
+                    onClick={() => setFilterDate('')}
+                    className="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 text-slate-400 hover:text-slate-600 focus:outline-none bg-slate-50 rounded-lg hover:bg-slate-100 transition-colors"
+                    title="Clear Date"
+                  >
+                    <FaTimes className="w-3 h-3" />
+                  </button>
+                )}
+              </div>
+            </div>
+
             {/* Month Filter */}
             <div>
               <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Month</label>
@@ -913,6 +944,7 @@ export default function OrderCenterPage() {
               onClick={() => {
                 setStatusFilter('all')
                 setCustomerSearch('')
+                setFilterDate('')
                 setSelectedMonth(0)
                 setSelectedYear(0)
                 setMealTypeFilter('all')
