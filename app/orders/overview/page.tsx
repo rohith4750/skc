@@ -17,6 +17,8 @@ export default function OrdersOverviewPage() {
   const [search, setSearch] = useState('')
   const [viewMode, setViewMode] = useState<'table' | 'calendar'>('table')
   const [currentDate, setCurrentDate] = useState(new Date())
+  const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth())
+  const [selectedYear, setSelectedYear] = useState(new Date().getFullYear())
 
   useEffect(() => {
     const loadOrders = async () => {
@@ -35,15 +37,39 @@ export default function OrdersOverviewPage() {
   }, [])
 
   const filteredOrders = useMemo(() => {
-    if (!search.trim()) return orders
-    const term = search.toLowerCase()
-    return orders.filter(order =>
-      order.customer?.name?.toLowerCase().includes(term) ||
-      order.customer?.phone?.includes(search) ||
-      order.customer?.email?.toLowerCase().includes(term) ||
-      (order as any).eventName?.toLowerCase().includes(term)
-    )
-  }, [orders, search])
+    let filtered = orders
+
+    // Search filter
+    if (search.trim()) {
+      const term = search.toLowerCase()
+      filtered = filtered.filter(order =>
+        order.customer?.name?.toLowerCase().includes(term) ||
+        order.customer?.phone?.includes(search) ||
+        order.customer?.email?.toLowerCase().includes(term) ||
+        (order as any).eventName?.toLowerCase().includes(term)
+      )
+    }
+
+    // Month/Year filter
+    filtered = filtered.filter(order => {
+      // Check if any meal date matches the selected month/year
+      const mealTypeAmounts = order.mealTypeAmounts as Record<string, any>
+      if (mealTypeAmounts) {
+        const hasMealInPeriod = Object.values(mealTypeAmounts).some(data => {
+          if (!data || typeof data !== 'object' || !data.date) return false
+          const mealDate = new Date(data.date)
+          return mealDate.getMonth() === selectedMonth && mealDate.getFullYear() === selectedYear
+        })
+        if (hasMealInPeriod) return true
+      }
+
+      // Fallback to order creation date if no specific meal dates match or exist
+      const orderDate = new Date(order.createdAt)
+      return orderDate.getMonth() === selectedMonth && orderDate.getFullYear() === selectedYear
+    })
+
+    return filtered
+  }, [orders, search, selectedMonth, selectedYear])
 
   // Calendar helper functions
   const getMealColor = (mealType: string) => {
@@ -169,12 +195,18 @@ export default function OrdersOverviewPage() {
       } else {
         newDate.setMonth(newDate.getMonth() + 1)
       }
+      // Sync dropdowns
+      setSelectedMonth(newDate.getMonth())
+      setSelectedYear(newDate.getFullYear())
       return newDate
     })
   }
 
   const goToToday = () => {
-    setCurrentDate(new Date())
+    const today = new Date()
+    setCurrentDate(today)
+    setSelectedMonth(today.getMonth())
+    setSelectedYear(today.getFullYear())
   }
 
   const downloadMealReport = async () => {
@@ -387,15 +419,64 @@ export default function OrdersOverviewPage() {
           </div>
         </div>
 
-        {/* Search Bar */}
-        <div className="w-full md:w-80">
-          <input
-            type="text"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search by customer, phone, email, or event"
-            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-          />
+        {/* Filters */}
+        <div className="flex flex-col md:flex-row items-end gap-4">
+          {/* Search Bar */}
+          <div className="w-full md:w-80">
+            <label className="block text-xs font-semibold text-gray-500 uppercase mb-1">Search Events</label>
+            <input
+              type="text"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Customer, phone, or event..."
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+            />
+          </div>
+
+          {/* Month Selection */}
+          <div className="w-full md:w-48">
+            <label className="block text-xs font-semibold text-gray-500 uppercase mb-1">Month</label>
+            <select
+              value={selectedMonth}
+              onChange={(e) => {
+                const m = parseInt(e.target.value)
+                setSelectedMonth(m)
+                const newDate = new Date(currentDate)
+                newDate.setMonth(m)
+                newDate.setFullYear(selectedYear)
+                setCurrentDate(newDate)
+              }}
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
+            >
+              {Array.from({ length: 12 }).map((_, i) => (
+                <option key={i} value={i}>
+                  {new Date(0, i).toLocaleString('default', { month: 'long' })}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* Year Selection */}
+          <div className="w-full md:w-32">
+            <label className="block text-xs font-semibold text-gray-500 uppercase mb-1">Year</label>
+            <select
+              value={selectedYear}
+              onChange={(e) => {
+                const y = parseInt(e.target.value)
+                setSelectedYear(y)
+                const newDate = new Date(currentDate)
+                newDate.setFullYear(y)
+                newDate.setMonth(selectedMonth)
+                setCurrentDate(newDate)
+              }}
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
+            >
+              {Array.from({ length: 5 }).map((_, i) => {
+                const year = new Date().getFullYear() - 2 + i
+                return <option key={year} value={year}>{year}</option>
+              })}
+            </select>
+          </div>
         </div>
       </div>
 
