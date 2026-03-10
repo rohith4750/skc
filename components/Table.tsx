@@ -98,7 +98,64 @@ export default function Table<T>({
   return (
     <>
       <div className={`bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden ${className}`}>
-        <div className="overflow-x-auto">
+        {/* Mobile Card View */}
+        <div className="md:hidden divide-y divide-slate-100">
+          {paginatedData.length === 0 ? (
+            <div className="px-6 py-12 text-center text-slate-500 font-medium">
+              {emptyMessage}
+            </div>
+          ) : (
+            paginatedData.map((row, index) => {
+              const itemId = getItemId ? getItemId(row) : index.toString()
+              return (
+                <div key={itemId} className="p-4 space-y-4 hover:bg-slate-50/50 transition-colors">
+                  <div className="flex items-start justify-between gap-3">
+                    {showCheckbox && onSelectItem && (
+                      <input
+                        type="checkbox"
+                        checked={selectedItems.includes(itemId)}
+                        onChange={() => onSelectItem(itemId)}
+                        className="w-5 h-5 text-indigo-600 border-slate-300 rounded focus:ring-indigo-500 mt-1"
+                      />
+                    )}
+                    <div className="flex-1 space-y-3">
+                      {columns.map((column) => {
+                        const content = column.render
+                          ? column.render(row)
+                          : column.accessor
+                            ? column.accessor(row)
+                            : (row as any)[column.key]
+
+                        return (
+                          <div key={column.key} className="space-y-1">
+                            <div className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                              {column.header}
+                            </div>
+                            <div className="text-sm font-medium text-slate-600">
+                              {typeof content === 'string' || typeof content === 'number' ? (
+                                content
+                              ) : (
+                                content
+                              )}
+                            </div>
+                          </div>
+                        )
+                      })}
+                    </div>
+                  </div>
+                  {renderActions && (
+                    <div className="pt-4 border-t border-slate-100 flex items-center justify-end gap-2">
+                      {renderActions(row)}
+                    </div>
+                  )}
+                </div>
+              )
+            })
+          )}
+        </div>
+
+        {/* Desktop Table View */}
+        <div className="hidden md:block overflow-x-auto">
           <table className="w-full min-w-[640px]">
             <thead className="bg-slate-50/50 border-b border-slate-100">
               <tr>
@@ -227,8 +284,8 @@ export default function Table<T>({
                 onClick={() => handlePageChange(currentPage - 1)}
                 disabled={currentPage === 1}
                 className={`p-2 rounded-xl text-xs sm:text-sm font-bold transition-all ${currentPage === 1
-                    ? 'bg-slate-50 text-slate-300 cursor-not-allowed'
-                    : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-50 active:scale-90 shadow-sm'
+                  ? 'bg-slate-50 text-slate-300 cursor-not-allowed'
+                  : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-50 active:scale-90 shadow-sm'
                   }`}
               >
                 <FaChevronLeft className="w-3 h-3" />
@@ -245,8 +302,8 @@ export default function Table<T>({
                         key={page}
                         onClick={() => handlePageChange(page)}
                         className={`w-8 h-8 sm:w-10 sm:h-10 flex items-center justify-center rounded-xl text-xs sm:text-sm font-bold transition-all ${currentPage === page
-                            ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-200 scale-110'
-                            : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-50 active:scale-90 shadow-sm'
+                          ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-200 scale-110'
+                          : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-50 active:scale-90 shadow-sm'
                           }`}
                       >
                         {page}
@@ -262,8 +319,8 @@ export default function Table<T>({
                 onClick={() => handlePageChange(currentPage + 1)}
                 disabled={currentPage === totalPages}
                 className={`p-2 rounded-xl text-xs sm:text-sm font-bold transition-all ${currentPage === totalPages
-                    ? 'bg-slate-50 text-slate-300 cursor-not-allowed'
-                    : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-50 active:scale-90 shadow-sm'
+                  ? 'bg-slate-50 text-slate-300 cursor-not-allowed'
+                  : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-50 active:scale-90 shadow-sm'
                   }`}
               >
                 <FaChevronRight className="w-3 h-3" />

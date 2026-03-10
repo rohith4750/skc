@@ -1,6 +1,6 @@
 "use client";
-import { useEffect, useState, useMemo } from 'react'
-import { FaEdit, FaTrash, FaUtensils, FaUserTie, FaTruck, FaDollarSign, FaReceipt, FaChevronDown, FaChevronUp, FaUsers, FaUserFriends, FaFilter, FaSearch, FaTimes, FaCheckCircle, FaExclamationCircle, FaClock, FaGasPump, FaBox, FaStore, FaCircle, FaPlus, FaPrint, FaImage } from 'react-icons/fa'
+import { useEffect, useState, useMemo, Fragment } from 'react'
+import { FaEdit, FaTrash, FaUtensils, FaUserTie, FaTruck, FaDollarSign, FaReceipt, FaChevronDown, FaChevronUp, FaUsers, FaUserFriends, FaFilter, FaSearch, FaTimes, FaCheckCircle, FaExclamationCircle, FaClock, FaGasPump, FaBox, FaStore, FaCircle, FaPlus, FaPrint, FaSync, FaUser, FaImage } from 'react-icons/fa'
 import toast from 'react-hot-toast'
 import Table from '@/components/Table'
 import ConfirmModal from '@/components/ConfirmModal'
@@ -772,8 +772,138 @@ export default function WorkforcePage() {
         </div>
       )}
 
-      {/* Workforce Table */}
-      <div className="bg-white rounded-lg shadow-md overflow-hidden">
+      {/* Mobile Card View */}
+      <div className="md:hidden space-y-4">
+        {filteredWorkforce.length === 0 ? (
+          <div className="p-8 text-center text-gray-500 bg-white rounded-lg shadow">
+            {workforce.length === 0
+              ? 'No workforce members found. Add your first member.'
+              : 'No workforce members match the current filters.'}
+          </div>
+        ) : (
+          filteredWorkforce.map((member) => {
+            const isExpanded = expandedRows.has(member.id)
+            const hasExpenses = member.expenses && member.expenses.length > 0
+            const Icon = roleIcons[member.role] || FaUser
+
+            return (
+              <div key={member.id} className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+                <div className="p-4 space-y-4">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className={`p-2 rounded-full ${roleColors[member.role] || 'bg-gray-100'}`}>
+                        <Icon className="w-4 h-4 text-gray-700" />
+                      </div>
+                      <div>
+                        <div className="font-bold text-gray-900">{member.name || 'Unknown'}</div>
+                        <div className={`text-[10px] font-black uppercase tracking-widest px-1.5 py-0.5 rounded leading-none mt-1 inline-block ${roleColors[member.role] || 'bg-gray-100 text-gray-800'}`}>
+                          {member.role}
+                        </div>
+                      </div>
+                    </div>
+                    <span className={`px-2 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${member.isActive ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+                      {member.isActive ? 'Active' : 'Inactive'}
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4 pt-2 border-t border-gray-50">
+                    <div className="space-y-1">
+                      <div className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Total Amount</div>
+                      <div className="text-sm font-bold text-gray-900">{formatCurrency(member.totalAmount || 0)}</div>
+                    </div>
+                    <div className="space-y-1">
+                      <div className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Paid</div>
+                      <div className="text-sm font-bold text-green-600">{formatCurrency(member.totalPaidAmount || 0)}</div>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center justify-between pt-2">
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => handleGeneratePDF(member)}
+                        className="p-2.5 bg-primary-50 text-primary-600 rounded-xl hover:bg-primary-100 transition-colors"
+                        title="PDF Receipt"
+                      >
+                        <FaPrint className="w-4 h-4" />
+                      </button>
+                      <button
+                        onClick={() => handleDownloadImage(member)}
+                        className="p-2.5 bg-amber-50 text-amber-600 rounded-xl hover:bg-amber-100 transition-colors"
+                        title="Image Receipt"
+                      >
+                        <FaImage className="w-4 h-4" />
+                      </button>
+                      <button
+                        onClick={() => handleEdit(member)}
+                        className="p-2.5 bg-blue-50 text-blue-600 rounded-xl hover:bg-blue-100 transition-colors"
+                        title="Edit"
+                      >
+                        <FaEdit className="w-4 h-4" />
+                      </button>
+                      <button
+                        onClick={() => handleDelete(member.id)}
+                        className="p-2.5 bg-red-50 text-red-600 rounded-xl hover:bg-red-100 transition-colors"
+                        title="Delete"
+                      >
+                        <FaTrash className="w-4 h-4" />
+                      </button>
+                    </div>
+
+                    {hasExpenses && (
+                      <button
+                        onClick={() => toggleExpand(member.id)}
+                        className="flex items-center gap-1.5 text-xs font-bold text-gray-500 hover:text-gray-700"
+                      >
+                        {isExpanded ? 'Hide Expenses' : 'View Expenses'}
+                        {isExpanded ? <FaChevronUp /> : <FaChevronDown />}
+                      </button>
+                    )}
+                  </div>
+                </div>
+
+                {isExpanded && hasExpenses && (
+                  <div className="bg-gray-50 p-3 border-t border-gray-100 space-y-3">
+                    <h4 className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Expense Details</h4>
+                    {member.expenses!.map((expense: any) => (
+                      <div key={expense.id} className="bg-white p-3 rounded-lg border border-gray-200 shadow-sm space-y-2">
+                        <div className="flex justify-between items-start">
+                          <div>
+                            <div className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase inline-block mb-1 ${CATEGORY_COLORS[expense.category] || 'bg-gray-100 text-gray-800'}`}>
+                              {expense.category}
+                            </div>
+                            <div className="text-sm font-semibold text-gray-800">{expense.description || 'No description'}</div>
+                          </div>
+                          <div className="text-right">
+                            <div className="text-sm font-bold text-gray-900">{formatCurrency(expense.amount)}</div>
+                            <div className="text-[10px] text-gray-500">{formatDate(expense.paymentDate)}</div>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center justify-between pt-2 border-t border-gray-50">
+                          <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase ${expense.paymentStatus === 'paid' ? 'bg-green-100 text-green-700' :
+                            expense.paymentStatus === 'partial' ? 'bg-yellow-100 text-yellow-700' :
+                              'bg-red-100 text-red-700'
+                            }`}>
+                            {expense.paymentStatus}
+                          </span>
+                          {expense.paidAmount > 0 && (
+                            <div className="text-[10px] font-bold text-green-600">
+                              Paid: {formatCurrency(expense.paidAmount)}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )
+          })
+        )}
+      </div>
+
+      {/* Desktop Table View */}
+      <div className="hidden md:block bg-white rounded-lg shadow-md overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full min-w-[640px]">
             <thead className="bg-gray-50 border-b border-gray-200">
@@ -803,8 +933,8 @@ export default function WorkforcePage() {
                   const isExpanded = expandedRows.has(member.id)
                   const hasExpenses = member.expenses && member.expenses.length > 0
                   return (
-                    <>
-                      <tr key={member.id} className="hover:bg-gray-50">
+                    <Fragment key={member.id}>
+                      <tr className="hover:bg-gray-50 transition-colors">
                         <td className="px-6 py-4 whitespace-nowrap">
                           {hasExpenses && (
                             <button
@@ -884,7 +1014,7 @@ export default function WorkforcePage() {
                                       <p className="font-semibold text-gray-800">{formatCurrency(expense.amount)}</p>
                                       {expense.paidAmount !== undefined && expense.paidAmount > 0 && (
                                         <p className="text-sm text-green-600 font-medium">
-                                          Paid: {formatCurrency(expense.paidAmount || 0)}
+                                          Total Paid: {formatCurrency(expense.paidAmount || 0)}
                                         </p>
                                       )}
                                       {expense.paidAmount !== undefined && expense.paidAmount < expense.amount && (
@@ -911,7 +1041,7 @@ export default function WorkforcePage() {
                           </td>
                         </tr>
                       )}
-                    </>
+                    </Fragment>
                   )
                 })
               )}
@@ -941,7 +1071,38 @@ export default function WorkforcePage() {
               </button>
             )}
           </div>
-          <div className="overflow-x-auto">
+          {/* Mobile Card View */}
+          <div className="md:hidden divide-y divide-gray-100">
+            {workforcePayments.map((payment) => (
+              <div key={payment.id} className="p-4 space-y-3 bg-white hover:bg-green-50/30 transition-colors">
+                <div className="flex justify-between items-start">
+                  <div>
+                    <div className="text-[10px] font-black text-gray-400 uppercase tracking-widest leading-none mb-1">Date</div>
+                    <div className="text-sm font-semibold text-gray-700">{formatDate(payment.paymentDate)}</div>
+                  </div>
+                  <div className="text-right">
+                    <div className="text-[10px] font-black text-gray-400 uppercase tracking-widest leading-none mb-1">Amount</div>
+                    <div className="text-lg font-bold text-green-600">{formatCurrency(parseFloat(payment.amount))}</div>
+                  </div>
+                </div>
+                <div className="flex justify-between items-center pt-2 border-t border-gray-50">
+                  <span className="px-2 py-1 rounded text-[10px] font-bold bg-green-100 text-green-800 uppercase tracking-wider">
+                    {payment.paymentMethod.replace('_', ' ')}
+                  </span>
+                  <div className="text-[10px] text-gray-500 italic max-w-[200px] truncate">
+                    {payment.notes || 'No notes'}
+                  </div>
+                </div>
+              </div>
+            ))}
+            <div className="p-4 bg-gray-50 flex justify-between items-center border-t border-gray-200">
+              <span className="text-sm font-bold text-gray-700">Total Payments:</span>
+              <span className="text-xl font-bold text-green-600">{formatCurrency(totalWorkforcePayments)}</span>
+            </div>
+          </div>
+
+          {/* Desktop Table View */}
+          <div className="hidden md:block overflow-x-auto">
             <table className="w-full min-w-[500px]">
               <thead className="bg-gray-50 border-b border-gray-200">
                 <tr>
@@ -987,7 +1148,64 @@ export default function WorkforcePage() {
             <p className="text-green-100 text-sm mt-1">Track all paid amounts for workforce</p>
           </div>
 
-          <div className="overflow-x-auto">
+          <div className="md:hidden divide-y divide-gray-100">
+            {filteredWorkforce
+              .filter(member => member.expenses && member.expenses.some((e: any) => e.paymentStatus === 'paid' || e.paidAmount > 0))
+              .flatMap((member) => {
+                const paidExpenses = (member.expenses || []).filter(
+                  (exp: any) => exp.paymentStatus === 'paid' || exp.paidAmount > 0
+                )
+                const Icon = roleIcons[member.role] || FaCircle
+
+                return paidExpenses.map((expense: any) => {
+                  const paidAmount = expense.paidAmount || expense.amount || 0
+                  return (
+                    <div key={expense.id} className="p-4 space-y-4 bg-white hover:bg-green-50/30 transition-colors">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <div className={`p-1.5 rounded-full ${roleColors[member.role] || 'bg-gray-100'}`}>
+                            <Icon className="w-3 h-3" />
+                          </div>
+                          <div>
+                            <div className="text-sm font-bold text-gray-900">{member.name}</div>
+                            <div className={`text-[9px] font-black uppercase px-1.5 py-0.5 rounded ${roleColors[member.role] || 'bg-gray-100 text-gray-800'}`}>
+                              {member.role}
+                            </div>
+                          </div>
+                        </div>
+                        <div className="text-right">
+                          <div className="text-lg font-bold text-green-600">{formatCurrency(paidAmount)}</div>
+                          <div className="text-[10px] text-gray-500 italic">{formatDate(expense.paymentDate)}</div>
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-4 pt-2 border-t border-gray-50">
+                        <div className="space-y-1">
+                          <div className="text-[9px] font-black text-gray-400 uppercase tracking-widest">Category</div>
+                          <span className={`px-2 py-0.5 rounded text-[9px] font-bold uppercase inline-block ${CATEGORY_COLORS[expense.category] || 'bg-gray-100 text-gray-800'}`}>
+                            {expense.category}
+                          </span>
+                        </div>
+                        <div className="space-y-1">
+                          <div className="text-[9px] font-black text-gray-400 uppercase tracking-widest">Recipient</div>
+                          <div className="text-[10px] font-semibold text-gray-700">{expense.recipient || '-'}</div>
+                        </div>
+                        <div className="col-span-2 space-y-1">
+                          <div className="text-[9px] font-black text-gray-400 uppercase tracking-widest">Event/Customer</div>
+                          <div className="text-[10px] font-semibold text-indigo-600">{expense.order?.customer?.name || '-'}</div>
+                        </div>
+                      </div>
+                    </div>
+                  )
+                })
+              })}
+            <div className="p-4 bg-gray-50 flex justify-between items-center border-t border-gray-200">
+              <span className="text-sm font-bold text-gray-700">Total Paid:</span>
+              <span className="text-xl font-bold text-green-600">{formatCurrency(totalPaid)}</span>
+            </div>
+          </div>
+
+          <div className="hidden md:block overflow-x-auto">
             <table className="w-full min-w-[800px]">
               <thead className="bg-gray-50 border-b border-gray-200">
                 <tr>

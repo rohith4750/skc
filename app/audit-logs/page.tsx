@@ -1,21 +1,21 @@
 "use client";
 import { useEffect, useState, useMemo } from 'react'
 import { formatDateTime } from '@/lib/utils'
-import { 
-  FaHistory, 
-  FaDesktop, 
-  FaMobileAlt, 
-  FaTabletAlt, 
-  FaCheckCircle, 
-  FaTimesCircle, 
-  FaChrome, 
-  FaFirefox, 
-  FaSafari, 
-  FaEdge, 
-  FaGlobe, 
-  FaWindows, 
-  FaApple, 
-  FaAndroid, 
+import {
+  FaHistory,
+  FaDesktop,
+  FaMobileAlt,
+  FaTabletAlt,
+  FaCheckCircle,
+  FaTimesCircle,
+  FaChrome,
+  FaFirefox,
+  FaSafari,
+  FaEdge,
+  FaGlobe,
+  FaWindows,
+  FaApple,
+  FaAndroid,
   FaLinux,
   FaUser,
   FaFilter,
@@ -116,7 +116,7 @@ export default function AuditLogsPage() {
     // Search filter
     if (searchTerm) {
       const search = searchTerm.toLowerCase()
-      filtered = filtered.filter(log => 
+      filtered = filtered.filter(log =>
         log.username.toLowerCase().includes(search) ||
         log.ipAddress?.toLowerCase().includes(search) ||
         log.device?.toLowerCase().includes(search) ||
@@ -164,7 +164,7 @@ export default function AuditLogsPage() {
     const uniqueDevices = new Set(filteredLogs.map(l => l.device)).size
     const mobileLogins = filteredLogs.filter(l => l.device === 'Mobile').length
     const desktopLogins = filteredLogs.filter(l => l.device === 'Desktop').length
-    
+
     return { totalLogins, successfulLogins, failedLogins, uniqueDevices, mobileLogins, desktopLogins }
   }, [filteredLogs])
 
@@ -199,11 +199,10 @@ export default function AuditLogsPage() {
           <div className="flex items-center gap-2">
             <button
               onClick={() => setShowFilters(!showFilters)}
-              className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors ${
-                showFilters
+              className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors ${showFilters
                   ? 'bg-indigo-500 text-white'
                   : 'bg-white border border-gray-300 text-gray-700 hover:bg-gray-50'
-              }`}
+                }`}
             >
               <FaFilter className="w-4 h-4" />
               Filters
@@ -270,7 +269,7 @@ export default function AuditLogsPage() {
                 </button>
               </div>
             </div>
-            
+
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
               {/* Search */}
               <div className="lg:col-span-2">
@@ -355,7 +354,86 @@ export default function AuditLogsPage() {
         )}
 
         {/* Audit Logs Table */}
-        <div className="bg-white rounded-lg shadow-md overflow-hidden">
+        {/* Mobile Card View */}
+        <div className="md:hidden space-y-4">
+          {loading ? (
+            <div className="p-8 text-center text-gray-500 bg-white rounded-lg">
+              <FaSync className="w-8 h-8 animate-spin mx-auto mb-4 text-indigo-500" />
+              Loading audit logs...
+            </div>
+          ) : filteredLogs.length === 0 ? (
+            <div className="p-8 text-center text-gray-500 bg-white rounded-lg">
+              <FaHistory className="w-12 h-12 mx-auto mb-4 text-gray-300" />
+              <p className="text-lg font-medium">No login records found</p>
+              <p className="text-sm mt-1">Audit logs will appear here after users log in.</p>
+            </div>
+          ) : (
+            filteredLogs.map((log) => {
+              const DeviceIcon = deviceIcons[log.device] || FaDesktop
+              const BrowserIcon = browserIcons[log.browser] || FaGlobe
+              const OsIcon = osIcons[log.os] || FaGlobe
+
+              return (
+                <div
+                  key={log.id}
+                  className={`bg-white rounded-xl shadow-sm border border-gray-100 p-4 space-y-4 ${!log.success ? 'border-l-4 border-l-red-500' : 'border-l-4 border-l-green-500'
+                    }`}
+                >
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className={`p-2 rounded-full ${roleColors[log.user?.role || 'admin'] || 'bg-gray-100'}`}>
+                        <FaUser className="w-3 h-3" />
+                      </div>
+                      <div>
+                        <div className="font-bold text-gray-900">{log.username}</div>
+                        <div className="text-xs text-gray-500">{log.user?.email}</div>
+                      </div>
+                    </div>
+                    <span className={`px-2 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${log.success ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'
+                      }`}>
+                      {log.success ? 'Success' : 'Failed'}
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4 pt-2 border-t border-gray-50">
+                    <div className="space-y-1">
+                      <div className="text-[10px] font-black text-gray-400 uppercase tracking-widest leading-none">Time</div>
+                      <div className="text-xs font-semibold text-gray-700">{formatDateTime(log.loginTime)}</div>
+                    </div>
+                    <div className="space-y-1">
+                      <div className="text-[10px] font-black text-gray-400 uppercase tracking-widest leading-none">IP Address</div>
+                      <div className="text-xs font-semibold text-gray-600">{log.ipAddress}</div>
+                    </div>
+                  </div>
+
+                  <div className="flex flex-wrap gap-2 pt-2">
+                    <div className="flex items-center gap-1.5 px-2 py-1 bg-gray-50 rounded-lg border border-gray-100">
+                      <DeviceIcon className="w-3 h-3 text-gray-400" />
+                      <span className="text-[10px] font-bold text-gray-600">{log.device}</span>
+                    </div>
+                    <div className="flex items-center gap-1.5 px-2 py-1 bg-gray-50 rounded-lg border border-gray-100">
+                      <BrowserIcon className="w-3 h-3 text-gray-400" />
+                      <span className="text-[10px] font-bold text-gray-600">{log.browser}</span>
+                    </div>
+                    <div className="flex items-center gap-1.5 px-2 py-1 bg-gray-50 rounded-lg border border-gray-100">
+                      <OsIcon className="w-3 h-3 text-gray-400" />
+                      <span className="text-[10px] font-bold text-gray-600">{log.os}</span>
+                    </div>
+                  </div>
+
+                  {!log.success && log.failReason && (
+                    <div className="mt-2 p-2 bg-red-50 rounded text-[10px] text-red-600 font-medium">
+                      Reason: {log.failReason}
+                    </div>
+                  )}
+                </div>
+              )
+            })
+          )}
+        </div>
+
+        {/* Desktop Table View */}
+        <div className="hidden md:block bg-white rounded-lg shadow-md overflow-hidden">
           <div className="overflow-x-auto">
             {loading ? (
               <div className="p-8 text-center text-gray-500">
@@ -386,13 +464,12 @@ export default function AuditLogsPage() {
                     const DeviceIcon = deviceIcons[log.device] || FaDesktop
                     const BrowserIcon = browserIcons[log.browser] || FaGlobe
                     const OsIcon = osIcons[log.os] || FaGlobe
-                    
+
                     return (
-                      <tr 
-                        key={log.id} 
-                        className={`hover:bg-gray-50 transition-colors ${
-                          !log.success ? 'bg-red-50 hover:bg-red-100' : ''
-                        } ${idx % 2 === 0 ? '' : 'bg-gray-50'}`}
+                      <tr
+                        key={log.id}
+                        className={`hover:bg-gray-50 transition-colors ${!log.success ? 'bg-red-50 hover:bg-red-100' : ''
+                          } ${idx % 2 === 0 ? '' : 'bg-gray-50'}`}
                       >
                         <td className="px-4 py-4">
                           <div className="flex items-center gap-3">
@@ -400,8 +477,8 @@ export default function AuditLogsPage() {
                               <FaUser className="w-3 h-3" />
                             </div>
                             <div>
-                              <div className="font-semibold text-gray-900">{log.username}</div>
-                              <div className="text-xs text-gray-500">{log.user?.email || ''}</div>
+                              <div className="font-bold text-gray-900">{log.username}</div>
+                              <div className="text-xs text-gray-500">{log.user?.email}</div>
                               {log.user?.role && (
                                 <span className={`text-xs px-2 py-0.5 rounded ${roleColors[log.user.role]}`}>
                                   {log.user.role.replace('_', ' ').toUpperCase()}
@@ -417,37 +494,33 @@ export default function AuditLogsPage() {
                         </td>
                         <td className="px-4 py-4">
                           <div className="flex items-center gap-2">
-                            <div className={`p-2 rounded-lg ${
-                              log.device === 'Mobile' ? 'bg-green-100' :
-                              log.device === 'Tablet' ? 'bg-blue-100' : 'bg-gray-100'
-                            }`}>
-                              <DeviceIcon className={`w-4 h-4 ${
-                                log.device === 'Mobile' ? 'text-green-600' :
-                                log.device === 'Tablet' ? 'text-blue-600' : 'text-gray-600'
-                              }`} />
+                            <div className={`p-2 rounded-lg ${log.device === 'Mobile' ? 'bg-green-100' :
+                                log.device === 'Tablet' ? 'bg-blue-100' : 'bg-gray-100'
+                              }`}>
+                              <DeviceIcon className={`w-4 h-4 ${log.device === 'Mobile' ? 'text-green-600' :
+                                  log.device === 'Tablet' ? 'text-blue-600' : 'text-gray-600'
+                                }`} />
                             </div>
                             <span className="text-sm font-medium text-gray-700">{log.device}</span>
                           </div>
                         </td>
                         <td className="px-4 py-4">
                           <div className="flex items-center gap-2">
-                            <BrowserIcon className={`w-5 h-5 ${
-                              log.browser === 'Chrome' ? 'text-yellow-500' :
-                              log.browser === 'Firefox' ? 'text-orange-500' :
-                              log.browser === 'Safari' ? 'text-blue-500' :
-                              log.browser === 'Edge' ? 'text-blue-600' : 'text-gray-500'
-                            }`} />
+                            <BrowserIcon className={`w-5 h-5 ${log.browser === 'Chrome' ? 'text-yellow-500' :
+                                log.browser === 'Firefox' ? 'text-orange-500' :
+                                  log.browser === 'Safari' ? 'text-blue-500' :
+                                    log.browser === 'Edge' ? 'text-blue-600' : 'text-gray-500'
+                              }`} />
                             <span className="text-sm text-gray-700">{log.browser}</span>
                           </div>
                         </td>
                         <td className="px-4 py-4">
                           <div className="flex items-center gap-2">
-                            <OsIcon className={`w-5 h-5 ${
-                              log.os?.includes('Windows') ? 'text-blue-500' :
-                              log.os?.includes('mac') || log.os?.includes('iOS') ? 'text-gray-700' :
-                              log.os === 'Android' ? 'text-green-500' :
-                              log.os === 'Linux' ? 'text-yellow-600' : 'text-gray-500'
-                            }`} />
+                            <OsIcon className={`w-5 h-5 ${log.os?.includes('Windows') ? 'text-blue-500' :
+                                log.os?.includes('mac') || log.os?.includes('iOS') ? 'text-gray-700' :
+                                  log.os === 'Android' ? 'text-green-500' :
+                                    log.os === 'Linux' ? 'text-yellow-600' : 'text-gray-500'
+                              }`} />
                             <span className="text-sm text-gray-700">{log.os}</span>
                           </div>
                         </td>
@@ -483,7 +556,7 @@ export default function AuditLogsPage() {
               </table>
             )}
           </div>
-          
+
           {/* Footer */}
           {filteredLogs.length > 0 && (
             <div className="bg-gray-50 px-4 py-3 border-t border-gray-200">

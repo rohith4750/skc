@@ -1,3 +1,4 @@
+"use client";
 import CustomerForm from "@/components/customers/CustomerForm";
 import { FaArrowLeft } from "react-icons/fa";
 import Link from "next/link";

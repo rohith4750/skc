@@ -19,7 +19,7 @@ export default function FinancialTrackingPage() {
   const [order, setOrder] = useState<any>(null)
   const [loading, setLoading] = useState(true)
   const [formError, setFormError] = useState<string>('')
-  const mealTypeOptions = ['breakfast', 'lunch', 'dinner', 'snacks', 'sweets', 'saree']
+  const mealTypeOptions = ['breakfast', 'lunch', 'dinner', 'snacks', 'sweets', 'saree', 'special_order']
 
   const [formData, setFormData] = useState({
     transportCost: '0',

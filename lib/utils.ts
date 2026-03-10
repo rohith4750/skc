@@ -103,6 +103,8 @@ export function sanitizeMealLabel(label: string): string {
   // If it's a long string with hyphens (likely a UUID), return generic label
   if (workingLabel.length > 20 && workingLabel.includes("-")) return "Meal";
 
+  if (workingLabel === "special_order") return "Special Order";
+
   // Strip tracking suffixes like session_NAME_serial
   if (workingLabel.startsWith("session_")) {
     const parts = workingLabel.split("_");

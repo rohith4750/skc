@@ -647,6 +647,7 @@ export default function OrderForm({ orderId, isEditMode = false, initialOrderTyp
                                             <option value="snacks">Snacks</option>
                                             <option value="tiffins">Tiffins</option>
                                             <option value="sweets">Sweets</option>
+                                            <option value="special_order">Special Order</option>
                                         </select>
                                     </div>
                                     <div>
@@ -770,7 +771,8 @@ export default function OrderForm({ orderId, isEditMode = false, initialOrderTyp
                                                             const search = (menuItemSearch[mt.id] || '').toLowerCase()
                                                             const matchesSearch = item.name.toLowerCase().includes(search)
                                                             const itemTypes = Array.isArray(item.type) ? item.type : [(item.type as any)]
-                                                            const matchesType = !mt.menuType || itemTypes.some((t: string) => t?.toLowerCase() === mt.menuType.toLowerCase())
+                                                            const isSpecialOrder = mt.menuType === 'special_order'
+                                                            const matchesType = isSpecialOrder || !mt.menuType || itemTypes.some((t: string) => t?.toLowerCase() === mt.menuType.toLowerCase())
                                                             return matchesSearch && matchesType
                                                         })
                                                         .map(item => (
