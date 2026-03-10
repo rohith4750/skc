@@ -30,6 +30,8 @@ export default function Dashboard() {
   const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth() + 1);
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
   const [selectedDate, setSelectedDate] = useState<string>('');
+  const [chefMonth, setChefMonth] = useState(new Date().getMonth() + 1);
+  const [chefYear, setChefYear] = useState(new Date().getFullYear());
   const [stats, setStats] = useState<DashboardStats>({
     customers: 0,
     menuItems: 0,
@@ -58,6 +60,11 @@ export default function Dashboard() {
     avgCostPerPlate: 0,
     avgProfitPerPlate: 0,
     totalPlates: 0,
+    chefSummary: 0,
+    chefCostPerPlate: 0,
+    chefPlateType: '',
+    ChefTotalAmount: 0,
+
   });
   const [loading, setLoading] = useState(true);
   const [isSuperAdminUser, setIsSuperAdminUser] = useState(false);
@@ -188,6 +195,26 @@ export default function Dashboard() {
         const avgCostPerPlate = totalPlates > 0 ? totalCostForPlates / totalPlates : 0;
         const avgProfitPerPlate = avgRevenuePerPlate - avgCostPerPlate;
 
+        // --- CHEF ANALYTICS ---
+        const chefExpenses = rawExpenses.filter((e: any) => {
+          if (e.category !== "chef") return false;
+          const d = new Date(e.paymentDate);
+          return d.getMonth() + 1 === chefMonth && d.getFullYear() === chefYear;
+        });
+        const ChefTotalAmount = chefExpenses.reduce((sum: number, e: any) => sum + (parseFloat(e.amount) || 0), 0);
+        const uniqueChefs = new Set(chefExpenses.map((e: any) => e.recipient).filter(Boolean));
+        const chefSummary = uniqueChefs.size;
+        const chefCostPerPlate = totalPlates > 0 ? ChefTotalAmount / totalPlates : 0;
+
+        // Find top chef by total paid amount
+        const chefPayments: Record<string, number> = {};
+        chefExpenses.forEach((e: any) => {
+          const name = e.recipient || "Unknown";
+          chefPayments[name] = (chefPayments[name] || 0) + (parseFloat(e.amount) || 0);
+        });
+        const topChef = Object.entries(chefPayments).sort((a, b) => b[1] - a[1])[0]?.[0] || 'N/A';
+        const chefPlateType = topChef;
+
         // Get user and workforce counts (only for super admin)
         let usersCount = 0;
         let workforceCount = 0;
@@ -257,6 +284,10 @@ export default function Dashboard() {
           avgCostPerPlate,
           avgProfitPerPlate,
           totalPlates,
+          chefSummary,
+          chefCostPerPlate,
+          chefPlateType,
+          ChefTotalAmount,
         });
       } catch (error) {
         console.error("Failed to load stats:", error);
@@ -265,7 +296,7 @@ export default function Dashboard() {
       }
     };
     loadStats();
-  }, [isSuperAdminUser, selectedMonth, selectedYear, selectedDate]);
+  }, [isSuperAdminUser, selectedMonth, selectedYear, selectedDate, chefMonth, chefYear]);
 
   const mainStatCards = getDashboardMainStatCards(stats);
   const adminStatCards = getDashboardAdminStatCards(stats, isSuperAdminUser);
@@ -553,6 +584,65 @@ export default function Dashboard() {
           </div>
         </div>
       )}
+
+
+      {/* Chef Summary Analytics */}
+      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 mb-8">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+          <div className="flex items-center gap-3">
+            <div className="bg-green-50 p-2.5 rounded-xl">
+              <svg className="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+              </svg>
+            </div>
+            <h2 className="text-lg font-bold text-gray-800">Chef Summary (Per Plate)</h2>
+          </div>
+
+          <div className="flex items-center gap-2 bg-slate-50 p-1 rounded-xl border border-slate-100">
+            <select
+              value={chefMonth}
+              onChange={(e) => setChefMonth(parseInt(e.target.value))}
+              className="bg-transparent text-xs font-bold text-slate-600 outline-none px-2 py-1 cursor-pointer"
+            >
+              {DASHBOARD_MONTH_OPTIONS.map((m, i) => (
+                <option key={m} value={i + 1}>
+                  {m}
+                </option>
+              ))}
+            </select>
+            <div className="w-px h-4 bg-slate-200"></div>
+            <select
+              value={chefYear}
+              onChange={(e) => setChefYear(parseInt(e.target.value))}
+              className="bg-transparent text-xs font-bold text-slate-600 outline-none px-2 py-1 cursor-pointer"
+            >
+              {DASHBOARD_YEAR_OPTIONS.map((y) => (
+                <option key={y} value={y}>
+                  {y}
+                </option>
+              ))}
+            </select>
+          </div>
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="bg-blue-50/50 rounded-xl p-4 border border-blue-100">
+            <p className="text-xs font-bold text-blue-400 uppercase mb-2 tracking-tight">Total Chef Payments</p>
+            <p className="text-lg font-bold text-blue-700">₹{stats.ChefTotalAmount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</p>
+          </div>
+          <div className="bg-red-50/50 rounded-xl p-4 border border-red-100">
+            <p className="text-xs font-bold text-red-400 uppercase mb-2 tracking-tight">Avg Chef Cost / Plate</p>
+            <p className="text-lg font-bold text-red-700">₹{stats.chefCostPerPlate.toFixed(2)}</p>
+          </div>
+          <div className="bg-green-50/50 rounded-xl p-4 border border-green-100">
+            <p className="text-xs font-bold text-green-400 uppercase mb-2 tracking-tight">Active Chefs</p>
+            <p className="text-lg font-bold text-green-700">{stats.chefSummary}</p>
+          </div>
+          <div className="bg-gray-50/50 rounded-xl p-4 border border-gray-100">
+            <p className="text-xs font-bold text-gray-400 uppercase mb-2 tracking-tight">Top Paid Chef</p>
+            <p className="text-lg font-bold text-gray-700 truncate" title={stats.chefPlateType}>{stats.chefPlateType}</p>
+          </div>
+        </div>
+      </div>
 
       {/* Profit & Loss per Plate Analytics */}
       <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 mb-8">

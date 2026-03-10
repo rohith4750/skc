@@ -46,6 +46,10 @@ export interface DashboardStats {
   avgCostPerPlate: number;
   avgProfitPerPlate: number;
   totalPlates: number;
+  chefSummary: number;
+  chefCostPerPlate: number;
+  chefPlateType: string;
+  ChefTotalAmount: number;
 }
 
 export const DASHBOARD_MONTH_OPTIONS = [
