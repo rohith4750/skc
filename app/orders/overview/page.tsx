@@ -9,7 +9,7 @@ import { getRequest } from '@/lib/api/api'
 import { apiUrl } from '@/lib/api/apiUrl'
 import jsPDF from 'jspdf'
 import html2canvas from 'html2canvas'
-import { FaFilePdf } from 'react-icons/fa'
+import { FaFilePdf, FaFileImage, FaChevronDown, FaUtensils } from 'react-icons/fa'
 
 export default function OrdersOverviewPage() {
   const [orders, setOrders] = useState<Order[]>([])
@@ -209,13 +209,26 @@ export default function OrdersOverviewPage() {
     setSelectedYear(today.getFullYear())
   }
 
-  const downloadMealReport = async () => {
+  const downloadMealReport = async (format: 'pdf' | 'png') => {
     setLoading(true)
-    const toastId = toast.loading('Generating Meal Report...')
+    const toastId = toast.loading(`Generating Meal Report (${format.toUpperCase()})...`)
 
     try {
       // Aggregate data from filtered orders
-      const reportData: Record<string, { breakfast: number; lunch: number; dinner: number; snacks: number; other: number }> = {}
+      const reportData: Record<string, {
+        breakfast: number;
+        lunch: number;
+        dinner: number;
+        snacks: number;
+        other: number;
+        menuItems: {
+          breakfast: Set<string>;
+          lunch: Set<string>;
+          dinner: Set<string>;
+          snacks: Set<string>;
+          other: Set<string>
+        }
+      }> = {}
 
       filteredOrders.forEach(order => {
         if (!order.mealTypeAmounts) return
@@ -229,17 +242,40 @@ export default function OrdersOverviewPage() {
           const dateStr = mealDate.toISOString().split('T')[0]
 
           if (!reportData[dateStr]) {
-            reportData[dateStr] = { breakfast: 0, lunch: 0, dinner: 0, snacks: 0, other: 0 }
+            reportData[dateStr] = {
+              breakfast: 0, lunch: 0, dinner: 0, snacks: 0, other: 0,
+              menuItems: {
+                breakfast: new Set(),
+                lunch: new Set(),
+                dinner: new Set(),
+                snacks: new Set(),
+                other: new Set()
+              }
+            }
           }
 
           const count = Number(data.numberOfMembers) || 0
           const label = (data.menuType || type).toLowerCase()
 
-          if (label.includes('breakfast')) reportData[dateStr].breakfast += count
-          else if (label.includes('lunch')) reportData[dateStr].lunch += count
-          else if (label.includes('dinner')) reportData[dateStr].dinner += count
-          else if (label.includes('snack')) reportData[dateStr].snacks += count
-          else reportData[dateStr].other += count
+          // Aggregate count and menu items
+          let category: 'breakfast' | 'lunch' | 'dinner' | 'snacks' | 'other' = 'other'
+          if (label.includes('breakfast')) category = 'breakfast'
+          else if (label.includes('lunch')) category = 'lunch'
+          else if (label.includes('dinner')) category = 'dinner'
+          else if (label.includes('snack')) category = 'snacks'
+
+          reportData[dateStr][category] += count
+
+          // Add menu items for this order that match this category
+          const orderItems = (order as any).items || []
+          orderItems.forEach((item: any) => {
+            const itemMealType = (item.mealType || '').toLowerCase()
+            // Try to match item to the current session/type
+            if (itemMealType === type.toLowerCase() || itemMealType === label) {
+              const itemName = item.menuItem?.name || item.menuItem?.nameTelugu || 'Unknown Item'
+              reportData[dateStr].menuItems[category].add(itemName)
+            }
+          })
         })
       })
 
@@ -250,54 +286,73 @@ export default function OrdersOverviewPage() {
         return
       }
 
-      // Create HTML for PDF
+      // Create HTML for PDF/Image
       const reportHtml = `
-        <div style="padding: 40px; font-family: 'Poppins', sans-serif; color: #1a1a1a; background: white;">
-          <div style="text-align: center; margin-bottom: 30px; border-bottom: 2px solid #f0f0f0; padding-bottom: 20px;">
-            <h1 style="margin: 0; font-size: 28px; font-weight: 800; color: #ce621b; text-transform: uppercase; letter-spacing: 1px;">Meal Count Report</h1>
-            <p style="margin: 10px 0 5px 0; font-size: 18px; font-weight: 600; color: #333;">SRIVATSASA & KOWNDINYA CATERERS</p>
-            <p style="margin: 0; font-size: 12px; color: #666;">Pure Vegetarian Catering Services</p>
-            <p style="margin: 15px 0 0 0; font-size: 11px; color: #999;">Generated on ${new Date().toLocaleString()}</p>
+        <div style="padding: 40px; font-family: 'Poppins', sans-serif; color: #1a1a1a; background: white; width: 1000px;">
+          <div style="text-align: center; margin-bottom: 30px; border-bottom: 3px solid #ce621b; padding-bottom: 25px;">
+             <div style="display: flex; justify-content: center; align-items: center; gap: 20px; margin-bottom: 15px;">
+                <img src="${window.location.origin}/images/logo.jpg" alt="Logo" style="width: 80px; height: 80px; border-radius: 50%; object-fit: contain;" />
+                <div style="text-align: left;">
+                  <h1 style="margin: 0; font-size: 32px; font-weight: 800; color: #000; text-transform: uppercase; letter-spacing: 1px;">SRIVATSASA & KOWNDINYA CATERERS</h1>
+                  <p style="margin: 5px 0 0 0; font-size: 14px; font-weight: 600; color: #ce621b; font-style: italic;">Pure Vegetarian (A Food Caterers)</p>
+                </div>
+             </div>
+            <p style="margin: 0; font-size: 11px; color: #666; font-weight: 500;">
+              Plot No. 115, Padmavathi Nagar, Bank Colony, Saheb Nagar, Vanasthalipuram, Hyderabad - 500070.
+            </p>
+            <p style="margin: 15px 0 0 0; font-size: 12px; font-weight: 700; background: #ce621b; color: white; display: inline-block; padding: 5px 20px; border-radius: 20px;">
+              MEAL REPORT: ${new Date(selectedYear, selectedMonth).toLocaleString('default', { month: 'long', year: 'numeric' })}
+            </p>
           </div>
           
-          <table style="width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 13px;">
+          <table style="width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 13px; border: 2px solid #ce621b;">
             <thead>
               <tr style="background-color: #ce621b; color: white;">
-                <th style="padding: 12px; text-align: left; border: 1px solid #ce621b;">Date</th>
-                <th style="padding: 12px; text-align: center; border: 1px solid #ce621b;">Breakfast</th>
-                <th style="padding: 12px; text-align: center; border: 1px solid #ce621b;">Lunch</th>
-                <th style="padding: 12px; text-align: center; border: 1px solid #ce621b;">Snacks</th>
-                <th style="padding: 12px; text-align: center; border: 1px solid #ce621b;">Dinner</th>
-                <th style="padding: 12px; text-align: center; border: 1px solid #ce621b;">Other</th>
-                <th style="padding: 12px; text-align: center; border: 1px solid #ce621b; font-weight: bold; background-color: #a84e12;">Total</th>
+                <th style="padding: 15px 10px; text-align: left; border: 1px solid #ce621b; width: 15%;">Date</th>
+                <th style="padding: 15px 10px; text-align: left; border: 1px solid #ce621b; width: 65%;">Meal Details & Menu Items</th>
+                <th style="padding: 15px 10px; text-align: center; border: 1px solid #ce621b; width: 20%; background-color: #a84e12;">Total Persons</th>
               </tr>
             </thead>
             <tbody>
               ${sortedDates.map((date, index) => {
         const d = reportData[date]
         const total = d.breakfast + d.lunch + d.dinner + d.snacks + d.other
-        const rowBg = index % 2 === 0 ? '#ffffff' : '#fffaf5'
+        const rowBg = index % 2 === 0 ? '#ffffff' : '#fff9f2'
+
+        const formatMenuItems = (items: Set<string>) => Array.from(items).join(', ')
+
         return `
                   <tr style="background-color: ${rowBg};">
-                    <td style="padding: 12px; border: 1px solid #eee; font-weight: 600;">
-                      ${new Date(date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}
+                    <td style="padding: 15px 10px; border: 1px solid #edccb5; font-weight: 700; vertical-align: top;">
+                      ${new Date(date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short' })}
                     </td>
-                    <td style="padding: 12px; text-align: center; border: 1px solid #eee; color: ${d.breakfast ? '#b45309' : '#ccc'};">
-                      ${d.breakfast || '-'}
+                    <td style="padding: 15px 10px; border: 1px solid #edccb5; vertical-align: top;">
+                      ${d.breakfast ? `
+                        <div style="margin-bottom: 10px;">
+                          <div style="font-weight: 800; color: #b45309; text-transform: uppercase; font-size: 11px;">Γÿò BREAKFAST (${d.breakfast})</div>
+                          <div style="font-size: 12px; color: #555; margin-left: 5px; font-style: italic;">${formatMenuItems(d.menuItems.breakfast) || 'Standard Menu'}</div>
+                        </div>
+                      ` : ''}
+                      ${d.lunch ? `
+                        <div style="margin-bottom: 10px;">
+                          <div style="font-weight: 800; color: #c2410c; text-transform: uppercase; font-size: 11px;">ΓÿÇ LUNCH (${d.lunch})</div>
+                          <div style="font-size: 12px; color: #555; margin-left: 5px; font-style: italic;">${formatMenuItems(d.menuItems.lunch) || 'Standard Menu'}</div>
+                        </div>
+                      ` : ''}
+                      ${d.snacks ? `
+                        <div style="margin-bottom: 10px;">
+                          <div style="font-weight: 800; color: #7e22ce; text-transform: uppercase; font-size: 11px;">Γÿò SNACKS (${d.snacks})</div>
+                          <div style="font-size: 12px; color: #555; margin-left: 5px; font-style: italic;">${formatMenuItems(d.menuItems.snacks) || 'Standard Menu'}</div>
+                        </div>
+                      ` : ''}
+                      ${d.dinner ? `
+                        <div style="margin-bottom: 5px;">
+                          <div style="font-weight: 800; color: #1d4ed8; text-transform: uppercase; font-size: 11px;">Γÿ╛ DINNER (${d.dinner})</div>
+                          <div style="font-size: 12px; color: #555; margin-left: 5px; font-style: italic;">${formatMenuItems(d.menuItems.dinner) || 'Standard Menu'}</div>
+                        </div>
+                      ` : ''}
                     </td>
-                    <td style="padding: 12px; text-align: center; border: 1px solid #eee; color: ${d.lunch ? '#c2410c' : '#ccc'};">
-                      ${d.lunch || '-'}
-                    </td>
-                    <td style="padding: 12px; text-align: center; border: 1px solid #eee; color: ${d.snacks ? '#7e22ce' : '#ccc'};">
-                      ${d.snacks || '-'}
-                    </td>
-                    <td style="padding: 12px; text-align: center; border: 1px solid #eee; color: ${d.dinner ? '#1d4ed8' : '#ccc'};">
-                      ${d.dinner || '-'}
-                    </td>
-                    <td style="padding: 12px; text-align: center; border: 1px solid #eee; color: ${d.other ? '#4b5563' : '#ccc'};">
-                      ${d.other || '-'}
-                    </td>
-                    <td style="padding: 12px; text-align: center; border: 1px solid #eee; font-weight: 800; color: #000; background-color: ${index % 2 === 0 ? '#fafafa' : '#f5f5f5'};">
+                    <td style="padding: 15px 10px; text-align: center; border: 1px solid #edccb5; font-weight: 800; font-size: 18px; color: #000; vertical-align: middle; background-color: ${index % 2 === 0 ? '#fcfcfc' : '#f7f1eb'};">
                       ${total}
                     </td>
                   </tr>
@@ -305,24 +360,9 @@ export default function OrdersOverviewPage() {
       }).join('')}
             </tbody>
             <tfoot>
-              <tr style="background-color: #333; color: white; font-weight: bold;">
-                <td style="padding: 12px; border: 1px solid #333;">GRAND TOTAL</td>
-                <td style="padding: 12px; text-align: center; border: 1px solid #333;">
-                  ${sortedDates.reduce((acc, curr) => acc + reportData[curr].breakfast, 0) || '-'}
-                </td>
-                <td style="padding: 12px; text-align: center; border: 1px solid #333;">
-                  ${sortedDates.reduce((acc, curr) => acc + reportData[curr].lunch, 0) || '-'}
-                </td>
-                <td style="padding: 12px; text-align: center; border: 1px solid #333;">
-                  ${sortedDates.reduce((acc, curr) => acc + reportData[curr].snacks, 0) || '-'}
-                </td>
-                <td style="padding: 12px; text-align: center; border: 1px solid #333;">
-                  ${sortedDates.reduce((acc, curr) => acc + reportData[curr].dinner, 0) || '-'}
-                </td>
-                <td style="padding: 12px; text-align: center; border: 1px solid #333;">
-                  ${sortedDates.reduce((acc, curr) => acc + reportData[curr].other, 0) || '-'}
-                </td>
-                <td style="padding: 12px; text-align: center; border: 1px solid #333; font-size: 16px; background-color: #000;">
+              <tr style="background-color: #1a1a1a; color: white; font-weight: bold;">
+                <td colspan="2" style="padding: 15px 20px; border: 1px solid #1a1a1a; text-align: right; font-size: 16px;">MONTHLY GRAND TOTAL</td>
+                <td style="padding: 15px 10px; text-align: center; border: 1px solid #1a1a1a; font-size: 22px; background-color: #000; border-left: 2px solid #fff;">
                   ${sortedDates.reduce((acc, curr) => {
         const d = reportData[curr]
         return acc + d.breakfast + d.lunch + d.dinner + d.snacks + d.other
@@ -332,13 +372,13 @@ export default function OrdersOverviewPage() {
             </tfoot>
           </table>
           
-          <div style="margin-top: 50px; border-top: 1px dashed #ccc; padding-top: 20px; display: flex; justify-content: space-between; align-items: center;">
-             <div style="font-size: 10px; color: #666;">
-                * This report is generated dynamically based on active filters in the Event Planner system.
+          <div style="margin-top: 40px; border-top: 1px dashed #ce621b; padding-top: 25px; display: flex; justify-content: space-between; align-items: center;">
+             <div style="font-size: 11px; color: #666; max-width: 400px; line-height: 1.5;">
+                <strong>Disclaimer:</strong> This report includes person counts and menu items calculated for ${new Date(selectedYear, selectedMonth).toLocaleString('default', { month: 'long', year: 'numeric' })}. Generated on ${new Date().toLocaleDateString()}.
              </div>
-             <div style="text-align: right; font-size: 12px; font-weight: 600;">
-                Authorized Signature
-                <div style="margin-top: 40px; border-top: 1px solid #000; width: 150px; margin-left: auto;"></div>
+             <div style="text-align: right; min-width: 200px;">
+                <img src="${window.location.origin}/images/stamp.png" style="width: 150px; height: auto; opacity: 0.8; margin-bottom: -10px;" />
+                <div style="font-size: 13px; font-weight: 700; color: #000; border-top: 2px solid #000; padding-top: 5px; margin-top: 5px;">Authorized Signature</div>
              </div>
           </div>
         </div>
@@ -349,29 +389,51 @@ export default function OrdersOverviewPage() {
       tempDiv.innerHTML = reportHtml
       tempDiv.style.position = 'absolute'
       tempDiv.style.left = '-9999px'
-      tempDiv.style.width = '1000px' // Wider for better table spacing
+      tempDiv.style.width = '1000px'
       document.body.appendChild(tempDiv)
 
-      // Use a small delay for any font rendering
-      await new Promise(resolve => setTimeout(resolve, 500))
+      // Use a small delay for any rendering/images
+      await new Promise(resolve => setTimeout(resolve, 800))
 
       const canvas = await html2canvas(tempDiv, {
-        scale: 2,
+        scale: 3, // High quality
         useCORS: true,
         logging: false,
         backgroundColor: '#ffffff'
       })
 
-      const imgData = canvas.toDataURL('image/png')
-      const pdf = new jsPDF('p', 'mm', 'a4')
-      const imgWidth = 210
-      const imgHeight = (canvas.height * imgWidth) / canvas.width
+      if (format === 'pdf') {
+        const imgData = canvas.toDataURL('image/jpeg', 0.95)
+        const pdf = new jsPDF('p', 'mm', 'a4')
+        const imgWidth = 210
+        const imgHeight = (canvas.height * imgWidth) / canvas.width
 
-      pdf.addImage(imgData, 'PNG', 0, 0, imgWidth, imgHeight)
-      pdf.save(`Meal-Report-${new Date().toISOString().split('T')[0]}.pdf`)
+        // Handle multi-page if needed
+        let heightLeft = imgHeight
+        let position = 0
+        const pageHeight = 295
+
+        pdf.addImage(imgData, 'JPEG', 0, position, imgWidth, imgHeight)
+        heightLeft -= pageHeight
+
+        while (heightLeft >= 0) {
+          position = heightLeft - imgHeight
+          pdf.addPage()
+          pdf.addImage(imgData, 'JPEG', 0, position, imgWidth, imgHeight)
+          heightLeft -= pageHeight
+        }
+
+        pdf.save(`SKC-Meal-Report-${new Date(selectedYear, selectedMonth).toLocaleString('default', { month: 'short' })}-${selectedYear}.pdf`)
+      } else {
+        const imgData = canvas.toDataURL('image/png')
+        const link = document.createElement('a')
+        link.href = imgData
+        link.download = `SKC-Meal-Report-${new Date(selectedYear, selectedMonth).toLocaleString('default', { month: 'short' })}-${selectedYear}.png`
+        link.click()
+      }
 
       document.body.removeChild(tempDiv)
-      toast.success('Meal Report downloaded successfully!', { id: toastId })
+      toast.success(`Meal Report (${format.toUpperCase()}) downloaded!`, { id: toastId })
     } catch (error) {
       console.error('Failed to generate report:', error)
       toast.error('Failed to generate report. Please try again.', { id: toastId })
@@ -409,13 +471,31 @@ export default function OrdersOverviewPage() {
             >
               <FaCalendarAlt /> Calendar
             </button>
-            <button
-              onClick={downloadMealReport}
-              disabled={loading || filteredOrders.length === 0}
-              className="flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-all bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed shadow-sm"
-            >
-              <FaFilePdf /> Meal Report
-            </button>
+
+            {/* Export Dropdown */}
+            <div className="relative group">
+              <button
+                disabled={loading || filteredOrders.length === 0}
+                className="flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-all bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed shadow-md"
+              >
+                <FaFilePdf /> Meal Report <FaChevronDown className="text-[10px]" />
+              </button>
+
+              <div className="absolute right-0 top-full mt-1 w-48 bg-white border border-gray-200 rounded-lg shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-50 overflow-hidden">
+                <button
+                  onClick={() => downloadMealReport('pdf')}
+                  className="w-full flex items-center gap-3 px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 transition-colors border-b border-gray-100"
+                >
+                  <FaFilePdf className="text-red-500" /> Download PDF
+                </button>
+                <button
+                  onClick={() => downloadMealReport('png')}
+                  className="w-full flex items-center gap-3 px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
+                >
+                  <FaFileImage className="text-blue-500" /> Download Image
+                </button>
+              </div>
+            </div>
           </div>
         </div>
 
