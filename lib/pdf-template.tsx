@@ -161,6 +161,7 @@ export function generatePDFTemplate(data: PDFTemplateData): string {
           min-height: 277mm;
           overflow: visible;
         }
+        .pdf-row { page-break-inside: avoid !important; break-inside: avoid !important; }
         .header {
           margin-bottom: 25px;
           position: relative;
@@ -497,7 +498,7 @@ function generateBillContent(data: PDFTemplateData): string {
       // Add date header if not splitting (grouped view)
       if (!splitByDate && sortedDates.length > 1) {
         mealTypeRows.push(`
-          <div class="form-row" style="background: #f9f9f9; padding: 4px; font-weight: bold; font-size: 11px; margin-top: 10px; border-bottom: 1px solid #eee;">
+          <div class="pdf-row form-row" style="background: #f9f9f9; padding: 4px; font-weight: bold; font-size: 11px; margin-top: 10px; border-bottom: 1px solid #eee;">
             Event Date: ${formatDate(date)}
           </div>
         `)
@@ -538,7 +539,7 @@ function generateBillContent(data: PDFTemplateData): string {
         const mealTypeName = sanitizeMealLabel(menuType)
 
         mealTypeRows.push(`
-          <div class="form-row">
+          <div class="pdf-row form-row">
             <span class="form-label">${mealTypeName} No of Persons:${(!splitByDate && sortedDates.length > 1) ? `<br><small style="color:#666;font-weight:normal">${formatDate(date)}</small>` : ''}</span>
             <span class="form-value-inline" style="width: 50px;">${persons || ''}</span>
             <span style="font-size: 10px; margin-left: 10px;">Rate:</span>
@@ -570,7 +571,7 @@ function generateBillContent(data: PDFTemplateData): string {
         const cost = typeof stall.cost === 'string' ? parseFloat(stall.cost) : (stall.cost || 0)
         if (cost > 0) {
           stallsRows.push(`
-            <div class="form-row">
+            <div class="pdf-row form-row">
               <span class="form-label">${stall.category || 'Stall'}:</span>
               <span class="form-value">${stall.description || ''} - ${formatCurrency(cost)}</span>
             </div>
