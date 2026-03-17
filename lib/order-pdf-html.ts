@@ -36,49 +36,62 @@ export function buildOrderPdfHtml(
     | number
   > | null;
 
-  // 1. Organize data by Date -> MealTypes
-  type MealSummary = {
-    type: string;
-    label: string;
-    count: number;
-    amount: number;
-    rate: number;
-  };
-  const summaryByDate: Record<string, MealSummary[]> = {};
+  // Organize data by Date -> MealTypes/Stalls
+  const summaryByDate: Record<string, any[]> = {};
 
-  // Helper to safely get string
   const safeString = (val: any) =>
     typeof val === "string" ? val : String(val || "");
 
+  const normalizeDate = (d: any): string => {
+    if (!d) return "no-date";
+    const s = String(d);
+    if (s.includes("T")) return s.split("T")[0];
+    // If it's YYYY-MM-DD but no T
+    if (/^\d{4}-\d{2}-\d{2}/.test(s)) return s.substring(0, 10);
+    // Otherwise try parsing
+    try {
+      const date = new Date(s);
+      if (isNaN(date.getTime())) return "no-date";
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const day = String(date.getDate()).padStart(2, '0');
+      return `${year}-${month}-${day}`;
+    } catch {
+      return "no-date";
+    }
+  };
+
+  const addItemToSummary = (date: any, itemData: any) => {
+    const dStr = normalizeDate(date);
+    if (!summaryByDate[dStr]) summaryByDate[dStr] = [];
+    summaryByDate[dStr].push(itemData);
+  };
+
+  // Add regular meal sessions
   if (mealTypeAmounts) {
     Object.entries(mealTypeAmounts).forEach(([key, data]) => {
-      if (typeof data === "object" && data !== null && data.date) {
-        const dateStr = safeString(data.date).split("T")[0];
-        if (!summaryByDate[dateStr]) summaryByDate[dateStr] = [];
-
-        let menuType = data.menuType;
-        if (!menuType) {
-          // Fallback to key if reasonable
-          if (key && !key.includes("-") && !key.startsWith("session_")) {
-            menuType = key;
-          }
-        }
-        menuType = menuType || "OTHER";
-
-        const label = sanitizeMealLabel(menuType);
-        const count = Number(data.numberOfMembers) || 0;
-        const amount = Number(data.amount) || 0;
-        // Calculate rate if possible, otherwise 0
-        const rate = count > 0 && amount > 0 ? amount / count : 0;
-
-        summaryByDate[dateStr].push({
-          type: menuType,
-          label,
-          count,
-          amount,
-          rate,
+      if (typeof data === "object" && data !== null) {
+        addItemToSummary(data.date, {
+          ...data,
+          id: key,
+          label: sanitizeMealLabel(data.menuType || key || "Other"),
+          type: data.menuType || "other"
         });
       }
+    });
+  }
+
+  // Add stalls if they have a date (or default to event date)
+  if (order.stalls && Array.isArray(order.stalls)) {
+    order.stalls.forEach((stall: any) => {
+      addItemToSummary(stall.date || order.eventDate, {
+        ...stall,
+        isStall: true,
+        menuType: 'stalls',
+        label: stall.category || "Stall",
+        type: 'stalls',
+        amount: stall.cost || 0
+      });
     });
   }
 
@@ -109,7 +122,8 @@ export function buildOrderPdfHtml(
 
       // Sort meals by priority (chronological order)
       const meals = summaryByDate[dateStr].sort((a, b) => {
-        const order: Record<string, number> = { 
+        // 1. Priority by meal type
+        const mealOrders: Record<string, number> = { 
           'breakfast': 1, 
           'lunch': 2, 
           'hi-tea': 3,
@@ -121,26 +135,38 @@ export function buildOrderPdfHtml(
           'stalls': 8,
           'other': 9 
         };
-        const pa = order[a.type.toLowerCase()] || 99;
-        const pb = order[b.type.toLowerCase()] || 99;
-        return pa - pb;
+        const pa = mealOrders[a.type?.toLowerCase()] || 99;
+        const pb = mealOrders[b.type?.toLowerCase()] || 99;
+        
+        if (pa !== pb) return pa - pb;
+
+        // 2. Secondary sort by time if available
+        if (a.time && b.time) {
+          return String(a.time).localeCompare(String(b.time));
+        }
+        return 0;
       });
 
       meals.forEach((meal) => {
+        const count = Number(meal.numberOfMembers || meal.count || 0);
+        const amount = Number(meal.amount || 0);
+        const rate = count > 0 ? amount / count : 0;
+
         summaryRowsHtml += `
                 <tr>
                     <td style="padding: 5px 10px; font-size: 11px; font-weight: 600; border-bottom: 1px solid #ddd;">
-                        ${meal.label} No of Persons: <span style="font-weight: 500;">${meal.count}</span>
-                        <div style="font-size: 9px; color: #000; font-weight: 400; margin-top: 1px;">${formatDate(dateStr)}</div>
+                        ${meal.label}
+                        ${meal.time ? `<span style="font-size: 9px; color: #666; margin-left: 5px;">@ ${meal.time}</span>` : ""}
+                        <div style="font-size: 9px; color: #333; font-weight: 400; margin-top: 1px;">${formatDate(dateStr)}</div>
                     </td>
-                    <td style="padding: 5px 10px; font-size: 11px; border-bottom: 1px solid #ddd; text-align: center;">
-                        ${meal.count}
+                    <td style="padding: 5px 10px; font-size: 11px; border-bottom: 1px solid #ddd; text-align: center; font-weight: 500;">
+                        ${count}
                     </td>
-                     <td style="padding: 5px 10px; font-size: 11px; border-bottom: 1px solid #ddd; text-align: center;">
-                        ${meal.rate > 0 ? formatCurrency(meal.rate) : "-"}
+                     <td style="padding: 5px 10px; font-size: 11px; border-bottom: 1px solid #ddd; text-align: center; font-weight: 500;">
+                        ${rate > 0 ? formatCurrency(rate) : "-"}
                     </td>
                     <td style="padding: 5px 10px; font-size: 11px; font-weight: 700; border-bottom: 1px solid #ddd; text-align: right;">
-                        ${formatCurrency(meal.amount)}
+                        ${formatCurrency(amount)}
                     </td>
                 </tr>
               `;
@@ -274,7 +300,19 @@ export function buildOrderPdfHtml(
                     <col style="width: 20%;">
                 </colgroup>
                 
-                ${summaryRowsHtml}
+                <!-- Table Headers -->
+                <thead>
+                    <tr style="background-color: ${isQuotation ? '#f5f3ff' : '#f9f9f9'}; border-bottom: 2px solid ${themeColor};">
+                        <th style="padding: 8px 10px; text-align: left; font-size: 10px; font-weight: 800; text-transform: uppercase; color: ${themeColor};">Description / Event</th>
+                        <th style="padding: 8px 10px; text-align: center; font-size: 10px; font-weight: 800; text-transform: uppercase; color: ${themeColor};">Guests</th>
+                        <th style="padding: 8px 10px; text-align: center; font-size: 10px; font-weight: 800; text-transform: uppercase; color: ${themeColor};">Rate</th>
+                        <th style="padding: 8px 10px; text-align: right; font-size: 10px; font-weight: 800; text-transform: uppercase; color: ${themeColor};">Total</th>
+                    </tr>
+                </thead>
+                
+                <tbody>
+                    ${summaryRowsHtml}
+                </tbody>
 
              </table>
 
