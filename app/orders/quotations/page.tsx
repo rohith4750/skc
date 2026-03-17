@@ -12,6 +12,7 @@ import {
 import Link from 'next/link'
 import jsPDF from 'jspdf'
 import html2canvas from 'html2canvas'
+import { buildOrderPdfHtml } from '@/lib/order-pdf-html'
 import toast from 'react-hot-toast'
 import ConfirmModal from '@/components/ConfirmModal'
 import { getRequest, deleteRequest, putRequest } from '@/lib/api/api'
@@ -96,6 +97,170 @@ export default function QuotationsPage() {
     }
   }
 
+  // --- PDF & IMAGE GENERATION ---
+  const renderQuotationToPdf = async (order: Order): Promise<string | null> => {
+    let tempDiv: HTMLDivElement | null = null;
+    try {
+      const htmlContent = buildOrderPdfHtml(order, {
+        useEnglish: true,
+        formatDate,
+        showFinancials: true,
+        formatCurrency,
+        isQuotation: true
+      })
+
+      tempDiv = document.createElement('div')
+      tempDiv.style.position = 'absolute'
+      tempDiv.style.left = '-9999px'
+      tempDiv.style.width = '210mm'
+      tempDiv.style.padding = '10mm'
+      tempDiv.style.fontFamily = 'Poppins, sans-serif'
+      tempDiv.style.background = 'white'
+      tempDiv.innerHTML = htmlContent
+      document.body.appendChild(tempDiv)
+
+      await new Promise(r => setTimeout(r, 500))
+
+      const w = tempDiv.scrollWidth
+      const h = Math.max(tempDiv.scrollHeight + 20, 1)
+      const canvas = await html2canvas(tempDiv, {
+        scale: 1.5,
+        useCORS: true,
+        backgroundColor: '#ffffff',
+        width: w,
+        height: h,
+      })
+
+      if (document.body.contains(tempDiv)) document.body.removeChild(tempDiv)
+      tempDiv = null;
+
+      const imgData = canvas.toDataURL('image/jpeg', 0.85)
+      const pdf = new jsPDF('p', 'mm', 'a4')
+      const imgWidth = 210
+      const pageHeight = 297
+      const imgHeight = (canvas.height * imgWidth) / canvas.width
+      let heightLeft = imgHeight
+      let position = 0
+
+      pdf.addImage(imgData, 'JPEG', 0, position, imgWidth, imgHeight)
+      heightLeft -= pageHeight
+
+      while (heightLeft >= 0) {
+        position = heightLeft - imgHeight
+        pdf.addPage()
+        pdf.addImage(imgData, 'JPEG', 0, position, imgWidth, imgHeight)
+        heightLeft -= pageHeight
+      }
+
+      const output = pdf.output('dataurlstring')
+      return output.split(',')[1] || output
+    } catch (e: any) {
+      if (tempDiv && document.body.contains(tempDiv)) document.body.removeChild(tempDiv)
+      console.error('PDF Generation Error:', e)
+      toast.error(`Failed to generate PDF: ${e.message}`)
+      return null
+    }
+  }
+
+  const renderQuotationToImage = async (order: Order): Promise<string | null> => {
+    let tempDiv: HTMLDivElement | null = null;
+    try {
+      const htmlContent = buildOrderPdfHtml(order, {
+        useEnglish: true,
+        formatDate,
+        showFinancials: true,
+        formatCurrency,
+        isQuotation: true
+      })
+
+      tempDiv = document.createElement('div')
+      tempDiv.style.position = 'absolute'
+      tempDiv.style.left = '-9999px'
+      tempDiv.style.width = '210mm'
+      tempDiv.style.padding = '10mm'
+      tempDiv.style.fontFamily = 'Poppins, sans-serif'
+      tempDiv.style.background = 'white'
+      tempDiv.innerHTML = htmlContent
+      document.body.appendChild(tempDiv)
+
+      await new Promise(r => setTimeout(r, 500))
+
+      const w = tempDiv.scrollWidth
+      const h = Math.max(tempDiv.scrollHeight + 20, 1)
+      const canvas = await html2canvas(tempDiv, {
+        scale: 3,
+        useCORS: true,
+        backgroundColor: '#ffffff',
+        width: w,
+        height: h,
+      })
+
+      if (document.body.contains(tempDiv)) document.body.removeChild(tempDiv)
+      tempDiv = null;
+
+      return canvas.toDataURL('image/png')
+    } catch (e: any) {
+      if (tempDiv && document.body.contains(tempDiv)) document.body.removeChild(tempDiv)
+      toast.error(`Failed to generate image: ${e.message}`)
+      return null
+    }
+  }
+
+  const handleViewPDF = async (order: Order) => {
+    const toastId = toast.loading('Opening preview...')
+    try {
+      const pdfBase64 = await renderQuotationToPdf(order)
+      if (pdfBase64) {
+        const byteCharacters = atob(pdfBase64)
+        const byteNumbers = new Array(byteCharacters.length)
+        for (let i = 0; i < byteCharacters.length; i++) byteNumbers[i] = byteCharacters.charCodeAt(i)
+        const byteArray = new Uint8Array(byteNumbers)
+        const file = new Blob([byteArray], { type: 'application/pdf' })
+        const fileURL = URL.createObjectURL(file)
+        window.open(fileURL)
+        toast.dismiss(toastId)
+      }
+    } catch (error) {
+      toast.error('Error opening preview', { id: toastId })
+    }
+  }
+
+  const handleDownloadPDF = async (order: Order) => {
+    const toastId = toast.loading('Generating PDF...')
+    try {
+      const pdfBase64 = await renderQuotationToPdf(order)
+      if (pdfBase64) {
+          const link = document.createElement('a')
+          link.href = `data:application/pdf;base64,${pdfBase64}`
+          link.download = `SKC-Quotation-${order.customer?.name?.replace(/\s+/g, '-') || 'Draft'}.pdf`
+          document.body.appendChild(link)
+          link.click()
+          document.body.removeChild(link)
+          toast.success('PDF downloaded!', { id: toastId })
+      }
+    } catch (error) {
+      toast.error('Error downloading PDF', { id: toastId })
+    }
+  }
+
+  const handleDownloadImage = async (order: Order) => {
+    const toastId = toast.loading('Generating Image...')
+    try {
+      const imageDataUrl = await renderQuotationToImage(order)
+      if (imageDataUrl) {
+          const link = document.createElement('a')
+          link.href = imageDataUrl
+          link.download = `SKC-Quotation-${order.customer?.name?.replace(/\s+/g, '-') || 'Draft'}.png`
+          document.body.appendChild(link)
+          link.click()
+          document.body.removeChild(link)
+          toast.success('Image downloaded!', { id: toastId })
+      }
+    } catch (error) {
+      toast.error('Error downloading image', { id: toastId })
+    }
+  }
+
   return (
     <div className="p-4 sm:p-6 md:p-8 bg-slate-50/50 min-h-screen pt-16 lg:pt-8">
       <div className="max-w-7xl mx-auto mb-8 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
@@ -172,8 +337,30 @@ export default function QuotationsPage() {
                     <td className="px-6 py-4 text-right">
                       <div className="flex justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
                         <button
+                          onClick={() => handleViewPDF(order)}
+                          className="p-2 text-slate-500 hover:bg-slate-100 rounded-lg transition-colors"
+                          title="View PDF Preview"
+                        >
+                          <FaFilePdf className="w-4 h-4" />
+                        </button>
+                        <button
+                          onClick={() => handleDownloadPDF(order)}
+                          className="p-2 text-slate-500 hover:bg-slate-100 rounded-lg transition-colors"
+                          title="Download PDF"
+                        >
+                          <FaClipboardList className="w-4 h-4 text-purple-600" />
+                        </button>
+                        <button
+                          onClick={() => handleDownloadImage(order)}
+                          className="p-2 text-slate-500 hover:bg-slate-100 rounded-lg transition-colors"
+                          title="Download Image"
+                        >
+                          <FaFileImage className="w-4 h-4 text-indigo-500" />
+                        </button>
+                        <div className="w-px h-4 bg-slate-200 self-center mx-1"></div>
+                        <button
                           onClick={() => handleConvertToPending(order.id)}
-                          className="p-2 text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors title='Convert to Order'"
+                          className="p-2 text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors"
                           title="Convert to Confirmed Order"
                         >
                           <FaCheckCircle className="w-5 h-5" />

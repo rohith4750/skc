@@ -12,12 +12,14 @@ export function buildOrderPdfHtml(
     showFinancials?: boolean;
     formatCurrency?: (val: number) => string;
     bill?: any;
+    isQuotation?: boolean;
   },
 ): string {
   const {
     formatDate,
     formatCurrency = (v) => `\u20B9${v.toLocaleString("en-IN")}`,
     bill: externalBill,
+    isQuotation = false,
   } = options;
 
   const customer = order.customer;
@@ -166,7 +168,13 @@ export function buildOrderPdfHtml(
   const billNo =
     bill?.serialNumber != null
       ? `SKC-${bill.serialNumber}`
+    : isQuotation 
+      ? `QT-${order.id.slice(0, 6).toUpperCase()}`
       : `SKC-${order.id.slice(0, 6).toUpperCase()}`;
+
+  const themeColor = isQuotation ? "#7c3aed" : "#000000"; // Purple-600 for quotations, Black for bills
+  const documentTitle = isQuotation ? "QUOTATION" : "BILL SUMMARY";
+  const idLabel = isQuotation ? "Quotation No:" : "Bill No:";
 
   return `
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
@@ -205,7 +213,7 @@ export function buildOrderPdfHtml(
         <!-- CUSTOMER DETAILS -->
         <div style="margin-bottom: 10px;">
              <div style="text-align: center; margin-bottom: 8px;">
-                <div style="font-weight: 800; font-size: 12px; text-transform: uppercase; border-bottom: 1px solid #ddd; display: inline-block; padding-bottom: 2px;">CUSTOMER DETAILS</div>
+                <div style="font-weight: 800; font-size: 12px; text-transform: uppercase; border-bottom: 1px solid ${themeColor}; display: inline-block; padding-bottom: 2px; color: ${themeColor};">${isQuotation ? 'QUOTATION DETAILS' : 'CUSTOMER DETAILS'}</div>
              </div>
 
              <div style="font-size: 11px; line-height: 1.4; max-width: 600px; margin: 0 auto;">
@@ -235,15 +243,15 @@ export function buildOrderPdfHtml(
 
         <!-- BILL NO & DATE -->
         <div style="margin-bottom: 10px; font-size: 11px; line-height: 1.4; border-top: 1px dashed #ccc; padding-top: 6px;">
-            <div><span style="font-weight: 700; width: 70px; display: inline-block;">Bill No:</span> ${billNo}</div>
-            <div><span style="font-weight: 500; width: 70px; display: inline-block;">Date:</span> ${formatDate(new Date().toISOString())}</div>
+            <div><span style="font-weight: 700; width: 100px; display: inline-block;">${idLabel}</span> ${billNo}</div>
+            <div><span style="font-weight: 500; width: 100px; display: inline-block;">Date:</span> ${formatDate(new Date().toISOString())}</div>
         </div>
 
         <!-- BILL SUMMARY BOX -->
-        <div style="border: 2px solid #000; padding: 0;">
+        <div style="border: 2px solid ${themeColor}; padding: 0;">
              <!-- Box Header -->
-             <div style="text-align: center; padding: 5px; font-weight: 800; font-size: 12px; text-transform: uppercase; border-bottom: 1px solid #000;">
-                BILL SUMMARY
+             <div style="text-align: center; padding: 5px; font-weight: 800; font-size: 12px; text-transform: uppercase; border-bottom: 1px solid ${themeColor}; background-color: ${isQuotation ? '#f5f3ff' : 'transparent'}; color: ${themeColor};">
+                ${documentTitle}
              </div>
              
              <!-- Table -->
@@ -260,7 +268,7 @@ export function buildOrderPdfHtml(
              </table>
 
             <!-- TOTALS (Bottom of Box) -->
-            <div style="border-top: 2px solid #000;">
+            <div style="border-top: 2px solid ${themeColor};">
                  <div style="display: flex; justify-content: space-between; padding: 4px 12px; font-size: 11px; font-weight: 700;">
                     <div>Transport Cost:</div>
                     <div>${order.transportCost && Number(order.transportCost) > 0 ? formatCurrency(Number(order.transportCost)) : "-"}</div>
@@ -277,10 +285,10 @@ export function buildOrderPdfHtml(
                     <div>Advance Paid:</div>
                     <div>${formatCurrency(finalPaid)}</div>
                  </div>
-                 <div style="display: flex; justify-content: space-between; padding: 6px 12px; font-size: 13px; font-weight: 800; border-top: 2px solid #000; background-color: #f9f9f9;">
-                    <div>Grand Total:</div>
-                    <div>${formatCurrency(finalTotal)}</div>
-                 </div>
+                  <div style="display: flex; justify-content: space-between; padding: 6px 12px; font-size: 13px; font-weight: 800; border-top: 2px solid ${themeColor}; background-color: ${isQuotation ? '#f5f3ff' : '#f9f9f9'};">
+                    <div>Estimated Total:</div>
+                    <div style="color: ${themeColor};">${formatCurrency(finalTotal)}</div>
+                  </div>
                  <div style="display: flex; justify-content: space-between; padding: 5px 12px; font-size: 12px; font-weight: 800; color: #000;">
                     <div>Balance Amount:</div>
                     <div>${formatCurrency(finalRemaining)}</div>
