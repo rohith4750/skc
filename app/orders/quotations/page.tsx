@@ -106,7 +106,7 @@ export default function QuotationsPage() {
           <p className="text-slate-500 mt-1">Manage draft orders and unconfirmed event inquiries</p>
         </div>
         <Link
-          href="/orders/create"
+          href="/orders/create?status=quotation"
           className="flex items-center justify-center gap-2 px-6 py-3 bg-purple-600 text-white rounded-xl hover:bg-purple-700 active:scale-95 transition-all shadow-lg text-sm font-bold"
         >
           <FaPlus /> Create New Quotation

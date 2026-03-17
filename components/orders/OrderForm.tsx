@@ -3,9 +3,9 @@ import { useEffect, useState, useMemo, useRef } from 'react'
 import { v4 as uuidv4 } from 'uuid'
 import { formatCurrency, formatDateTime, sanitizeMealLabel } from '@/lib/utils'
 import { Customer, MenuItem, Order, OrderItem } from '@/types'
-import { FaSearch, FaPlus, FaTimes, FaGripLines, FaUser, FaCalculator, FaWallet, FaUtensils, FaChevronDown, FaChevronUp, FaCalendarAlt, FaClock, FaMapMarkerAlt, FaUsers, FaTag } from 'react-icons/fa'
+import { FaSearch, FaPlus, FaTimes, FaGripLines, FaUser, FaCalculator, FaWallet, FaUtensils, FaChevronDown, FaChevronUp, FaCalendarAlt, FaClock, FaMapMarkerAlt, FaUsers, FaTag, FaStore, FaTrash } from 'react-icons/fa'
 import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import toast from 'react-hot-toast'
 import FormError from '@/components/FormError'
 import { Storage } from '@/lib/storage-api'
@@ -18,13 +18,15 @@ interface OrderFormProps {
 
 export default function OrderForm({ orderId, isEditMode = false, initialOrderType = 'EVENT' }: OrderFormProps) {
     const router = useRouter()
+    const searchParams = useSearchParams()
+    const initialStatus = searchParams.get('status') || 'pending'
     const [customers, setCustomers] = useState<Customer[]>([])
     const [menuItems, setMenuItems] = useState<MenuItem[]>([])
     const [selectedSubFilter, setSelectedSubFilter] = useState<Record<string, string>>({})
     const [menuItemSearch, setMenuItemSearch] = useState<Record<string, string>>({})
     const [showStalls, setShowStalls] = useState<boolean>(false)
     const [loading, setLoading] = useState(false)
-    const [currentOrderStatus, setCurrentOrderStatus] = useState<string>('pending')
+    const [currentOrderStatus, setCurrentOrderStatus] = useState<string>(initialStatus)
     const [customerSearchTerm, setCustomerSearchTerm] = useState<string>('')
     const [showCustomerDropdown, setShowCustomerDropdown] = useState<boolean>(false)
     const customerSearchRef = useRef<HTMLDivElement>(null)
@@ -350,6 +352,29 @@ export default function OrderForm({ orderId, isEditMode = false, initialOrderTyp
         }))
     }
 
+    const handleAddStall = () => {
+        setShowStalls(true)
+        setFormData(prev => ({
+            ...prev,
+            stalls: [...prev.stalls, { category: '', description: '', cost: '' }]
+        }))
+    }
+
+    const handleRemoveStall = (index: number) => {
+        setFormData(prev => ({
+            ...prev,
+            stalls: prev.stalls.filter((_, i) => i !== index)
+        }))
+        if (formData.stalls.length <= 1) setShowStalls(false)
+    }
+
+    const handleUpdateStall = (index: number, field: string, value: string) => {
+        setFormData(prev => ({
+            ...prev,
+            stalls: prev.stalls.map((s, i) => i === index ? { ...s, [field]: value } : s)
+        }))
+    }
+
     const handleDragEnd = (result: any) => {
         if (!result.destination) return
         const { source, destination } = result
@@ -428,7 +453,7 @@ export default function OrderForm({ orderId, isEditMode = false, initialOrderTyp
                 totalAmount: totals.total,
                 advancePaid: isEditMode ? originalAdvancePaid + (parseFloat(formData.advancePaid) || 0) : (parseFloat(formData.advancePaid) || 0),
                 remainingAmount: totals.balance,
-                status: isEditMode ? currentOrderStatus : 'pending',
+                status: isEditMode ? currentOrderStatus : currentOrderStatus,
                 mealTypeAmounts,
                 stalls: showStalls ? formData.stalls : [],
                 transportCost: parseFloat(formData.transportCost) || 0,
@@ -879,6 +904,93 @@ export default function OrderForm({ orderId, isEditMode = false, initialOrderTyp
                         )}
                     </div>
                 ))}
+            </div>
+
+            <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+                <div className="flex justify-between items-center mb-6">
+                    <h2 className="text-xl font-bold text-gray-800 flex items-center gap-2">
+                        <FaStore className="text-primary-500" /> Live Stalls & Extras
+                    </h2>
+                    {!showStalls ? (
+                        <button
+                            type="button"
+                            onClick={handleAddStall}
+                            className="text-primary-600 font-bold text-sm hover:underline flex items-center gap-1"
+                        >
+                            <FaPlus size={12} /> Add Stalls
+                        </button>
+                    ) : (
+                        <button
+                            type="button"
+                            onClick={handleAddStall}
+                            className="bg-primary-50 text-primary-600 px-3 py-1.5 rounded-lg font-bold text-xs hover:bg-primary-100 transition-all flex items-center gap-1"
+                        >
+                            <FaPlus size={10} /> Add More
+                        </button>
+                    )}
+                </div>
+
+                {showStalls && (
+                    <div className="space-y-4">
+                        {formData.stalls.map((stall, index) => (
+                            <div key={index} className="flex flex-col md:flex-row gap-4 p-4 bg-gray-50 rounded-xl border border-gray-100 animate-in slide-in-from-top-1 duration-200">
+                                <div className="flex-1">
+                                    <label className="block text-[10px] font-black text-gray-400 mb-1.5 uppercase">Category</label>
+                                    <select
+                                        value={stall.category}
+                                        onChange={(e) => handleUpdateStall(index, 'category', e.target.value)}
+                                        className="w-full px-4 py-2 bg-white border border-gray-200 rounded-lg outline-none font-bold text-sm"
+                                    >
+                                        <option value="">Select Category</option>
+                                        <option value="Sweet Stall">Sweet Stall</option>
+                                        <option value="Pan Stall">Pan Stall</option>
+                                        <option value="LED Counter">LED Counter</option>
+                                        <option value="Tiffin Counter">Tiffin Counter</option>
+                                        <option value="Chat Counter">Chat Counter</option>
+                                        <option value="Other">Other</option>
+                                    </select>
+                                </div>
+                                <div className="flex-[2]">
+                                    <label className="block text-[10px] font-black text-gray-400 mb-1.5 uppercase">Description</label>
+                                    <input
+                                        type="text"
+                                        value={stall.description}
+                                        onChange={(e) => handleUpdateStall(index, 'description', e.target.value)}
+                                        placeholder="e.g., Live Jalebi Counter with 2 people"
+                                        className="w-full px-4 py-2 bg-white border border-gray-200 rounded-lg outline-none text-sm font-medium"
+                                    />
+                                </div>
+                                <div className="md:w-32">
+                                    <label className="block text-[10px] font-black text-gray-400 mb-1.5 uppercase">Extra Cost</label>
+                                    <div className="relative">
+                                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">₹</span>
+                                        <input
+                                            type="number"
+                                            value={stall.cost}
+                                            onChange={(e) => handleUpdateStall(index, 'cost', e.target.value)}
+                                            className="w-full pl-8 pr-4 py-2 bg-white border border-gray-200 rounded-lg outline-none font-bold text-sm"
+                                        />
+                                    </div>
+                                </div>
+                                <div className="flex items-end pb-1">
+                                    <button
+                                        type="button"
+                                        onClick={() => handleRemoveStall(index)}
+                                        className="p-2 text-red-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all"
+                                    >
+                                        <FaTrash size={16} />
+                                    </button>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                )}
+                
+                {!showStalls && (
+                    <div className="text-center py-6 border-2 border-dashed border-gray-50 rounded-xl">
+                        <p className="text-gray-400 text-xs font-medium">No extra stalls or charges added yet.</p>
+                    </div>
+                )}
             </div>
 
             <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
