@@ -80,7 +80,20 @@ export default function OrderForm({ orderId, isEditMode = false, initialOrderTyp
             itemCustomizations: Record<string, string>
             itemQuantities: Record<string, string>
         }>,
-        stalls: [] as Array<{ category: string; description: string; cost: string }>,
+        stalls: [] as Array<{
+            id: string
+            category: string
+            description: string
+            selectedMenuItems: string[]
+            itemCustomizations: Record<string, string>
+            itemQuantities: Record<string, string>
+            pricingMethod: 'manual' | 'plate-based'
+            numberOfPlates: string
+            platePrice: string
+            manualAmount: string
+            cost: string
+            numberOfMembers: string
+        }>,
         discount: '',
         transportCost: '',
         waterBottlesCost: '',
@@ -185,9 +198,18 @@ export default function OrderForm({ orderId, isEditMode = false, initialOrderTyp
                 : []
 
             const stallsArray = (order.stalls || []).map((s: any) => ({
+                id: s.id || uuidv4(),
                 category: s.category || '',
                 description: s.description || '',
-                cost: (s.cost || '').toString()
+                selectedMenuItems: s.selectedMenuItems || [],
+                itemCustomizations: s.itemCustomizations || {},
+                itemQuantities: s.itemQuantities || {},
+                pricingMethod: s.pricingMethod || 'manual',
+                numberOfPlates: (s.numberOfPlates || '').toString(),
+                platePrice: (s.platePrice || '').toString(),
+                manualAmount: (s.manualAmount || s.cost || '').toString(),
+                cost: (s.cost || '').toString(),
+                numberOfMembers: (s.numberOfMembers || '').toString()
             }))
 
             setFormData({
@@ -275,7 +297,16 @@ export default function OrderForm({ orderId, isEditMode = false, initialOrderTyp
             mealTypesTotal += mtTotal
         })
 
-        const stallsTotal = showStalls ? formData.stalls.reduce((sum, s) => sum + (parseFloat(s.cost) || 0), 0) : 0
+        const stallsTotal = showStalls ? formData.stalls.reduce((sum, s) => {
+            let sTotal = 0
+            if (s.pricingMethod === 'plate-based') {
+                const plates = parseFloat(s.numberOfPlates) || parseFloat(s.numberOfMembers) || 0
+                sTotal = plates * (parseFloat(s.platePrice) || 0)
+            } else {
+                sTotal = parseFloat(s.manualAmount) || parseFloat(s.cost as string) || 0
+            }
+            return sum + sTotal
+        }, 0) : 0
         const transport = parseFloat(formData.transportCost) || 0
         const discount = parseFloat(formData.discount) || 0
         const waterBottles = waterTotal > 0 ? waterTotal : (parseFloat(formData.waterBottlesCost) || 0)
@@ -360,10 +391,24 @@ export default function OrderForm({ orderId, isEditMode = false, initialOrderTyp
     }
 
     const handleAddStall = () => {
+        const id = uuidv4()
         setShowStalls(true)
         setFormData(prev => ({
             ...prev,
-            stalls: [...prev.stalls, { category: '', description: '', cost: '' }]
+            stalls: [...prev.stalls, {
+                id,
+                category: '',
+                description: '',
+                selectedMenuItems: [],
+                itemCustomizations: {},
+                itemQuantities: {},
+                pricingMethod: 'manual',
+                numberOfPlates: '',
+                platePrice: '',
+                manualAmount: '',
+                cost: '',
+                numberOfMembers: '',
+            }]
         }))
     }
 
@@ -375,10 +420,18 @@ export default function OrderForm({ orderId, isEditMode = false, initialOrderTyp
         if (formData.stalls.length <= 1) setShowStalls(false)
     }
 
-    const handleUpdateStall = (index: number, field: string, value: string) => {
+    const handleUpdateStall = (id: string, field: string, value: any) => {
         setFormData(prev => ({
             ...prev,
-            stalls: prev.stalls.map((s, i) => i === index ? { ...s, [field]: value } : s)
+            stalls: prev.stalls.map(s => {
+                if (s.id === id) {
+                    const updated = { ...s, [field]: value }
+                    if (field === 'numberOfMembers' && s.pricingMethod === 'plate-based') updated.numberOfPlates = value
+                    if (field === 'pricingMethod' && value === 'plate-based') updated.numberOfPlates = s.numberOfMembers
+                    return updated
+                }
+                return s
+            })
         }))
     }
 
@@ -448,34 +501,59 @@ export default function OrderForm({ orderId, isEditMode = false, initialOrderTyp
                     menuItemId,
                     quantity: parseFloat(mt.itemQuantities[menuItemId] || '1'),
                     mealType: mt.id,
-                    customization: mt.itemCustomizations[menuItemId] || ''
+                    customization: mt.itemCustomizations[menuItemId] || null
                 }))
             )
 
-            const finalData: any = {
+            const stallItems: OrderItem[] = formData.stalls.flatMap(s =>
+                s.selectedMenuItems.map(menuItemId => ({
+                    menuItemId,
+                    quantity: parseFloat(s.itemQuantities[menuItemId] || '1'),
+                    mealType: s.id,
+                    customization: s.itemCustomizations[menuItemId] || null
+                }))
+            )
+
+            const stallsPayload = formData.stalls.map(s => ({
+                id: s.id,
+                category: s.category,
+                description: s.description,
+                selectedMenuItems: s.selectedMenuItems,
+                itemCustomizations: s.itemCustomizations,
+                itemQuantities: s.itemQuantities,
+                pricingMethod: s.pricingMethod,
+                numberOfPlates: parseFloat(s.numberOfPlates) || 0,
+                platePrice: parseFloat(s.platePrice) || 0,
+                manualAmount: parseFloat(s.manualAmount) || 0,
+                cost: s.pricingMethod === 'plate-based'
+                    ? (parseFloat(s.numberOfPlates) || 0) * (parseFloat(s.platePrice) || 0)
+                    : parseFloat(s.manualAmount) || 0,
+                numberOfMembers: parseInt(s.numberOfMembers) || 0
+            }))
+
+            const orderData: any = {
                 customerId: formData.customerId,
                 eventName: formData.eventName,
                 orderType: formData.orderType,
-                items: orderItems,
+                items: [...orderItems, ...stallItems],
                 totalAmount: totals.total,
-                advancePaid: isEditMode ? originalAdvancePaid + (parseFloat(formData.advancePaid) || 0) : (parseFloat(formData.advancePaid) || 0),
+                advancePaid: parseFloat(formData.advancePaid) || 0,
                 remainingAmount: totals.balance,
-                status: isEditMode ? currentOrderStatus : currentOrderStatus,
+                status: currentOrderStatus,
                 mealTypeAmounts,
-                stalls: showStalls ? formData.stalls : [],
+                stalls: stallsPayload,
                 transportCost: parseFloat(formData.transportCost) || 0,
-                waterBottlesCost: totals.waterTotal > 0 ? totals.waterTotal : (parseFloat(formData.waterBottlesCost) || 0),
+                waterBottlesCost: parseFloat(formData.waterBottlesCost) || 0,
                 discount: parseFloat(formData.discount) || 0,
                 paymentMethod: formData.paymentMethod,
-                paymentNotes: formData.paymentNotes,
                 additionalPayment: parseFloat(formData.advancePaid) || 0
             }
 
             if (isEditMode && orderId) {
-                await Storage.updateOrder(orderId, finalData)
+                await Storage.updateOrder(orderId, orderData)
                 toast.success('Order updated')
             } else {
-                await Storage.saveOrder(finalData)
+                await Storage.saveOrder(orderData)
                 toast.success('Order created')
             }
             router.push('/orders/center')
@@ -938,55 +1016,224 @@ export default function OrderForm({ orderId, isEditMode = false, initialOrderTyp
                 </div>
 
                 {showStalls && (
-                    <div className="space-y-4">
-                        {formData.stalls.map((stall, index) => (
-                            <div key={index} className="flex flex-col md:flex-row gap-4 p-4 bg-gray-50 rounded-xl border border-gray-100 animate-in slide-in-from-top-1 duration-200">
-                                <div className="flex-1">
-                                    <label className="block text-[10px] font-black text-gray-400 mb-1.5 uppercase">Category</label>
-                                    <select
-                                        value={stall.category}
-                                        onChange={(e) => handleUpdateStall(index, 'category', e.target.value)}
-                                        className="w-full px-4 py-2 bg-white border border-gray-200 rounded-lg outline-none font-bold text-sm"
-                                    >
-                                        <option value="">Select Category</option>
-                                        <option value="Sweet Stall">Sweet Stall</option>
-                                        <option value="Pan Stall">Pan Stall</option>
-                                        <option value="LED Counter">LED Counter</option>
-                                        <option value="Tiffin Counter">Tiffin Counter</option>
-                                        <option value="Chat Counter">Chat Counter</option>
-                                        <option value="Other">Other</option>
-                                    </select>
-                                </div>
-                                <div className="flex-[2]">
-                                    <label className="block text-[10px] font-black text-gray-400 mb-1.5 uppercase">Description</label>
-                                    <input
-                                        type="text"
-                                        value={stall.description}
-                                        onChange={(e) => handleUpdateStall(index, 'description', e.target.value)}
-                                        placeholder="e.g., Live Jalebi Counter with 2 people"
-                                        className="w-full px-4 py-2 bg-white border border-gray-200 rounded-lg outline-none text-sm font-medium"
-                                    />
-                                </div>
-                                <div className="md:w-32">
-                                    <label className="block text-[10px] font-black text-gray-400 mb-1.5 uppercase">Extra Cost</label>
-                                    <div className="relative">
-                                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">₹</span>
-                                        <input
-                                            type="number"
-                                            value={stall.cost}
-                                            onChange={(e) => handleUpdateStall(index, 'cost', e.target.value)}
-                                            className="w-full pl-8 pr-4 py-2 bg-white border border-gray-200 rounded-lg outline-none font-bold text-sm"
-                                        />
+                    <div className="space-y-8">
+                        {formData.stalls.map((stall) => (
+                            <div key={stall.id} className="relative p-6 bg-slate-50/50 rounded-2xl border border-slate-100 animate-in slide-in-from-top-4 duration-500 hover:shadow-lg hover:shadow-slate-100/50 transition-all group/stall">
+                                <button
+                                    type="button"
+                                    onClick={() => handleRemoveStall(formData.stalls.findIndex(s => s.id === stall.id))}
+                                    className="absolute -top-3 -right-3 w-8 h-8 bg-white text-slate-400 hover:text-red-500 rounded-full shadow-md border border-slate-100 flex items-center justify-center transition-all hover:scale-110 active:scale-95 z-10 opacity-0 group-hover/stall:opacity-100"
+                                >
+                                    <FaTrash size={12} />
+                                </button>
+
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                                    <div className="space-y-4">
+                                        <div>
+                                            <label className="block text-[10px] font-black text-slate-400 mb-2 uppercase tracking-widest">Stall Name / Category</label>
+                                            <div className="relative group/input">
+                                                <input
+                                                    type="text"
+                                                    value={stall.category}
+                                                    onChange={(e) => handleUpdateStall(stall.id, 'category', e.target.value)}
+                                                    placeholder="e.g., Coffee Stall, LED Counter..."
+                                                    className="w-full px-5 py-3.5 bg-white border border-slate-200 rounded-2xl outline-none font-bold text-slate-700 focus:ring-4 focus:ring-primary-500/10 focus:border-primary-500 transition-all placeholder:text-slate-300"
+                                                />
+                                            </div>
+                                        </div>
+                                        <div>
+                                            <label className="block text-[10px] font-black text-slate-400 mb-2 uppercase tracking-widest">Description</label>
+                                            <input
+                                                type="text"
+                                                value={stall.description}
+                                                onChange={(e) => handleUpdateStall(stall.id, 'description', e.target.value)}
+                                                placeholder="e.g., Live Jalebi Counter with 2 people"
+                                                className="w-full px-5 py-3.5 bg-white border border-slate-200 rounded-2xl outline-none font-bold text-slate-700 focus:ring-4 focus:ring-primary-500/10 focus:border-primary-500 transition-all text-sm placeholder:text-slate-300"
+                                            />
+                                        </div>
+                                    </div>
+
+                                    <div className="bg-white p-5 rounded-2xl border border-slate-200/60 shadow-sm space-y-4">
+                                        <div className="flex items-center justify-between mb-2">
+                                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Pricing Structure</label>
+                                            <div className="flex bg-slate-100 p-1 rounded-xl">
+                                                <button
+                                                    type="button"
+                                                    onClick={() => handleUpdateStall(stall.id, 'pricingMethod', 'manual')}
+                                                    className={`px-4 py-1.5 rounded-lg text-xs font-black transition-all ${stall.pricingMethod === 'manual' ? 'bg-white text-primary-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                                                >
+                                                    Manual
+                                                </button>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => handleUpdateStall(stall.id, 'pricingMethod', 'plate-based')}
+                                                    className={`px-4 py-1.5 rounded-lg text-xs font-black transition-all ${stall.pricingMethod === 'plate-based' ? 'bg-white text-primary-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                                                >
+                                                    Plate-wise
+                                                </button>
+                                            </div>
+                                        </div>
+
+                                        {stall.pricingMethod === 'plate-based' ? (
+                                            <div className="grid grid-cols-2 gap-4">
+                                                <div>
+                                                    <label className="block text-[10px] font-black text-slate-400 mb-1.5 uppercase">Plates</label>
+                                                    <input
+                                                        type="number"
+                                                        value={stall.numberOfPlates}
+                                                        onChange={(e) => handleUpdateStall(stall.id, 'numberOfPlates', e.target.value)}
+                                                        className="w-full px-4 py-3 bg-slate-50 border border-slate-100 rounded-xl outline-none font-black text-slate-700 focus:ring-2 focus:ring-primary-500"
+                                                    />
+                                                </div>
+                                                <div>
+                                                    <label className="block text-[10px] font-black text-slate-400 mb-1.5 uppercase">Price / Plate</label>
+                                                    <div className="relative">
+                                                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-300 font-bold">₹</span>
+                                                        <input
+                                                            type="number"
+                                                            value={stall.platePrice}
+                                                            onChange={(e) => handleUpdateStall(stall.id, 'platePrice', e.target.value)}
+                                                            className="w-full pl-8 pr-4 py-3 bg-slate-50 border border-slate-100 rounded-xl outline-none font-black text-primary-600 focus:ring-2 focus:ring-primary-500"
+                                                        />
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        ) : (
+                                            <div>
+                                                <label className="block text-[10px] font-black text-slate-400 mb-1.5 uppercase tracking-widest">Total Extras Amount</label>
+                                                <div className="relative">
+                                                    <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300 font-black text-lg">₹</span>
+                                                    <input
+                                                        type="number"
+                                                        value={stall.manualAmount}
+                                                        onChange={(e) => handleUpdateStall(stall.id, 'manualAmount', e.target.value)}
+                                                        className="w-full pl-10 pr-4 py-4 bg-slate-50 border border-slate-100 rounded-xl outline-none font-black text-2xl text-primary-600 focus:ring-2 focus:ring-primary-500 tracking-tight"
+                                                        placeholder="0.00"
+                                                    />
+                                                </div>
+                                            </div>
+                                        )}
+                                        <div className="flex items-center gap-3 pt-2">
+                                            <div className="flex-1">
+                                                <label className="block text-[10px] font-black text-slate-400 mb-1.5 uppercase tracking-widest">Serving Members</label>
+                                                <div className="relative">
+                                                    <FaUsers className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-300" size={12} />
+                                                    <input
+                                                        type="number"
+                                                        value={stall.numberOfMembers}
+                                                        onChange={(e) => handleUpdateStall(stall.id, 'numberOfMembers', e.target.value)}
+                                                        className="w-full pl-9 pr-4 py-2.5 bg-slate-50 border border-slate-100 rounded-xl outline-none font-bold text-slate-700"
+                                                        placeholder="Qty"
+                                                    />
+                                                </div>
+                                            </div>
+                                        </div>
                                     </div>
                                 </div>
-                                <div className="flex items-end pb-1">
-                                    <button
-                                        type="button"
-                                        onClick={() => handleRemoveStall(index)}
-                                        className="p-2 text-red-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all"
-                                    >
-                                        <FaTrash size={16} />
-                                    </button>
+
+                                {/* Items selection for stalls - reusing the pattern from mealTypes */}
+                                <div className="mt-8 pt-8 border-t border-slate-100">
+                                    <div className="flex items-center justify-between mb-4">
+                                        <h3 className="font-black text-slate-800 flex items-center gap-2 text-sm uppercase tracking-wider">
+                                            <FaUtensils className="text-primary-500" size={14} /> Stall Menu Items
+                                        </h3>
+                                        <div className="flex items-center gap-3">
+                                            <div className="relative group">
+                                                <FaSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-300 group-focus-within:text-primary-500 transition-colors" size={12} />
+                                                <input
+                                                    type="text"
+                                                    placeholder="Search specialized stall items..."
+                                                    value={menuItemSearch[stall.id] || ''}
+                                                    onChange={(e) => setMenuItemSearch(p => ({ ...p, [stall.id]: e.target.value }))}
+                                                    className="pl-9 pr-4 py-2 bg-white border border-slate-200 rounded-xl text-xs font-bold outline-none focus:ring-4 focus:ring-primary-500/10 focus:border-primary-500 w-64 transition-all"
+                                                />
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div className="min-h-[100px] mb-6">
+                                        {(menuItemSearch[stall.id] || stall.category) && (
+                                            <div className="mt-2 max-h-[350px] overflow-y-auto pr-1">
+                                                <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-6 gap-2 pt-1">
+                                                    {menuItems
+                                                        .filter(item => {
+                                                            const search = (menuItemSearch[stall.id] || '').toLowerCase()
+                                                            const matchesSearch = item.name.toLowerCase().includes(search)
+                                                            // For stalls, we might want to filter by certain types, but user wants to "add type add the stall items there"
+                                                            // So we check if item type matches the stall category name partially or fully
+                                                            const itemTypes = Array.isArray(item.type) ? item.type : [(item.type as any)]
+                                                            const matchesType = !stall.category || itemTypes.some((t: string) => 
+                                                                t?.toLowerCase().includes('stall') || 
+                                                                (stall.category && t?.toLowerCase() === stall.category.toLowerCase())
+                                                            )
+                                                            return matchesSearch && (matchesType || search.length > 0)
+                                                        })
+                                                        .map(item => (
+                                                            <button
+                                                                key={item.id}
+                                                                type="button"
+                                                                onClick={() => {
+                                                                    setFormData(prev => ({
+                                                                        ...prev,
+                                                                        stalls: prev.stalls.map(s => s.id === stall.id ? {
+                                                                            ...s,
+                                                                            selectedMenuItems: s.selectedMenuItems.includes(item.id)
+                                                                                ? s.selectedMenuItems.filter(i => i !== item.id)
+                                                                                : [...s.selectedMenuItems, item.id]
+                                                                        } : s)
+                                                                    }))
+                                                                }}
+                                                                className={`p-2 text-left rounded-xl border transition-all relative overflow-hidden ${stall.selectedMenuItems.includes(item.id)
+                                                                    ? 'bg-primary-600 border-primary-600 text-white font-black shadow-lg shadow-primary-200 scale-[1.02]'
+                                                                    : 'bg-white border-slate-100 text-slate-700 hover:border-primary-300 hover:bg-slate-50 font-bold'}`}
+                                                            >
+                                                                <div className="text-[10px] font-black leading-tight mb-0.5 line-clamp-2">{item.name}</div>
+                                                                {stall.selectedMenuItems.includes(item.id) && (
+                                                                    <div className="absolute -top-1 -right-1 opacity-20">
+                                                                        <FaUtensils size={30} />
+                                                                    </div>
+                                                                )}
+                                                            </button>
+                                                        ))}
+                                                </div>
+                                            </div>
+                                        )}
+                                    </div>
+
+                                    {stall.selectedMenuItems.length > 0 && (
+                                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 bg-white p-4 rounded-2xl border border-slate-100 shadow-sm">
+                                            {stall.selectedMenuItems.map((itemId) => {
+                                                const item = menuItems.find(m => m.id === itemId)
+                                                if (!item) return null
+                                                return (
+                                                    <div key={itemId} className="flex items-center gap-3 p-2 bg-slate-50/50 border border-slate-100 rounded-xl group hover:border-primary-200 transition-all">
+                                                        <div className="flex-1 min-w-0">
+                                                            <div className="font-extrabold text-slate-800 text-[10px] truncate leading-tight uppercase tracking-tight">{item.name}</div>
+                                                            <input
+                                                                type="text"
+                                                                placeholder="Note..."
+                                                                value={stall.itemCustomizations[itemId] || ''}
+                                                                onChange={(e) => {
+                                                                    const val = e.target.value
+                                                                    handleUpdateStall(stall.id, 'itemCustomizations', { ...stall.itemCustomizations, [itemId]: val })
+                                                                }}
+                                                                className="text-[9px] w-full mt-0.5 text-slate-500 bg-transparent border-b border-transparent focus:border-primary-300 outline-none placeholder:text-slate-300 font-bold"
+                                                            />
+                                                        </div>
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => {
+                                                                handleUpdateStall(stall.id, 'selectedMenuItems', stall.selectedMenuItems.filter(i => i !== item.id))
+                                                            }}
+                                                            className="text-slate-300 hover:text-red-500 transition-colors"
+                                                        >
+                                                            <FaTimes size={12} />
+                                                        </button>
+                                                    </div>
+                                                )
+                                            })}
+                                        </div>
+                                    )}
                                 </div>
                             </div>
                         ))}

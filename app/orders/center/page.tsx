@@ -78,7 +78,9 @@ export default function OrderCenterPage() {
 
   const loadData = async () => {
     try {
-      const allOrders = await getRequest({ url: apiUrl.GET_getAllOrders }) as Order[]
+      const allOrders = await getRequest({ 
+        url: `${apiUrl.GET_getAllOrders}?t=${Date.now()}` 
+      }) as Order[]
       setOrders(allOrders)
     } catch (error) {
       console.error('Failed to load data:', error)
@@ -183,8 +185,11 @@ export default function OrderCenterPage() {
       })
 
       console.log(`[Order History] Order status updated.`, responseData)
+      
+      // Update local state immediately for better responsiveness
+      setOrders(prev => prev.map(o => o.id === orderId ? { ...o, status: newStatus as any } : o))
 
-      // Reload data to get the latest orders with updated status
+      // Reload data to get the latest orders with updated status (with cache buster)
       await loadData()
 
       // If status changed to in_progress or completed, check if bill was created
@@ -846,6 +851,7 @@ export default function OrderCenterPage() {
                 className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-700 font-bold text-sm focus:ring-2 focus:ring-indigo-500 outline-none transition-all"
               >
                 <option value="all">All Active Orders</option>
+                <option value="quotation">Quotations</option>
                 <option value="pending">Pending</option>
                 <option value="in_progress">In Progress</option>
                 <option value="completed">Completed (Archived)</option>
@@ -1251,9 +1257,11 @@ export default function OrderCenterPage() {
                             className={`px-3 py-1.5 text-xs font-semibold rounded-full border-0 cursor-pointer focus:ring-2 focus:ring-primary-500 focus:outline-none ${order.status === 'completed' ? 'bg-green-100 text-green-800 hover:bg-green-200' :
                               order.status === 'in_progress' ? 'bg-yellow-100 text-yellow-800 hover:bg-yellow-200' :
                                 order.status === 'cancelled' ? 'bg-red-100 text-red-800 hover:bg-red-200' :
-                                  'bg-gray-100 text-gray-800 hover:bg-gray-200'
+                                  order.status === 'quotation' ? 'bg-purple-100 text-purple-800 hover:bg-purple-200' :
+                                    'bg-gray-100 text-gray-800 hover:bg-gray-200'
                               }`}
                           >
+                            <option value="quotation">Quotation</option>
                             <option value="pending">Pending</option>
                             <option value="in_progress">In Progress</option>
                             <option value="completed">Completed</option>

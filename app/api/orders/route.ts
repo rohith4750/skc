@@ -105,7 +105,15 @@ export async function POST(request: NextRequest) {
         transportCost +
         waterBottlesCost +
         (data.stalls || []).reduce(
-          (sum: number, s: any) => sum + (parseFloat(s.cost) || 0),
+          (sum: number, s: any) => {
+            let sCost = 0;
+            if (s.pricingMethod === "plate-based") {
+              sCost = (parseFloat(s.numberOfPlates) || 0) * (parseFloat(s.platePrice) || 0);
+            } else {
+              sCost = parseFloat(s.manualAmount) || parseFloat(s.cost) || 0;
+            }
+            return sum + sCost;
+          },
           0,
         ) -
         discount,

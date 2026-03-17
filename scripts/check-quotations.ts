@@ -5,7 +5,7 @@ const prisma = new PrismaClient()
 async function main() {
   const quotations = await prisma.order.findMany({
     where: {
-      status: 'quotation'
+      status: 'quotation' as any
     },
     include: {
       customer: true

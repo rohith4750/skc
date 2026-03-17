@@ -72,9 +72,18 @@ export interface Order {
     | number
   > | null;
   stalls?: Array<{
+    id: string;
     category: string;
     description: string;
+    selectedMenuItems: string[];
+    itemCustomizations?: Record<string, string>;
+    itemQuantities?: Record<string, string>;
+    pricingMethod: "manual" | "plate-based";
+    numberOfPlates?: number;
+    platePrice?: number;
+    manualAmount?: number;
     cost: number | string;
+    numberOfMembers?: number;
   }> | null;
   numberOfMembers?: number | null;
   transportCost?: number;
