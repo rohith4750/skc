@@ -112,7 +112,7 @@ export function buildOrderPdfHtml(
       // Date Header Row - ONLY SHOW if multi-event
       if (isMultiEvent) {
         summaryRowsHtml += `
-            <tr style="background-color: #f3f3f3;">
+            <tr class="pdf-row pdf-section-header" style="background-color: #f3f3f3;">
                 <td colspan="4" style="padding: 4px 10px; font-weight: 700; font-size: 11px; border-bottom: 1px solid #000;">
                     Event Date: ${formatDate(dateStr)}
                 </td>
@@ -153,7 +153,7 @@ export function buildOrderPdfHtml(
         const rate = count > 0 ? amount / count : 0;
 
         summaryRowsHtml += `
-                <tr>
+                <tr class="pdf-row">
                     <td style="padding: 5px 10px; font-size: 11px; font-weight: 600; border-bottom: 1px solid #ddd;">
                         ${meal.label}
                         ${meal.time ? `<span style="font-size: 9px; color: #666; margin-left: 5px;">@ ${meal.time}</span>` : ""}
@@ -217,7 +217,9 @@ export function buildOrderPdfHtml(
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <style>
       * { font-family: 'Poppins', sans-serif !important; box-sizing: border-box; margin: 0; padding: 0; }
-      body { -webkit-print-color-adjust: exact; }
+      body { -webkit-print-color-adjust: exact; background-color: white; }
+      .pdf-row { page-break-inside: avoid !important; break-inside: avoid !important; }
+      table { border-collapse: collapse; page-break-inside: auto; }
     </style>
     
     <div style="width: 100%; padding: 8px; color: #000;">
