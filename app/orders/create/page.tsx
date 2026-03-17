@@ -2,6 +2,7 @@
 import OrderForm from '@/components/orders/OrderForm'
 import Link from 'next/link'
 import { FaChevronLeft } from 'react-icons/fa'
+import { Suspense } from 'react'
 
 export default function CreateOrderPage() {
     return (
@@ -19,7 +20,9 @@ export default function CreateOrderPage() {
                 </div>
             </div>
 
-            <OrderForm />
+            <Suspense fallback={<div className="p-8 text-center text-gray-500">Loading form...</div>}>
+                <OrderForm />
+            </Suspense>
         </div>
     )
 }

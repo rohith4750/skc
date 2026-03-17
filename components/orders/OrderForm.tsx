@@ -111,6 +111,13 @@ export default function OrderForm({ orderId, isEditMode = false, initialOrderTyp
         return () => document.removeEventListener('mousedown', handleClickOutside)
     }, [])
 
+    useEffect(() => {
+        const status = searchParams.get('status')
+        if (status && !isEditMode) {
+            setCurrentOrderStatus(status)
+        }
+    }, [searchParams, isEditMode])
+
     const loadData = async () => {
         try {
             const [allCustomers, allMenuItems] = await Promise.all([
