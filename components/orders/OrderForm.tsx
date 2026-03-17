@@ -30,6 +30,7 @@ export default function OrderForm({ orderId, isEditMode = false, initialOrderTyp
     const customerSearchRef = useRef<HTMLDivElement>(null)
     const [showAddCustomerForm, setShowAddCustomerForm] = useState<boolean>(false)
     const [isSavingCustomer, setIsSavingCustomer] = useState<boolean>(false)
+    const hasLoadedRef = useRef(false)
     const [newCustomerForm, setNewCustomerForm] = useState({
         name: '',
         phone: '',
@@ -92,8 +93,9 @@ export default function OrderForm({ orderId, isEditMode = false, initialOrderTyp
     }, [])
 
     useEffect(() => {
-        if (isEditMode && orderId && customers.length > 0 && menuItems.length > 0) {
+        if (isEditMode && orderId && customers.length > 0 && menuItems.length > 0 && !hasLoadedRef.current) {
             loadOrderData(orderId)
+            hasLoadedRef.current = true
         }
     }, [isEditMode, orderId, customers.length, menuItems.length])
 
@@ -333,7 +335,6 @@ export default function OrderForm({ orderId, isEditMode = false, initialOrderTyp
     }
 
     const handleMenuItemToggle = (mealTypeId: string, itemId: string) => {
-        setMenuItemSearch(prev => ({ ...prev, [mealTypeId]: '' }))
         setFormData(prev => ({
             ...prev,
             mealTypes: prev.mealTypes.map(mt =>
