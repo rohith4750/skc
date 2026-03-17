@@ -537,12 +537,14 @@ export default function OrderForm({ orderId, isEditMode = false, initialOrderTyp
                         <select
                             value={currentOrderStatus}
                             onChange={(e) => setCurrentOrderStatus(e.target.value)}
-                            className={`w-full px-4 py-2 rounded-xl border border-gray-200 outline-none font-black text-xs transition-all ${currentOrderStatus === 'completed' ? 'bg-green-50 text-green-700 border-green-200' :
-                                currentOrderStatus === 'in_progress' ? 'bg-blue-50 text-blue-700 border-blue-200' :
-                                    currentOrderStatus === 'cancelled' ? 'bg-red-50 text-red-700 border-red-200' :
-                                        'bg-orange-50 text-orange-700 border-orange-200'
+                            className={`w-full px-4 py-2 rounded-xl border border-gray-200 outline-none font-black text-xs transition-all ${currentOrderStatus === 'quotation' ? 'bg-purple-50 text-purple-700 border-purple-200' :
+                                currentOrderStatus === 'completed' ? 'bg-green-50 text-green-700 border-green-200' :
+                                    currentOrderStatus === 'in_progress' ? 'bg-blue-50 text-blue-700 border-blue-200' :
+                                        currentOrderStatus === 'cancelled' ? 'bg-red-50 text-red-700 border-red-200' :
+                                            'bg-orange-50 text-orange-700 border-orange-200'
                                 }`}
                         >
+                            <option value="quotation">Quotation</option>
                             <option value="pending">Pending</option>
                             <option value="in_progress">In Progress</option>
                             <option value="completed">Completed</option>

@@ -68,6 +68,9 @@ export default function OrdersOverviewPage() {
       return orderDate.getMonth() === selectedMonth && orderDate.getFullYear() === selectedYear
     })
 
+    // Filter out quotations from original view
+    filtered = filtered.filter(order => order.status !== 'quotation')
+
     return filtered
   }, [orders, search, selectedMonth, selectedYear])
 

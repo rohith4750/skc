@@ -36,7 +36,7 @@ export interface Order {
   totalAmount: number;
   advancePaid: number;
   remainingAmount: number;
-  status: "pending" | "in_progress" | "completed" | "cancelled";
+  status: "quotation" | "pending" | "in_progress" | "completed" | "cancelled";
   eventName?: string | null;
   eventType?: string | null;
   eventDate?: string | null;

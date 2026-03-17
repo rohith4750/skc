@@ -44,5 +44,6 @@ export const MENU_ICON_MAP: Record<IconKey, IconType> = {
   audit: FaClipboardList,
   enquiries: FaEnvelope,
   regular: FaTag,
+  quotations: FaClipboardList,
   profile: FaUserCircle,
 };

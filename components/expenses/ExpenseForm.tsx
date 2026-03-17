@@ -53,7 +53,7 @@ export default function ExpenseForm({ id: expenseId }: ExpenseFormProps) {
     // Bulk allocation state
     const [isEventDropdownOpen, setIsEventDropdownOpen] = useState(false)
     const [selectedOrderIds, setSelectedOrderIds] = useState<string[]>([])
-    const isBulkExpense = selectedOrderIds.length > 1
+    const hasMultipleSelectedOrders = selectedOrderIds.length > 1
     const [allocationMethod, setAllocationMethod] = useState<'equal' | 'manual' | 'by-plates' | 'by-percentage'>('equal')
     const [bulkAllocations, setBulkAllocations] = useState<BulkAllocation[]>([])
     const [showAllocationDetails, setShowAllocationDetails] = useState(true)
@@ -90,6 +90,8 @@ export default function ExpenseForm({ id: expenseId }: ExpenseFormProps) {
         snacksAmount: '',
         dinnerAmount: '',
     })
+    const supportsBulkAllocation = formData.category !== 'labours'
+    const isBulkExpense = supportsBulkAllocation && hasMultipleSelectedOrders
 
     useEffect(() => {
         loadData()
@@ -426,6 +428,13 @@ export default function ExpenseForm({ id: expenseId }: ExpenseFormProps) {
         }
     }, [calculatedAmount])
 
+    useEffect(() => {
+        if (!supportsBulkAllocation && selectedOrderIds.length > 1) {
+            setSelectedOrderIds(selectedOrderIds.slice(0, 1))
+            setBulkAllocations([])
+        }
+    }, [supportsBulkAllocation, selectedOrderIds])
+
     const handleMealTypeToggle = (mealId: string, mealLabel: string) => {
         setFormData(prev => {
             const isSelected = prev.selectedMealTypes.some(mt => mt.id === mealId)
@@ -494,19 +503,25 @@ export default function ExpenseForm({ id: expenseId }: ExpenseFormProps) {
         setFormError('')
 
         if (!formData.category || calculatedAmount <= 0) {
-            toast.error('Please fill in all required fields and ensure amount is greater than 0')
+            const errorMessage = 'Please fill in all required fields and ensure amount is greater than 0'
+            setFormError(errorMessage)
+            toast.error(errorMessage)
             setSaving(false)
             return
         }
 
         if (isBulkExpense) {
             if (selectedOrderIds.length < 2) {
-                toast.error('Bulk expense must cover at least 2 events')
+                const errorMessage = 'Bulk expense must cover at least 2 events'
+                setFormError(errorMessage)
+                toast.error(errorMessage)
                 setSaving(false)
                 return
             }
             if (Math.abs(allocationDifference) > 0.01) {
-                toast.error(`Allocation amounts must equal total expense. Difference: ${formatCurrency(allocationDifference)}`)
+                const errorMessage = `Allocation amounts must equal total expense. Difference: ${formatCurrency(allocationDifference)}`
+                setFormError(errorMessage)
+                toast.error(errorMessage)
                 setSaving(false)
                 return
             }
@@ -550,7 +565,7 @@ export default function ExpenseForm({ id: expenseId }: ExpenseFormProps) {
                 : formData.category
 
             const expenseData: any = {
-                orderId: (isBulkExpense && formData.category !== 'labours') ? null : (selectedOrderIds[0] || null),
+                orderId: isBulkExpense ? null : (selectedOrderIds[0] || null),
                 category: finalCategory,
                 amount: calculatedAmount,
                 paidAmount: formData.paidAmount ? parseFloat(formData.paidAmount) : 0,
@@ -561,9 +576,9 @@ export default function ExpenseForm({ id: expenseId }: ExpenseFormProps) {
                 eventDate: (formData.category === 'labours' || formData.category === 'boys') && formData.eventDate ? formData.eventDate : null,
                 notes: formData.notes || null,
                 calculationDetails: Object.keys(calculationDetails).length > 0 ? calculationDetails : null,
-                isBulkExpense: (isBulkExpense && formData.category !== 'labours'),
-                bulkAllocations: (isBulkExpense && formData.category !== 'labours') ? bulkAllocations : null,
-                allocationMethod: (isBulkExpense && formData.category !== 'labours') ? allocationMethod : null,
+                isBulkExpense: isBulkExpense,
+                bulkAllocations: isBulkExpense ? bulkAllocations : null,
+                allocationMethod: isBulkExpense ? allocationMethod : null,
             }
 
             const url = expenseId ? `/api/expenses/${expenseId}` : '/api/expenses'
@@ -584,7 +599,9 @@ export default function ExpenseForm({ id: expenseId }: ExpenseFormProps) {
             router.push('/expenses')
         } catch (error: any) {
             console.error('Failed to save expense:', error)
-            toast.error(error.message || 'Failed to save expense')
+            const errorMessage = error.message || 'Failed to save expense'
+            setFormError(errorMessage)
+            toast.error(errorMessage)
         } finally {
             setSaving(false)
         }
@@ -595,6 +612,11 @@ export default function ExpenseForm({ id: expenseId }: ExpenseFormProps) {
     return (
         <div className="bg-white rounded-xl shadow-md border border-gray-200 p-6">
             <form onSubmit={handleSubmit} className="space-y-6">
+                <FormError
+                    message={formError}
+                    className="bg-red-50 border border-red-200 rounded-lg px-4 py-3"
+                />
+
                 {/* Order Filter Controls */}
                 <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
                     <h3 className="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2">
@@ -680,11 +702,11 @@ export default function ExpenseForm({ id: expenseId }: ExpenseFormProps) {
                         Event/Order (Optional)
                     </label>
                     <div
-                        className={`w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 bg-white cursor-pointer flex justify-between items-center ${formData.category === 'labours' ? 'opacity-50 cursor-not-allowed' : ''}`}
-                        onClick={() => formData.category !== 'labours' && setIsEventDropdownOpen(!isEventDropdownOpen)}
+                        className={`w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 bg-white cursor-pointer flex justify-between items-center ${!supportsBulkAllocation ? 'opacity-50 cursor-not-allowed' : ''}`}
+                        onClick={() => supportsBulkAllocation && setIsEventDropdownOpen(!isEventDropdownOpen)}
                     >
                         <div className="truncate text-gray-800">
-                            {formData.category === 'labours' && selectedOrderIds.length > 1
+                            {!supportsBulkAllocation && selectedOrderIds.length > 1
                                 ? 'Only one event allowed for labours'
                                 : selectedOrderIds.length === 0
                                     ? 'No specific event/order'
@@ -1159,7 +1181,7 @@ export default function ExpenseForm({ id: expenseId }: ExpenseFormProps) {
                 </div>
 
                 {/* Bulk Allocation */}
-                {isBulkExpense && formData.category !== 'labours' && selectedOrderIds.length >= 2 && calculatedAmount > 0 && (
+                {isBulkExpense && selectedOrderIds.length >= 2 && calculatedAmount > 0 && (
                     <div className="bg-slate-50 rounded-lg border border-slate-200 overflow-hidden">
                         <div className="bg-slate-100 px-4 py-3 cursor-pointer flex justify-between items-center" onClick={() => setShowAllocationDetails(!showAllocationDetails)}>
                             <div className="flex items-center gap-2">

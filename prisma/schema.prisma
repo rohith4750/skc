@@ -12,6 +12,7 @@ datasource db {
 
 
 enum OrderStatus {
+  quotation
   pending
   in_progress
   completed

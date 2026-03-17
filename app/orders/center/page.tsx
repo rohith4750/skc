@@ -94,7 +94,7 @@ export default function OrderCenterPage() {
     if (statusFilter !== 'all') {
       filtered = filtered.filter(order => order.status === statusFilter)
     } else {
-      // Default view for Order Center is everything EXCEPT completed/cancelled
+      // Default view for Order Hub is pending/in_progress but EXCLUDING quotations
       filtered = filtered.filter(order => ['pending', 'in_progress'].includes(order.status))
     }
 

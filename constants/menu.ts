@@ -53,6 +53,7 @@ export type IconKey =
   | "audit"
   | "enquiries"
   | "regular"
+  | "quotations"
   | "profile";
 
 export interface RouteConfigItem {
@@ -136,6 +137,15 @@ export const menuData: RouteConfigItem[] = [
     route: "/orders/history",
     file: "app/orders/history/page.tsx",
     icon: "history",
+    permissions: "AUTHENTICATED",
+    showInSideMenu: true,
+    section: "core",
+  },
+  {
+    name: "Quotations",
+    route: "/orders/quotations",
+    file: "app/orders/quotations/page.tsx",
+    icon: "quotations",
     permissions: "AUTHENTICATED",
     showInSideMenu: true,
     section: "core",
