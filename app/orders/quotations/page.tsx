@@ -220,7 +220,7 @@ export default function QuotationsPage() {
 
       <ConfirmModal
         isOpen={deleteConfirm.isOpen}
-        onClose={() => setDeleteConfirm({ isOpen: false, id: null })}
+        onCancel={() => setDeleteConfirm({ isOpen: false, id: null })}
         onConfirm={confirmDelete}
         title="Delete Quotation"
         message="Are you sure you want to delete this quotation? This action cannot be undone."
