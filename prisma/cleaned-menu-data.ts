@@ -349,4 +349,21 @@ export const cleanedMenuItems = [
   { name: 'Murukulu', nameTelugu: 'మురుకులు', type: 'snacks', category: 'SAARE - Savories', categoryTelugu: 'సారే - చేదు వస్తువులు' },
   { name: 'Murukul', nameTelugu: 'మురుకుల్', type: 'snacks', category: 'SAARE - Savories', categoryTelugu: 'సారే - చేదు వస్తువులు' },
   { name: 'Saare', nameTelugu: 'సారే', type: 'snacks', category: 'SAARE', categoryTelugu: 'సారే' },
-]
+  
+  // ===============================
+  // LIVE STALLS
+  // ===============================
+  { name: 'Pani Puri Stall', nameTelugu: 'పానీపూరి స్టాల్', type: 'stalls', category: 'LIVE STALLS', categoryTelugu: 'లైవ్ స్టాల్స్' },
+  { name: 'Masala Puri Stall', nameTelugu: 'మసాలా పూరి స్టాల్', type: 'stalls', category: 'LIVE STALLS', categoryTelugu: 'లైవ్ స్టాల్స్' },
+  { name: 'Gobi Manchuria Stall', nameTelugu: 'గోబీ మంచూరియా స్టాల్', type: 'stalls', category: 'LIVE STALLS', categoryTelugu: 'లైవ్ స్టాల్స్' },
+  { name: 'Jilebi Stall', nameTelugu: 'జిలేబి స్టాల్', type: 'stalls', category: 'LIVE STALLS', categoryTelugu: 'లైవ్ స్టాల్స్' },
+  { name: 'Cotton Candy Stall', nameTelugu: 'కాటన్ క్యాండీ స్టాల్', type: 'stalls', category: 'LIVE STALLS', categoryTelugu: 'లైవ్ స్టాల్స్' },
+  { name: 'Popcorn Stall', nameTelugu: 'పాప్‌కార్న్ స్టాల్', type: 'stalls', category: 'LIVE STALLS', categoryTelugu: 'లైవ్ స్టాల్స్' },
+  { name: 'Sweet Corn Stall', nameTelugu: 'స్వీట్ కార్న్ స్టాల్', type: 'stalls', category: 'LIVE STALLS', categoryTelugu: 'లైవ్ స్టాల్స్' },
+  { name: 'Ice Cream Stall', nameTelugu: 'ఐస్ క్రీమ్ స్టాల్', type: 'stalls', category: 'LIVE STALLS', categoryTelugu: 'లైవ్ స్టాల్స్' },
+  { name: 'Mocktail Stall', nameTelugu: 'మాక్‌టెయిల్ స్టాల్', type: 'stalls', category: 'LIVE STALLS', categoryTelugu: 'లైవ్ స్టాల్స్' },
+  { name: 'Fruit Salad with Ice Cream', nameTelugu: 'ఐస్ క్రీమ్‌తో ఫ్రూట్ సలాడ్', type: 'stalls', category: 'LIVE STALLS', categoryTelugu: 'లైవ్ స్టాల్స్' },
+  { name: 'Coffee & Tea Stall', nameTelugu: 'కాఫీ మరియు టీ స్టాల్', type: 'stalls', category: 'LIVE STALLS', categoryTelugu: 'లైవ్ స్టాల్స్' },
+  { name: 'Badam Milk Stall', nameTelugu: 'బాదం పాలు స్టాల్', type: 'stalls', category: 'LIVE STALLS', categoryTelugu: 'లైవ్ స్టాల్స్' },
+  { name: 'Pan Stall', nameTelugu: 'పాన్ స్టాల్', type: 'stalls', category: 'LIVE STALLS', categoryTelugu: 'లైవ్ స్టాల్స్' },
+];
