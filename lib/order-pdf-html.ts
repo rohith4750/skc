@@ -82,7 +82,7 @@ export function buildOrderPdfHtml(
     });
   }
 
-  // Sort dates
+  // Sort dates chronologically
   const sortedDates = Object.keys(summaryByDate).sort(
     (a, b) => new Date(a).getTime() - new Date(b).getTime(),
   );
@@ -107,11 +107,22 @@ export function buildOrderPdfHtml(
           `;
       }
 
-      // Sort meals by priority (Breakfast -> Lunch -> Dinner)
+      // Sort meals by priority (chronological order)
       const meals = summaryByDate[dateStr].sort((a, b) => {
-        const order = { breakfast: 1, lunch: 2, snacks: 3, dinner: 4 };
-        const pa = order[a.type.toLowerCase() as keyof typeof order] || 99;
-        const pb = order[b.type.toLowerCase() as keyof typeof order] || 99;
+        const order: Record<string, number> = { 
+          'breakfast': 1, 
+          'lunch': 2, 
+          'hi-tea': 3,
+          'hi tea': 3,
+          'snacks': 4, 
+          'tiffin': 5,
+          'dinner': 6,
+          'session': 7,
+          'stalls': 8,
+          'other': 9 
+        };
+        const pa = order[a.type.toLowerCase()] || 99;
+        const pb = order[b.type.toLowerCase()] || 99;
         return pa - pb;
       });
 
