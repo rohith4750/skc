@@ -94,11 +94,20 @@ export function buildOrderPdfHtml(
       });
     });
   }
-
   // Sort dates chronologically
   const sortedDates = Object.keys(summaryByDate).sort(
     (a, b) => new Date(a).getTime() - new Date(b).getTime(),
   );
+
+  // Map items by mealType for easy lookup
+  const itemsByMealType: Record<string, any[]> = {};
+  if (order.items && Array.isArray(order.items)) {
+    order.items.forEach((item: any) => {
+      const mt = item.mealType || 'other';
+      if (!itemsByMealType[mt]) itemsByMealType[mt] = [];
+      itemsByMealType[mt].push(item);
+    });
+  }
 
   const isMultiEvent = sortedDates.length > 1;
 
@@ -108,7 +117,7 @@ export function buildOrderPdfHtml(
     // Fallback if no structured data
     summaryRowsHtml = `<tr><td colspan="4" style="text-align:center; padding: 20px;">No specific event details found.</td></tr>`;
   } else {
-    sortedDates.forEach((dateStr) => {
+    sortedDates.forEach((dateStr: string) => {
       // Date Header Row - ONLY SHOW if multi-event
       if (isMultiEvent) {
         summaryRowsHtml += `
@@ -152,20 +161,36 @@ export function buildOrderPdfHtml(
         const amount = Number(meal.amount || 0);
         const rate = count > 0 ? amount / count : 0;
 
+        // Get items for this meal/session
+        const sessionItems = itemsByMealType[meal.id] || [];
+        const menuItemsHtml = sessionItems.length > 0 
+          ? `<div style="margin-top: 4px; padding-left: 8px; border-left: 2px solid #eee; font-size: 9px; color: #444; font-weight: 400;">
+              ${sessionItems.map((si: any) => {
+                const name = si.menuItem?.name || "Unknown Item";
+                const telugu = si.menuItem?.nameTelugu;
+                const cust = si.customization;
+                return `<div style="margin-bottom: 2px;">
+                  • ${name}${telugu ? ` (${telugu})` : ""}${cust ? ` <i style="color: #666;">- ${cust}</i>` : ""}
+                </div>`;
+              }).join('')}
+            </div>`
+          : "";
+
         summaryRowsHtml += `
                 <tr class="pdf-row">
-                    <td style="padding: 5px 10px; font-size: 11px; font-weight: 600; border-bottom: 1px solid #ddd;">
+                    <td style="padding: 5px 10px; font-size: 11px; font-weight: 600; border-bottom: 1px solid #ddd; vertical-align: top;">
                         ${meal.label}
                         ${meal.time ? `<span style="font-size: 9px; color: #666; margin-left: 5px;">@ ${meal.time}</span>` : ""}
                         <div style="font-size: 9px; color: #333; font-weight: 400; margin-top: 1px;">${formatDate(dateStr)}</div>
+                        ${menuItemsHtml}
                     </td>
-                    <td style="padding: 5px 10px; font-size: 11px; border-bottom: 1px solid #ddd; text-align: center; font-weight: 500;">
+                    <td style="padding: 5px 10px; font-size: 11px; border-bottom: 1px solid #ddd; text-align: center; font-weight: 500; vertical-align: top;">
                         ${count}
                     </td>
-                     <td style="padding: 5px 10px; font-size: 11px; border-bottom: 1px solid #ddd; text-align: center; font-weight: 500;">
+                     <td style="padding: 5px 10px; font-size: 11px; border-bottom: 1px solid #ddd; text-align: center; font-weight: 500; vertical-align: top;">
                         ${rate > 0 ? formatCurrency(rate) : "-"}
                     </td>
-                    <td style="padding: 5px 10px; font-size: 11px; font-weight: 700; border-bottom: 1px solid #ddd; text-align: right;">
+                    <td style="padding: 5px 10px; font-size: 11px; font-weight: 700; border-bottom: 1px solid #ddd; text-align: right; vertical-align: top;">
                         ${formatCurrency(amount)}
                     </td>
                 </tr>
