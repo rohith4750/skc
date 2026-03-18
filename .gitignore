@@ -39,3 +39,17 @@ NEON_CONNECTION_STRING.md
 next-env.d.ts
 
 /lib/generated/prisma
+
+# Electron build output
+/dist/
+/release/
+*.exe
+*.dmg
+*.AppImage
+*.deb
+*.rpm
+*.zip
+*.blockmap
+builder-debug.yml
+builder-effective-config.yaml
+latest.yml

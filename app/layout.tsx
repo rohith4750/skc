@@ -14,6 +14,7 @@ const poppins = Poppins({
 export const metadata: Metadata = {
   title: 'SKC Caterers - Management System',
   description: 'SKC Caterers - Established 1989. Manage catering services, customers, orders, and bills',
+  manifest: '/manifest.webmanifest',
   icons: {
     icon: [
       { url: '/images/logo-dark.png', type: 'image/png' },
@@ -23,6 +24,22 @@ export const metadata: Metadata = {
       { url: '/images/logo-dark.png', type: 'image/png' },
     ],
   },
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: 'default',
+    title: 'SKC Caterers',
+  },
+  formatDetection: {
+    telephone: true,
+  },
+}
+
+export const viewport = {
+  themeColor: '#ea580c',
+  width: 'device-width',
+  initialScale: 1,
+  maximumScale: 1,
+  userScalable: false,
 }
 
 export default function RootLayout({
