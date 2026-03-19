@@ -22,6 +22,10 @@ export function buildOrderPdfHtml(
     isQuotation = false,
   } = options;
 
+  const themeColor = isQuotation ? "#7c3aed" : "#000000"; // Purple-600 for quotations, Black for bills
+  const documentTitle = isQuotation ? "QUOTATION" : "BILL SUMMARY";
+  const idLabel = isQuotation ? "Quotation No:" : "Bill No:";
+
   const customer = order.customer;
   const bill = externalBill || order.bill;
   const mealTypeAmounts = order.mealTypeAmounts as Record<
@@ -161,20 +165,7 @@ export function buildOrderPdfHtml(
         const amount = Number(meal.amount || 0);
         const rate = count > 0 ? amount / count : 0;
 
-        // Get items for this meal/session
-        const sessionItems = itemsByMealType[meal.id] || [];
-        const menuItemsHtml = sessionItems.length > 0 
-          ? `<div style="margin-top: 4px; padding-left: 8px; border-left: 2px solid #eee; font-size: 9px; color: #444; font-weight: 400;">
-              ${sessionItems.map((si: any) => {
-                const name = si.menuItem?.name || "Unknown Item";
-                const telugu = si.menuItem?.nameTelugu;
-                const cust = si.customization;
-                return `<div style="margin-bottom: 2px;">
-                  • ${name}${telugu ? ` (${telugu})` : ""}${cust ? ` <i style="color: #666;">- ${cust}</i>` : ""}
-                </div>`;
-              }).join('')}
-            </div>`
-          : "";
+        const menuItemsHtml = "";
 
         summaryRowsHtml += `
                 <tr class="pdf-row">
@@ -197,6 +188,68 @@ export function buildOrderPdfHtml(
               `;
       });
     });
+  }
+
+  // Build Menu Details HTML (Separate Section)
+  let menuDetailsHtml = "";
+  if (sortedDates.length > 0) {
+    menuDetailsHtml = `
+      <div style="margin-top: 25px; page-break-before: auto;">
+        <div style="text-align: center; margin-bottom: 15px;">
+          <div style="font-weight: 800; font-size: 14px; text-transform: uppercase; border-bottom: 2px solid ${themeColor}; display: inline-block; padding-bottom: 3px; color: ${themeColor};">MENU DETAILS</div>
+        </div>
+        <div style="border: 2px solid ${themeColor}; padding: 15px; border-radius: 8px;">
+    `;
+
+    sortedDates.forEach((dateStr) => {
+      const dateDisplay = formatDate(dateStr);
+      const meals = summaryByDate[dateStr].filter(m => !m.isStall).sort((a, b) => {
+        const mealOrders: Record<string, number> = { 'breakfast': 1, 'lunch': 2, 'hi-tea': 3, 'hi tea': 3, 'snacks': 4, 'tiffin': 5, 'dinner': 6, 'session': 7, 'other': 9 };
+        return (mealOrders[a.type?.toLowerCase()] || 99) - (mealOrders[b.type?.toLowerCase()] || 99);
+      });
+
+      if (meals.length > 0) {
+        if (isMultiEvent) {
+          menuDetailsHtml += `
+            <div style="font-weight: 700; font-size: 11px; margin-top: 15px; margin-bottom: 10px; color: #333; border-bottom: 1px dashed #ccc; padding-bottom: 5px;">
+              📅 ${dateDisplay}
+            </div>
+          `;
+        }
+
+        meals.forEach((meal) => {
+          const items = itemsByMealType[meal.id] || [];
+          if (items.length > 0) {
+            menuDetailsHtml += `
+              <div style="margin-bottom: 15px;">
+                <div style="font-weight: 700; font-size: 10px; color: ${themeColor}; text-transform: uppercase; margin-bottom: 8px; display: flex; align-items: center; gap: 8px;">
+                  <span style="background: ${isQuotation ? '#f5f3ff' : '#f0f0f0'}; padding: 2px 8px; border-radius: 4px;">${meal.label}</span>
+                  ${meal.time ? `<span style="font-weight: 500; color: #666; text-transform: none;">@ ${meal.time}</span>` : ""}
+                  ${meal.numberOfMembers ? `<span style="font-weight: 500; color: #666; text-transform: none;">(${meal.numberOfMembers} Members)</span>` : ""}
+                </div>
+                <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px;">
+                  ${items.map((it, idx) => {
+                    const name = it.menuItem?.name || "Item";
+                    const telugu = it.menuItem?.nameTelugu;
+                    const cust = it.customization;
+                    return `
+                      <div style="font-size: 9px; line-height: 1.4; color: #000; font-weight: 600;">
+                        ${idx + 1}. ${name}${telugu ? `<br/><span style="color: #444; font-size: 8px;">(${telugu})</span>` : ""}${cust ? `<br/><i style="color: #7c3aed; font-size: 8px;">- ${cust}</i>` : ""}
+                      </div>
+                    `;
+                  }).join('')}
+                </div>
+              </div>
+            `;
+          }
+        });
+      }
+    });
+
+    menuDetailsHtml += `
+        </div>
+      </div>
+    `;
   }
 
   // Financials
@@ -233,10 +286,6 @@ export function buildOrderPdfHtml(
     : isQuotation 
       ? `QT-${order.id.slice(0, 6).toUpperCase()}`
       : `SKC-${order.id.slice(0, 6).toUpperCase()}`;
-
-  const themeColor = isQuotation ? "#7c3aed" : "#000000"; // Purple-600 for quotations, Black for bills
-  const documentTitle = isQuotation ? "QUOTATION" : "BILL SUMMARY";
-  const idLabel = isQuotation ? "Quotation No:" : "Bill No:";
 
   return `
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
@@ -371,6 +420,8 @@ export function buildOrderPdfHtml(
                  </div>
             </div>
         </div>
+
+        ${menuDetailsHtml}
 
         ${
           billNote

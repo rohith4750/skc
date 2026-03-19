@@ -4,8 +4,8 @@ import { useRouter } from 'next/navigation'
 import { formatDateTime, formatDate, formatCurrency, sanitizeMealLabel, getOrderDate } from '@/lib/utils'
 import { Order } from '@/types'
 import {
-  FaPlus, FaEdit, FaTrash, FaSearch, FaFilter, FaFilePdf, FaFileImage,
-  FaEnvelope, FaChartLine, FaCheckCircle, FaClock, FaTimesCircle,
+  FaPlus, FaPrint, FaCheck, FaEdit, FaTrash, FaSearch, FaFilter, FaFilePdf, FaFileImage,
+  FaEnvelope, FaChartLine, FaCheckCircle, FaClock, FaTimesCircle, FaEye,
   FaLayerGroup, FaCalendarAlt, FaHistory, FaMapMarkerAlt, FaUsers,
   FaBars, FaTimes, FaUtensils, FaChevronLeft, FaChevronRight, FaClipboardList
 } from 'react-icons/fa'
@@ -29,6 +29,7 @@ export default function QuotationsPage() {
     id: null,
   })
   const [customerSearch, setCustomerSearch] = useState<string>('')
+  const [selectedOrderForMenu, setSelectedOrderForMenu] = useState<Order | null>(null)
 
   useEffect(() => {
     loadData()
@@ -388,6 +389,13 @@ export default function QuotationsPage() {
                     <td className="px-6 py-4 text-right">
                       <div className="flex justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
                         <button
+                          onClick={() => setSelectedOrderForMenu(order)}
+                          className="p-2 text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"
+                          title="View Selected Menu"
+                        >
+                          <FaEye className="w-5 h-5" />
+                        </button>
+                        <button
                           onClick={() => handleViewPDF(order)}
                           className="p-2 text-slate-500 hover:bg-slate-100 rounded-lg transition-colors"
                           title="View PDF Preview"
@@ -463,6 +471,177 @@ export default function QuotationsPage() {
         title="Delete Quotation"
         message="Are you sure you want to delete this quotation? This action cannot be undone."
       />
+
+      {/* Selected Menu Modal */}
+      {selectedOrderForMenu && (
+        <MenuModal 
+          order={selectedOrderForMenu} 
+          onClose={() => setSelectedOrderForMenu(null)} 
+          onDownloadPDF={() => handleDownloadPDF(selectedOrderForMenu)}
+          onDownloadImage={() => handleDownloadImage(selectedOrderForMenu)}
+        />
+      )}
+    </div>
+  )
+}
+
+function MenuModal({ order, onClose, onDownloadPDF, onDownloadImage }: { 
+  order: Order; 
+  onClose: () => void;
+  onDownloadPDF: () => void;
+  onDownloadImage: () => void;
+}) {
+  // Group order items by mealType key (session key)
+  const itemsByMealType: Record<string, any[]> = {}
+  order.items?.forEach((item: any) => {
+    const key = item.mealType || 'other'
+    if (!itemsByMealType[key]) itemsByMealType[key] = []
+    itemsByMealType[key].push(item)
+  })
+
+  // Build date-wise structure: date -> sessions
+  const getMealTypePriority = (type: string) => {
+    const p: Record<string, number> = { breakfast: 1, lunch: 2, snacks: 3, dinner: 4, high_tea: 5 }
+    return p[(type || '').toLowerCase()] || 99
+  }
+  
+  type SessionEntry = { key: string; data: any; detail: any; items: any[] }
+  const byDate: Record<string, SessionEntry[]> = {}
+  const mealTypeAmounts = order.mealTypeAmounts as Record<string, { date?: string; menuType?: string; [k: string]: any } | number> | null
+  
+  if (mealTypeAmounts) {
+    Object.entries(mealTypeAmounts).forEach(([key, data]) => {
+      const detail = typeof data === 'object' && data !== null ? data : null
+      const date = detail?.date ? String(detail.date) : ''
+      const dateKey = date || 'unspecified'
+      if (!byDate[dateKey]) byDate[dateKey] = []
+      
+      const menuType = detail?.menuType || key
+      const matchingItems = itemsByMealType[key] || 
+                           itemsByMealType[menuType] || 
+                           []
+
+      byDate[dateKey].push({
+        key,
+        data,
+        detail,
+        items: matchingItems
+      })
+    })
+  }
+
+  const sortedDates = Object.keys(byDate).sort((a, b) => {
+    if (a === 'unspecified') return 1
+    if (b === 'unspecified') return -1
+    return new Date(a).getTime() - new Date(b).getTime()
+  })
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-200">
+      <div className="bg-white rounded-3xl w-full max-w-2xl shadow-2xl overflow-hidden border border-slate-100 flex flex-col max-h-[90vh]">
+        <div className="p-6 border-b border-slate-100 flex items-center justify-between bg-white sticky top-0 z-10">
+          <div>
+            <h3 className="text-xl font-black text-slate-900 leading-tight">Selected Menu</h3>
+            <p className="text-xs font-bold text-slate-400 tracking-widest uppercase mt-0.5">{order.customer?.name} · {order.eventName || 'Quotation'}</p>
+          </div>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={onDownloadPDF}
+              className="p-2 text-purple-600 hover:bg-purple-50 rounded-xl transition-all shadow-sm border border-purple-100"
+              title="Download PDF"
+            >
+              <FaFilePdf className="w-5 h-5" />
+            </button>
+            <button
+              onClick={onDownloadImage}
+              className="p-2 text-indigo-500 hover:bg-indigo-50 rounded-xl transition-all shadow-sm border border-indigo-100"
+              title="Download Image"
+            >
+              <FaFileImage className="w-5 h-5" />
+            </button>
+            <div className="w-px h-6 bg-slate-100 mx-1"></div>
+            <button
+              onClick={onClose}
+              className="w-10 h-10 rounded-full flex items-center justify-center text-slate-400 hover:bg-slate-50 hover:text-slate-900 transition-all"
+            >
+              <FaTimes />
+            </button>
+          </div>
+        </div>
+
+        <div className="flex-1 overflow-y-auto p-6 space-y-8">
+          {sortedDates.length === 0 ? (
+            <div className="text-center py-12">
+              <FaUtensils className="mx-auto text-slate-100 text-6xl mb-4" />
+              <p className="text-slate-400 font-bold tracking-tight italic">No specific menu items added for this quotation.</p>
+            </div>
+          ) : (
+            sortedDates.map((date) => (
+              <div key={date} className="space-y-4">
+                <div className="flex items-center gap-2">
+                  <FaCalendarAlt className="text-purple-500" />
+                  <span className="text-sm font-black text-slate-700 uppercase tracking-widest">
+                    {date === 'unspecified' ? 'Date Pending' : formatDate(date)}
+                  </span>
+                </div>
+                
+                <div className="grid grid-cols-1 gap-4 pl-4 border-l-2 border-slate-100">
+                  {byDate[date].sort((a, b) => 
+                    getMealTypePriority(a.detail?.menuType || '') - getMealTypePriority(b.detail?.menuType || '')
+                  ).map(({ key: mealType, detail, items }) => (
+                    <div key={mealType} className="bg-slate-50/50 rounded-2xl border border-slate-100 p-5 group hover:bg-white hover:shadow-xl hover:border-purple-100 transition-all">
+                      <div className="flex items-center justify-between mb-4">
+                        <div className="flex items-center gap-3">
+                          <div className={`w-10 h-10 rounded-xl flex items-center justify-center shadow-sm ${(detail?.menuType?.toLowerCase() || mealType.toLowerCase()) === 'breakfast' ? 'bg-orange-100 text-orange-600' :
+                            (detail?.menuType?.toLowerCase() || mealType.toLowerCase()) === 'lunch' ? 'bg-emerald-100 text-emerald-600' :
+                              (detail?.menuType?.toLowerCase() || mealType.toLowerCase()) === 'dinner' ? 'bg-indigo-100 text-indigo-600' :
+                                'bg-purple-100 text-purple-600'
+                            }`}>
+                            <FaUtensils className="text-lg" />
+                          </div>
+                          <div>
+                            <h4 className="font-black text-slate-900 leading-tight capitalize">{sanitizeMealLabel(detail?.menuType || mealType)}</h4>
+                            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-0.5">
+                              {detail?.time ? detail.time : 'Time not set'} · {detail?.numberOfMembers || 'N/A'} Guests
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="flex flex-wrap gap-2">
+                        {items.length > 0 ? items.map((item) => (
+                          <span key={item.id} className="px-3 py-1.5 bg-white border border-slate-200 text-slate-700 rounded-lg text-xs font-bold shadow-sm hover:border-purple-300 transition-colors flex items-center gap-2">
+                            {item.menuItem?.name}
+                            {item.menuItem?.nameTelugu && (
+                              <span className="text-slate-300 font-medium">({item.menuItem.nameTelugu})</span>
+                            )}
+                            {item.customization && (
+                              <span className="text-[10px] text-purple-600 font-bold bg-purple-50 px-1.5 py-0.5 rounded-md uppercase tracking-tighter">
+                                {item.customization}
+                              </span>
+                            )}
+                          </span>
+                        )) : (
+                          <p className="text-xs text-slate-400 font-bold italic">No items selected.</p>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ))
+          )}
+        </div>
+
+        <div className="p-6 bg-slate-50 border-t border-slate-100 flex justify-end">
+          <button
+            onClick={onClose}
+            className="px-8 py-3 bg-white border border-slate-200 text-slate-600 rounded-xl font-bold hover:bg-slate-100 transition-all shadow-sm active:scale-95"
+          >
+            Close Menu
+          </button>
+        </div>
+      </div>
     </div>
   )
 }
