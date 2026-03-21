@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState } from 'react'
+import { useEffect, useState, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { FaArrowLeft, FaArrowUp, FaArrowDown, FaTimes } from 'react-icons/fa'
 import toast from 'react-hot-toast'
@@ -22,6 +22,18 @@ interface StockItem {
 }
 
 export default function StockTransactionPage() {
+  return (
+    <Suspense fallback={
+      <div className="p-6 flex items-center justify-center min-h-screen">
+        <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-primary-500" />
+      </div>
+    }>
+      <StockTransactionContent />
+    </Suspense>
+  )
+}
+
+function StockTransactionContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const stockId = searchParams?.get('id') ?? null

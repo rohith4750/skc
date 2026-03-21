@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect } from 'react'
+import { useState, useEffect, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Image from 'next/image'
 import { 
@@ -12,7 +12,40 @@ import { setAuth, isLoggedIn, getToken } from '@/lib/auth-storage'
 import { isNonEmptyString } from '@/lib/validation'
 import FormError from '@/components/FormError'
 
+import FormEngine, { FormFieldSchema } from '@/components/FormEngine'
+
+const loginFields: FormFieldSchema[] = [
+  {
+    name: 'username',
+    label: 'Username or Email',
+    type: 'text',
+    icon: FaUser,
+    placeholder: 'Enter username or email',
+    required: true,
+  },
+  {
+    name: 'password',
+    label: 'Password',
+    type: 'password',
+    icon: FaLock,
+    placeholder: 'Enter password',
+    required: true,
+  }
+]
+
 export default function LoginPage() {
+  return (
+    <Suspense fallback={
+      <div className="h-screen flex items-center justify-center bg-gray-50">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600"></div>
+      </div>
+    }>
+      <LoginPageContent />
+    </Suspense>
+  )
+}
+
+function LoginPageContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const [formData, setFormData] = useState({
@@ -20,7 +53,6 @@ export default function LoginPage() {
     password: '',
     rememberMe: false,
   })
-  const [showPassword, setShowPassword] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const [formError, setFormError] = useState('')
 
@@ -39,27 +71,20 @@ export default function LoginPage() {
     }
   }, [searchParams])
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
+  const handleFormSubmit = async (data: any) => {
+    const loginData = {
+      ...data,
+      rememberMe: formData.rememberMe
+    }
+    
     setIsLoading(true)
     setFormError('')
 
     try {
-      if (!isNonEmptyString(formData.username) || !isNonEmptyString(formData.password)) {
-        toast.error('Please enter your username/email and password')
-        setFormError('Please enter your username/email and password')
-        setIsLoading(false)
-        return
-      }
-
       const response = await fetch('/api/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          username: formData.username,
-          password: formData.password,
-          rememberMe: formData.rememberMe,
-        }),
+        body: JSON.stringify(loginData),
       })
 
       const data = await response.json()
@@ -77,7 +102,7 @@ export default function LoginPage() {
           role: data.user.role || 'admin',
         },
         [],
-        formData.rememberMe
+        loginData.rememberMe
       )
       toast.success('Login successful!')
       router.push('/')
@@ -122,60 +147,15 @@ export default function LoginPage() {
 
             {/* Login Form Card */}
             <div className="bg-white rounded-xl sm:rounded-2xl shadow-lg sm:shadow-xl p-4 sm:p-6 md:p-7 lg:p-5 xl:p-6 border border-gray-100 hover:shadow-2xl transition-shadow duration-300">
-              <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-5 md:space-y-6 lg:space-y-3 xl:space-y-4">
-                <FormError message={formError} />
-                
-                {/* Username Field */}
-                <div>
-                  <label htmlFor="username" className="block text-sm sm:text-base lg:text-sm xl:text-base font-medium text-gray-700 mb-1.5 lg:mb-1 xl:mb-1.5">
-                    Username or Email
-                  </label>
-                  <div className="relative">
-                    <div className="absolute inset-y-0 left-0 pl-3 sm:pl-4 lg:pl-3 xl:pl-4 flex items-center pointer-events-none">
-                      <FaUser className="text-gray-400 text-sm sm:text-base lg:text-sm xl:text-base" />
-                    </div>
-                    <input
-                      id="username"
-                      type="text"
-                      value={formData.username}
-                      onChange={(e) => setFormData({ ...formData, username: e.target.value })}
-                      className="block w-full pl-10 sm:pl-12 lg:pl-10 xl:pl-12 pr-3 sm:pr-4 py-3 sm:py-3.5 md:py-4 lg:py-2 xl:py-2.5 border border-gray-300 rounded-lg sm:rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-all outline-none text-sm sm:text-base lg:text-sm xl:text-base hover:border-gray-400"
-                      placeholder="Enter username or email"
-                      required
-                    />
-                  </div>
-                </div>
-
-                {/* Password Field */}
-                <div>
-                  <label htmlFor="password" className="block text-sm sm:text-base lg:text-sm xl:text-base font-medium text-gray-700 mb-1.5 lg:mb-1 xl:mb-1.5">
-                    Password
-                  </label>
-                  <div className="relative">
-                    <div className="absolute inset-y-0 left-0 pl-3 sm:pl-4 lg:pl-3 xl:pl-4 flex items-center pointer-events-none">
-                      <FaLock className="text-gray-400 text-sm sm:text-base lg:text-sm xl:text-base" />
-                    </div>
-                    <input
-                      id="password"
-                      type={showPassword ? 'text' : 'password'}
-                      value={formData.password}
-                      onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                      className="block w-full pl-10 sm:pl-12 lg:pl-10 xl:pl-12 pr-12 sm:pr-14 py-3 sm:py-3.5 md:py-4 lg:py-2 xl:py-2.5 border border-gray-300 rounded-lg sm:rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-all outline-none text-sm sm:text-base lg:text-sm xl:text-base hover:border-gray-400"
-                      placeholder="Enter password"
-                      required
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowPassword(!showPassword)}
-                      className="absolute inset-y-0 right-0 pr-3 sm:pr-4 flex items-center text-gray-400 hover:text-gray-600 transition-colors touch-manipulation min-w-[44px] min-h-[44px] flex items-center justify-center"
-                      aria-label={showPassword ? 'Hide password' : 'Show password'}
-                    >
-                      {showPassword ? <FaEyeSlash className="text-base sm:text-lg lg:text-base xl:text-lg" /> : <FaEye className="text-base sm:text-lg lg:text-base xl:text-lg" />}
-                    </button>
-                  </div>
-                </div>
-
-                {/* Remember Me & Forgot Password */}
+              <FormEngine
+                fields={loginFields}
+                onSubmit={handleFormSubmit}
+                defaultValues={formData}
+                isLoading={isLoading}
+                serverError={formError}
+                submitButtonText="Sign In"
+                submitButtonIcon={FaUtensils}
+              >
                 <div className="flex items-center justify-between text-xs sm:text-sm md:text-base lg:text-xs xl:text-sm gap-2">
                   <label className="flex items-center cursor-pointer touch-manipulation min-h-[44px] lg:min-h-[32px] xl:min-h-[36px]">
                     <input
@@ -194,23 +174,7 @@ export default function LoginPage() {
                     Forgot password?
                   </button>
                 </div>
-
-                {/* Submit Button */}
-                <button
-                  type="submit"
-                  disabled={isLoading}
-                  className="w-full bg-gradient-to-r from-red-700 to-amber-700 text-white py-3 sm:py-3.5 md:py-4 lg:py-2 xl:py-2.5 rounded-lg sm:rounded-xl font-semibold text-sm sm:text-base md:text-lg lg:text-sm xl:text-base hover:from-red-800 hover:to-amber-800 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg hover:shadow-xl active:shadow-md flex items-center justify-center gap-2 touch-manipulation min-h-[48px] lg:min-h-[40px] xl:min-h-[44px]"
-                >
-                  {isLoading ? (
-                    <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                  ) : (
-                    <>
-                      <FaUtensils className="text-amber-200 text-base lg:text-sm xl:text-base" />
-                      Sign In
-                    </>
-                  )}
-                </button>
-              </form>
+              </FormEngine>
             </div>
 
             {/* Mobile & Tablet Contact & Stats Section */}

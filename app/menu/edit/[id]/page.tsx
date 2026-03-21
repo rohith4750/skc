@@ -1,11 +1,10 @@
 "use client";
-import { use } from 'react'
 import MenuForm from '@/components/menu/MenuForm'
 import Link from 'next/link'
 import { FaChevronLeft } from 'react-icons/fa'
 
-export default function EditMenuItemPage({ params }: { params: Promise<{ id: string }> }) {
-    const { id } = use(params)
+export default function EditMenuItemPage({ params }: { params: { id: string } }) {
+    const { id } = params
 
     return (
         <div className="p-4 sm:p-6 lg:p-8 pt-16 lg:pt-8 min-h-screen bg-slate-50/50">

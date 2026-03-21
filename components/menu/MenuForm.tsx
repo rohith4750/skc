@@ -64,7 +64,7 @@ export default function MenuForm({ id, onSuccess, onCancel }: MenuFormProps) {
 
         try {
             if (!isNonEmptyString(formData.name) || formData.type.length === 0) {
-                toast.error('Please enter name and select at least one type')
+                // toast.error('Please enter name and select at least one type')
                 setFormError('Please enter name and select at least one type')
                 return
             }
@@ -110,7 +110,7 @@ export default function MenuForm({ id, onSuccess, onCancel }: MenuFormProps) {
     return (
         <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
             <form onSubmit={handleSubmit} className="p-4 sm:p-6">
-                <FormError message={formError} className="mb-4" />
+
                 <div className="space-y-4">
                     <div>
                         <label className="block text-sm font-medium text-slate-700 mb-1">
@@ -124,6 +124,7 @@ export default function MenuForm({ id, onSuccess, onCancel }: MenuFormProps) {
                             className="w-full px-3 sm:px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm sm:text-base"
                             placeholder="e.g., Biryani, Pulao, Water Bottle"
                         />
+                        <FormError message={formError} className="mb-4" />
                     </div>
                     <div>
                         <label className="block text-sm font-medium text-slate-700 mb-2">

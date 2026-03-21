@@ -1,7 +1,8 @@
 const { PrismaClient } = require('@prisma/client');
+const crypto = require('crypto');
 const prisma = new PrismaClient();
 
-const customerId = '28ba4780-93d8-4585-8fc9-083d29b4e48d';
+const customerId = '97c58ea4-8b14-4602-b549-c958d8ced537'; // Sri Dr ManikyaRao Garu
 
 const menuReport = [
   {
@@ -45,33 +46,53 @@ const menuReport = [
 ];
 
 async function main() {
-  console.log('Cleaning up existing orders for customer...');
+  console.log('Cleaning up previous attempts for Kesariii events...');
   await prisma.order.deleteMany({
-    where: { customerId }
+    where: { 
+      eventName: { contains: 'Kesariii', mode: 'insensitive' }
+    }
   });
 
-  console.log('Starting migration...');
+  console.log('Starting migration for Sri Dr ManikyaRao Garu (Single Order)...');
+
+  // Create a SINGLE order for all days
+  const order = await prisma.order.create({
+    data: {
+      customerId,
+      eventName: 'Kesariii - Full Event',
+      eventType: '3-Day Event',
+      eventDate: new Date('2026-04-10'),
+      totalAmount: 0,
+      status: 'quotation',
+      remainingAmount: 0,
+      mealTypeAmounts: {} // Will update this
+    }
+  });
+
+  const allMealTypeAmounts = {};
 
   for (const day of menuReport) {
-    const eventDate = new Date(day.date);
-    console.log(`Creating order for ${day.date}...`);
-
-    const order = await prisma.order.create({
-      data: {
-        customerId,
-        eventName: day.eventName,
-        eventType: day.eventType,
-        eventDate,
-        totalAmount: 0,
-        status: 'pending',
-        remainingAmount: 0
-      }
-    });
+    console.log(`Processing ${day.date}...`);
 
     for (const meal of day.meals) {
-      console.log(`  Adding ${meal.type} items...`);
+      const sessionKey = crypto.randomUUID();
+      const sanitizedLabel = `${meal.type} (${day.date.split('-')[2]})`; // e.g. BREAKFAST (10)
+      
+      allMealTypeAmounts[sessionKey] = {
+        date: day.date,
+        time: "",
+        venue: "",
+        amount: 0,
+        menuType: meal.type.toLowerCase(),
+        label: meal.type, // Custom label for display
+        services: [],
+        pricingMethod: "manual",
+        numberOfMembers: 80,
+        originalMembers: 80
+      };
+
+      console.log(`  Adding ${meal.type} items for ${day.date}...`);
       for (const itemName of meal.items) {
-        // Find or create MenuItem
         let menuItem = await prisma.menuItem.findFirst({
           where: { name: { equals: itemName, mode: 'insensitive' } }
         });
@@ -80,7 +101,7 @@ async function main() {
           menuItem = await prisma.menuItem.create({
             data: {
               name: itemName,
-              type: [meal.type.split(' ')[0].toLowerCase()], // e.g., 'breakfast'
+              type: [meal.type.split(' ')[0].toLowerCase()],
               isActive: true
             }
           });
@@ -90,7 +111,7 @@ async function main() {
           data: {
             orderId: order.id,
             menuItemId: menuItem.id,
-            mealType: meal.type,
+            mealType: sessionKey,
             quantity: 1
           }
         });
@@ -98,7 +119,13 @@ async function main() {
     }
   }
 
-  console.log('Migration completed successfully locally.');
+  // Update the order with consolidated mealTypeAmounts
+  await prisma.order.update({
+    where: { id: order.id },
+    data: { mealTypeAmounts: allMealTypeAmounts }
+  });
+
+  console.log('Migration completed: All days merged into one order.');
 }
 
 main()

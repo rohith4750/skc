@@ -2,10 +2,9 @@
 import CustomerForm from "@/components/customers/CustomerForm";
 import { FaArrowLeft } from "react-icons/fa";
 import Link from "next/link";
-import { use } from "react";
 
-export default function EditCustomerPage({ params }: { params: Promise<{ id: string }> }) {
-    const { id } = use(params);
+export default function EditCustomerPage({ params }: { params: { id: string } }) {
+    const { id } = params;
 
     return (
         <div className="p-4 sm:p-6 lg:p-8 pt-16 lg:pt-8 min-h-screen bg-gray-50">
