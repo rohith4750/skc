@@ -312,7 +312,8 @@ export default function BillsPage() {
         formatDate,
         showFinancials: true,
         formatCurrency,
-        bill: bill
+        bill: bill,
+        hideMenuDetails: true
       })
 
       tempDiv = document.createElement('div')

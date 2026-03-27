@@ -304,28 +304,23 @@ function OrdersOverviewContent() {
       // Create HTML for PDF/Image
       const reportHtml = `
         <div style="padding: 40px; font-family: 'Poppins', sans-serif; color: #1a1a1a; background: white; width: 1000px;">
-          <div style="text-align: center; margin-bottom: 30px; border-bottom: 3px solid #ce621b; padding-bottom: 25px;">
-             <div style="display: flex; justify-content: center; align-items: center; gap: 20px; margin-bottom: 15px;">
-                <img src="${window.location.origin}/images/logo.jpg" alt="Logo" style="width: 80px; height: 80px; border-radius: 50%; object-fit: contain;" />
-                <div style="text-align: left;">
-                  <h1 style="margin: 0; font-size: 32px; font-weight: 800; color: #000; text-transform: uppercase; letter-spacing: 1px;">SRIVATSASA & KOWNDINYA CATERERS</h1>
-                  <p style="margin: 5px 0 0 0; font-size: 14px; font-weight: 600; color: #ce621b; font-style: italic;">Pure Vegetarian (A Food Caterers)</p>
-                </div>
+          <div style="text-align: center; margin-bottom: 30px; border-bottom: 3px solid #000; padding-bottom: 25px; position: relative; min-height: 100px; display: flex; flex-direction: column; align-items: center; justify-content: center;">
+             <img src="${window.location.origin}/images/logo.jpg" alt="Logo" style="position: absolute; left: 0; top: 0; width: 85px; height: 85px; border-radius: 50%; object-fit: contain;" />
+             <div style="width: 100%; text-align: center;">
+                <h1 style="margin: 0; font-size: 32px; font-weight: 800; color: #000; text-transform: uppercase; letter-spacing: 1px;">SRIVATSASA & KOWNDINYA CATERERS</h1>
+                <p style="margin: 5px 0 0 0; font-size: 14px; font-weight: 600; color: #666; font-style: italic;">Pure Vegetarian (A Food Caterers)</p>
+                <p style="margin: 15px 0 0 0; font-size: 12px; font-weight: 700; background: #000; color: white; display: inline-block; padding: 5px 20px; border-top: 1px solid #000; border-bottom: 1px solid #000; letter-spacing: 2px;">
+                  MEAL REPORT: ${new Date(selectedYear, selectedMonth).toLocaleString('default', { month: 'long', year: 'numeric' }).toUpperCase()}
+                </p>
              </div>
-            <p style="margin: 0; font-size: 11px; color: #666; font-weight: 500;">
-              Plot No. 115, Padmavathi Nagar, Bank Colony, Saheb Nagar, Vanasthalipuram, Hyderabad - 500070.
-            </p>
-            <p style="margin: 15px 0 0 0; font-size: 12px; font-weight: 700; background: #ce621b; color: white; display: inline-block; padding: 5px 20px; border-radius: 20px;">
-              MEAL REPORT: ${new Date(selectedYear, selectedMonth).toLocaleString('default', { month: 'long', year: 'numeric' })}
-            </p>
           </div>
           
-          <table style="width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 13px; border: 2px solid #ce621b;">
+          <table style="width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 13px; border: 2px solid #000;">
             <thead>
-              <tr style="background-color: #ce621b; color: white;">
-                <th style="padding: 15px 10px; text-align: left; border: 1px solid #ce621b; width: 15%;">Date</th>
-                <th style="padding: 15px 10px; text-align: left; border: 1px solid #ce621b; width: 65%;">Meal Details & Menu Items</th>
-                <th style="padding: 15px 10px; text-align: center; border: 1px solid #ce621b; width: 20%; background-color: #a84e12;">Total Persons</th>
+              <tr style="background-color: #000; color: white;">
+                <th style="padding: 15px 10px; text-align: left; border: 1px solid #000; width: 15%;">Date</th>
+                <th style="padding: 15px 10px; text-align: left; border: 1px solid #000; width: 65%;">Meal Details & Menu Items</th>
+                <th style="padding: 15px 10px; text-align: center; border: 1px solid #000; width: 20%; background-color: #333;">Total Persons</th>
               </tr>
             </thead>
             <tbody>
@@ -407,8 +402,18 @@ function OrdersOverviewContent() {
       tempDiv.style.width = '1000px'
       document.body.appendChild(tempDiv)
 
-      // Use a small delay for any rendering/images
-      await new Promise(resolve => setTimeout(resolve, 800))
+      // Wait for images to load properly
+      const images = tempDiv.getElementsByTagName('img')
+      if (images.length > 0) {
+        await Promise.all(Array.from(images).map(img => {
+          if (img.complete) return Promise.resolve()
+          return new Promise((resolve) => {
+            img.onload = resolve
+            img.onerror = resolve
+          })
+        }))
+      }
+      await new Promise(resolve => setTimeout(resolve, 500))
 
       const canvas = await html2canvas(tempDiv, {
         scale: 3, // High quality
