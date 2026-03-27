@@ -1,5 +1,6 @@
 "use client";
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useState, Suspense } from 'react'
+import { useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import toast from 'react-hot-toast'
 import { formatCurrency, formatDateTime } from '@/lib/utils'
@@ -12,10 +13,21 @@ import html2canvas from 'html2canvas'
 import { FaFilePdf, FaFileImage, FaChevronDown, FaUtensils } from 'react-icons/fa'
 
 export default function OrdersOverviewPage() {
+  return (
+    <Suspense fallback={<div>Loading...</div>}>
+      <OrdersOverviewContent />
+    </Suspense>
+  )
+}
+
+function OrdersOverviewContent() {
+  const searchParams = useSearchParams()
+  const initialView = searchParams.get('view') === 'calendar' ? 'calendar' : 'table'
+  
   const [orders, setOrders] = useState<Order[]>([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
-  const [viewMode, setViewMode] = useState<'table' | 'calendar'>('table')
+  const [viewMode, setViewMode] = useState<'table' | 'calendar'>(initialView)
   const [currentDate, setCurrentDate] = useState(new Date())
   const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth())
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear())
@@ -68,8 +80,8 @@ export default function OrdersOverviewPage() {
       return orderDate.getMonth() === selectedMonth && orderDate.getFullYear() === selectedYear
     })
 
-    // Filter out quotations from original view
-    filtered = filtered.filter(order => order.status !== 'quotation')
+    // Filter out quotations and cancelled orders from original view
+    filtered = filtered.filter(order => order.status !== 'quotation' && order.status !== 'cancelled')
 
     return filtered
   }, [orders, search, selectedMonth, selectedYear])
@@ -450,8 +462,12 @@ export default function OrdersOverviewPage() {
       <div className="flex flex-col gap-4 mb-6">
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
           <div>
-            <h1 className="text-3xl font-bold text-gray-800">Event Planner</h1>
-            <p className="text-sm text-gray-500">View orders in table or calendar format.</p>
+            <h1 className="text-3xl font-bold text-gray-800">
+              {viewMode === 'calendar' ? 'Calendar' : 'Event Planner'}
+            </h1>
+            <p className="text-sm text-gray-500">
+              {viewMode === 'calendar' ? 'View and manage event schedule.' : 'View orders in table or calendar format.'}
+            </p>
           </div>
 
           {/* View Toggle */}

@@ -153,14 +153,17 @@ export default function AnalyticsPage() {
 
       return {
         orders: data.orders.filter((o: any) => {
+          if (o.status === 'cancelled') return false
           const date = new Date(getOrderDate(o))
           return date >= prevMonth && date <= prevMonthEnd
         }),
         bills: data.bills.filter((b: any) => {
+          if (b.order?.status === 'cancelled') return false
           const date = new Date(b.order?.eventDate || b.createdAt)
           return date >= prevMonth && date <= prevMonthEnd
         }),
         expenses: data.expenses.filter((e: any) => {
+          if (e.order?.status === 'cancelled') return false
           const date = new Date(e.paymentDate || e.createdAt)
           return date >= prevMonth && date <= prevMonthEnd
         })
@@ -172,14 +175,17 @@ export default function AnalyticsPage() {
 
       return {
         orders: data.orders.filter((o: any) => {
+          if (o.status === 'cancelled') return false
           const date = new Date(getOrderDate(o))
           return date >= prevYearStart && date <= prevYearEnd
         }),
         bills: data.bills.filter((b: any) => {
+          if (b.order?.status === 'cancelled') return false
           const date = new Date(b.order?.eventDate || b.createdAt)
           return date >= prevYearStart && date <= prevYearEnd
         }),
         expenses: data.expenses.filter((e: any) => {
+          if (e.order?.status === 'cancelled') return false
           const date = new Date(e.paymentDate || e.createdAt)
           return date >= prevYearStart && date <= prevYearEnd
         })
@@ -197,16 +203,19 @@ export default function AnalyticsPage() {
       const monthEnd = new Date(monthStart.getFullYear(), monthStart.getMonth() + 1, 0, 23, 59, 59)
 
       filtered.orders = data.orders.filter((o: any) => {
+        if (o.status === 'cancelled') return false
         const date = new Date(getOrderDate(o))
         return date >= monthStart && date <= monthEnd
       })
 
       filtered.bills = data.bills.filter((b: any) => {
+        if (b.order?.status === 'cancelled') return false
         const date = new Date(b.order?.eventDate || b.createdAt)
         return date >= monthStart && date <= monthEnd
       })
 
       filtered.expenses = data.expenses.filter((e: any) => {
+        if (e.order?.status === 'cancelled') return false
         const date = new Date(e.paymentDate || e.createdAt)
         return date >= monthStart && date <= monthEnd
       })
@@ -215,16 +224,19 @@ export default function AnalyticsPage() {
       const yearEnd = new Date(parseInt(selectedYear), 11, 31, 23, 59, 59)
 
       filtered.orders = data.orders.filter((o: any) => {
+        if (o.status === 'cancelled') return false
         const date = new Date(getOrderDate(o))
         return date >= yearStart && date <= yearEnd
       })
 
       filtered.bills = data.bills.filter((b: any) => {
+        if (b.order?.status === 'cancelled') return false
         const date = new Date(b.order?.eventDate || b.createdAt)
         return date >= yearStart && date <= yearEnd
       })
 
       filtered.expenses = data.expenses.filter((e: any) => {
+        if (e.order?.status === 'cancelled') return false
         const date = new Date(e.paymentDate || e.createdAt)
         return date >= yearStart && date <= yearEnd
       })
@@ -355,6 +367,7 @@ export default function AnalyticsPage() {
     }
 
     data.bills.forEach((bill: any) => {
+      if (bill.order?.status === 'cancelled') return
       const monthKey = new Date(bill.order?.eventDate || bill.createdAt).toISOString().slice(0, 7)
       if (months[monthKey]) {
         months[monthKey].revenue += bill.paidAmount || 0
@@ -362,6 +375,7 @@ export default function AnalyticsPage() {
     })
 
     data.expenses.forEach((expense: any) => {
+      if (expense.order?.status === 'cancelled') return
       const monthKey = new Date(expense.paymentDate || expense.createdAt).toISOString().slice(0, 7)
       if (months[monthKey]) {
         months[monthKey].expenses += expense.amount || 0
@@ -369,6 +383,7 @@ export default function AnalyticsPage() {
     })
 
     data.orders.forEach((order: any) => {
+      if (order.status === 'cancelled') return
       const monthKey = new Date(getOrderDate(order)).toISOString().slice(0, 7)
       if (months[monthKey]) {
         months[monthKey].orders += 1

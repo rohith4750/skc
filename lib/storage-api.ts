@@ -156,6 +156,7 @@ export class Storage {
         transportCost: order.transportCost,
         waterBottlesCost: order.waterBottlesCost,
         discount: order.discount || 0,
+        internalNote: order.internalNote || null,
       }),
     });
     return this.formatDates(data);

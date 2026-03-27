@@ -179,6 +179,7 @@ export async function POST(request: NextRequest) {
       transportCost: transportCost,
       waterBottlesCost: waterBottlesCost,
       discount: discount,
+      internalNote: data.internalNote || null,
       items: {
         create: data.items.map((item: any) => ({
           menuItemId: item.menuItemId,

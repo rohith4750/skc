@@ -13,6 +13,7 @@ export function buildOrderPdfHtml(
     formatCurrency?: (val: number) => string;
     bill?: any;
     isQuotation?: boolean;
+    hideMenuDetails?: boolean;
   },
 ): string {
   const {
@@ -192,7 +193,7 @@ export function buildOrderPdfHtml(
 
   // Build Menu Details HTML (Separate Section)
   let menuDetailsHtml = "";
-  if (sortedDates.length > 0) {
+  if (sortedDates.length > 0 && !options.hideMenuDetails) {
     menuDetailsHtml = `
       <div style="margin-top: 25px; page-break-before: auto;">
         <div style="text-align: center; margin-bottom: 15px;">

@@ -151,6 +151,15 @@ export const menuData: RouteConfigItem[] = [
     section: "core",
   },
   {
+    name: "Calendar",
+    route: "/orders/overview?view=calendar",
+    file: "app/orders/overview/page.tsx",
+    icon: "planner",
+    permissions: "AUTHENTICATED",
+    showInSideMenu: true,
+    section: "core",
+  },
+  {
     name: "Event Planner",
     route: "/orders/overview",
     file: "app/orders/overview/page.tsx",

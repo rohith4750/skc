@@ -322,6 +322,7 @@ export async function PUT(
       transportCost,
       waterBottlesCost: parseFloat(data.waterBottlesCost) || 0,
       discount,
+      internalNote: data.internalNote || null,
     };
 
     const result = await prisma.$transaction(async (tx) => {

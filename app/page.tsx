@@ -104,13 +104,13 @@ export default function Dashboard() {
         };
 
         const orders = rawOrders.filter((o: any) =>
-          filterByMonthYear(getOrderDate(o)),
+          o.status !== 'cancelled' && filterByMonthYear(getOrderDate(o)),
         );
         const bills = rawBills.filter((b: any) =>
-          filterByMonthYear(b.order?.eventDate || b.createdAt),
+          b.order?.status !== 'cancelled' && filterByMonthYear(b.order?.eventDate || b.createdAt),
         );
         const expenses = rawExpenses.filter((e: any) =>
-          filterByMonthYear(e.paymentDate),
+          e.order?.status !== 'cancelled' && filterByMonthYear(e.paymentDate),
         );
 
         // Calculate financial stats
