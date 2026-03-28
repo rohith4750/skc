@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { usePathname, useRouter } from 'next/navigation'
-import { FaUserCircle, FaSignOutAlt } from 'react-icons/fa'
+import { FaUserCircle, FaSignOutAlt, FaChevronLeft } from 'react-icons/fa'
 import { clearAuth, getUserRole } from '@/lib/auth'
 import NotificationCenter from '@/components/notifications/NotificationCenter'
 import { getRouteTitle } from '@/constants/menu'
@@ -49,8 +49,18 @@ export default function Header() {
   return (
     <header className="fixed top-0 left-0 right-0 lg:left-72 h-14 bg-white border-b border-gray-200 lg:border-l lg:border-gray-200 z-30 shadow-sm">
       <div className="h-full flex items-center justify-between px-4 lg:pl-6 lg:pr-6">
-        {/* Page Title */}
+        {/* Page Title & Back Button */}
         <div className="flex items-center gap-3">
+          {pathname !== '/' && (
+            <button
+              onClick={() => router.back()}
+              className="p-1 px-2 text-gray-400 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition-all flex items-center gap-1.5 group font-medium text-xs border border-transparent hover:border-slate-200"
+              title="Go Back"
+            >
+              <FaChevronLeft className="w-2.5 h-2.5 group-hover:-translate-x-0.5 transition-transform" />
+              <span className="hidden sm:inline">Back</span>
+            </button>
+          )}
           <h1 className="text-base font-semibold text-gray-800 hidden sm:block">
             {getRouteTitle(pathname)}
           </h1>

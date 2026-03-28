@@ -193,17 +193,7 @@ export default function OrderSummaryPage() {
   return (
     <div className="p-4 md:p-8 bg-[#f8fafc] min-h-screen">
       <div className="max-w-5xl mx-auto">
-        {/* Top Navigation */}
-        <div className="mb-8 flex items-center justify-between">
-          <Link
-            href={order.status === 'completed' || order.status === 'cancelled' ? '/orders/history' : '/orders/center'}
-            className="group flex items-center text-slate-500 hover:text-primary-600 transition-all font-semibold text-sm"
-          >
-            <div className="w-8 h-8 rounded-full bg-white shadow-sm flex items-center justify-center mr-3 group-hover:bg-primary-50 group-hover:text-primary-600 transition-all">
-              <FaArrowLeft />
-            </div>
-            Back to Dashboard
-          </Link>
+        <div className="mb-8 flex items-center justify-end">
           <Link
             href={`/orders/financial/${order.id}`}
             className="flex items-center px-6 py-2.5 bg-primary-600 text-white rounded-[5px] font-bold hover:bg-primary-700 transition-all shadow-lg shadow-primary-200 active:scale-95"

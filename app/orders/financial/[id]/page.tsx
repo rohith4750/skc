@@ -361,15 +361,8 @@ export default function FinancialTrackingPage() {
   return (
     <div className="p-4 md:p-8 bg-[#f8fafc] min-h-screen">
       <div className="max-w-4xl mx-auto">
-        <Link
-          href={`/orders/summary/${orderId}`}
-          className="inline-flex items-center text-slate-500 hover:text-primary-600 transition-all font-semibold text-sm mb-6"
-        >
-          <FaArrowLeft className="mr-2" /> Back to Summary
-        </Link>
-
-        <div className="flex items-center justify-between mb-8">
-          <div>
+        <div className="mb-8 flex items-center justify-between">
+          <div className="flex-1">
             <h1 className="text-3xl font-black text-slate-900">Financial Management</h1>
             <p className="text-slate-600 font-medium">Billing adjustments and payment tracking for <span className="text-primary-600">#SKC-ORDER-{(order as any).serialNumber || order.id.slice(0, 8)}</span></p>
           </div>
