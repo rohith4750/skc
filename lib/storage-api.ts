@@ -292,4 +292,40 @@ export class Storage {
       method: "DELETE",
     });
   }
+
+  // Stall Templates
+  static async getStallTemplates() {
+    const data = await this.fetchAPI("stalls");
+    return this.formatDates(data);
+  }
+
+  static async saveStallTemplate(stall: any) {
+    if (stall.id) {
+      const data = await this.fetchAPI(`stalls/${stall.id}`, {
+        method: "PUT",
+        body: JSON.stringify({
+          name: stall.name,
+          description: stall.description,
+          menuItemIds: stall.menuItemIds,
+        }),
+      });
+      return this.formatDates(data);
+    } else {
+      const data = await this.fetchAPI("stalls", {
+        method: "POST",
+        body: JSON.stringify({
+          name: stall.name,
+          description: stall.description,
+          menuItemIds: stall.menuItemIds,
+        }),
+      });
+      return this.formatDates(data);
+    }
+  }
+
+  static async deleteStallTemplate(id: string) {
+    await this.fetchAPI(`stalls/${id}`, {
+      method: "DELETE",
+    });
+  }
 }

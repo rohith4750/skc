@@ -2,18 +2,21 @@
 import { useEffect, useState, useMemo } from 'react'
 import { Storage } from '@/lib/storage-api'
 import { initializeMenuItems } from '@/lib/initMenu'
-import { MenuItem } from '@/types'
-import { FaPlus, FaEdit, FaTrash, FaDownload, FaPrint } from 'react-icons/fa'
+import { MenuItem, StallTemplate } from '@/types'
+import { FaPlus, FaEdit, FaTrash, FaDownload, FaPrint, FaStore, FaUtensils } from 'react-icons/fa'
 import toast from 'react-hot-toast'
 import Table from '@/components/Table'
 import { getMenuItemTableConfig } from '@/components/table-configs'
 import ConfirmModal from '@/components/ConfirmModal'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
+import StallManagement from '../../components/menu/StallManagement'
 
 export default function MenuPage() {
   const router = useRouter()
+  const [view, setView] = useState<'items' | 'stalls'>('items')
   const [menuItems, setMenuItems] = useState<MenuItem[]>([])
+  const [stallTemplates, setStallTemplates] = useState<StallTemplate[]>([])
   const [selectedFilter, setSelectedFilter] = useState<string>('all')
   const [selectedSubFilter, setSelectedSubFilter] = useState<string>('all')
   const [currentPage, setCurrentPage] = useState(1)
@@ -109,6 +112,7 @@ export default function MenuPage() {
 
   useEffect(() => {
     loadMenuItems()
+    loadStallTemplates()
   }, [])
 
   const loadMenuItems = async () => {
@@ -118,6 +122,15 @@ export default function MenuPage() {
     } catch (error) {
       console.error('Failed to load menu items:', error)
       toast.error('Failed to load menu items. Please try again.')
+    }
+  }
+
+  const loadStallTemplates = async () => {
+    try {
+      const data = await Storage.getStallTemplates()
+      setStallTemplates(data || [])
+    } catch (error) {
+      console.error('Failed to load stall templates:', error)
     }
   }
 
@@ -368,8 +381,37 @@ export default function MenuPage() {
       <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 mb-6 sm:mb-8">
         <div>
           <h1 className="text-2xl sm:text-3xl font-bold text-gray-800">Menu Management</h1>
-          <p className="text-gray-600 mt-1 sm:mt-2 text-sm sm:text-base">Manage your catering menu items</p>
+          <p className="text-gray-600 mt-1 sm:mt-2 text-sm sm:text-base">
+            {view === 'items' ? 'Manage your catering menu items' : 'Manage your pre-defined stall packages'}
+          </p>
         </div>
+
+        {/* View Switcher Tabs */}
+        <div className="flex bg-gray-100 p-1 rounded-xl items-center border border-gray-200">
+          <button
+            onClick={() => setView('items')}
+            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+              view === 'items' 
+              ? 'bg-white text-primary-600 shadow-sm' 
+              : 'text-gray-500 hover:text-gray-700'
+            }`}
+          >
+            <FaUtensils className="w-4 h-4" />
+            <span>Menu Items</span>
+          </button>
+          <button
+            onClick={() => setView('stalls')}
+            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+              view === 'stalls' 
+              ? 'bg-white text-primary-600 shadow-sm' 
+              : 'text-gray-500 hover:text-gray-700'
+            }`}
+          >
+            <FaStore className="w-4 h-4" />
+            <span>Stall Templates</span>
+          </button>
+        </div>
+
         <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
           <button
             onClick={handlePrintMenu}
@@ -392,136 +434,147 @@ export default function MenuPage() {
         </div>
       </div>
 
-      {/* Main Category Filter Buttons */}
-      <div className="mb-4">
-        <div className="flex flex-wrap gap-2 sm:gap-3">
-          <button
-            onClick={() => handleMainCategoryChange('all')}
-            className={`px-4 sm:px-6 py-2 rounded-lg text-sm sm:text-base font-medium transition-colors ${selectedFilter === 'all'
-                ? 'bg-primary-500 text-white'
-                : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-              }`}
-          >
-            All
-          </button>
-          <button
-            onClick={() => handleMainCategoryChange('breakfast')}
-            className={`px-4 sm:px-6 py-2 rounded-lg text-sm sm:text-base font-medium transition-colors ${selectedFilter === 'breakfast'
-                ? 'bg-primary-500 text-white'
-                : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-              }`}
-          >
-            Breakfast
-          </button>
-          <button
-            onClick={() => handleMainCategoryChange('lunch')}
-            className={`px-4 sm:px-6 py-2 rounded-lg text-sm sm:text-base font-medium transition-colors ${selectedFilter === 'lunch'
-                ? 'bg-primary-500 text-white'
-                : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-              }`}
-          >
-            Lunch
-          </button>
-          <button
-            onClick={() => handleMainCategoryChange('dinner')}
-            className={`px-4 sm:px-6 py-2 rounded-lg text-sm sm:text-base font-medium transition-colors ${selectedFilter === 'dinner'
-                ? 'bg-primary-500 text-white'
-                : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-              }`}
-          >
-            Dinner
-          </button>
-          <button
-            onClick={() => handleMainCategoryChange('snacks')}
-            className={`px-4 sm:px-6 py-2 rounded-lg text-sm sm:text-base font-medium transition-colors ${selectedFilter === 'snacks'
-                ? 'bg-primary-500 text-white'
-                : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-              }`}
-          >
-            Snacks
-          </button>
-          <button
-            onClick={() => handleMainCategoryChange('sweets')}
-            className={`px-4 sm:px-6 py-2 rounded-lg text-sm sm:text-base font-medium transition-colors ${selectedFilter === 'sweets'
-                ? 'bg-primary-500 text-white'
-                : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-              }`}
-          >
-            Sweets
-          </button>
-        </div>
-      </div>
-
-      {/* Subcategory Filter Buttons - Show only when main category is selected */}
-      {selectedFilter !== 'all' && availableSubcategories.length > 0 && (
-        <div className="mb-6">
-          <div className="mb-2">
-            <span className="text-sm font-medium text-gray-700">
-              {selectedFilter.charAt(0).toUpperCase() + selectedFilter.slice(1)} Categories:
-            </span>
-          </div>
-          <div className="flex flex-wrap gap-2">
-            <button
-              onClick={() => setSelectedSubFilter('all')}
-              className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${selectedSubFilter === 'all'
-                  ? 'bg-primary-500 text-white'
-                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                }`}
-            >
-              All {selectedFilter}
-            </button>
-            {availableSubcategories.map((subcategory) => (
+      {/* Conditional Rendering based on View */}
+      {view === 'stalls' ? (
+        <StallManagement 
+          stallTemplates={stallTemplates} 
+          menuItems={menuItems} 
+          onRefresh={loadStallTemplates} 
+        />
+      ) : (
+        <>
+          {/* Main Category Filter Buttons */}
+          <div className="mb-4">
+            <div className="flex flex-wrap gap-2 sm:gap-3">
               <button
-                key={subcategory}
-                onClick={() => setSelectedSubFilter(subcategory)}
-                className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${selectedSubFilter === subcategory
-                    ? 'bg-green-600 text-white'
-                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                onClick={() => handleMainCategoryChange('all')}
+                className={`px-4 sm:px-6 py-2 rounded-lg text-sm sm:text-base font-medium transition-colors ${selectedFilter === 'all'
+                    ? 'bg-primary-500 text-white'
+                    : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
                   }`}
               >
-                {subcategory}
+                All
               </button>
-            ))}
+              <button
+                onClick={() => handleMainCategoryChange('breakfast')}
+                className={`px-4 sm:px-6 py-2 rounded-lg text-sm sm:text-base font-medium transition-colors ${selectedFilter === 'breakfast'
+                    ? 'bg-primary-500 text-white'
+                    : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                  }`}
+              >
+                Breakfast
+              </button>
+              <button
+                onClick={() => handleMainCategoryChange('lunch')}
+                className={`px-4 sm:px-6 py-2 rounded-lg text-sm sm:text-base font-medium transition-colors ${selectedFilter === 'lunch'
+                    ? 'bg-primary-500 text-white'
+                    : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                  }`}
+              >
+                Lunch
+              </button>
+              <button
+                onClick={() => handleMainCategoryChange('dinner')}
+                className={`px-4 sm:px-6 py-2 rounded-lg text-sm sm:text-base font-medium transition-colors ${selectedFilter === 'dinner'
+                    ? 'bg-primary-500 text-white'
+                    : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                  }`}
+              >
+                Dinner
+              </button>
+              <button
+                onClick={() => handleMainCategoryChange('snacks')}
+                className={`px-4 sm:px-6 py-2 rounded-lg text-sm sm:text-base font-medium transition-colors ${selectedFilter === 'snacks'
+                    ? 'bg-primary-500 text-white'
+                    : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                  }`}
+              >
+                Snacks
+              </button>
+              <button
+                onClick={() => handleMainCategoryChange('sweets')}
+                className={`px-4 sm:px-6 py-2 rounded-lg text-sm sm:text-base font-medium transition-colors ${selectedFilter === 'sweets'
+                    ? 'bg-primary-500 text-white'
+                    : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                  }`}
+              >
+                Sweets
+              </button>
+            </div>
           </div>
-        </div>
-      )}
 
-      <Table
-        columns={tableConfig.columns}
-        data={filteredMenuItems}
-        emptyMessage={
-          menuItems.length === 0
-            ? tableConfig.emptyMessage
-            : selectedSubFilter !== 'all'
-              ? `No menu items found in "${selectedFilter}" - "${selectedSubFilter}" category.`
-              : `No menu items found in "${selectedFilter}" category.`
-        }
-        itemsPerPage={itemsPerPage}
-        currentPage={currentPage}
-        totalItems={filteredMenuItems.length}
-        onPageChange={setCurrentPage}
-        onItemsPerPageChange={setItemsPerPage}
-        itemName={tableConfig.itemName}
-        getItemId={tableConfig.getItemId}
-        renderActions={(item) => (
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() => handleEdit(item)}
-              className="text-yellow-600 hover:text-yellow-900 p-2 hover:bg-yellow-50 rounded"
-              title="Edit"
-            >
-              <FaEdit />
-            </button>
-            <button
-              onClick={() => handleDelete(item.id)}
-              className="text-red-600 hover:text-red-900 p-2 hover:bg-red-50 rounded"
-              title="Delete"
-            >
-              <FaTrash />
-            </button>
-          </div>
-        )}
-      />
+          {/* Subcategory Filter Buttons - Show only when main category is selected */}
+          {selectedFilter !== 'all' && availableSubcategories.length > 0 && (
+            <div className="mb-6">
+              <div className="mb-2">
+                <span className="text-sm font-medium text-gray-700">
+                  {selectedFilter.charAt(0).toUpperCase() + selectedFilter.slice(1)} Categories:
+                </span>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <button
+                  onClick={() => setSelectedSubFilter('all')}
+                  className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${selectedSubFilter === 'all'
+                      ? 'bg-primary-500 text-white'
+                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                    }`}
+                >
+                  All {selectedFilter}
+                </button>
+                {availableSubcategories.map((subcategory) => (
+                  <button
+                    key={subcategory}
+                    onClick={() => setSelectedSubFilter(subcategory)}
+                    className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${selectedSubFilter === subcategory
+                        ? 'bg-green-600 text-white'
+                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                      }`}
+                  >
+                    {subcategory}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          <Table
+            columns={tableConfig.columns}
+            data={filteredMenuItems}
+            emptyMessage={
+              menuItems.length === 0
+                ? tableConfig.emptyMessage
+                : selectedSubFilter !== 'all'
+                  ? `No menu items found in "${selectedFilter}" - "${selectedSubFilter}" category.`
+                  : `No menu items found in "${selectedFilter}" category.`
+            }
+            itemsPerPage={itemsPerPage}
+            currentPage={currentPage}
+            totalItems={filteredMenuItems.length}
+            onPageChange={setCurrentPage}
+            onItemsPerPageChange={setItemsPerPage}
+            itemName={tableConfig.itemName}
+            getItemId={tableConfig.getItemId}
+            renderActions={(item) => (
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => handleEdit(item)}
+                  className="text-yellow-600 hover:text-yellow-900 p-2 hover:bg-yellow-50 rounded"
+                  title="Edit"
+                >
+                  <FaEdit />
+                </button>
+                <button
+                  onClick={() => handleDelete(item.id)}
+                  className="text-red-600 hover:text-red-900 p-2 hover:bg-red-50 rounded"
+                  title="Delete"
+                >
+                  <FaTrash />
+                </button>
+              </div>
+            )}
+          />
+        </>
+      )}
 
       <ConfirmModal
         isOpen={deleteConfirm.isOpen}

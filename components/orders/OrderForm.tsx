@@ -2,7 +2,7 @@
 import { useEffect, useState, useMemo, useRef } from 'react'
 import { v4 as uuidv4 } from 'uuid'
 import { formatCurrency, formatDateTime, sanitizeMealLabel } from '@/lib/utils'
-import { Customer, MenuItem, Order, OrderItem } from '@/types'
+import { Customer, MenuItem, Order, OrderItem, Supervisor, StallTemplate } from '@/types'
 import { FaSearch, FaPlus, FaTimes, FaGripLines, FaUser, FaCalculator, FaWallet, FaUtensils, FaChevronDown, FaChevronUp, FaCalendarAlt, FaClock, FaMapMarkerAlt, FaUsers, FaTag, FaStore, FaTrash } from 'react-icons/fa'
 import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd'
 import { useRouter, useSearchParams } from 'next/navigation'
@@ -22,10 +22,12 @@ export default function OrderForm({ orderId, isEditMode = false, initialOrderTyp
     const initialStatus = searchParams.get('status') || 'pending'
     const [customers, setCustomers] = useState<Customer[]>([])
     const [menuItems, setMenuItems] = useState<MenuItem[]>([])
+    const [supervisors, setSupervisors] = useState<Supervisor[]>([])
+    const [stallTemplates, setStallTemplates] = useState<StallTemplate[]>([])
     const [selectedSubFilter, setSelectedSubFilter] = useState<Record<string, string>>({})
     const [menuItemSearch, setMenuItemSearch] = useState<Record<string, string>>({})
     const [showStalls, setShowStalls] = useState<boolean>(false)
-    const [loading, setLoading] = useState(false)
+    const [loading, setLoading] = useState(!!orderId)
     const [currentOrderStatus, setCurrentOrderStatus] = useState<string>(initialStatus)
     const [customerSearchTerm, setCustomerSearchTerm] = useState<string>('')
     const [showCustomerDropdown, setShowCustomerDropdown] = useState<boolean>(false)
@@ -133,12 +135,16 @@ export default function OrderForm({ orderId, isEditMode = false, initialOrderTyp
 
     const loadData = async () => {
         try {
-            const [allCustomers, allMenuItems] = await Promise.all([
+            const [custData, menuData, supData, stallData] = await Promise.all([
                 Storage.getCustomers(),
                 Storage.getMenuItems(),
+                Storage.getSupervisors(),
+                Storage.getStallTemplates()
             ])
-            setCustomers(allCustomers)
-            setMenuItems(allMenuItems.filter((item: any) => item.isActive))
+            setCustomers(custData)
+            setMenuItems(menuData.filter((item: any) => item.isActive))
+            setSupervisors(supData)
+            setStallTemplates(stallData || [])
         } catch (error) {
             console.error('Failed to load data:', error)
             toast.error('Failed to load initial data')
@@ -433,6 +439,27 @@ export default function OrderForm({ orderId, isEditMode = false, initialOrderTyp
                 return s
             })
         }))
+    }
+
+    const handleLoadStallTemplate = (stallId: string, templateId: string) => {
+        const template = stallTemplates.find(t => t.id === templateId)
+        if (!template) return
+
+        setFormData(prev => ({
+            ...prev,
+            stalls: (prev.stalls || []).map(s => {
+                if (s.id === stallId) {
+                    return {
+                        ...s,
+                        category: template.name,
+                        description: template.description || '',
+                        selectedMenuItems: Array.isArray(template.menuItemIds) ? [...template.menuItemIds] : []
+                    }
+                }
+                return s
+            })
+        }))
+        toast.success(`Loaded ${template.name} template`)
     }
 
     const handleDragEnd = (result: any) => {
@@ -1030,6 +1057,27 @@ export default function OrderForm({ orderId, isEditMode = false, initialOrderTyp
 
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
                                     <div className="space-y-4">
+                                        {stallTemplates.length > 0 && (
+                                            <div>
+                                                <label className="block text-[10px] font-black text-slate-400 mb-2 uppercase tracking-widest">Quick Load Template</label>
+                                                <div className="relative group/template">
+                                                    <FaStore className="absolute left-4 top-1/2 -translate-y-1/2 text-primary-500 group-focus-within/template:scale-110 transition-transform" size={12} />
+                                                    <select 
+                                                        onChange={(e) => handleLoadStallTemplate(stall.id, e.target.value)}
+                                                        className="w-full pl-10 pr-4 py-3 bg-primary-50 border border-primary-100 rounded-2xl outline-none font-bold text-primary-700 text-xs focus:ring-4 focus:ring-primary-500/10 focus:border-primary-500 appearance-none cursor-pointer transition-all"
+                                                        value=""
+                                                    >
+                                                        <option value="" disabled>Choose a pre-defined stall package...</option>
+                                                        {stallTemplates.map(t => (
+                                                            <option key={t.id} value={t.id}>{t.name}</option>
+                                                        ))}
+                                                    </select>
+                                                    <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-primary-400">
+                                                        <FaChevronDown size={10} />
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        )}
                                         <div>
                                             <label className="block text-[10px] font-black text-slate-400 mb-2 uppercase tracking-widest">Stall Name / Category</label>
                                             <div className="relative group/input">

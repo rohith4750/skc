@@ -175,3 +175,12 @@ export interface Expense {
   createdAt: string;
   updatedAt: string;
 }
+
+export interface StallTemplate {
+  id: string;
+  name: string;
+  description?: string;
+  menuItemIds: string[];
+  createdAt: string;
+  updatedAt: string;
+}

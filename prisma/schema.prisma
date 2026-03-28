@@ -369,3 +369,14 @@ model Inventory {
 
   @@map("inventory")
 }
+
+model StallTemplate {
+  id          String   @id @default(uuid())
+  name        String
+  description String?
+  menuItemIds Json     // Array of MenuItem IDs included in this stall
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("stall_templates")
+}
