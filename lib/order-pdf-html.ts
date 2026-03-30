@@ -341,10 +341,6 @@ export function buildOrderPdfHtml(
                     <div style="width: 120px; font-weight: 600;">Address:</div>
                     <div style="font-weight: 500;">${safeString(customer?.address) || "new nandhi hills RoadNO 1"}</div>
                 </div>
-                 <div style="display: flex; margin-bottom: 2px;">
-                    <div style="width: 120px; font-weight: 600;">Contact No:</div>
-                    <div style="font-weight: 500;">${safeString(customer?.phone)}</div>
-                </div>
                 ${
                   !isMultiEvent
                     ? `

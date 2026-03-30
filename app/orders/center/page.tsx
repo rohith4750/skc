@@ -372,7 +372,6 @@ export default function OrderCenterPage() {
         <div class="section">
           <div class="section-title">Customer Details</div>
           <div class="info-row"><span class="info-label">Name:</span> ${customer?.name || 'N/A'}</div>
-          <div class="info-row"><span class="info-label">Phone:</span> ${customer?.phone || 'N/A'}</div>
           <div class="info-row"><span class="info-label">Email:</span> ${customer?.email || 'N/A'}</div>
           <div class="info-row"><span class="info-label">Address:</span> ${customer?.address || 'N/A'}</div>
         </div>

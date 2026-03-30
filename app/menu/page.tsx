@@ -3,7 +3,7 @@ import { useEffect, useState, useMemo } from 'react'
 import { Storage } from '@/lib/storage-api'
 import { initializeMenuItems } from '@/lib/initMenu'
 import { MenuItem, StallTemplate } from '@/types'
-import { FaPlus, FaEdit, FaTrash, FaDownload, FaPrint, FaStore, FaUtensils } from 'react-icons/fa'
+import { FaPlus, FaEdit, FaTrash, FaDownload, FaPrint, FaStore, FaUtensils, FaSearch, FaTimes } from 'react-icons/fa'
 import toast from 'react-hot-toast'
 import Table from '@/components/Table'
 import { getMenuItemTableConfig } from '@/components/table-configs'
@@ -19,6 +19,8 @@ export default function MenuPage() {
   const [stallTemplates, setStallTemplates] = useState<StallTemplate[]>([])
   const [selectedFilter, setSelectedFilter] = useState<string>('all')
   const [selectedSubFilter, setSelectedSubFilter] = useState<string>('all')
+  const [searchTerm, setSearchTerm] = useState<string>('')
+  const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'inactive'>('all')
   const [currentPage, setCurrentPage] = useState(1)
   const [itemsPerPage, setItemsPerPage] = useState(10)
   const [deleteConfirm, setDeleteConfirm] = useState<{ isOpen: boolean; id: string | null }>({
@@ -75,13 +77,30 @@ export default function MenuPage() {
       })
     }
 
+    // Filter by search term
+    if (searchTerm.trim()) {
+      const search = searchTerm.toLowerCase()
+      filtered = filtered.filter(item => 
+        item.name.toLowerCase().includes(search) ||
+        (item.nameTelugu && item.nameTelugu.toLowerCase().includes(search)) ||
+        (item.description && item.description.toLowerCase().includes(search))
+      )
+    }
+
+    // Filter by status
+    if (statusFilter !== 'all') {
+      filtered = filtered.filter(item => 
+        statusFilter === 'active' ? item.isActive : !item.isActive
+      )
+    }
+
     return filtered
-  }, [menuItems, selectedFilter, selectedSubFilter])
+  }, [menuItems, selectedFilter, selectedSubFilter, searchTerm, statusFilter])
 
   // Reset to page 1 when filter changes
   useEffect(() => {
     setCurrentPage(1)
-  }, [selectedFilter, selectedSubFilter])
+  }, [selectedFilter, selectedSubFilter, searchTerm, statusFilter])
 
   const tableConfig = getMenuItemTableConfig()
 
@@ -443,23 +462,78 @@ export default function MenuPage() {
         />
       ) : (
         <>
+          {/* Search and Status Filters */}
+          <div className="mb-6 flex flex-col md:flex-row gap-4 items-center justify-between bg-white p-4 rounded-2xl border border-gray-100 shadow-sm">
+            <div className="relative w-full md:w-96">
+              <FaSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
+              <input
+                type="text"
+                placeholder="Search by name, telugu, or description..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="w-full pl-10 pr-10 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none transition-all text-sm font-medium"
+              />
+              {searchTerm && (
+                <button
+                  onClick={() => setSearchTerm('')}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 p-1"
+                >
+                  <FaTimes className="w-3 h-3" />
+                </button>
+              )}
+            </div>
+
+            <div className="flex bg-gray-100 p-1 rounded-xl items-center border border-gray-200 w-full md:w-auto">
+              <button
+                onClick={() => setStatusFilter('all')}
+                className={`flex-1 md:flex-none px-4 py-2 rounded-lg text-xs font-bold transition-all ${
+                  statusFilter === 'all' 
+                  ? 'bg-white text-primary-600 shadow-sm' 
+                  : 'text-gray-500 hover:text-gray-700'
+                }`}
+              >
+                All Status
+              </button>
+              <button
+                onClick={() => setStatusFilter('active')}
+                className={`flex-1 md:flex-none px-4 py-2 rounded-lg text-xs font-bold transition-all ${
+                  statusFilter === 'active' 
+                  ? 'bg-white text-green-600 shadow-sm' 
+                  : 'text-gray-500 hover:text-gray-700'
+                }`}
+              >
+                Active Only
+              </button>
+              <button
+                onClick={() => setStatusFilter('inactive')}
+                className={`flex-1 md:flex-none px-4 py-2 rounded-lg text-xs font-bold transition-all ${
+                  statusFilter === 'inactive' 
+                  ? 'bg-white text-red-600 shadow-sm' 
+                  : 'text-gray-500 hover:text-gray-700'
+                }`}
+              >
+                Inactive Only
+              </button>
+            </div>
+          </div>
+
           {/* Main Category Filter Buttons */}
           <div className="mb-4">
             <div className="flex flex-wrap gap-2 sm:gap-3">
               <button
                 onClick={() => handleMainCategoryChange('all')}
                 className={`px-4 sm:px-6 py-2 rounded-lg text-sm sm:text-base font-medium transition-colors ${selectedFilter === 'all'
-                    ? 'bg-primary-500 text-white'
-                    : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                    ? 'bg-primary-500 text-white shadow-md'
+                    : 'bg-gray-200 text-gray-700 hover:bg-gray-300 border border-gray-200'
                   }`}
               >
-                All
+                All Categories
               </button>
               <button
                 onClick={() => handleMainCategoryChange('breakfast')}
                 className={`px-4 sm:px-6 py-2 rounded-lg text-sm sm:text-base font-medium transition-colors ${selectedFilter === 'breakfast'
-                    ? 'bg-primary-500 text-white'
-                    : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                    ? 'bg-primary-500 text-white shadow-md'
+                    : 'bg-gray-200 text-gray-700 hover:bg-gray-300 border border-gray-200'
                   }`}
               >
                 Breakfast
@@ -467,8 +541,8 @@ export default function MenuPage() {
               <button
                 onClick={() => handleMainCategoryChange('lunch')}
                 className={`px-4 sm:px-6 py-2 rounded-lg text-sm sm:text-base font-medium transition-colors ${selectedFilter === 'lunch'
-                    ? 'bg-primary-500 text-white'
-                    : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                    ? 'bg-primary-500 text-white shadow-md'
+                    : 'bg-gray-200 text-gray-700 hover:bg-gray-300 border border-gray-200'
                   }`}
               >
                 Lunch
@@ -476,8 +550,8 @@ export default function MenuPage() {
               <button
                 onClick={() => handleMainCategoryChange('dinner')}
                 className={`px-4 sm:px-6 py-2 rounded-lg text-sm sm:text-base font-medium transition-colors ${selectedFilter === 'dinner'
-                    ? 'bg-primary-500 text-white'
-                    : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                    ? 'bg-primary-500 text-white shadow-md'
+                    : 'bg-gray-200 text-gray-700 hover:bg-gray-300 border border-gray-200'
                   }`}
               >
                 Dinner
@@ -485,8 +559,8 @@ export default function MenuPage() {
               <button
                 onClick={() => handleMainCategoryChange('snacks')}
                 className={`px-4 sm:px-6 py-2 rounded-lg text-sm sm:text-base font-medium transition-colors ${selectedFilter === 'snacks'
-                    ? 'bg-primary-500 text-white'
-                    : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                    ? 'bg-primary-500 text-white shadow-md'
+                    : 'bg-gray-200 text-gray-700 hover:bg-gray-300 border border-gray-200'
                   }`}
               >
                 Snacks
@@ -494,8 +568,8 @@ export default function MenuPage() {
               <button
                 onClick={() => handleMainCategoryChange('sweets')}
                 className={`px-4 sm:px-6 py-2 rounded-lg text-sm sm:text-base font-medium transition-colors ${selectedFilter === 'sweets'
-                    ? 'bg-primary-500 text-white'
-                    : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                    ? 'bg-primary-500 text-white shadow-md'
+                    : 'bg-gray-200 text-gray-700 hover:bg-gray-300 border border-gray-200'
                   }`}
               >
                 Sweets
