@@ -109,7 +109,7 @@ export interface PDFTemplateData {
 }
 
 export function generatePDFTemplate(data: PDFTemplateData): string {
-  const companyName = 'SRIVATSASA & KOUNDINYA CATERERS'
+  const companyName = 'SRIVATSASA & KOWNDINYA CATERERS'
   const subtitle = '(Pure Vegetarian)'
   const regdNo = 'Regd. No. 236190310003331'
   const address = 'Plot No. 115, Padmavathi Nagar, Bank Colony, Saheb Nagar. Varsthalipuram, Hyderabad - 500070.'
@@ -175,26 +175,23 @@ export function generatePDFTemplate(data: PDFTemplateData): string {
           color: #000;
         }
         .header-branding {
-          position: relative;
-          text-align: center;
-          width: 100%;
-          min-height: 80px;
           display: flex;
-          flex-direction: column;
+          align-items: center;
           justify-content: center;
+          width: 100%;
+          gap: 20px;
           margin-bottom: 5px;
         }
         .header-logo {
-          position: absolute;
-          left: 20px;
-          top: 0;
           width: 75px;
           height: 75px;
           object-fit: contain;
+          border-radius: 50%;
         }
         .title-container {
-          width: 100%;
+          flex: 1;
           text-align: center;
+          margin-right: 75px;
         }
         .header-main {
           font-size: 24px;
@@ -412,7 +409,9 @@ export function generatePDFTemplate(data: PDFTemplateData): string {
             <div>${topRight}</div>
           </div>
           <div class="header-branding">
-             <img src="/images/logo.jpg" class="header-logo" alt="Logo" />
+             <div style="flex: 0 0 75px;">
+               <img src="/images/logo.jpg" class="header-logo" alt="Logo" />
+             </div>
              <div class="title-container">
                <div class="header-main">${companyName}</div>
                <div class="header-subtitle">${subtitle}</div>

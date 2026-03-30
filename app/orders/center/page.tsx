@@ -347,20 +347,24 @@ export default function OrderCenterPage() {
         .financial-label { font-weight: 600; }
       </style>
       
-      <div class="header" style="position: relative; min-height: 100px; display: flex; flex-direction: column; align-items: center; justify-content: center;">
-        <img src="${window.location.origin}/images/logo.jpg" alt="SKC Logo" style="position: absolute; left: 0; top: 10px; width: 80px; height: 80px; object-fit: contain; border-radius: 50%;" />
-        <div style="width: 100%; text-align: center;">
-          <div class="header-top" style="display: flex; justify-content: space-between; width: 100%; font-size: 10px; color: #555; margin-bottom: 5px;">
-            <div>Telidevara Rajendraprasad</div>
-            <div>ART FOOD ZONE (A Food Caterers)</div>
+      <div class="header" style="margin-bottom: 25px; border-bottom: 2px solid #333; padding-bottom: 15px;">
+        <div class="header-top" style="display: flex; justify-content: space-between; width: 100%; font-size: 10px; color: #555; margin-bottom: 10px;">
+          <div>Telidevara Rajendraprasad</div>
+          <div>ART FOOD ZONE (A Food Caterers)</div>
+        </div>
+        <div style="display: flex; align-items: center; justify-content: center; gap: 20px; position: relative;">
+          <div style="flex: 0 0 80px;">
+            <img src="${window.location.origin}/images/logo.jpg" alt="SKC Logo" style="width: 80px; height: 80px; object-fit: contain; border-radius: 50%;" />
           </div>
-          <div class="header-main" style="font-size: 28px; font-weight: 800; margin: 5px 0; letter-spacing: 1px; color: #1a1a1a; text-transform: uppercase;">SRIVATSASA & KOWNDINYA CATERERS</div>
-          <div class="header-subtitle" style="font-size: 14px; color: #666; margin-bottom: 10px; font-style: italic;">(Pure Vegetarian)</div>
-          <div class="header-details" style="font-size: 9px; line-height: 1.5; color: #444; margin-top: 5px;">
-            <div>Regd. No: 2361930100031</div>
-            <div>Plot No. 115, Padmavathi Nagar, Bank Colony, Saheb Nag Vanathalipuram, Hyderabad - 500070.</div>
-            <div>Email: pujyasri1989cya@gmail.com, Cell: 9866525102, 9963691393, 9390015302</div>
+          <div style="flex: 1; text-align: center; margin-right: 80px;">
+            <div class="header-main" style="font-size: 28px; font-weight: 800; margin: 0; letter-spacing: 1px; color: #1a1a1a; text-transform: uppercase;">SRIVATSASA & KOWNDINYA CATERERS</div>
+            <div class="header-subtitle" style="font-size: 14px; color: #666; margin-bottom: 5px; font-style: italic;">(Pure Vegetarian)</div>
           </div>
+        </div>
+        <div class="header-details" style="text-align: center; font-size: 9px; line-height: 1.5; color: #444; margin-top: 10px; border-top: 1px solid #eee; padding-top: 10px;">
+          <div>Regd. No: 2361930100031</div>
+          <div>Plot No. 115, Padmavathi Nagar, Bank Colony, Saheb Nag Vanathalipuram, Hyderabad - 500070.</div>
+          <div>Email: pujyasri1989cya@gmail.com, Cell: 9866525102, 9963691393, 9390015302</div>
         </div>
       </div>
       

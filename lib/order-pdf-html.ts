@@ -308,10 +308,12 @@ export function buildOrderPdfHtml(
              </div>
 
              <!-- Branding Row: Logo + Company Name -->
-             <div style="position: relative; text-align: center; width: 100%; min-height: 80px; display: flex; flex-direction: column; justify-content: center; margin-bottom: 5px;">
-                  <img src="${window.location.origin}/images/logo.jpg" alt="SKC Logo" style="position: absolute; left: 20px; top: 0; width: 75px; height: 75px; object-fit: contain; border-radius: 50%;" />
-                  <div style="width: 100%; text-align: center;">
-                      <h1 style="font-size: 24px; font-weight: 800; margin: 0; letter-spacing: 0.5px; text-transform: uppercase; color: #000;">SRIVATSASA & KOUNDINYA CATERERS</h1>
+             <div style="display: flex; align-items: center; justify-content: center; width: 100%; gap: 15px; margin-bottom: 5px;">
+                  <div style="flex: 0 0 75px;">
+                      <img src="${window.location.origin}/images/logo.jpg" alt="SKC Logo" style="width: 75px; height: 75px; object-fit: contain; border-radius: 50%;" />
+                  </div>
+                  <div style="flex: 1; text-align: center; margin-right: 75px;">
+                      <h1 style="font-size: 24px; font-weight: 800; margin: 0; letter-spacing: 0.5px; text-transform: uppercase; color: #000;">SRIVATSASA & KOWNDINYA CATERERS</h1>
                       <div style="font-size: 13px; font-style: italic; font-weight: 600; color: #000; margin-top: 2px;">(Pure Vegetarian)</div>
                   </div>
              </div>
