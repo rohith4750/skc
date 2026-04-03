@@ -237,6 +237,13 @@ export default function OrderForm({ orderId, isEditMode = false, initialOrderTyp
             setShowStalls(stallsArray.length > 0)
             setOriginalAdvancePaid(order.advancePaid || 0)
             setOriginalMealTypeAmounts(mealTypeAmounts || {})
+
+            // Collapse all sessions by default when editing
+            const initialCollapsed: Record<string, boolean> = {}
+            mealTypesArray.forEach(mt => {
+                initialCollapsed[mt.id] = true
+            })
+            setCollapsedMealTypes(initialCollapsed)
         } catch (error) {
             console.error('Failed to load order:', error)
             toast.error('Failed to load order data')
@@ -344,7 +351,7 @@ export default function OrderForm({ orderId, isEditMode = false, initialOrderTyp
         const id = uuidv4()
         setFormData(prev => ({
             ...prev,
-            mealTypes: [...prev.mealTypes, {
+            mealTypes: [{
                 id,
                 eventName: '',
                 venue: '',
@@ -360,7 +367,7 @@ export default function OrderForm({ orderId, isEditMode = false, initialOrderTyp
                 numberOfMembers: '',
                 itemCustomizations: {},
                 itemQuantities: {},
-            }]
+            }, ...prev.mealTypes]
         }))
         setCollapsedMealTypes(prev => ({ ...prev, [id]: false }))
     }
@@ -401,7 +408,7 @@ export default function OrderForm({ orderId, isEditMode = false, initialOrderTyp
         setShowStalls(true)
         setFormData(prev => ({
             ...prev,
-            stalls: [...prev.stalls, {
+            stalls: [{
                 id,
                 category: '',
                 description: '',
@@ -414,7 +421,7 @@ export default function OrderForm({ orderId, isEditMode = false, initialOrderTyp
                 manualAmount: '',
                 cost: '',
                 numberOfMembers: '',
-            }]
+            }, ...prev.stalls]
         }))
     }
 
