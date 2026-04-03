@@ -159,6 +159,9 @@ export default function InventoryPage() {
     return totals
   }, [filteredInventory])
 
+  const grandTotalValue = useMemo(() => {
+    return filteredInventory.reduce((sum, item) => sum + ((item.purchasePrice || 0) * item.quantity), 0)
+  }, [filteredInventory])
 
   const handleDelete = (id: string) => {
     setDeleteConfirm({ isOpen: true, id })
@@ -569,6 +572,32 @@ export default function InventoryPage() {
             onItemsPerPageChange={setItemsPerPage}
             itemName="inventory item"
             getItemId={(item: InventoryItem) => item.id}
+            renderFooter={(cols, span, isMobile) => {
+              if (isMobile) {
+                return (
+                  <div className="flex items-center justify-between">
+                    <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                      Grand Total Value
+                    </span>
+                    <span className="text-lg font-black text-indigo-600">
+                      {formatCurrency(grandTotalValue)}
+                    </span>
+                  </div>
+                )
+              }
+              return (
+                <tr className="bg-slate-50/80 border-t-2 border-slate-200">
+                  <td colSpan={span - 1} className="px-6 py-4 text-right text-sm font-bold text-slate-500 uppercase tracking-wider">
+                    Grand Total Value
+                  </td>
+                  <td className="px-6 py-4 text-left">
+                    <div className="text-lg font-black text-indigo-600 whitespace-nowrap">
+                      {formatCurrency(grandTotalValue)}
+                    </div>
+                  </td>
+                </tr>
+              )
+            }}
             renderActions={(item: InventoryItem) => (
               <div className="flex items-center gap-1">
                 <button

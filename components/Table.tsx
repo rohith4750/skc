@@ -30,6 +30,7 @@ interface TableProps<T> {
   getItemId?: (item: T) => string
   renderActions?: (row: T) => ReactNode
   renderRow?: (row: T, columns: TableColumn<T>[]) => ReactNode // For completely custom rows
+  renderFooter?: (columns: TableColumn<T>[], colSpan: number, isMobile: boolean) => ReactNode
   className?: string
   itemsPerPageOptions?: number[] // Options for items per page dropdown (e.g., [5, 10, 25, 50, 100])
 }
@@ -52,6 +53,7 @@ export default function Table<T>({
   getItemId,
   renderActions,
   renderRow,
+  renderFooter,
   className = '',
   itemsPerPageOptions = [5, 10, 25, 40, 50, 100],
 }: TableProps<T>) {
@@ -153,6 +155,11 @@ export default function Table<T>({
             })
           )}
         </div>
+        {renderFooter && (
+          <div className="md:hidden p-4 bg-slate-50/80 border-t border-slate-200">
+            {renderFooter(columns, 1, true)}
+          </div>
+        )}
 
         {/* Desktop Table View */}
         <div className="hidden md:block overflow-x-auto">
@@ -246,6 +253,11 @@ export default function Table<T>({
                 })
               )}
             </tbody>
+            {renderFooter && (
+              <tfoot>
+                {renderFooter(columns, colSpan, false)}
+              </tfoot>
+            )}
           </table>
         </div>
       </div>
