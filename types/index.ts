@@ -17,6 +17,7 @@ export interface MenuItem {
   descriptionTelugu?: string;
   price?: number;
   unit?: string;
+  isCommon?: boolean;
   isActive: boolean;
 }
 
@@ -68,13 +69,15 @@ export interface Order {
         platePrice?: number;
         manualAmount?: number;
         originalMembers?: number;
+        description?: string;
+        itemPrices?: Record<string, number>;
       }
     | number
   > | null;
   stalls?: Array<{
     id: string;
     category: string;
-    description: string;
+    description?: string;
     selectedMenuItems: string[];
     itemCustomizations?: Record<string, string>;
     itemQuantities?: Record<string, string>;
@@ -84,6 +87,12 @@ export interface Order {
     manualAmount?: number;
     cost: number | string;
     numberOfMembers?: number;
+    date?: string;
+    time?: string;
+    venue?: string;
+    venueType?: string;
+    eventName?: string;
+    services?: string[];
   }> | null;
   numberOfMembers?: number | null;
   transportCost?: number;

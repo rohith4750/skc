@@ -23,6 +23,7 @@ export default function MenuForm({ id, onSuccess, onCancel }: MenuFormProps) {
         description: '',
         price: '',
         unit: '',
+        isCommon: false,
         isActive: true,
     })
 
@@ -44,6 +45,7 @@ export default function MenuForm({ id, onSuccess, onCancel }: MenuFormProps) {
                     description: item.description || '',
                     price: item.price ? item.price.toString() : '',
                     unit: item.unit || '',
+                    isCommon: item.isCommon || false,
                     isActive: item.isActive,
                 })
             } else {
@@ -75,6 +77,7 @@ export default function MenuForm({ id, onSuccess, onCancel }: MenuFormProps) {
                 description: formData.description,
                 price: formData.price ? parseFloat(formData.price) : null,
                 unit: formData.unit,
+                isCommon: formData.isCommon,
                 isActive: formData.isActive,
             }
 
@@ -200,17 +203,31 @@ export default function MenuForm({ id, onSuccess, onCancel }: MenuFormProps) {
                             />
                         </div>
                     </div>
-                    <div className="flex items-center">
-                        <input
-                            type="checkbox"
-                            id="isActive"
-                            checked={formData.isActive}
-                            onChange={(e) => setFormData({ ...formData, isActive: e.target.checked })}
-                            className="w-4 h-4 text-indigo-600 border-slate-300 rounded focus:ring-indigo-500"
-                        />
-                        <label htmlFor="isActive" className="ml-2 text-sm font-medium text-slate-700">
-                            Active
-                        </label>
+                    <div className="flex flex-col sm:flex-row gap-4 sm:gap-8 bg-slate-50 p-4 rounded-xl border border-slate-100">
+                        <div className="flex items-center">
+                            <input
+                                type="checkbox"
+                                id="isCommon"
+                                checked={formData.isCommon}
+                                onChange={(e) => setFormData({ ...formData, isCommon: e.target.checked })}
+                                className="w-4 h-4 text-amber-600 border-slate-300 rounded focus:ring-amber-500"
+                            />
+                            <label htmlFor="isCommon" className="ml-2 text-sm font-medium text-slate-700 flex items-center gap-1">
+                                Common Item <span className="text-xs text-slate-400 font-normal">(Pre-selected in sessions)</span>
+                            </label>
+                        </div>
+                        <div className="flex items-center">
+                            <input
+                                type="checkbox"
+                                id="isActive"
+                                checked={formData.isActive}
+                                onChange={(e) => setFormData({ ...formData, isActive: e.target.checked })}
+                                className="w-4 h-4 text-indigo-600 border-slate-300 rounded focus:ring-indigo-500"
+                            />
+                            <label htmlFor="isActive" className="ml-2 text-sm font-medium text-slate-700">
+                                Active Item
+                            </label>
+                        </div>
                     </div>
                 </div>
                 <div className="mt-6 flex flex-col-reverse sm:flex-row justify-end gap-3 sm:gap-4">

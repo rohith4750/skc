@@ -105,6 +105,7 @@ export class Storage {
           description: item.description,
           price: item.price,
           unit: item.unit,
+          isCommon: item.isCommon,
           isActive: item.isActive,
         }),
       });
@@ -118,6 +119,7 @@ export class Storage {
           description: item.description,
           price: item.price,
           unit: item.unit,
+          isCommon: item.isCommon !== undefined ? item.isCommon : false,
           isActive: item.isActive !== undefined ? item.isActive : true,
         }),
       });

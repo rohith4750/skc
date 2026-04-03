@@ -42,6 +42,7 @@ export async function POST(request: NextRequest) {
         price: data.price,
         // @ts-ignore
         unit: data.unit,
+        isCommon: data.isCommon !== undefined ? data.isCommon : false,
         isActive: data.isActive !== undefined ? data.isActive : true,
       } as any,
     });

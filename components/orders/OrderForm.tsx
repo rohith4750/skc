@@ -82,6 +82,7 @@ export default function OrderForm({ orderId, isEditMode = false, initialOrderTyp
             itemCustomizations: Record<string, string>
             itemQuantities: Record<string, string>
             itemPrices: Record<string, string>
+            description: string
         }>,
         stalls: [] as Array<{
             id: string
@@ -96,6 +97,11 @@ export default function OrderForm({ orderId, isEditMode = false, initialOrderTyp
             manualAmount: string
             cost: string
             numberOfMembers: string
+            eventName: string
+            venue: string
+            date: string
+            time: string
+            services: string[]
         }>,
         discount: '',
         transportCost: '',
@@ -206,7 +212,8 @@ export default function OrderForm({ orderId, isEditMode = false, initialOrderTyp
                         time: data.time || '',
                         services: data.services || [],
                         numberOfMembers: (data.numberOfMembers || '').toString(),
-                        itemPrices: data.itemPrices || itemPricesByMt[key] || {}
+                        itemPrices: data.itemPrices || itemPricesByMt[key] || {},
+                        description: data.description || ''
                     }
                 })
                 : []
@@ -223,7 +230,12 @@ export default function OrderForm({ orderId, isEditMode = false, initialOrderTyp
                 platePrice: (s.platePrice || '').toString(),
                 manualAmount: (s.manualAmount || s.cost || '').toString(),
                 cost: (s.cost || '').toString(),
-                numberOfMembers: (s.numberOfMembers || '').toString()
+                numberOfMembers: (s.numberOfMembers || '').toString(),
+                eventName: s.eventName || '',
+                venue: s.venue || '',
+                date: s.date || '',
+                time: s.time || '',
+                services: s.services || []
             }))
 
             setFormData({
@@ -313,9 +325,11 @@ export default function OrderForm({ orderId, isEditMode = false, initialOrderTyp
                 const plates = parseFloat(mt.numberOfPlates) || parseFloat(mt.numberOfMembers) || 0
                 mtTotal += plates * (parseFloat(mt.platePrice) || 0)
             } else if (mt.menuType === 'saree') {
-                // Sum individual item prices for Saree sessions
+                // Sum individual item prices for Saree sessions (multiplied by quantity)
                 const sareeTotal = mt.selectedMenuItems.reduce((sum, itemId) => {
-                    return sum + (parseFloat(mt.itemPrices?.[itemId] || '0') || 0)
+                    const price = parseFloat(mt.itemPrices?.[itemId] || '0') || 0
+                    const qty = parseFloat(mt.itemQuantities[itemId] || '1') || 0
+                    return sum + (price * qty)
                 }, 0)
                 mtTotal += sareeTotal
             } else {
@@ -372,6 +386,12 @@ export default function OrderForm({ orderId, isEditMode = false, initialOrderTyp
 
     const handleAddMealType = () => {
         const id = uuidv4()
+        // Find common items (isCommon: true)
+        const commonItems = menuItems.filter(item => (item as any).isCommon)
+        const commonItemIds = commonItems.map(item => item.id)
+        const commonItemQuantities: Record<string, string> = {}
+        commonItemIds.forEach(itemId => commonItemQuantities[itemId] = '1')
+
         setFormData(prev => ({
             ...prev,
             mealTypes: [{
@@ -379,7 +399,7 @@ export default function OrderForm({ orderId, isEditMode = false, initialOrderTyp
                 eventName: '',
                 venue: '',
                 menuType: '',
-                selectedMenuItems: [],
+                selectedMenuItems: commonItemIds,
                 pricingMethod: 'manual',
                 numberOfPlates: '',
                 platePrice: '',
@@ -389,8 +409,9 @@ export default function OrderForm({ orderId, isEditMode = false, initialOrderTyp
                 services: [],
                 numberOfMembers: '',
                 itemCustomizations: {},
-                itemQuantities: {},
+                itemQuantities: commonItemQuantities,
                 itemPrices: {},
+                description: '',
             }, ...prev.mealTypes]
         }))
         setCollapsedMealTypes(prev => ({ ...prev, [id]: false }))
@@ -448,6 +469,11 @@ export default function OrderForm({ orderId, isEditMode = false, initialOrderTyp
                 manualAmount: '',
                 cost: '',
                 numberOfMembers: '',
+                eventName: '',
+                venue: '',
+                date: '',
+                time: '',
+                services: [],
             }, ...prev.stalls]
         }))
     }
@@ -554,6 +580,7 @@ export default function OrderForm({ orderId, isEditMode = false, initialOrderTyp
                     platePrice: parseFloat(mt.platePrice) || 0,
                     manualAmount: parseFloat(mt.manualAmount) || 0,
                     eventName: mt.eventName,
+                    description: mt.description,
                     itemPrices: mt.menuType === 'saree' ? Object.fromEntries(
                       Object.entries(mt.itemPrices).map(([k, v]) => [k, parseFloat(v) || 0])
                     ) : undefined
@@ -593,7 +620,12 @@ export default function OrderForm({ orderId, isEditMode = false, initialOrderTyp
                 cost: s.pricingMethod === 'plate-based'
                     ? (parseFloat(s.numberOfPlates) || 0) * (parseFloat(s.platePrice) || 0)
                     : parseFloat(s.manualAmount) || 0,
-                numberOfMembers: parseInt(s.numberOfMembers) || 0
+                numberOfMembers: parseInt(s.numberOfMembers) || 0,
+                eventName: s.eventName,
+                venue: s.venue,
+                date: s.date,
+                time: s.time,
+                services: s.services
             }))
 
             const orderData: any = {
@@ -841,6 +873,17 @@ export default function OrderForm({ orderId, isEditMode = false, initialOrderTyp
                                     </div>
                                 </div>
 
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-2">Session Description / Internal Notes</label>
+                                    <textarea
+                                        value={mt.description}
+                                        onChange={(e) => handleUpdateMealType(mt.id, 'description', e.target.value)}
+                                        rows={2}
+                                        className="w-full px-4 py-2 bg-gray-50 border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary-500 outline-none text-sm"
+                                        placeholder="e.g., Any specific instructions for this session..."
+                                    />
+                                </div>
+
                                 <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
                                     <div>
                                         <label className="block text-sm font-medium text-gray-700 mb-2">Event Date</label>
@@ -893,11 +936,20 @@ export default function OrderForm({ orderId, isEditMode = false, initialOrderTyp
                                 </div>
 
                                 {mt.menuType === 'saree' ? (
-                                    <div className="p-4 bg-primary-50 rounded-lg border border-primary-100">
-                                        <p className="text-xs font-bold text-primary-600 mb-2 uppercase tracking-tight">Saree Itemized Pricing (Auto-Calculated Summary)</p>
-                                        <p className="text-lg font-bold text-primary-700">
-                                            Total: {formatCurrency(mt.selectedMenuItems.reduce((sum, itemId) => sum + (parseFloat(mt.itemPrices?.[itemId] || '0') || 0), 0))}
-                                        </p>
+                                    <div className="p-4 bg-primary-50 rounded-lg border border-primary-100 flex justify-between items-center">
+                                        <div>
+                                            <p className="text-xs font-bold text-primary-600 mb-1 uppercase tracking-tight">Saree Itemized Summary</p>
+                                            <p className="text-lg font-black text-primary-700">
+                                                Subtotal: {formatCurrency(mt.selectedMenuItems.reduce((sum, itemId) => {
+                                                    const price = parseFloat(mt.itemPrices?.[itemId] || '0') || 0
+                                                    const qty = parseFloat(mt.itemQuantities[itemId] || '1') || 0
+                                                    return sum + (price * qty)
+                                                }, 0))}
+                                            </p>
+                                        </div>
+                                        <div className="text-right">
+                                            <span className="text-[10px] font-bold text-primary-400 uppercase">Per Unit Calculations Enabled</span>
+                                        </div>
                                     </div>
                                 ) : mt.pricingMethod === 'plate-based' ? (
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6 p-4 bg-gray-50 rounded-lg border border-gray-100">
@@ -1042,21 +1094,43 @@ export default function OrderForm({ orderId, isEditMode = false, initialOrderTyp
                                                                                     className="text-[10px] w-full mt-0.5 text-gray-500 bg-transparent border-b border-transparent focus:border-primary-300 outline-none placeholder:text-gray-300"
                                                                                 />
                                                                                 {mt.menuType === 'saree' && (
-                                                                                    <div className="mt-1 flex items-center gap-1">
-                                                                                        <span className="text-[10px] text-gray-400 font-bold">₹</span>
-                                                                                        <input
-                                                                                            type="number"
-                                                                                            placeholder="Price"
-                                                                                            value={mt.itemPrices[itemId] || ''}
-                                                                                            onChange={(e) => {
-                                                                                                const val = e.target.value
-                                                                                                setFormData(prev => ({
-                                                                                                    ...prev,
-                                                                                                    mealTypes: prev.mealTypes.map(m => m.id === mt.id ? { ...m, itemPrices: { ...m.itemPrices, [itemId]: val } } : m)
-                                                                                                }))
-                                                                                            }}
-                                                                                            className="text-[10px] font-bold w-full text-primary-600 bg-primary-50/50 border border-primary-100 rounded px-1.5 py-0.5 outline-none focus:ring-1 focus:ring-primary-500"
-                                                                                        />
+                                                                                    <div className="mt-1.5 space-y-1.5">
+                                                                                        <div className="flex items-center gap-1.5">
+                                                                                            <div className="relative flex-1">
+                                                                                                <span className="absolute left-2 top-1/2 -translate-y-1/2 text-[9px] text-gray-400 font-bold">₹</span>
+                                                                                                <input
+                                                                                                    type="number"
+                                                                                                    placeholder="Price"
+                                                                                                    value={mt.itemPrices[itemId] || ''}
+                                                                                                    onChange={(e) => {
+                                                                                                        const val = e.target.value
+                                                                                                        setFormData(prev => ({
+                                                                                                            ...prev,
+                                                                                                            mealTypes: prev.mealTypes.map(m => m.id === mt.id ? { ...m, itemPrices: { ...m.itemPrices, [itemId]: val } } : m)
+                                                                                                        }))
+                                                                                                    }}
+                                                                                                    className="text-[10px] font-bold w-full text-primary-600 bg-white border border-primary-100 rounded pl-4 pr-1.5 py-1 outline-none focus:ring-1 focus:ring-primary-500"
+                                                                                                />
+                                                                                            </div>
+                                                                                            {item.unit && (
+                                                                                                <span className="text-[10px] font-bold text-gray-400 bg-gray-100 px-1.5 py-1 rounded">/ {item.unit}</span>
+                                                                                            )}
+                                                                                        </div>
+                                                                                        <div className="flex items-center gap-1.5">
+                                                                                            <span className="text-[10px] text-gray-400 font-bold uppercase">Qty:</span>
+                                                                                            <input
+                                                                                                type="number"
+                                                                                                value={mt.itemQuantities[itemId] || '1'}
+                                                                                                onChange={(e) => {
+                                                                                                    const val = e.target.value
+                                                                                                    setFormData(prev => ({
+                                                                                                        ...prev,
+                                                                                                        mealTypes: prev.mealTypes.map(m => m.id === mt.id ? { ...m, itemQuantities: { ...m.itemQuantities, [itemId]: val } } : m)
+                                                                                                    }))
+                                                                                                }}
+                                                                                                className="text-[10px] font-bold w-16 text-slate-700 bg-white border border-slate-200 rounded px-1.5 py-1 outline-none focus:ring-1 focus:ring-primary-500"
+                                                                                            />
+                                                                                        </div>
                                                                                     </div>
                                                                                 )}
                                                                             </div>
@@ -1146,13 +1220,53 @@ export default function OrderForm({ orderId, isEditMode = false, initialOrderTyp
                                         )}
                                         <div>
                                             <label className="block text-[10px] font-black text-slate-400 mb-2 uppercase tracking-widest">Stall Name / Category</label>
-                                            <div className="relative group/input">
+                                            <input
+                                                type="text"
+                                                value={stall.category}
+                                                onChange={(e) => handleUpdateStall(stall.id, 'category', e.target.value)}
+                                                placeholder="e.g., Coffee Stall, LED Counter..."
+                                                className="w-full px-5 py-3 bg-white border border-slate-200 rounded-2xl outline-none font-bold text-slate-700 focus:ring-4 focus:ring-primary-500/10 focus:border-primary-500 transition-all text-sm"
+                                            />
+                                        </div>
+
+                                        <div className="grid grid-cols-2 gap-4">
+                                            <div>
+                                                <label className="block text-[10px] font-black text-slate-400 mb-2 uppercase tracking-widest uppercase">Stall Event Name</label>
                                                 <input
                                                     type="text"
-                                                    value={stall.category}
-                                                    onChange={(e) => handleUpdateStall(stall.id, 'category', e.target.value)}
-                                                    placeholder="e.g., Coffee Stall, LED Counter..."
-                                                    className="w-full px-5 py-3.5 bg-white border border-slate-200 rounded-2xl outline-none font-bold text-slate-700 focus:ring-4 focus:ring-primary-500/10 focus:border-primary-500 transition-all placeholder:text-slate-300"
+                                                    value={stall.eventName}
+                                                    onChange={(e) => handleUpdateStall(stall.id, 'eventName', e.target.value)}
+                                                    className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl outline-none font-bold text-slate-700 text-xs"
+                                                />
+                                            </div>
+                                            <div>
+                                                <label className="block text-[10px] font-black text-slate-400 mb-2 uppercase tracking-widest uppercase">Stall Venue</label>
+                                                <input
+                                                    type="text"
+                                                    value={stall.venue}
+                                                    onChange={(e) => handleUpdateStall(stall.id, 'venue', e.target.value)}
+                                                    className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl outline-none font-bold text-slate-700 text-xs"
+                                                />
+                                            </div>
+                                        </div>
+
+                                        <div className="grid grid-cols-2 gap-4">
+                                            <div>
+                                                <label className="block text-[10px] font-black text-slate-400 mb-2 uppercase tracking-widest">Date</label>
+                                                <input
+                                                    type="date"
+                                                    value={stall.date}
+                                                    onChange={(e) => handleUpdateStall(stall.id, 'date', e.target.value)}
+                                                    className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl outline-none font-bold text-slate-700 text-xs"
+                                                />
+                                            </div>
+                                            <div>
+                                                <label className="block text-[10px] font-black text-slate-400 mb-2 uppercase tracking-widest">Time</label>
+                                                <input
+                                                    type="time"
+                                                    value={stall.time}
+                                                    onChange={(e) => handleUpdateStall(stall.id, 'time', e.target.value)}
+                                                    className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl outline-none font-bold text-slate-700 text-xs"
                                                 />
                                             </div>
                                         </div>

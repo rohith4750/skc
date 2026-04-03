@@ -103,7 +103,11 @@ export function buildOrderPdfHtml(
         menuType: 'stalls',
         label: stall.category || "Stall",
         type: 'stalls',
-        amount: stall.cost || 0
+        amount: stall.cost || 0,
+        description: stall.description || '',
+        venue: stall.venue || '',
+        time: stall.time || '',
+        eventName: stall.eventName || ''
       });
     });
   }
@@ -180,9 +184,10 @@ export function buildOrderPdfHtml(
                 <tr class="pdf-row">
                     <td style="padding: 5px 10px; font-size: 11px; font-weight: 600; border-bottom: 1px solid #ddd; vertical-align: top;">
                         ${meal.label}
+                        ${meal.eventName ? `<span style="font-size: 9px; color: #666; margin-left: 5px;">(${meal.eventName})</span>` : ""}
                         ${meal.time ? `<span style="font-size: 9px; color: #666; margin-left: 5px;">@ ${meal.time}</span>` : ""}
-                        <div style="font-size: 9px; color: #333; font-weight: 400; margin-top: 1px;">${formatDate(dateStr)}</div>
-                        ${menuItemsHtml}
+                        <div style="font-size: 9px; color: #333; font-weight: 400; margin-top: 1px;">${formatDate(dateStr)}${meal.venue ? ` • Venue: ${meal.venue}` : ""}</div>
+                        ${meal.description ? `<div style="font-size: 8px; color: #7c3aed; font-weight: 500; font-style: italic; margin-top: 2px;">Note: ${meal.description}</div>` : ""}
                     </td>
                     <td style="padding: 5px 10px; font-size: 11px; border-bottom: 1px solid #ddd; text-align: center; font-weight: 500; vertical-align: top;">
                         ${count}
@@ -207,8 +212,10 @@ export function buildOrderPdfHtml(
         const sessionItems = itemsByMealType[session.id] || [];
         sessionItems.forEach(item => {
             const itemPrice = Number(item.price || 0);
+            const qty = Number(item.quantity || 1);
+            const unit = item.menuItem?.unit || '';
             const itemName = item.menuItemName || (item.menuItem ? item.menuItem.name : 'Unknown Item');
-            sareeTotal += itemPrice;
+            sareeTotal += itemPrice * qty;
             sareeRowsHtml += `
                 <tr class="pdf-row">
                     <td style="padding: 5px 10px; font-size: 11px; font-weight: 600; border-bottom: 1px solid #ddd; vertical-align: top;">
@@ -216,13 +223,13 @@ export function buildOrderPdfHtml(
                         <div style="font-size: 9px; color: #666; font-weight: 400; margin-top: 1px;">(Saree / Extra)</div>
                     </td>
                     <td style="padding: 5px 10px; font-size: 11px; border-bottom: 1px solid #ddd; text-align: center; font-weight: 500; vertical-align: top;">
-                        ${item.quantity || 1}
+                        ${qty} ${unit}
                     </td>
                      <td style="padding: 5px 10px; font-size: 11px; border-bottom: 1px solid #ddd; text-align: center; font-weight: 500; vertical-align: top;">
                         ${formatCurrency(itemPrice)}
                     </td>
                     <td style="padding: 5px 10px; font-size: 11px; font-weight: 700; border-bottom: 1px solid #ddd; text-align: right; vertical-align: top;">
-                        ${formatCurrency(itemPrice * (item.quantity || 1))}
+                        ${formatCurrency(itemPrice * qty)}
                     </td>
                 </tr>
             `;
@@ -262,11 +269,12 @@ export function buildOrderPdfHtml(
           if (items.length > 0) {
             menuDetailsHtml += `
               <div style="margin-bottom: 15px;">
-                <div style="font-weight: 700; font-size: 10px; color: ${themeColor}; text-transform: uppercase; margin-bottom: 8px; display: flex; align-items: center; gap: 8px;">
-                  <span style="background: ${isQuotation ? '#f5f3ff' : '#f0f0f0'}; padding: 2px 8px; border-radius: 4px;">${meal.label}</span>
+                  <span style="background: ${isQuotation ? '#f5f3ff' : '#f0f0f0'}; padding: 2px 8px; border-radius: 4px;">${meal.label}${meal.eventName ? ` - ${meal.eventName}` : ''}</span>
                   ${meal.time ? `<span style="font-weight: 500; color: #666; text-transform: none;">@ ${meal.time}</span>` : ""}
                   ${meal.numberOfMembers ? `<span style="font-weight: 500; color: #666; text-transform: none;">(${meal.numberOfMembers} Members)</span>` : ""}
+                  ${meal.venue ? `<span style="font-weight: 500; color: #333; text-transform: none; margin-left: auto;">📍 ${meal.venue}</span>` : ""}
                 </div>
+                ${meal.description ? `<div style="font-size: 9px; color: #666; margin-bottom: 8px; font-style: italic; border-left: 2px solid ${themeColor}; padding-left: 8px;">${meal.description}</div>` : ""}
                 <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px;">
                   ${items.map((it, idx) => {
                     const name = it.menuItem?.name || "Item";

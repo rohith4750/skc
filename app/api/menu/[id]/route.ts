@@ -27,6 +27,7 @@ export async function PUT(
         price: data.price,
         // @ts-ignore
         unit: data.unit,
+        isCommon: data.isCommon,
         isActive: data.isActive,
       } as any,
     });

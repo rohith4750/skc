@@ -118,6 +118,19 @@ export function getMenuItemTableConfig(): TableConfig<MenuItem> {
         render: (item) => <div className="text-sm text-gray-900">{item.type}</div>,
       },
       {
+        key: 'isCommon',
+        header: 'Common',
+        render: (item) => (
+          <div className="text-sm text-gray-900">
+            {item.isCommon ? (
+              <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-bold bg-amber-100 text-amber-800">
+                <FaCheck className="mr-1 w-2 h-2" /> Common
+              </span>
+            ) : '-'}
+          </div>
+        ),
+      },
+      {
         key: 'description',
         header: 'Description',
         render: (item) => <div className="text-sm text-gray-900 max-w-md">{item.description || '-'}</div>,
