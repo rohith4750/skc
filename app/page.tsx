@@ -217,11 +217,16 @@ export default function Dashboard() {
 
         // --- TOP SELLING ITEMS ANALYTICS ---
         const itemCounts: Record<string, number> = {};
+        const menuItemsMap: Record<string, string> = {};
+        menuItems.forEach((m: any) => {
+          menuItemsMap[m.id] = m.name;
+        });
+
         rawOrders.forEach((order: any) => {
           if (order.status === 'cancelled') return;
           const items = Array.isArray(order.items) ? order.items : [];
           items.forEach((item: any) => {
-            const name = item.menuItemName || 'Unknown Item';
+            const name = item.menuItemName || menuItemsMap[item.menuItemId] || 'Unknown Item';
             itemCounts[name] = (itemCounts[name] || 0) + 1;
           });
         });
