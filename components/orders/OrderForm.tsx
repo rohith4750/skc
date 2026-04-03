@@ -81,6 +81,7 @@ export default function OrderForm({ orderId, isEditMode = false, initialOrderTyp
             numberOfMembers: string
             itemCustomizations: Record<string, string>
             itemQuantities: Record<string, string>
+            itemPrices: Record<string, string>
         }>,
         stalls: [] as Array<{
             id: string
@@ -168,6 +169,7 @@ export default function OrderForm({ orderId, isEditMode = false, initialOrderTyp
             const customizations: Record<string, Record<string, string>> = {}
             const quantities: Record<string, Record<string, string>> = {}
 
+            const itemPricesByMt: Record<string, Record<string, string>> = {}
             orderItems.forEach((item: any) => {
                 const mealType = item.mealType || 'other'
                 if (!itemsByType[mealType]) itemsByType[mealType] = []
@@ -178,6 +180,11 @@ export default function OrderForm({ orderId, isEditMode = false, initialOrderTyp
 
                 if (item.customization) customizations[mealType][item.menuItemId] = item.customization
                 if (item.quantity) quantities[mealType][item.menuItemId] = item.quantity.toString()
+                
+                if (item.price) {
+                    if (!itemPricesByMt[mealType]) itemPricesByMt[mealType] = {}
+                    itemPricesByMt[mealType][item.menuItemId] = item.price.toString()
+                }
             })
 
             const mealTypesArray = mealTypeAmounts
@@ -198,7 +205,8 @@ export default function OrderForm({ orderId, isEditMode = false, initialOrderTyp
                         date: data.date || '',
                         time: data.time || '',
                         services: data.services || [],
-                        numberOfMembers: (data.numberOfMembers || '').toString()
+                        numberOfMembers: (data.numberOfMembers || '').toString(),
+                        itemPrices: data.itemPrices || itemPricesByMt[key] || {}
                     }
                 })
                 : []
@@ -304,6 +312,12 @@ export default function OrderForm({ orderId, isEditMode = false, initialOrderTyp
             if (mt.pricingMethod === 'plate-based') {
                 const plates = parseFloat(mt.numberOfPlates) || parseFloat(mt.numberOfMembers) || 0
                 mtTotal += plates * (parseFloat(mt.platePrice) || 0)
+            } else if (mt.menuType === 'saree') {
+                // Sum individual item prices for Saree sessions
+                const sareeTotal = mt.selectedMenuItems.reduce((sum, itemId) => {
+                    return sum + (parseFloat(mt.itemPrices?.[itemId] || '0') || 0)
+                }, 0)
+                mtTotal += sareeTotal
             } else {
                 mtTotal += parseFloat(mt.manualAmount) || 0
             }
@@ -340,6 +354,15 @@ export default function OrderForm({ orderId, isEditMode = false, initialOrderTyp
                     const updated = { ...mt, [field]: value }
                     if (field === 'numberOfMembers' && mt.pricingMethod === 'plate-based') updated.numberOfPlates = value
                     if (field === 'pricingMethod' && value === 'plate-based') updated.numberOfPlates = mt.numberOfMembers
+                    
+                    // Initialize itemPrices if changing category to saree
+                    if (field === 'menuType' && value === 'saree') {
+                        const newPrices: Record<string, string> = { ...mt.itemPrices }
+                        mt.selectedMenuItems.forEach(itemId => {
+                            if (!newPrices[itemId]) newPrices[itemId] = ''
+                        })
+                        updated.itemPrices = newPrices
+                    }
                     return updated
                 }
                 return mt
@@ -367,6 +390,7 @@ export default function OrderForm({ orderId, isEditMode = false, initialOrderTyp
                 numberOfMembers: '',
                 itemCustomizations: {},
                 itemQuantities: {},
+                itemPrices: {},
             }, ...prev.mealTypes]
         }))
         setCollapsedMealTypes(prev => ({ ...prev, [id]: false }))
@@ -396,7 +420,10 @@ export default function OrderForm({ orderId, isEditMode = false, initialOrderTyp
                         ...mt,
                         selectedMenuItems: mt.selectedMenuItems.includes(itemId)
                             ? mt.selectedMenuItems.filter(i => i !== itemId)
-                            : [...mt.selectedMenuItems, itemId]
+                            : [...mt.selectedMenuItems, itemId],
+                        itemPrices: mt.id === mealTypeId && !mt.selectedMenuItems.includes(itemId) && mt.menuType === 'saree'
+                            ? { ...mt.itemPrices, [itemId]: '' }
+                            : mt.itemPrices
                     }
                     : mt
             )
@@ -526,7 +553,10 @@ export default function OrderForm({ orderId, isEditMode = false, initialOrderTyp
                     numberOfPlates: parseFloat(mt.numberOfPlates) || 0,
                     platePrice: parseFloat(mt.platePrice) || 0,
                     manualAmount: parseFloat(mt.manualAmount) || 0,
-                    eventName: mt.eventName
+                    eventName: mt.eventName,
+                    itemPrices: mt.menuType === 'saree' ? Object.fromEntries(
+                      Object.entries(mt.itemPrices).map(([k, v]) => [k, parseFloat(v) || 0])
+                    ) : undefined
                 }
             })
 
@@ -535,7 +565,8 @@ export default function OrderForm({ orderId, isEditMode = false, initialOrderTyp
                     menuItemId,
                     quantity: parseFloat(mt.itemQuantities[menuItemId] || '1'),
                     mealType: mt.id,
-                    customization: mt.itemCustomizations[menuItemId] || null
+                    customization: mt.itemCustomizations[menuItemId] || null,
+                    price: mt.menuType === 'saree' ? parseFloat(mt.itemPrices[menuItemId]) || 0 : undefined
                 }))
             )
 
@@ -838,28 +869,37 @@ export default function OrderForm({ orderId, isEditMode = false, initialOrderTyp
                                             className="w-full px-4 py-2 bg-gray-50 border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary-500 outline-none"
                                         />
                                     </div>
-                                    <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-2">Pricing Method</label>
-                                        <div className="flex bg-gray-100 p-1 rounded-lg">
-                                            <button
-                                                type="button"
-                                                onClick={() => handleUpdateMealType(mt.id, 'pricingMethod', 'manual')}
-                                                className={`flex-1 py-1.5 px-3 text-sm rounded-md transition-all ${mt.pricingMethod === 'manual' ? 'bg-white shadow text-primary-600 font-bold' : 'text-gray-500'}`}
-                                            >
-                                                Manual
-                                            </button>
-                                            <button
-                                                type="button"
-                                                onClick={() => handleUpdateMealType(mt.id, 'pricingMethod', 'plate-based')}
-                                                className={`flex-1 py-1.5 px-3 text-sm rounded-md transition-all ${mt.pricingMethod === 'plate-based' ? 'bg-white shadow text-primary-600 font-bold' : 'text-gray-500'}`}
-                                            >
-                                                Plate-wise
-                                            </button>
+                                    {mt.menuType !== 'saree' && (
+                                        <div>
+                                            <label className="block text-sm font-medium text-gray-700 mb-2">Pricing Method</label>
+                                            <div className="flex bg-gray-100 p-1 rounded-lg">
+                                                <button
+                                                    type="button"
+                                                    onClick={() => handleUpdateMealType(mt.id, 'pricingMethod', 'manual')}
+                                                    className={`flex-1 py-1.5 px-3 text-sm rounded-md transition-all ${mt.pricingMethod === 'manual' ? 'bg-white shadow text-primary-600 font-bold' : 'text-gray-500'}`}
+                                                >
+                                                    Manual
+                                                </button>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => handleUpdateMealType(mt.id, 'pricingMethod', 'plate-based')}
+                                                    className={`flex-1 py-1.5 px-3 text-sm rounded-md transition-all ${mt.pricingMethod === 'plate-based' ? 'bg-white shadow text-primary-600 font-bold' : 'text-gray-500'}`}
+                                                >
+                                                    Plate-wise
+                                                </button>
+                                            </div>
                                         </div>
-                                    </div>
+                                    )}
                                 </div>
 
-                                {mt.pricingMethod === 'plate-based' ? (
+                                {mt.menuType === 'saree' ? (
+                                    <div className="p-4 bg-primary-50 rounded-lg border border-primary-100">
+                                        <p className="text-xs font-bold text-primary-600 mb-2 uppercase tracking-tight">Saree Itemized Pricing (Auto-Calculated Summary)</p>
+                                        <p className="text-lg font-bold text-primary-700">
+                                            Total: {formatCurrency(mt.selectedMenuItems.reduce((sum, itemId) => sum + (parseFloat(mt.itemPrices?.[itemId] || '0') || 0), 0))}
+                                        </p>
+                                    </div>
+                                ) : mt.pricingMethod === 'plate-based' ? (
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6 p-4 bg-gray-50 rounded-lg border border-gray-100">
                                         <div>
                                             <label className="block text-sm font-medium text-gray-700 mb-2">{formData.orderType === 'EVENT' ? 'Number of Plates' : 'Quantity / Packs'}</label>
@@ -1001,6 +1041,24 @@ export default function OrderForm({ orderId, isEditMode = false, initialOrderTyp
                                                                                     }}
                                                                                     className="text-[10px] w-full mt-0.5 text-gray-500 bg-transparent border-b border-transparent focus:border-primary-300 outline-none placeholder:text-gray-300"
                                                                                 />
+                                                                                {mt.menuType === 'saree' && (
+                                                                                    <div className="mt-1 flex items-center gap-1">
+                                                                                        <span className="text-[10px] text-gray-400 font-bold">₹</span>
+                                                                                        <input
+                                                                                            type="number"
+                                                                                            placeholder="Price"
+                                                                                            value={mt.itemPrices[itemId] || ''}
+                                                                                            onChange={(e) => {
+                                                                                                const val = e.target.value
+                                                                                                setFormData(prev => ({
+                                                                                                    ...prev,
+                                                                                                    mealTypes: prev.mealTypes.map(m => m.id === mt.id ? { ...m, itemPrices: { ...m.itemPrices, [itemId]: val } } : m)
+                                                                                                }))
+                                                                                            }}
+                                                                                            className="text-[10px] font-bold w-full text-primary-600 bg-primary-50/50 border border-primary-100 rounded px-1.5 py-0.5 outline-none focus:ring-1 focus:ring-primary-500"
+                                                                                        />
+                                                                                    </div>
+                                                                                )}
                                                                             </div>
                                                                             <button
                                                                                 type="button"

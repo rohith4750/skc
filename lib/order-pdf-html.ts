@@ -72,16 +72,24 @@ export function buildOrderPdfHtml(
     summaryByDate[dStr].push(itemData);
   };
 
+  const sareeSummary: any[] = [];
+  
   // Add regular meal sessions
   if (mealTypeAmounts) {
     Object.entries(mealTypeAmounts).forEach(([key, data]) => {
       if (typeof data === "object" && data !== null) {
-        addItemToSummary(data.date, {
+        const itemData = {
           ...data,
           id: key,
           label: sanitizeMealLabel(data.menuType || key || "Other"),
           type: data.menuType || "other"
-        });
+        };
+        
+        if (data.menuType === 'saree') {
+          sareeSummary.push(itemData);
+        } else {
+          addItemToSummary(data.date, itemData);
+        }
       }
     });
   }
@@ -188,6 +196,37 @@ export function buildOrderPdfHtml(
                 </tr>
               `;
       });
+    });
+  }
+
+  // Build Saree Rows HTML
+  let sareeRowsHtml = "";
+  let sareeTotal = 0;
+  if (sareeSummary.length > 0) {
+    sareeSummary.forEach(session => {
+        const sessionItems = itemsByMealType[session.id] || [];
+        sessionItems.forEach(item => {
+            const itemPrice = Number(item.price || 0);
+            const itemName = item.menuItemName || (item.menuItem ? item.menuItem.name : 'Unknown Item');
+            sareeTotal += itemPrice;
+            sareeRowsHtml += `
+                <tr class="pdf-row">
+                    <td style="padding: 5px 10px; font-size: 11px; font-weight: 600; border-bottom: 1px solid #ddd; vertical-align: top;">
+                        ${itemName}
+                        <div style="font-size: 9px; color: #666; font-weight: 400; margin-top: 1px;">(Saree / Extra)</div>
+                    </td>
+                    <td style="padding: 5px 10px; font-size: 11px; border-bottom: 1px solid #ddd; text-align: center; font-weight: 500; vertical-align: top;">
+                        ${item.quantity || 1}
+                    </td>
+                     <td style="padding: 5px 10px; font-size: 11px; border-bottom: 1px solid #ddd; text-align: center; font-weight: 500; vertical-align: top;">
+                        ${formatCurrency(itemPrice)}
+                    </td>
+                    <td style="padding: 5px 10px; font-size: 11px; font-weight: 700; border-bottom: 1px solid #ddd; text-align: right; vertical-align: top;">
+                        ${formatCurrency(itemPrice * (item.quantity || 1))}
+                    </td>
+                </tr>
+            `;
+        });
     });
   }
 
@@ -391,6 +430,18 @@ export function buildOrderPdfHtml(
                 
                 <tbody>
                     ${summaryRowsHtml}
+                    ${sareeRowsHtml ? `
+                        <tr style="background-color: #f3f3f3;">
+                            <td colspan="4" style="padding: 6px 10px; font-weight: 800; font-size: 10px; border-top: 2px solid ${themeColor}; border-bottom: 1px solid #000; text-transform: uppercase; color: ${themeColor};">
+                                Saree Items / Extras
+                            </td>
+                        </tr>
+                        ${sareeRowsHtml}
+                        <tr style="background-color: #fafafa;">
+                            <td colspan="3" style="padding: 5px 10px; font-size: 11px; font-weight: 700; text-align: right;">Saree Subtotal:</td>
+                            <td style="padding: 5px 10px; font-size: 11px; font-weight: 800; text-align: right;">${formatCurrency(sareeTotal)}</td>
+                        </tr>
+                    ` : ""}
                 </tbody>
 
              </table>
