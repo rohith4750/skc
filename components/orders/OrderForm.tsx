@@ -795,6 +795,7 @@ export default function OrderForm({ orderId, isEditMode = false, initialOrderTyp
                                             <option value="snacks">Snacks</option>
                                             <option value="tiffins">Tiffins</option>
                                             <option value="sweets">Sweets</option>
+                                            <option value="saree">Saree</option>
                                             <option value="special_order">Special Order</option>
                                         </select>
                                     </div>

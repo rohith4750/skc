@@ -64,7 +64,7 @@ export default function Dashboard() {
     chefCostPerPlate: 0,
     chefPlateType: '',
     ChefTotalAmount: 0,
-
+    topItems: [],
   });
   const [loading, setLoading] = useState(true);
   const [isSuperAdminUser, setIsSuperAdminUser] = useState(false);
@@ -215,6 +215,26 @@ export default function Dashboard() {
         const topChef = Object.entries(chefPayments).sort((a, b) => b[1] - a[1])[0]?.[0] || 'N/A';
         const chefPlateType = topChef;
 
+        // --- TOP SELLING ITEMS ANALYTICS ---
+        const itemCounts: Record<string, number> = {};
+        rawOrders.forEach((order: any) => {
+          if (order.status === 'cancelled') return;
+          const items = Array.isArray(order.items) ? order.items : [];
+          items.forEach((item: any) => {
+            const name = item.menuItemName || 'Unknown Item';
+            itemCounts[name] = (itemCounts[name] || 0) + 1;
+          });
+        });
+
+        const topItems = Object.entries(itemCounts)
+          .sort((a, b) => b[1] - a[1])
+          .slice(0, 5)
+          .map(([name, count], index) => ({
+            name,
+            count,
+            color: ['text-blue-600', 'text-green-600', 'text-purple-600', 'text-orange-600', 'text-pink-600'][index % 5]
+          }));
+
         // Get user and workforce counts (only for super admin)
         let usersCount = 0;
         let workforceCount = 0;
@@ -288,6 +308,7 @@ export default function Dashboard() {
           chefCostPerPlate,
           chefPlateType,
           ChefTotalAmount,
+          topItems,
         });
       } catch (error) {
         console.error("Failed to load stats:", error);

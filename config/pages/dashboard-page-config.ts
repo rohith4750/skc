@@ -50,6 +50,7 @@ export interface DashboardStats {
   chefCostPerPlate: number;
   chefPlateType: string;
   ChefTotalAmount: number;
+  topItems: Array<{ name: string; count: number; color: string }>;
 }
 
 export const DASHBOARD_MONTH_OPTIONS = [
@@ -369,6 +370,17 @@ export const getDashboardAnalyticsCards = (stats: DashboardStats) => [
             : "text-red-600",
       },
     ],
+  },
+  {
+    title: "Top Selling Items",
+    icon: FaUtensils,
+    items: stats.topItems.length > 0 
+      ? stats.topItems.map(item => ({
+          label: item.name,
+          value: item.count,
+          color: item.color
+        }))
+      : [{ label: "No items sold yet", value: 0, color: "text-gray-400" }]
   },
 ];
 

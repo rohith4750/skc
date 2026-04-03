@@ -574,6 +574,15 @@ export default function MenuPage() {
               >
                 Sweets
               </button>
+              <button
+                onClick={() => handleMainCategoryChange('saree')}
+                className={`px-4 sm:px-6 py-2 rounded-lg text-sm sm:text-base font-medium transition-colors ${selectedFilter === 'saree'
+                    ? 'bg-primary-500 text-white shadow-md'
+                    : 'bg-gray-200 text-gray-700 hover:bg-gray-300 border border-gray-200'
+                  }`}
+              >
+                Saree
+              </button>
             </div>
           </div>
 
