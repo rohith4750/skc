@@ -628,6 +628,7 @@ export default function MenuPage() {
             onItemsPerPageChange={setItemsPerPage}
             itemName={tableConfig.itemName}
             getItemId={tableConfig.getItemId}
+            hideActionsOnPrint={true}
             renderActions={(item) => (
               <div className="flex items-center gap-2">
                 <button

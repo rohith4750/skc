@@ -333,9 +333,13 @@ export function buildOrderPdfHtml(
              </div>
 
              <div style="font-size: 11px; line-height: 1.4; max-width: 600px; margin: 0 auto;">
-                <div style="display: flex; margin-bottom: 2px;">
+                 <div style="display: flex; margin-bottom: 2px;">
                     <div style="width: 120px; font-weight: 600;">Name:</div>
                     <div style="font-weight: 500;">${safeString(customer?.name)}</div>
+                </div>
+                 <div style="display: flex; margin-bottom: 2px;">
+                    <div style="width: 120px; font-weight: 600;">Phone:</div>
+                    <div style="font-weight: 500;">${safeString(customer?.phone)}</div>
                 </div>
                  <div style="display: flex; margin-bottom: 2px;">
                     <div style="width: 120px; font-weight: 600;">Address:</div>

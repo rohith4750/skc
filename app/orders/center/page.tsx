@@ -372,6 +372,7 @@ export default function OrderCenterPage() {
         <div class="section">
           <div class="section-title">Customer Details</div>
           <div class="info-row"><span class="info-label">Name:</span> ${customer?.name || 'N/A'}</div>
+          <div class="info-row"><span class="info-label">Phone:</span> ${customer?.phone || 'N/A'}</div>
           <div class="info-row"><span class="info-label">Email:</span> ${customer?.email || 'N/A'}</div>
           <div class="info-row"><span class="info-label">Address:</span> ${customer?.address || 'N/A'}</div>
         </div>
@@ -1004,7 +1005,7 @@ export default function OrderCenterPage() {
                     <div className="flex items-start justify-between gap-4 mb-4">
                       <div className="flex-1 min-w-0">
                         <div className="font-bold text-slate-900 truncate">{order.customer?.name || 'Unknown'}</div>
-                        <div className="text-xs font-medium text-slate-400 mt-0.5">{order.customer?.phone || ''}</div>
+                        <div className="text-xs font-medium text-slate-400 mt-0.5 print:hidden">{order.customer?.phone || ''}</div>
                         {(order as any).eventName && (
                           <div className="text-sm font-bold text-indigo-600 mt-1 truncate">{(order as any).eventName}</div>
                         )}
@@ -1037,7 +1038,7 @@ export default function OrderCenterPage() {
                         <option value="cancelled">Cancelled</option>
                       </select>
                     </div>
-                    <div className="flex flex-wrap gap-2 pt-4 border-t border-slate-50">
+                    <div className="flex flex-wrap gap-2 pt-4 border-t border-slate-50 print:hidden">
                       <button onClick={() => handleOpenPreview(order)} className="p-2.5 bg-indigo-50 text-indigo-600 rounded-xl hover:bg-indigo-100 transition-colors" title="Preview Summary"><FaChartLine /></button>
                       <Link href={`/orders/edit/${order.id}`} className="p-2.5 bg-slate-50 text-slate-600 rounded-xl hover:bg-slate-100 transition-colors" title="Edit"><FaEdit /></Link>
                       <button onClick={() => setPdfLanguageModal({ isOpen: true, order })} className="p-2.5 bg-slate-50 text-slate-600 rounded-xl hover:bg-slate-100 transition-colors" title="PDF"><FaFilePdf /></button>
@@ -1078,7 +1079,7 @@ export default function OrderCenterPage() {
                     <th className="px-6 py-4 text-left text-[10px] font-bold text-slate-400 uppercase tracking-widest">Dates / Guests</th>
                     <th className="px-6 py-4 text-left text-[10px] font-bold text-slate-400 uppercase tracking-widest">Status</th>
                     <th className="px-6 py-4 text-left text-[10px] font-bold text-slate-400 uppercase tracking-widest">Created</th>
-                    <th className="px-6 py-4 text-left text-[10px] font-bold text-slate-400 uppercase tracking-widest text-right">Actions</th>
+                    <th className="px-6 py-4 text-left text-[10px] font-bold text-slate-400 uppercase tracking-widest print:hidden text-right">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-slate-100">
@@ -1147,7 +1148,7 @@ export default function OrderCenterPage() {
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div className="text-sm font-bold text-slate-900">{order.customer?.name || 'Unknown'}</div>
-                          <div className="text-xs font-medium text-slate-400 mt-0.5">{order.customer?.phone || ''}</div>
+                          <div className="text-xs font-medium text-slate-400 mt-0.5 print:hidden">{order.customer?.phone || ''}</div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div className="text-sm font-bold text-indigo-600">
@@ -1277,7 +1278,7 @@ export default function OrderCenterPage() {
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                           {formatDateTime(order.createdAt)}
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium print:hidden">
                           <div className="flex gap-2">
                             <Link
                               href={`/orders/summary/${order.id}`}

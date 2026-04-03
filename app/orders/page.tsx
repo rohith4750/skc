@@ -138,7 +138,7 @@ export default function OrdersListPage() {
                 <th className="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Amount</th>
                 <th className="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Status</th>
                 <th className="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Date</th>
-                <th className="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest text-right">Actions</th>
+                <th className="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest print:hidden text-right">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-50">
@@ -154,7 +154,7 @@ export default function OrdersListPage() {
                     </td>
                     <td className="px-6 py-4">
                       <div className="font-bold text-gray-800">{order.customer?.name || 'Unknown'}</div>
-                      <div className="text-xs text-gray-500">{order.customer?.phone}</div>
+                      <div className="text-xs text-gray-500 print:hidden">{order.customer?.phone}</div>
                     </td>
                     <td className="px-6 py-4">
                       <div className="text-sm font-bold text-indigo-600">{(order as any).eventName || '-'}</div>
@@ -176,7 +176,7 @@ export default function OrdersListPage() {
                     <td className="px-6 py-4 text-xs font-medium text-gray-500 whitespace-nowrap">
                       {formatDateTime(order.createdAt)}
                     </td>
-                    <td className="px-6 py-4 text-right">
+                    <td className="px-6 py-4 text-right print:hidden">
                       <div className="flex items-center justify-end gap-2">
                         <Link
                           href={`/orders/edit/${order.id}`}

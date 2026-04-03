@@ -349,6 +349,7 @@ export default function OrderHistoryPage() {
         <div class="section">
           <div class="section-title">Customer Details</div>
           <div class="info-row"><span class="info-label">Name:</span> ${customer?.name || 'N/A'}</div>
+          <div class="info-row"><span class="info-label">Phone:</span> ${customer?.phone || 'N/A'}</div>
           <div class="info-row"><span class="info-label">Email:</span> ${customer?.email || 'N/A'}</div>
           <div class="info-row"><span class="info-label">Address:</span> ${customer?.address || 'N/A'}</div>
         </div>
@@ -870,7 +871,7 @@ export default function OrderHistoryPage() {
                     <div className="flex items-start justify-between gap-3 mb-3">
                       <div className="flex-1 min-w-0">
                         <div className="font-semibold text-gray-900 truncate">{order.customer?.name || 'Unknown'}</div>
-                        <div className="text-sm text-gray-500">{order.customer?.phone || ''}</div>
+                        <div className="text-sm text-gray-500 print:hidden">{order.customer?.phone || ''}</div>
                         {(order as any).eventName && (
                           <div className="text-sm text-gray-700 mt-0.5 truncate">{(order as any).eventName}</div>
                         )}
@@ -903,7 +904,7 @@ export default function OrderHistoryPage() {
                         <option value="cancelled">Cancelled</option>
                       </select>
                     </div>
-                    <div className="flex flex-wrap gap-2 pt-3 border-t border-gray-100">
+                    <div className="flex flex-wrap gap-2 pt-3 border-t border-gray-100 print:hidden">
                       <Link href={`/orders/summary/${order.id}`} className="p-2.5 bg-blue-50 text-blue-600 rounded-lg touch-manipulation" title="Summary"><FaChartLine /></Link>
                       <Link href={`/orders/edit/${order.id}`} className="p-2.5 bg-yellow-50 text-yellow-600 rounded-lg touch-manipulation" title="Edit"><FaEdit /></Link>
                       <button onClick={() => setPdfLanguageModal({ isOpen: true, order })} className="p-2.5 bg-secondary-50 text-secondary-600 rounded-lg touch-manipulation" title="PDF"><FaFilePdf /></button>
@@ -944,7 +945,7 @@ export default function OrderHistoryPage() {
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Event Dates / Guests</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Created</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider print:hidden">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
@@ -1004,7 +1005,7 @@ export default function OrderHistoryPage() {
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div className="text-sm font-medium text-gray-900">{order.customer?.name || 'Unknown'}</div>
-                          <div className="text-sm text-gray-500">{order.customer?.phone || ''}</div>
+                          <div className="text-sm text-gray-500 print:hidden">{order.customer?.phone || ''}</div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div className="text-sm font-medium text-gray-900">
@@ -1123,7 +1124,7 @@ export default function OrderHistoryPage() {
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                           {formatDateTime(order.createdAt)}
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium print:hidden">
                           <div className="flex gap-2">
                             <Link
                               href={`/orders/summary/${order.id}`}

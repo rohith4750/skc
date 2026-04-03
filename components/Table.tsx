@@ -33,6 +33,7 @@ interface TableProps<T> {
   renderFooter?: (columns: TableColumn<T>[], colSpan: number, isMobile: boolean) => ReactNode
   className?: string
   itemsPerPageOptions?: number[] // Options for items per page dropdown (e.g., [5, 10, 25, 50, 100])
+  hideActionsOnPrint?: boolean
 }
 
 export default function Table<T>({
@@ -56,6 +57,7 @@ export default function Table<T>({
   renderFooter,
   className = '',
   itemsPerPageOptions = [5, 10, 25, 40, 50, 100],
+  hideActionsOnPrint = false,
 }: TableProps<T>) {
   const totalItemsCount = totalItems ?? data.length
   // Calculate effective items per page (handle "all" case)
@@ -146,7 +148,7 @@ export default function Table<T>({
                     </div>
                   </div>
                   {renderActions && (
-                    <div className="pt-4 border-t border-slate-100 flex items-center justify-end gap-2">
+                    <div className={`pt-4 border-t border-slate-100 flex items-center justify-end gap-2 ${hideActionsOnPrint ? 'print:hidden' : ''}`}>
                       {renderActions(row)}
                     </div>
                   )}
@@ -187,7 +189,7 @@ export default function Table<T>({
                   </th>
                 ))}
                 {renderActions && (
-                  <th className="px-3 lg:px-6 py-3 lg:py-4 text-left text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+                  <th className={`px-3 lg:px-6 py-3 lg:py-4 text-left text-[10px] font-bold text-slate-400 uppercase tracking-widest ${hideActionsOnPrint ? 'print:hidden' : ''}`}>
                     Actions
                   </th>
                 )}
@@ -244,7 +246,7 @@ export default function Table<T>({
                         )
                       })}
                       {renderActions && (
-                        <td className="px-3 lg:px-6 py-3 lg:py-4 whitespace-nowrap text-sm font-medium">
+                        <td className={`px-3 lg:px-6 py-3 lg:py-4 whitespace-nowrap text-sm font-medium ${hideActionsOnPrint ? 'print:hidden' : ''}`}>
                           {renderActions(row)}
                         </td>
                       )}
