@@ -700,6 +700,48 @@ export default function Dashboard() {
         </div>
       </div>
 
+      {/* Top Selling Items */}
+      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 mb-8">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+          <div className="flex items-center gap-3">
+            <div className="bg-amber-50 p-2.5 rounded-xl">
+              <svg className="w-5 h-5 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
+              </svg>
+            </div>
+            <h2 className="text-lg font-bold text-gray-800">Most Selling Menu Items</h2>
+          </div>
+          <div className="text-[10px] font-bold text-slate-400 bg-slate-50 px-3 py-1 rounded-full border border-slate-100">BASED ON ORDER FREQUENCY</div>
+        </div>
+        
+        {stats.topItems && stats.topItems.length > 0 ? (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+            {stats.topItems.map((item, idx) => (
+              <div key={idx} className="bg-slate-50/50 rounded-2xl p-5 border border-slate-100 group hover:border-amber-200 hover:bg-white hover:shadow-xl hover:shadow-amber-500/5 transition-all cursor-default">
+                <div className="flex items-center justify-between mb-3">
+                  <div className={`text-[10px] font-black px-2 py-0.5 rounded ${item.color.replace('text-', 'bg-').replace('-600', '-100')} ${item.color}`}>#{idx + 1}</div>
+                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-tight">{item.count} Orders</span>
+                </div>
+                <p className="text-sm font-bold text-slate-700 leading-tight mb-4 min-h-[2.5rem] flex items-center">{item.name}</p>
+                <div className="w-full bg-slate-200 rounded-full h-1 overflow-hidden">
+                  <div 
+                    className={`h-full rounded-full ${item.color.replace('text-', 'bg-')}`}
+                    style={{ width: `${(item.count / stats.topItems[0].count) * 100}%` }}
+                  ></div>
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="flex flex-col items-center justify-center py-12 bg-slate-50/50 rounded-2xl border border-dashed border-slate-200">
+            <svg className="w-8 h-8 text-slate-300 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+            </svg>
+            <p className="text-slate-400 text-sm font-medium">No sales data available for this period</p>
+          </div>
+        )}
+      </div>
+
       {/* Quick Links */}
       <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
         <h2 className="text-lg font-bold text-gray-800 mb-6 font-display">
