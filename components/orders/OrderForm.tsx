@@ -439,30 +439,28 @@ export default function OrderForm({ orderId, isEditMode = false, initialOrderTyp
                     const uniqueIds = Array.from(new Set([...mt.selectedMenuItems, ...commonItemIds]))
                     
                     const newQuantities = { ...mt.itemQuantities }
+                    const newCustomizations = { ...mt.itemCustomizations }
+                    
                     commonItems.forEach(item => {
+                        // Pre-fill quantity
                         if (!newQuantities[item.id]) newQuantities[item.id] = '1'
+                        // PRE-FILL DESCRIPTION AS CUSTOMIZATION
+                        if (!newCustomizations[item.id] && item.description) {
+                            newCustomizations[item.id] = item.description
+                        }
                     })
-
-                    // Combine all common item descriptions into the main SESSION description
-                    const commonDescriptions = commonItems
-                        .map(item => item.description)
-                        .filter(Boolean)
-                        .join(", ")
 
                     return { 
                         ...mt, 
                         selectedMenuItems: uniqueIds,
                         itemQuantities: newQuantities,
-                        // Update the Session Description with the common item details
-                        description: mt.description 
-                            ? (mt.description.includes(commonDescriptions) ? mt.description : `${mt.description}, ${commonDescriptions}`)
-                            : commonDescriptions
+                        itemCustomizations: newCustomizations
                     }
                 }
                 return mt
             })
         }))
-        toast.success(`Added ${commonItems.length} common items`)
+        toast.success(`Common items added with descriptions`)
     }
 
     const handleRemoveMealType = (id: string) => {
@@ -481,21 +479,34 @@ export default function OrderForm({ orderId, isEditMode = false, initialOrderTyp
     }
 
     const handleMenuItemToggle = (mealTypeId: string, itemId: string) => {
+        const item = menuItems.find(m => m.id === itemId)
         setFormData(prev => ({
             ...prev,
-            mealTypes: prev.mealTypes.map(mt =>
-                mt.id === mealTypeId
-                    ? {
+            mealTypes: prev.mealTypes.map(mt => {
+                if (mt.id === mealTypeId) {
+                    const isSelecting = !mt.selectedMenuItems.includes(itemId)
+                    const updatedMt = {
                         ...mt,
-                        selectedMenuItems: mt.selectedMenuItems.includes(itemId)
-                            ? mt.selectedMenuItems.filter(i => i !== itemId)
-                            : [...mt.selectedMenuItems, itemId],
+                        selectedMenuItems: isSelecting
+                            ? [...mt.selectedMenuItems, itemId]
+                            : mt.selectedMenuItems.filter(i => i !== itemId),
                         itemPrices: mt.id === mealTypeId && !mt.selectedMenuItems.includes(itemId) && mt.menuType === 'saree'
                             ? { ...mt.itemPrices, [itemId]: '' }
-                            : mt.itemPrices
+                            : mt.itemPrices,
                     }
-                    : mt
-            )
+
+                    // Pre-fill customization with description if selecting and empty
+                    if (isSelecting && item?.description && !mt.itemCustomizations[itemId]) {
+                        updatedMt.itemCustomizations = {
+                            ...mt.itemCustomizations,
+                            [itemId]: item.description
+                        }
+                    }
+                    
+                    return updatedMt
+                }
+                return mt
+            })
         }))
     }
 
