@@ -434,22 +434,24 @@ export default function OrderForm({ orderId, isEditMode = false, initialOrderTyp
                     const uniqueIds = Array.from(new Set([...mt.selectedMenuItems, ...commonItemIds]))
                     
                     const newQuantities = { ...mt.itemQuantities }
-                    const newCustomizations = { ...mt.itemCustomizations }
-                    
                     commonItems.forEach(item => {
-                        // Pre-fill quantity
                         if (!newQuantities[item.id]) newQuantities[item.id] = '1'
-                        // PRE-FILL DESCRIPTION AS CUSTOMIZATION
-                        if (!newCustomizations[item.id] && item.description) {
-                            newCustomizations[item.id] = item.description
-                        }
                     })
+
+                    // Combine all common item descriptions into the main SESSION description
+                    const commonDescriptions = commonItems
+                        .map(item => item.description)
+                        .filter(Boolean)
+                        .join(", ")
 
                     return { 
                         ...mt, 
                         selectedMenuItems: uniqueIds,
                         itemQuantities: newQuantities,
-                        itemCustomizations: newCustomizations
+                        // Update the Session Description with the common item details
+                        description: mt.description 
+                            ? (mt.description.includes(commonDescriptions) ? mt.description : `${mt.description}, ${commonDescriptions}`)
+                            : commonDescriptions
                     }
                 }
                 return mt
