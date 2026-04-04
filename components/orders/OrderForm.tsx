@@ -412,9 +412,16 @@ export default function OrderForm({ orderId, isEditMode = false, initialOrderTyp
     }
 
     const handleSelectCommonItems = (mealTypeId: string) => {
-        const commonItems = menuItems.filter(item => (item as any).isCommon)
+        // Find common items by BOOLEAN flag OR by TYPE 'common_items'
+        const commonItems = menuItems.filter(item => {
+            const isCommonFlag = (item as any).isCommon === true
+            const types = Array.isArray(item.type) ? item.type : [(item.type as any)]
+            const hasCommonType = types.some((t: string) => t?.toLowerCase() === 'common_items' || t?.toLowerCase() === 'common')
+            return isCommonFlag || hasCommonType
+        })
+        
         const commonItemIds = commonItems.map(item => item.id)
-
+        
         if (commonItemIds.length === 0) {
             toast.error('No items marked as "Common" in menu')
             return
@@ -425,20 +432,30 @@ export default function OrderForm({ orderId, isEditMode = false, initialOrderTyp
             mealTypes: prev.mealTypes.map(mt => {
                 if (mt.id === mealTypeId) {
                     const uniqueIds = Array.from(new Set([...mt.selectedMenuItems, ...commonItemIds]))
+                    
                     const newQuantities = { ...mt.itemQuantities }
-                    commonItemIds.forEach(id => {
-                        if (!newQuantities[id]) newQuantities[id] = '1'
+                    const newCustomizations = { ...mt.itemCustomizations }
+                    
+                    commonItems.forEach(item => {
+                        // Pre-fill quantity
+                        if (!newQuantities[item.id]) newQuantities[item.id] = '1'
+                        // PRE-FILL DESCRIPTION AS CUSTOMIZATION
+                        if (!newCustomizations[item.id] && item.description) {
+                            newCustomizations[item.id] = item.description
+                        }
                     })
-                    return {
-                        ...mt,
+
+                    return { 
+                        ...mt, 
                         selectedMenuItems: uniqueIds,
-                        itemQuantities: newQuantities
+                        itemQuantities: newQuantities,
+                        itemCustomizations: newCustomizations
                     }
                 }
                 return mt
             })
         }))
-        toast.success(`Added ${commonItemIds.length} common items`)
+        toast.success(`Added ${commonItems.length} common items`)
     }
 
     const handleRemoveMealType = (id: string) => {
