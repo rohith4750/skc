@@ -412,11 +412,12 @@ export default function OrderForm({ orderId, isEditMode = false, initialOrderTyp
     }
 
     const handleSelectCommonItems = (mealTypeId: string) => {
-        // Find common items by BOOLEAN flag OR by TYPE 'common_items'
+        // Find common items by BOOLEAN flag OR by TYPE containing 'common'
         const commonItems = menuItems.filter(item => {
             const isCommonFlag = (item as any).isCommon === true
             const types = Array.isArray(item.type) ? item.type : [(item.type as any)]
-            const hasCommonType = types.some((t: string) => t?.toLowerCase() === 'common_items' || t?.toLowerCase() === 'common')
+            // Check if any type contains 'common' (handles 'common items', 'common_items', etc.)
+            const hasCommonType = types.some((t: string) => t?.toLowerCase().includes('common'))
             return isCommonFlag || hasCommonType
         })
         
