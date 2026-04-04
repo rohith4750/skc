@@ -386,12 +386,6 @@ export default function OrderForm({ orderId, isEditMode = false, initialOrderTyp
 
     const handleAddMealType = () => {
         const id = uuidv4()
-        // Find common items (isCommon: true)
-        const commonItems = menuItems.filter(item => (item as any).isCommon)
-        const commonItemIds = commonItems.map(item => item.id)
-        const commonItemQuantities: Record<string, string> = {}
-        commonItemIds.forEach(itemId => commonItemQuantities[itemId] = '1')
-
         setFormData(prev => ({
             ...prev,
             mealTypes: [{
@@ -399,7 +393,7 @@ export default function OrderForm({ orderId, isEditMode = false, initialOrderTyp
                 eventName: '',
                 venue: '',
                 menuType: '',
-                selectedMenuItems: commonItemIds,
+                selectedMenuItems: [],
                 pricingMethod: 'manual',
                 numberOfPlates: '',
                 platePrice: '',
@@ -409,12 +403,42 @@ export default function OrderForm({ orderId, isEditMode = false, initialOrderTyp
                 services: [],
                 numberOfMembers: '',
                 itemCustomizations: {},
-                itemQuantities: commonItemQuantities,
+                itemQuantities: {},
                 itemPrices: {},
                 description: '',
             }, ...prev.mealTypes]
         }))
         setCollapsedMealTypes(prev => ({ ...prev, [id]: false }))
+    }
+
+    const handleSelectCommonItems = (mealTypeId: string) => {
+        const commonItems = menuItems.filter(item => (item as any).isCommon)
+        const commonItemIds = commonItems.map(item => item.id)
+        
+        if (commonItemIds.length === 0) {
+            toast.error('No items marked as "Common" in menu')
+            return
+        }
+
+        setFormData(prev => ({
+            ...prev,
+            mealTypes: prev.mealTypes.map(mt => {
+                if (mt.id === mealTypeId) {
+                    const uniqueIds = Array.from(new Set([...mt.selectedMenuItems, ...commonItemIds]))
+                    const newQuantities = { ...mt.itemQuantities }
+                    commonItemIds.forEach(id => {
+                        if (!newQuantities[id]) newQuantities[id] = '1'
+                    })
+                    return { 
+                        ...mt, 
+                        selectedMenuItems: uniqueIds,
+                        itemQuantities: newQuantities
+                    }
+                }
+                return mt
+            })
+        }))
+        toast.success(`Added ${commonItemIds.length} common items`)
     }
 
     const handleRemoveMealType = (id: string) => {
@@ -1036,16 +1060,25 @@ export default function OrderForm({ orderId, isEditMode = false, initialOrderTyp
                                                 </div>
                                             </div>
                                         )}
-                                        <button
-                                            type="button"
-                                            onClick={() => {
-                                                setQuickAddMealTypeId(mt.id)
-                                                setShowQuickAddModal(true)
-                                            }}
-                                            className="p-2 text-[10px] font-black text-center text-primary-600 border border-dashed border-primary-100 rounded-lg hover:bg-primary-50"
-                                        >
-                                            + Quick Add
-                                        </button>
+                                        <div className="flex gap-2">
+                                            <button
+                                                type="button"
+                                                onClick={() => handleSelectCommonItems(mt.id)}
+                                                className="flex-1 p-2 text-[10px] font-black text-center text-amber-600 border border-dashed border-amber-200 rounded-lg hover:bg-amber-50 transition-all flex items-center justify-center gap-1"
+                                            >
+                                                <FaPlus className="text-[8px]" /> ADD COMMON ITEMS
+                                            </button>
+                                            <button
+                                                type="button"
+                                                onClick={() => {
+                                                    setQuickAddMealTypeId(mt.id)
+                                                    setShowQuickAddModal(true)
+                                                }}
+                                                className="flex-1 p-2 text-[10px] font-black text-center text-primary-600 border border-dashed border-primary-100 rounded-lg hover:bg-primary-50 transition-all flex items-center justify-center gap-1"
+                                            >
+                                                <FaPlus className="text-[8px]" /> QUICK ADD
+                                            </button>
+                                        </div>
                                     </div>
 
                                     <h4 className="font-bold text-gray-800 flex items-center justify-between border-t border-gray-50 pt-4">
