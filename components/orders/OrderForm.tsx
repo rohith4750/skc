@@ -186,7 +186,7 @@ export default function OrderForm({ orderId, isEditMode = false, initialOrderTyp
 
                 if (item.customization) customizations[mealType][item.menuItemId] = item.customization
                 if (item.quantity) quantities[mealType][item.menuItemId] = item.quantity.toString()
-                
+
                 if (item.price) {
                     if (!itemPricesByMt[mealType]) itemPricesByMt[mealType] = {}
                     itemPricesByMt[mealType][item.menuItemId] = item.price.toString()
@@ -368,7 +368,7 @@ export default function OrderForm({ orderId, isEditMode = false, initialOrderTyp
                     const updated = { ...mt, [field]: value }
                     if (field === 'numberOfMembers' && mt.pricingMethod === 'plate-based') updated.numberOfPlates = value
                     if (field === 'pricingMethod' && value === 'plate-based') updated.numberOfPlates = mt.numberOfMembers
-                    
+
                     // Initialize itemPrices if changing category to saree
                     if (field === 'menuType' && value === 'saree') {
                         const newPrices: Record<string, string> = { ...mt.itemPrices }
@@ -414,7 +414,7 @@ export default function OrderForm({ orderId, isEditMode = false, initialOrderTyp
     const handleSelectCommonItems = (mealTypeId: string) => {
         const commonItems = menuItems.filter(item => (item as any).isCommon)
         const commonItemIds = commonItems.map(item => item.id)
-        
+
         if (commonItemIds.length === 0) {
             toast.error('No items marked as "Common" in menu')
             return
@@ -429,8 +429,8 @@ export default function OrderForm({ orderId, isEditMode = false, initialOrderTyp
                     commonItemIds.forEach(id => {
                         if (!newQuantities[id]) newQuantities[id] = '1'
                     })
-                    return { 
-                        ...mt, 
+                    return {
+                        ...mt,
                         selectedMenuItems: uniqueIds,
                         itemQuantities: newQuantities
                     }
@@ -606,7 +606,7 @@ export default function OrderForm({ orderId, isEditMode = false, initialOrderTyp
                     eventName: mt.eventName,
                     description: mt.description,
                     itemPrices: mt.menuType === 'saree' ? Object.fromEntries(
-                      Object.entries(mt.itemPrices).map(([k, v]) => [k, parseFloat(v) || 0])
+                        Object.entries(mt.itemPrices).map(([k, v]) => [k, parseFloat(v) || 0])
                     ) : undefined
                 }
             })
@@ -1235,7 +1235,7 @@ export default function OrderForm({ orderId, isEditMode = false, initialOrderTyp
                                                 <label className="block text-[10px] font-black text-slate-400 mb-2 uppercase tracking-widest">Quick Load Template</label>
                                                 <div className="relative group/template">
                                                     <FaStore className="absolute left-4 top-1/2 -translate-y-1/2 text-primary-500 group-focus-within/template:scale-110 transition-transform" size={12} />
-                                                    <select 
+                                                    <select
                                                         onChange={(e) => handleLoadStallTemplate(stall.id, e.target.value)}
                                                         className="w-full pl-10 pr-4 py-3 bg-primary-50 border border-primary-100 rounded-2xl outline-none font-bold text-primary-700 text-xs focus:ring-4 focus:ring-primary-500/10 focus:border-primary-500 appearance-none cursor-pointer transition-all"
                                                         value=""
@@ -1424,8 +1424,8 @@ export default function OrderForm({ orderId, isEditMode = false, initialOrderTyp
                                                             // For stalls, we might want to filter by certain types, but user wants to "add type add the stall items there"
                                                             // So we check if item type matches the stall category name partially or fully
                                                             const itemTypes = Array.isArray(item.type) ? item.type : [(item.type as any)]
-                                                            const matchesType = !stall.category || itemTypes.some((t: string) => 
-                                                                t?.toLowerCase().includes('stall') || 
+                                                            const matchesType = !stall.category || itemTypes.some((t: string) =>
+                                                                t?.toLowerCase().includes('stall') ||
                                                                 (stall.category && t?.toLowerCase() === stall.category.toLowerCase())
                                                             )
                                                             return matchesSearch && (matchesType || search.length > 0)
@@ -1501,7 +1501,7 @@ export default function OrderForm({ orderId, isEditMode = false, initialOrderTyp
                         ))}
                     </div>
                 )}
-                
+
                 {!showStalls && (
                     <div className="text-center py-6 border-2 border-dashed border-gray-50 rounded-xl">
                         <p className="text-gray-400 text-xs font-medium">No extra stalls or charges added yet.</p>
