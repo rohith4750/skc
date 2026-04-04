@@ -423,12 +423,12 @@ export default function OrderForm({ orderId, isEditMode = false, initialOrderTyp
             return isCommonFlag || nameMatch || typeMatch;
         });
         
-        console.log(`Common Items Search Result: Found ${commonItems.length} items`, commonItems.map(i => i.name));
+        console.log(`Common Items Search: Found ${commonItems.length} items from ${menuItems.length} total.`, commonItems.map(i => i.name));
         
         const commonItemIds = commonItems.map(item => item.id)
         
         if (commonItemIds.length === 0) {
-            toast.error('No items marked as "Common" in menu')
+            toast.error(`No common items found. (Searched ${menuItems.length} menu items)`)
             return
         }
 
@@ -495,11 +495,15 @@ export default function OrderForm({ orderId, isEditMode = false, initialOrderTyp
                             : mt.itemPrices,
                     }
 
-                    // Pre-fill customization with description if selecting and empty
-                    if (isSelecting && item?.description && !mt.itemCustomizations[itemId]) {
-                        updatedMt.itemCustomizations = {
-                            ...mt.itemCustomizations,
-                            [itemId]: item.description
+                    // Pre-fill customization with description IF selecting and it exists
+                    if (isSelecting && item?.description) {
+                        const currentCustomization = mt.itemCustomizations[itemId] || ''
+                        // Only set it if it's empty or doesn't already have the description
+                        if (!currentCustomization || currentCustomization === '') {
+                            updatedMt.itemCustomizations = {
+                                ...mt.itemCustomizations,
+                                [itemId]: item.description
+                            }
                         }
                     }
                     
