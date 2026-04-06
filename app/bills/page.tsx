@@ -82,6 +82,17 @@ export default function BillsPage() {
   const [billNoteDraft, setBillNoteDraft] = useState('')
   const [isSavingBillNote, setIsSavingBillNote] = useState(false)
   const [isEditingBillNote, setIsEditingBillNote] = useState(false)
+  const [editingLedgerEntry, setEditingLedgerEntry] = useState<any>(null)
+  const [isEditLedgerModalOpen, setIsEditLedgerModalOpen] = useState(false)
+  const [isDeleteLedgerModalOpen, setIsDeleteLedgerModalOpen] = useState(false)
+  const [ledgerEntryIdToDelete, setLedgerEntryIdToDelete] = useState<string | null>(null)
+  const [editLedgerFormData, setEditLedgerFormData] = useState({
+    amount: 0,
+    date: '',
+    method: 'cash' as string,
+    notes: ''
+  })
+  const [isUpdatingLedger, setIsUpdatingLedger] = useState(false)
 
   // Load Bills
   const loadBills = async () => {
@@ -195,6 +206,66 @@ export default function BillsPage() {
       toast.success('Payment recorded successfully')
     } catch (error) {
       toast.error('Failed to update payment')
+    }
+  }
+
+  const handleEditLedgerEntry = (entry: any) => {
+    setEditingLedgerEntry(entry)
+    setEditLedgerFormData({
+      amount: entry.amount,
+      date: new Date(entry.date).toISOString().split('T')[0],
+      method: entry.method || 'cash',
+      notes: entry.notes || ''
+    })
+    setIsEditLedgerModalOpen(true)
+  }
+
+  const handleUpdateLedgerEntry = async () => {
+    if (!editingLedgerEntry || !selectedBill) return
+    setIsUpdatingLedger(true)
+    try {
+      const updatedBill = await putRequest({
+        url: apiUrl.GET_getBillLedger(selectedBill.id),
+        data: {
+          entryId: editingLedgerEntry.id,
+          ...editLedgerFormData
+        }
+      })
+
+      setBills(prev => prev.map(b => b.id === updatedBill.id ? updatedBill : b))
+      setSelectedBill(updatedBill)
+      setIsEditLedgerModalOpen(false)
+      toast.success('Payment entry updated')
+    } catch (error: any) {
+      toast.error(error.message || 'Failed to update payment entry')
+    } finally {
+      setIsUpdatingLedger(false)
+    }
+  }
+
+  const confirmDeleteLedgerEntry = (entryId: string) => {
+    setLedgerEntryIdToDelete(entryId)
+    setIsDeleteLedgerModalOpen(true)
+  }
+
+  const handleDeleteLedgerEntry = async () => {
+    if (!ledgerEntryIdToDelete || !selectedBill) return
+    setIsUpdatingLedger(true)
+    try {
+      const updatedBill = await deleteRequest({
+        url: apiUrl.GET_getBillLedger(selectedBill.id),
+        data: { entryId: ledgerEntryIdToDelete }
+      })
+
+      setBills(prev => prev.map(b => b.id === updatedBill.id ? updatedBill : b))
+      setSelectedBill(updatedBill)
+      setIsDeleteLedgerModalOpen(false)
+      setLedgerEntryIdToDelete(null)
+      toast.success('Payment entry deleted')
+    } catch (error: any) {
+      toast.error(error.message || 'Failed to delete payment entry')
+    } finally {
+      setIsUpdatingLedger(false)
     }
   }
 
@@ -844,13 +915,33 @@ export default function BillsPage() {
                           .slice()
                           .reverse()
                           .map((p, idx) => (
-                            <div key={idx} className="flex items-center justify-between p-3 bg-slate-50 rounded-xl border-l-4 border-emerald-500">
-                              <div>
-                                <p className="text-sm font-bold text-slate-800">+{formatCurrency(p.amount)}</p>
-                                <p className="text-[10px] text-slate-500 uppercase tracking-tight">{p.method} · {formatDateTime(p.date)}</p>
+                            <div key={idx} className="group relative flex flex-col p-3 bg-slate-50 rounded-xl border-l-4 border-emerald-500 hover:bg-slate-100 transition-all">
+                              <div className="flex items-center justify-between">
+                                <div>
+                                  <p className="text-sm font-bold text-slate-800">+{formatCurrency(p.amount)}</p>
+                                  <p className="text-[10px] text-slate-500 uppercase tracking-tight">{p.method} · {formatDateTime(p.date)}</p>
+                                </div>
+                                <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                  <button
+                                    onClick={() => handleEditLedgerEntry(p)}
+                                    className="p-1.5 text-slate-400 hover:text-indigo-600 transition-colors"
+                                    title="Edit Payment"
+                                  >
+                                    <FaEdit size={12} />
+                                  </button>
+                                  {p.id && (
+                                    <button
+                                      onClick={() => confirmDeleteLedgerEntry(p.id)}
+                                      className="p-1.5 text-slate-400 hover:text-rose-600 transition-colors"
+                                      title="Delete Payment"
+                                    >
+                                      <FaTrash size={12} />
+                                    </button>
+                                  )}
+                                </div>
                               </div>
                               {p.notes && (
-                                <div className="max-w-[150px] truncate text-xs text-slate-400 italic">
+                                <div className="mt-1 text-xs text-slate-400 italic line-clamp-2">
                                   {p.notes}
                                 </div>
                               )}
@@ -957,6 +1048,99 @@ export default function BillsPage() {
           setBillToDelete(null)
         }}
         confirmText="Delete"
+        variant="danger"
+      />
+
+      {/* Edit Ledger Entry Modal */}
+      {isEditLedgerModalOpen && (
+        <div className="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
+          <div className="bg-white rounded-xl w-full max-w-md shadow-2xl overflow-hidden border border-slate-100 animate-in zoom-in-95 duration-200">
+            <div className="p-6 border-b border-slate-50 flex items-center justify-between bg-slate-50/50">
+              <h3 className="text-xl font-black text-slate-900">Edit Ledger Entry</h3>
+              <button
+                onClick={() => setIsEditLedgerModalOpen(false)}
+                className="p-2 hover:bg-white rounded-full text-slate-400 transition-colors shadow-sm"
+              >
+                <FaTimes />
+              </button>
+            </div>
+            <div className="p-6 space-y-4">
+              <div>
+                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-1.5 ml-1">Date</label>
+                <input
+                  type="date"
+                  value={editLedgerFormData.date}
+                  onChange={(e) => setEditLedgerFormData({ ...editLedgerFormData, date: e.target.value })}
+                  className="w-full px-4 py-3 bg-slate-50 border border-slate-100 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all font-bold text-slate-700"
+                />
+              </div>
+              <div>
+                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-1.5 ml-1">Amount (₹)</label>
+                <input
+                  type="number"
+                  value={editLedgerFormData.amount || ''}
+                  onChange={(e) => setEditLedgerFormData({ ...editLedgerFormData, amount: parseFloat(e.target.value) || 0 })}
+                  className="w-full px-4 py-3 bg-slate-50 border border-slate-100 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all font-bold text-slate-700"
+                />
+              </div>
+              <div>
+                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-1.5 ml-1">Payment Method</label>
+                <div className="grid grid-cols-2 gap-3">
+                  <button
+                    onClick={() => setEditLedgerFormData({ ...editLedgerFormData, method: 'cash' })}
+                    className={`py-3 rounded-xl font-bold transition-all ${editLedgerFormData.method === 'cash' ? 'bg-indigo-600 text-white shadow-md shadow-indigo-200' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}
+                  >
+                    Cash
+                  </button>
+                  <button
+                    onClick={() => setEditLedgerFormData({ ...editLedgerFormData, method: 'upi' })}
+                    className={`py-3 rounded-xl font-bold transition-all ${editLedgerFormData.method === 'upi' ? 'bg-indigo-600 text-white shadow-md shadow-indigo-200' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}
+                  >
+                    UPI / Bank
+                  </button>
+                </div>
+              </div>
+              <div>
+                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-1.5 ml-1">Notes</label>
+                <textarea
+                  value={editLedgerFormData.notes}
+                  onChange={(e) => setEditLedgerFormData({ ...editLedgerFormData, notes: e.target.value })}
+                  rows={2}
+                  className="w-full px-4 py-3 bg-slate-50 border border-slate-100 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all font-bold text-slate-700 resize-none"
+                  placeholder="Details..."
+                />
+              </div>
+            </div>
+            <div className="p-6 bg-slate-50/50 flex gap-3">
+              <button
+                onClick={() => setIsEditLedgerModalOpen(false)}
+                className="flex-1 py-3.5 bg-white border border-slate-200 text-slate-600 rounded-xl font-bold hover:bg-slate-100 transition-all active:scale-95"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleUpdateLedgerEntry}
+                disabled={isUpdatingLedger}
+                className="flex-1 py-3.5 bg-indigo-600 text-white rounded-xl font-black shadow-lg shadow-indigo-200 hover:bg-indigo-700 transition-all active:scale-95 disabled:opacity-60"
+              >
+                {isUpdatingLedger ? 'Saving...' : 'Save Changes'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Ledger Entry Modal */}
+      <ConfirmModal
+        isOpen={isDeleteLedgerModalOpen}
+        title="Delete Payment Entry"
+        message="This will permanently delete this ledger entry and update your remaining balance. This action cannot be undone."
+        onConfirm={handleDeleteLedgerEntry}
+        onCancel={() => {
+          setIsDeleteLedgerModalOpen(false)
+          setLedgerEntryIdToDelete(null)
+        }}
+        confirmText={isUpdatingLedger ? 'Deleting...' : 'Delete'}
         variant="danger"
       />
     </div >

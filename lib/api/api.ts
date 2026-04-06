@@ -88,10 +88,11 @@ export const patchRequest = async ({
 // Reusable DELETE wrapper
 export const deleteRequest = async ({
   url,
+  data,
   params,
   headers,
 }: RequestParams) => {
-  const response = await instance.delete(url, { params, headers });
+  const response = await instance.delete(url, { data, params, headers });
   return response.data;
 };
 

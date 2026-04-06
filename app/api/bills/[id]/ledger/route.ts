@@ -102,7 +102,18 @@ export async function DELETE(
 ) {
   try {
     const { id: billId } = params;
-    const { entryId } = await request.json();
+    
+    let entryId;
+    try {
+      const body = await request.json();
+      entryId = body.entryId;
+    } catch (e) {
+      return NextResponse.json({ error: "Invalid or missing JSON body. entryId is required." }, { status: 400 });
+    }
+
+    if (!entryId) {
+      return NextResponse.json({ error: "entryId is required" }, { status: 400 });
+    }
 
     const bill = await prisma.bill.findUnique({
       where: { id: billId },
