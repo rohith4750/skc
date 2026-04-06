@@ -691,13 +691,17 @@ export default function OrderForm({ orderId, isEditMode = false, initialOrderTyp
                 services: s.services
             }))
 
+            const totalAdvanceToStore = isEditMode 
+                ? (originalAdvancePaid + (parseFloat(formData.advancePaid) || 0))
+                : (parseFloat(formData.advancePaid) || 0)
+
             const orderData: any = {
                 customerId: formData.customerId,
                 eventName: formData.eventName,
                 orderType: formData.orderType,
                 items: [...orderItems, ...stallItems],
                 totalAmount: totals.total,
-                advancePaid: parseFloat(formData.advancePaid) || 0,
+                advancePaid: totalAdvanceToStore,
                 remainingAmount: totals.balance,
                 status: currentOrderStatus,
                 mealTypeAmounts,

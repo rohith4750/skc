@@ -277,14 +277,16 @@ export async function PUT(
         discount,
     );
 
-    // Use recalculated total if the provided total is 0 but we have amounts elsewhere
+    // Use recalculated total if the provided total is 0 but we have amounts elsewhere.
+    // As a final safety net, preserve existing total if both are 0 (prevents "Bill 0" bug).
     const finalTotalAmount =
-      totalAmount === 0 && recalculatedTotal > 0
-        ? recalculatedTotal
+      totalAmount === 0 
+        ? (recalculatedTotal > 0 ? recalculatedTotal : Number(existingOrder.totalAmount || 0))
         : totalAmount;
+
     const finalRemainingAmount =
-      totalAmount === 0 && recalculatedTotal > 0
-        ? Math.max(0, recalculatedTotal - advancePaid)
+      totalAmount === 0 
+        ? Math.max(0, finalTotalAmount - advancePaid)
         : remainingAmount;
 
     const orderUpdateData: any = {
