@@ -88,6 +88,26 @@ export function sendWhatsAppMessage(phone: string, message: string) {
   }
 }
 
+/**
+ * Sends a WhatsApp message using the new Meta Cloud API backend.
+ * This is asynchronous and runs on the server.
+ */
+export async function sendWhatsAppAPI(phone: string, message: string) {
+  try {
+    const response = await fetch("/api/whatsapp/send", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ to: phone, message }),
+    });
+
+    const data = await response.json();
+    return data;
+  } catch (error) {
+    console.error("Failed to send WhatsApp via API:", error);
+    return { success: false, error: "Network error or API failure" };
+  }
+}
+
 export function sendSMS(phone: string, message: string) {
   // In production, integrate with SMS service (Twilio, AWS SNS, etc.)
   // For now, use sms: protocol
