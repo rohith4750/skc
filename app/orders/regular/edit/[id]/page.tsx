@@ -1,5 +1,5 @@
 "use client";
-import OrderForm from '@/components/orders/OrderForm'
+import OrderForm from '@/components/orders/OrderFormV2'
 import { useParams } from 'next/navigation'
 
 export default function EditRegularOrderPage() {

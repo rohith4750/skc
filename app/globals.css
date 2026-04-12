@@ -3,239 +3,100 @@
 @tailwind utilities;
 
 :root {
-  --foreground-rgb: 0, 0, 0;
-  --background-start-rgb: 214, 219, 220;
+  --foreground-rgb: 15, 23, 42; /* slate-900 */
+  --background-start-rgb: 248, 250, 252; /* slate-50 */
   --background-end-rgb: 255, 255, 255;
 
-  /* SKC Caterers Color Scheme */
-  --primary-50: #fff7ed;
-  --primary-100: #ffedd5;
-  --primary-200: #fed7aa;
-  --primary-300: #fdba74;
-  --primary-400: #fb923c;
-  --primary-500: #f97316;
-  /* Main Orange */
-  --primary-600: #ea580c;
-  --primary-700: #c2410c;
-  --primary-800: #9a3412;
-  --primary-900: #7c2d12;
-
-  --secondary-50: #fef2f2;
-  --secondary-100: #fee2e2;
-  --secondary-200: #fecaca;
-  --secondary-300: #fca5a5;
-  --secondary-400: #f87171;
-  --secondary-500: #ef4444;
-  /* Red accent */
-  --secondary-600: #dc2626;
-  --secondary-700: #b91c1c;
-  --secondary-800: #991b1b;
-  --secondary-900: #7f1d1d;
-
-  --accent-50: #fefce8;
-  --accent-100: #fef9c3;
-  --accent-200: #fef08a;
-  --accent-300: #fde047;
-  --accent-400: #facc15;
-  --accent-500: #eab308;
-  /* Yellow accent */
-  --accent-600: #ca8a04;
-  --accent-700: #a16207;
-  --accent-800: #854d0e;
-  --accent-900: #713f12;
-
-  --gray-50: #f9fafb;
-  --gray-100: #f3f4f6;
-  --gray-200: #e5e7eb;
-  --gray-300: #d1d5db;
-  --gray-400: #9ca3af;
-  --gray-500: #6b7280;
-  --gray-600: #4b5563;
-  --gray-700: #374151;
-  --gray-800: #1f2937;
-  --gray-900: #111827;
-
-  --success: #10b981;
-  --success-light: #34d399;
-  --success-dark: #059669;
-
-  --error: #ef4444;
-  --error-light: #f87171;
-  --error-dark: #dc2626;
-
-  --warning: #f59e0b;
-  --warning-light: #fbbf24;
-  --warning-dark: #d97706;
-
-  --info: #3b82f6;
-  --info-light: #60a5fa;
-  --info-dark: #2563eb;
+  /* V2 Design Tokens */
+  --saffron: 249, 115, 22; /* primary-500 */
+  --charcoal: 30, 41, 59; /* secondary-800 */
+  --emerald: 34, 197, 94; /* accent-500 */
+  
+  --glass-bg: rgba(255, 255, 255, 0.7);
+  --glass-border: rgba(255, 255, 255, 0.3);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --foreground-rgb: 255, 255, 255;
-    --background-start-rgb: 0, 0, 0;
-    --background-end-rgb: 0, 0, 0;
-  }
+.dark {
+  --foreground-rgb: 241, 245, 249; /* slate-100 */
+  --background-start-rgb: 15, 23, 42; /* slate-900 */
+  --background-end-rgb: 2, 6, 23; /* slate-950 */
+  
+  --glass-bg: rgba(15, 23, 42, 0.7);
+  --glass-border: rgba(30, 41, 59, 0.5);
 }
 
-/* Increase base font size for large screens */
-@media (min-width: 1024px) {
+@layer base {
   html {
-    font-size: 12px;
+    font-size: 14px;
+    scroll-behavior: smooth;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  body {
+    color: rgb(var(--foreground-rgb));
+    background: rgb(var(--background-start-rgb));
+    @apply antialiased selection:bg-primary-100 selection:text-primary-900;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-bold tracking-tight text-secondary-900 dark:text-secondary-50;
   }
 }
 
-
-html {
-  font-size: 14px;
-  /* Reduce base font size from default 16px to 14px */
-}
-
-body {
-  color: rgb(var(--foreground-rgb));
-  background: linear-gradient(to bottom,
-      transparent,
-      rgb(var(--background-end-rgb))) rgb(var(--background-start-rgb));
-}
-
-/* Ensure input fields have proper text color - visible at all times */
-input[type="text"],
-input[type="email"],
-input[type="password"],
-input[type="tel"],
-input[type="number"],
-input[type="date"],
-input[type="time"],
-input[type="datetime-local"],
-input[type="search"],
-input[type="url"],
-textarea,
-select {
-  color: #1f2937 !important;
-  -webkit-text-fill-color: #1f2937 !important;
-}
-
-input::placeholder,
-textarea::placeholder {
-  color: #9ca3af !important;
-  opacity: 1;
-  -webkit-text-fill-color: #9ca3af !important;
-}
-
-/* Fix input autofill background color on mobile browsers */
-input:-webkit-autofill,
-input:-webkit-autofill:hover,
-input:-webkit-autofill:focus,
-input:-webkit-autofill:active,
-textarea:-webkit-autofill,
-textarea:-webkit-autofill:hover,
-textarea:-webkit-autofill:focus,
-textarea:-webkit-autofill:active,
-select:-webkit-autofill,
-select:-webkit-autofill:hover,
-select:-webkit-autofill:focus,
-select:-webkit-autofill:active {
-  -webkit-text-fill-color: #1f2937 !important;
-  -webkit-box-shadow: 0 0 0px 1000px #ffffff inset !important;
-  box-shadow: 0 0 0px 1000px #ffffff inset !important;
-  transition: background-color 5000s ease-in-out 0s;
-  color: #1f2937 !important;
-}
-
-@layer utilities {
-  .text-balance {
-    text-wrap: balance;
+@layer components {
+  .v2-card {
+    @apply bg-white dark:bg-secondary-900/50 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-v2soft hover:shadow-xl transition-all duration-300;
   }
 
-  /* Primary Colors */
-  .bg-primary {
-    background-color: var(--primary-500);
+  .v2-glass {
+    @apply backdrop-blur-md bg-white/70 dark:bg-slate-900/70 border border-white/20 dark:border-slate-800/50 shadow-v2glass;
   }
 
-  .bg-primary-light {
-    background-color: var(--primary-400);
+  .v2-input {
+    @apply w-full bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-800 rounded-xl px-4 py-3 focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 outline-none transition-all text-sm font-semibold text-slate-900 dark:text-slate-100 placeholder:text-slate-400;
   }
 
-  .bg-primary-dark {
-    background-color: var(--primary-600);
+  .v2-button-primary {
+    @apply bg-primary-500 hover:bg-primary-600 text-white font-bold py-3 px-6 rounded-xl shadow-lg shadow-primary-500/20 active:scale-95 transition-all disabled:opacity-50 disabled:cursor-not-allowed;
   }
 
-  .text-primary {
-    color: var(--primary-500);
+  .v2-button-secondary {
+    @apply bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 font-bold py-3 px-6 rounded-xl active:scale-95 transition-all;
   }
 
-  .border-primary {
-    border-color: var(--primary-500);
-  }
-
-  /* Secondary Colors */
-  .bg-secondary {
-    background-color: var(--secondary-500);
-  }
-
-  .text-secondary {
-    color: var(--secondary-500);
-  }
-
-  /* Accent Colors */
-  .bg-accent {
-    background-color: var(--accent-500);
-  }
-
-  .text-accent {
-    color: var(--accent-500);
+  .v2-status-pill {
+    @apply text-[10px] font-black uppercase tracking-widest px-2.5 py-1 rounded-full border;
   }
 }
 
-/* Custom Scrollbar Styles */
+/* Custom Scrollbar */
 ::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
+  width: 6px;
+  height: 6px;
 }
 
 ::-webkit-scrollbar-track {
-  background: #f3f4f6;
+  @apply bg-transparent;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #cbd5e1;
-  border-radius: 4px;
-  border: 1px solid #e2e8f0;
+  @apply bg-slate-300 dark:bg-slate-700 rounded-full hover:bg-slate-400 dark:hover:bg-slate-600 transition-colors;
 }
 
-::-webkit-scrollbar-thumb:hover {
-  background: #94a3b8;
+/* Animations */
+@keyframes float {
+  0% { transform: translateY(0px); }
+  50% { transform: translateY(-5px); }
+  100% { transform: translateY(0px); }
 }
 
-/* For Firefox */
-* {
-  scrollbar-width: thin;
-  scrollbar-color: #cbd5e1 #f3f4f6;
+.animate-float {
+  animation: float 3s ease-in-out infinite;
 }
 
-/* Dark Scrollbar Styles for specific elements like Sidebar */
-.dark-scrollbar::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
-}
-
-.dark-scrollbar::-webkit-scrollbar-track {
-  background: rgba(15, 23, 42, 0.5); /* slate-950 transparent */
-}
-
-.dark-scrollbar::-webkit-scrollbar-thumb {
-  background: #334155; /* slate-700 */
-  border-radius: 4px;
-  border: 1px solid #1e293b; /* slate-800 */
-}
-
-.dark-scrollbar::-webkit-scrollbar-thumb:hover {
-  background: #475569; /* slate-600 */
-}
-
-.dark-scrollbar {
-  scrollbar-width: thin;
-  scrollbar-color: #334155 rgba(15, 23, 42, 0.5);
-}
+/* Fix input autofill */
+input:-webkit-autofill {
+  -webkit-text-fill-color: inherit !important;
+  -webkit-box-shadow: 0 0 0px 1000px transparent inset !important;
+  transition: background-color 5000s ease-in-out 0s;
+}

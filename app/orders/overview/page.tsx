@@ -11,6 +11,7 @@ import { apiUrl } from '@/lib/api/apiUrl'
 import jsPDF from 'jspdf'
 import html2canvas from 'html2canvas'
 import { FaFilePdf, FaFileImage, FaChevronDown, FaUtensils } from 'react-icons/fa'
+import { motion, AnimatePresence } from 'framer-motion'
 
 export default function OrdersOverviewPage() {
   return (
@@ -464,298 +465,318 @@ function OrdersOverviewContent() {
 
   return (
     <div className="p-6">
-      <div className="flex flex-col gap-4 mb-6">
-        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-          <div>
-            <h1 className="text-3xl font-bold text-gray-800">
-              {viewMode === 'calendar' ? 'Calendar' : 'Event Planner'}
+      <div className="flex flex-col gap-8 mb-10">
+        <div className="flex flex-col xl:flex-row xl:items-center xl:justify-between gap-6">
+          <motion.div 
+            initial={{ opacity: 0, x: -20 }}
+            animate={{ opacity: 1, x: 0 }}
+          >
+            <h1 className="text-4xl font-black text-gray-900 tracking-tight">
+              {viewMode === 'calendar' ? 'Operational Pulse' : 'Strategic Planner'}
             </h1>
-            <p className="text-sm text-gray-500">
-              {viewMode === 'calendar' ? 'View and manage event schedule.' : 'View orders in table or calendar format.'}
+            <p className="text-[10px] font-black text-gray-400 uppercase tracking-[0.3em] mt-2 flex items-center gap-2">
+              <div className="w-2 h-2 bg-primary-500 rounded-full animate-pulse" />
+              Intelligence Dashboard — {new Date(selectedYear, selectedMonth).toLocaleString('default', { month: 'long', year: 'numeric' }).toUpperCase()}
             </p>
-          </div>
+          </motion.div>
 
-          {/* View Toggle */}
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() => setViewMode('table')}
-              className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-colors ${viewMode === 'table'
-                ? 'bg-primary-500 text-white'
-                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+          <div className="flex flex-wrap items-center gap-4">
+            {/* View Toggle - V2 Style */}
+            <div className="bg-gray-100 p-1.5 rounded-2xl flex items-center shadow-inner">
+              <button
+                onClick={() => setViewMode('table')}
+                className={`flex items-center gap-2 px-6 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${
+                  viewMode === 'table' ? 'v2-glass bg-white text-gray-900 shadow-xl' : 'text-gray-400 hover:text-gray-600'
                 }`}
-            >
-              <FaTable /> Table
-            </button>
-            <button
-              onClick={() => setViewMode('calendar')}
-              className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-colors ${viewMode === 'calendar'
-                ? 'bg-primary-500 text-white'
-                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+              >
+                <FaTable size={12} /> Matrix
+              </button>
+              <button
+                onClick={() => setViewMode('calendar')}
+                className={`flex items-center gap-2 px-6 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${
+                  viewMode === 'calendar' ? 'v2-glass bg-white text-gray-900 shadow-xl' : 'text-gray-400 hover:text-gray-600'
                 }`}
-            >
-              <FaCalendarAlt /> Calendar
-            </button>
+              >
+                <FaCalendarAlt size={12} /> Pulse
+              </button>
+            </div>
 
-            {/* Export Dropdown */}
+            {/* Export System */}
             <div className="relative group">
               <button
                 disabled={loading || filteredOrders.length === 0}
-                className="flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-all bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed shadow-md"
+                className="v2-btn-primary flex items-center gap-3 h-12 px-6 shadow-xl shadow-emerald-900/10 bg-emerald-600 hover:bg-emerald-700"
               >
-                <FaFilePdf /> Meal Report <FaChevronDown className="text-[10px]" />
+                <FaFilePdf size={14} /> 
+                <span className="text-[10px] font-black tracking-widest">OPS REPORT</span>
+                <FaChevronDown size={10} className="opacity-50" />
               </button>
 
-              <div className="absolute right-0 top-full mt-1 w-48 bg-white border border-gray-200 rounded-lg shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-50 overflow-hidden">
+              <div className="absolute right-0 top-full mt-2 w-56 v2-card bg-white p-2 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-50">
                 <button
                   onClick={() => downloadMealReport('pdf')}
-                  className="w-full flex items-center gap-3 px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 transition-colors border-b border-gray-100"
+                  className="w-full flex items-center gap-3 px-4 py-3 text-[10px] font-black uppercase tracking-widest text-gray-600 hover:bg-gray-50 rounded-xl transition-all"
                 >
-                  <FaFilePdf className="text-red-500" /> Download PDF
+                  <FaFilePdf size={14} className="text-red-500" /> Secure PDF
                 </button>
                 <button
                   onClick={() => downloadMealReport('png')}
-                  className="w-full flex items-center gap-3 px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
+                  className="w-full flex items-center gap-3 px-4 py-3 text-[10px] font-black uppercase tracking-widest text-gray-600 hover:bg-gray-50 rounded-xl transition-all"
                 >
-                  <FaFileImage className="text-blue-500" /> Download Image
+                  <FaFileImage size={14} className="text-blue-500" /> High-Res PNG
                 </button>
               </div>
             </div>
           </div>
         </div>
 
-        {/* Filters */}
-        <div className="flex flex-col md:flex-row items-end gap-4">
-          {/* Search Bar */}
-          <div className="w-full md:w-80">
-            <label className="block text-xs font-semibold text-gray-500 uppercase mb-1">Search Events</label>
+        {/* Intelligence Filters */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+          <div className="v2-card p-4 bg-white border-gray-100">
+            <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest pl-1 mb-2 block">Global Search</label>
             <input
               type="text"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="Customer, phone, or event..."
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+              placeholder="Orders or Customers..."
+              className="v2-input h-10 text-[11px] font-black bg-gray-50/50 border-gray-100"
             />
           </div>
 
-          {/* Month Selection */}
-          <div className="w-full md:w-48">
-            <label className="block text-xs font-semibold text-gray-500 uppercase mb-1">Month</label>
+          <div className="v2-card p-4 bg-white border-gray-100">
+            <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest pl-1 mb-2 block">Fiscal Month</label>
             <select
               value={selectedMonth}
               onChange={(e) => {
-                const m = parseInt(e.target.value)
-                setSelectedMonth(m)
-                const newDate = new Date(currentDate)
-                newDate.setMonth(m)
-                newDate.setFullYear(selectedYear)
-                setCurrentDate(newDate)
+                const m = parseInt(e.target.value); setSelectedMonth(m);
+                const newDate = new Date(currentDate); newDate.setMonth(m); newDate.setFullYear(selectedYear); setCurrentDate(newDate);
               }}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
+              className="v2-input h-10 text-[11px] font-black bg-gray-50/50 border-gray-100"
             >
               {Array.from({ length: 12 }).map((_, i) => (
-                <option key={i} value={i}>
-                  {new Date(0, i).toLocaleString('default', { month: 'long' })}
-                </option>
+                <option key={i} value={i}>{new Date(0, i).toLocaleString('default', { month: 'long' }).toUpperCase()}</option>
               ))}
             </select>
           </div>
 
-          {/* Year Selection */}
-          <div className="w-full md:w-32">
-            <label className="block text-xs font-semibold text-gray-500 uppercase mb-1">Year</label>
+          <div className="v2-card p-4 bg-white border-gray-100">
+            <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest pl-1 mb-2 block">Fiscal Year</label>
             <select
               value={selectedYear}
               onChange={(e) => {
-                const y = parseInt(e.target.value)
-                setSelectedYear(y)
-                const newDate = new Date(currentDate)
-                newDate.setFullYear(y)
-                newDate.setMonth(selectedMonth)
-                setCurrentDate(newDate)
+                const y = parseInt(e.target.value); setSelectedYear(y);
+                const newDate = new Date(currentDate); newDate.setFullYear(y); newDate.setMonth(selectedMonth); setCurrentDate(newDate);
               }}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
+              className="v2-input h-10 text-[11px] font-black bg-gray-50/50 border-gray-100"
             >
               {Array.from({ length: 5 }).map((_, i) => {
-                const year = new Date().getFullYear() - 2 + i
-                return <option key={year} value={year}>{year}</option>
+                const year = new Date().getFullYear() - 2 + i;
+                return <option key={year} value={year}>{year}</option>;
               })}
             </select>
           </div>
+
+          <div className="v2-card p-4 bg-primary-600 border-none flex items-center justify-center cursor-pointer hover:bg-primary-700 transition-all shadow-lg shadow-primary-900/20" onClick={goToToday}>
+             <div className="text-center">
+                <div className="text-[10px] font-black text-white/60 uppercase tracking-widest">Return to</div>
+                <div className="text-sm font-black text-white uppercase tracking-tighter">Real-Time Now</div>
+             </div>
+          </div>
         </div>
       </div>
+
 
       {loading ? (
         <div className="bg-white rounded-lg shadow-md p-6">Loading orders...</div>
       ) : filteredOrders.length === 0 ? (
         <div className="bg-white rounded-lg shadow-md p-6 text-gray-500">No orders found.</div>
-      ) : viewMode === 'calendar' ? (
-        // Calendar View
-        <div className="bg-white rounded-lg shadow-md">
-          {/* Calendar Header */}
-          <div className="p-4 border-b border-gray-200 flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <button
-                onClick={() => navigateMonth('prev')}
-                className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
-              >
-                <FaChevronLeft className="text-gray-600" />
-              </button>
-              <h2 className="text-xl font-bold text-gray-800">
-                {currentDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
-              </h2>
-              <button
-                onClick={() => navigateMonth('next')}
-                className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
-              >
-                <FaChevronRight className="text-gray-600" />
-              </button>
-            </div>
-            <button
-              onClick={goToToday}
-              className="px-4 py-2 bg-primary-500 text-white rounded-lg hover:bg-primary-600 transition-colors font-medium"
+      ) : (
+        <AnimatePresence mode="wait">
+          {viewMode === 'calendar' ? (
+            <motion.div
+              key="calendar"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -20 }}
+              className="v2-card bg-white overflow-hidden shadow-2xl shadow-gray-200/50"
             >
-              Today
-            </button>
-          </div>
+              {/* Pulse Control Hub */}
+              <div className="p-8 border-b border-gray-100 flex items-center justify-between bg-gray-50/50">
+                <div className="flex items-center gap-6">
+                  <div className="flex bg-white p-1 rounded-xl shadow-sm border border-gray-100">
+                    <button
+                      onClick={() => navigateMonth('prev')}
+                      className="p-3 hover:bg-gray-50 rounded-lg text-gray-400 hover:text-primary-600 transition-all active:scale-95"
+                    >
+                      <FaChevronLeft size={14} />
+                    </button>
+                    <button
+                      onClick={() => navigateMonth('next')}
+                      className="p-3 hover:bg-gray-50 rounded-lg text-gray-400 hover:text-primary-600 transition-all active:scale-95"
+                    >
+                      <FaChevronRight size={14} />
+                    </button>
+                  </div>
+                  <div>
+                    <h2 className="text-2xl font-black text-gray-900 uppercase tracking-tighter leading-none">
+                      {currentDate.toLocaleString('default', { month: 'long', year: 'numeric' })}
+                    </h2>
+                    <div className="text-[10px] font-black text-gray-400 uppercase tracking-widest mt-1">Operational Horizon</div>
+                  </div>
+                </div>
+                
+                <div className="hidden md:flex items-center gap-4">
+                  <div className="flex items-center gap-3 px-4 py-2 bg-white rounded-xl border border-gray-100 shadow-sm">
+                    <div className="w-2 h-2 rounded-full bg-orange-500" />
+                    <span className="text-[10px] font-black text-gray-500 uppercase tracking-widest">Breakfast</span>
+                    <div className="w-2 h-2 rounded-full bg-red-500 ml-2" />
+                    <span className="text-[10px] font-black text-gray-500 uppercase tracking-widest">Lunch</span>
+                    <div className="w-2 h-2 rounded-full bg-blue-500 ml-2" />
+                    <span className="text-[10px] font-black text-gray-500 uppercase tracking-widest">Dinner</span>
+                  </div>
+                </div>
+              </div>
 
-          {/* Calendar Grid */}
-          <div className="p-4 overflow-x-auto">
-            <div className="min-w-[800px]">
-              {/* Day Headers */}
-              <div className="grid grid-cols-7 gap-2 mb-2">
-                {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(day => (
-                  <div key={day} className="text-center font-semibold text-gray-600 text-sm py-2">
+              <div className="grid grid-cols-7 bg-gray-50">
+                {['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'].map(day => (
+                  <div key={day} className="py-4 text-center text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] border-b border-gray-100">
                     {day}
                   </div>
                 ))}
               </div>
 
-              {/* Calendar Days */}
-              <div className="grid grid-cols-7 gap-2">
-                {generateCalendarDays().map((dayInfo, index) => {
-                  const mealsForDay = getMealsForDate(dayInfo.date)
-                  const isToday = dayInfo.date.toDateString() === new Date().toDateString()
-
+              <div className="grid grid-cols-7 auto-rows-[140px] xl:auto-rows-[180px]">
+                {generateCalendarDays().map(({ date, isCurrentMonth }, i) => {
+                  const meals = getMealsForDate(date);
+                  const isToday = new Date().toDateString() === date.toDateString();
+                  
                   return (
                     <div
-                      key={index}
-                      className={`min-h-[120px] p-2 border rounded-lg ${!dayInfo.isCurrentMonth ? 'bg-gray-50' : 'bg-white'
-                        } ${isToday ? 'ring-2 ring-primary-500' : ''}`}
+                      key={i}
+                      className={`relative p-3 border-r border-b border-gray-50 group transition-all ${
+                        !isCurrentMonth ? 'bg-gray-50/30' : 'bg-white'
+                      }`}
                     >
-                      <div className={`text-sm font-medium mb-1 ${!dayInfo.isCurrentMonth ? 'text-gray-400' : isToday ? 'text-primary-600 font-bold' : 'text-gray-700'
+                      <div className="flex justify-between items-start mb-2">
+                        <span className={`text-sm font-black transition-all ${
+                          isToday ? 'w-8 h-8 rounded-full bg-primary-600 text-white flex items-center justify-center shadow-lg shadow-primary-900/20' : 
+                          isCurrentMonth ? 'text-gray-900' : 'text-gray-300'
                         }`}>
-                        {dayInfo.date.getDate()}
+                          {date.getDate()}
+                        </span>
+                        {meals.length > 0 && isCurrentMonth && (
+                          <div className="w-1.5 h-1.5 rounded-full bg-primary-500 animate-pulse" />
+                        )}
                       </div>
 
-                      {mealsForDay.length > 0 && (
-                        <div className="space-y-4">
-                          {(() => {
-                            // Group meals by type
-                            const grouped: Record<string, typeof mealsForDay> = {}
-                            mealsForDay.forEach(meal => {
-                              if (!grouped[meal.mealType]) grouped[meal.mealType] = []
-                              grouped[meal.mealType].push(meal)
-                            })
-
-                            // Sort types by priority
-                            const sortedTypes = Object.keys(grouped).sort((a, b) =>
-                              getMealPriority(a) - getMealPriority(b)
-                            )
-
-                            return sortedTypes.map(type => (
-                              <div key={type} className="space-y-1">
-                                <div className="text-[10px] font-bold text-gray-500 uppercase tracking-tight mb-1 border-b border-gray-100 pb-0.5">
-                                  {type}
+                      <div className="space-y-1.5 max-h-[100px] xl:max-h-[140px] overflow-y-auto custom-scrollbar pr-1">
+                        {meals
+                          .sort((a, b) => getMealPriority(a.mealType) - getMealPriority(b.mealType))
+                          .map((meal, idx) => {
+                            const style = getMealColor(meal.mealType);
+                            return (
+                              <Link
+                                key={`${meal.orderId}-${idx}`}
+                                href={`/orders/edit/${meal.orderId}`}
+                                className={`block px-2.5 py-1.5 rounded-xl border-l-4 transition-all hover:scale-[1.02] hover:shadow-md ${style}`}
+                              >
+                                <div className="text-[9px] font-black truncate uppercase leading-none mb-0.5">
+                                  {meal.customerName}
                                 </div>
-                                {grouped[type].map((meal, idx) => (
-                                  <Link
-                                    key={`${meal.orderId}-${meal.mealType}-${idx}`}
-                                    href={`/orders/summary/${meal.orderId}`}
-                                    className={`block text-[10px] px-2 py-1.5 rounded-md border shadow-sm transition-all hover:scale-[1.02] truncate flex flex-col gap-0.5 ${getMealColor(meal.mealType)}`}
-                                    title={`${meal.mealType}: ${meal.customerName}`}
-                                  >
-                                    <div className="flex justify-between items-center gap-1">
-                                      <span className="font-bold opacity-90 truncate">{meal.customerName}</span>
-                                      {meal.memberCount && (
-                                        <span className="shrink-0 font-black px-1 py-0.5 bg-white/40 rounded text-[8px]">
-                                          {meal.memberCount}
-                                        </span>
-                                      )}
-                                    </div>
-                                  </Link>
-                                ))}
-                              </div>
-                            ))
-                          })()}
-                        </div>
+                                <div className="flex items-center justify-between gap-1 overflow-hidden">
+                                  <span className="text-[8px] font-bold opacity-80 uppercase tracking-tighter truncate">
+                                    {meal.mealType}
+                                  </span>
+                                  {meal.memberCount && (
+                                    <span className="text-[8px] font-black text-white px-1.5 rounded bg-black/20">
+                                      {meal.memberCount}
+                                    </span>
+                                  )}
+                                </div>
+                              </Link>
+                            );
+                          })}
+                      </div>
+
+                      {/* Day Metadata Indicator */}
+                      {!isCurrentMonth && (
+                        <div className="absolute inset-0 bg-white/40 pointer-events-none" />
                       )}
                     </div>
-                  )
+                  );
                 })}
               </div>
-            </div>
-          </div>
-        </div>
-      ) : (
-        // Table View
-        <div className="bg-white rounded-lg shadow-md overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50">
-                <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Customer</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Event Name</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Total</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Collected</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Remaining</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Created</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
-                {filteredOrders.map((order: any) => (
-                  <tr key={order.id} className="hover:bg-gray-50">
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm font-medium text-gray-900">{order.customer?.name || 'Unknown'}</div>
-                      <div className="text-sm text-gray-500">{order.customer?.phone || ''}</div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm text-gray-900">{(order as any).eventName || '-'}</div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm font-bold text-gray-900">{formatCurrency(order.totalAmount)}</div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm font-medium text-emerald-600">{formatCurrency(order.advancePaid)}</div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm font-medium text-rose-600">{formatCurrency(order.remainingAmount)}</div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {formatDateTime(order.createdAt)}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="flex flex-wrap gap-2">
-                        <Link
-                          href={`/orders/summary/${order.id}`}
-                          className="inline-flex items-center gap-2 px-3 py-2 text-xs font-semibold text-blue-700 bg-blue-50 rounded-lg hover:bg-blue-100"
-                        >
-                          <FaChartLine /> Summary
-                        </Link>
-                        <Link
-                          href={`/orders/financial/${order.id}`}
-                          className="inline-flex items-center gap-2 px-3 py-2 text-xs font-semibold text-emerald-700 bg-emerald-50 rounded-lg hover:bg-emerald-100"
-                        >
-                          <FaMoneyBillWave /> Financial
-                        </Link>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
+            </motion.div>
+          ) : (
+            <motion.div
+              key="table"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -20 }}
+              className="v2-card bg-white overflow-hidden shadow-2xl shadow-gray-200/50 p-4"
+            >
+              <div className="overflow-x-auto">
+                <table className="min-w-full divide-y divide-gray-100">
+                  <thead>
+                    <tr className="bg-gray-50/50 rounded-2xl">
+                      {['Customer Instance', 'Event Identity', 'Financial Volume', 'Recovery', 'Deficit', 'Temporal Log', 'Nexus'].map(label => (
+                        <th key={label} className="px-6 py-4 text-left text-[10px] font-black text-gray-400 uppercase tracking-widest">{label}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-50 border-t border-gray-100">
+                    {filteredOrders.map((order: any) => (
+                      <tr key={order.id} className="group hover:bg-gray-50/50 transition-all duration-300">
+                        <td className="px-6 py-5">
+                          <div className="text-xs font-black text-gray-900 group-hover:text-primary-600 transition-colors uppercase tracking-tight">{order.customer?.name || 'Unknown'}</div>
+                          <div className="text-[9px] font-black text-gray-400 uppercase tracking-widest mt-1">{order.customer?.phone || 'NO SECURE LINE'}</div>
+                        </td>
+                        <td className="px-6 py-5">
+                          <div className="text-[10px] font-black text-gray-700 bg-gray-100 px-3 py-1 rounded-lg inline-block uppercase tracking-widest border border-gray-200/50">
+                            {(order as any).eventName || 'UNNAMED_SEQ'}
+                          </div>
+                        </td>
+                        <td className="px-6 py-5">
+                          <div className="text-xs font-black text-gray-900 tracking-tighter">{formatCurrency(order.totalAmount)}</div>
+                        </td>
+                        <td className="px-6 py-5">
+                          <div className="text-xs font-black text-emerald-600 tracking-tighter">+{formatCurrency(order.advancePaid)}</div>
+                        </td>
+                        <td className="px-6 py-5">
+                          <div className="text-xs font-black text-rose-600 tracking-tighter">-{formatCurrency(order.remainingAmount)}</div>
+                        </td>
+                        <td className="px-6 py-5">
+                          <div className="text-[9px] font-black text-gray-400 uppercase tracking-widest leading-tight">
+                            {formatDateTime(order.createdAt).split(',')[0]}<br/>
+                            <span className="opacity-50 font-bold">{formatDateTime(order.createdAt).split(',')[1]}</span>
+                          </div>
+                        </td>
+                        <td className="px-6 py-5">
+                          <div className="flex items-center gap-2">
+                            <Link
+                              href={`/orders/summary/${order.id}`}
+                              className="w-8 h-8 flex items-center justify-center bg-gray-50 text-gray-400 rounded-xl hover:bg-primary-600 hover:text-white transition-all shadow-sm hover:shadow-primary-900/20 active:scale-95"
+                              title="Intelligence Summary"
+                            >
+                              <FaChartLine size={12} />
+                            </Link>
+                            <Link
+                              href={`/orders/financial/${order.id}`}
+                              className="w-8 h-8 flex items-center justify-center bg-gray-50 text-gray-400 rounded-xl hover:bg-emerald-600 hover:text-white transition-all shadow-sm hover:shadow-emerald-900/20 active:scale-95"
+                              title="Financial Matrix"
+                            >
+                              <FaMoneyBillWave size={12} />
+                            </Link>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
       )}
     </div>
   )

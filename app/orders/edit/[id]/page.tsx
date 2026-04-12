@@ -1,5 +1,5 @@
 "use client";
-import OrderForm from '@/components/orders/OrderForm'
+import OrderForm from '@/components/orders/OrderFormV2'
 import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { FaChevronLeft } from 'react-icons/fa'

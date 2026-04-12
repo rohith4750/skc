@@ -2,17 +2,17 @@
 import { useEffect, useState, useMemo } from 'react'
 import { formatDateTime, formatDate, formatCurrency, sanitizeMealLabel, getOrderDate } from '@/lib/utils'
 import { Order } from '@/types'
-import { FaTrash, FaFilePdf, FaFileImage, FaChevronLeft, FaChevronRight, FaEdit, FaFilter, FaChartLine, FaClock, FaCheckCircle, FaTimesCircle, FaEnvelope, FaCalendarAlt } from 'react-icons/fa'
+import { FaTrash, FaFilePdf, FaFileImage, FaChevronLeft, FaChevronRight, FaEdit, FaFilter, FaChartLine, FaClock, FaCheckCircle, FaTimesCircle, FaEnvelope, FaCalendarAlt, FaLayerGroup, FaPlus, FaSearch } from 'react-icons/fa'
 import Link from 'next/link'
 import jsPDF from 'jspdf'
 import html2canvas from 'html2canvas'
 import toast from 'react-hot-toast'
 import ConfirmModal from '@/components/ConfirmModal'
 import MergeOrdersModal from '@/components/MergeOrdersModal'
-import { FaLayerGroup } from 'react-icons/fa'
 import { buildOrderPdfHtml } from '@/lib/order-pdf-html'
 import { getRequest, postRequest, putRequest, deleteRequest } from '@/lib/api/api'
 import { apiUrl } from '@/lib/api/apiUrl'
+import { motion, AnimatePresence } from 'framer-motion'
 
 export default function OrderHistoryPage() {
   const [orders, setOrders] = useState<Order[]>([])
@@ -43,23 +43,6 @@ export default function OrderHistoryPage() {
     isOpen: false,
     order: null,
   })
-  const [emailModal, setEmailModal] = useState<{ isOpen: boolean; order: any | null }>({
-    isOpen: false,
-    order: null,
-  })
-  const [emailSending, setEmailSending] = useState(false)
-  const [separationConfirm, setSeparationConfirm] = useState<{
-    isOpen: boolean
-    orderId: string | null
-    sessionKey: string | null
-    sessionLabel: string
-    date?: string
-  }>({
-    isOpen: false,
-    orderId: null,
-    sessionKey: null,
-    sessionLabel: '',
-  })
   const [selectedOrderIds, setSelectedOrderIds] = useState<string[]>([])
   const [isMergeModalOpen, setIsMergeModalOpen] = useState(false)
   const [isMerging, setIsMerging] = useState(false)
@@ -74,1292 +57,210 @@ export default function OrderHistoryPage() {
       setOrders(allOrders)
     } catch (error) {
       console.error('Failed to load data:', error)
-      toast.error('Failed to load data. Please try again.')
+      toast.error('Failed to load data.')
     }
   }
 
-  // Filter orders
   const filteredOrders = useMemo(() => {
     let filtered = orders
-
-    // Status filter
     if (statusFilter !== 'all') {
       filtered = filtered.filter(order => order.status === statusFilter)
     } else {
-      // Default view for Order History is everything EXCEPT pending/in_progress
       filtered = filtered.filter(order => ['completed', 'cancelled'].includes(order.status))
     }
-
-    // Customer search filter
     if (customerSearch) {
       const searchLower = customerSearch.toLowerCase()
       filtered = filtered.filter(order =>
         order.customer?.name?.toLowerCase().includes(searchLower) ||
         order.customer?.phone?.includes(customerSearch) ||
-        order.customer?.email?.toLowerCase().includes(searchLower) ||
         (order as any).eventName?.toLowerCase().includes(searchLower)
       )
     }
-
-    // Month/Year filter
     filtered = filtered.filter(order => {
       const orderDate = new Date(getOrderDate(order))
-
       if (filterDate) {
         const y = orderDate.getFullYear()
         const m = String(orderDate.getMonth() + 1).padStart(2, '0')
         const day = String(orderDate.getDate()).padStart(2, '0')
         return `${y}-${m}-${day}` === filterDate
       }
-
       return (orderDate.getMonth() + 1) === selectedMonth && orderDate.getFullYear() === selectedYear
     })
-
     return filtered.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
   }, [orders, statusFilter, customerSearch, selectedMonth, selectedYear, filterDate])
 
   const statusSummary = useMemo(() => {
-    const totalOrders = filteredOrders.length
-    const pending = filteredOrders.filter((order) => order.status === 'pending').length
-    const inProgress = filteredOrders.filter((order) => order.status === 'in_progress').length
-    const completed = filteredOrders.filter((order) => order.status === 'completed').length
-    const cancelled = filteredOrders.filter((order) => order.status === 'cancelled').length
-    return { totalOrders, pending, inProgress, completed, cancelled }
+    return {
+      total: filteredOrders.length,
+      completed: filteredOrders.filter(o => o.status === 'completed').length,
+      cancelled: filteredOrders.filter(o => o.status === 'cancelled').length
+    }
   }, [filteredOrders])
 
-  // Pagination logic
   const totalPages = Math.ceil(filteredOrders.length / itemsPerPage)
   const startIndex = (currentPage - 1) * itemsPerPage
-  const endIndex = startIndex + itemsPerPage
-  const paginatedOrders = filteredOrders.slice(startIndex, endIndex)
+  const paginatedOrders = filteredOrders.slice(startIndex, startIndex + itemsPerPage)
 
-  const handleDelete = (id: string) => {
-    setDeleteConfirm({ isOpen: true, id })
-  }
+  const handleDelete = (id: string) => setDeleteConfirm({ isOpen: true, id })
 
   const confirmDelete = async () => {
     if (!deleteConfirm.id) return
     try {
       await deleteRequest({ url: apiUrl.DEL_deleteOrder(deleteConfirm.id) })
-
       await loadData()
-      toast.success('Order deleted successfully!')
+      toast.success('Archived record purged.')
       setDeleteConfirm({ isOpen: false, id: null })
-    } catch (error: any) {
-      console.error('Failed to delete order:', error)
-      toast.error(error.message || 'Failed to delete order. Please try again.')
-      setDeleteConfirm({ isOpen: false, id: null })
-    }
+    } catch { toast.error('Purge failure.') }
   }
 
   const handleStatusChange = async (orderId: string, newStatus: string) => {
     try {
-      console.log(`[Order History] Updating order ${orderId} status to ${newStatus}`)
-      const responseData = await putRequest({
-        url: apiUrl.PUT_updateOrder(orderId),
-        data: { status: newStatus }
-      })
-
-      console.log(`[Order History] Order status updated.`, responseData)
-
-      // Reload data to get the latest orders with updated status
+      await putRequest({ url: apiUrl.PUT_updateOrder(orderId), data: { status: newStatus } })
       await loadData()
-
-      // If status changed to in_progress or completed, check if bill was created
-      if (newStatus === 'in_progress' || newStatus === 'completed') {
-        if (responseData._billCreated) {
-          console.log(`[Order History] Γ£à Bill created: ${responseData._billId}`)
-          toast.success(`Order status updated to ${newStatus}. Bill has been generated!`, {
-            duration: 4000,
-          })
-        } else if (responseData._billError) {
-          console.error(`[Order History] Γ¥î Bill creation failed:`, responseData._billError)
-          toast.error(`Order status updated, but bill creation failed: ${responseData._billError.message}`, {
-            duration: 5000,
-          })
-        } else if (responseData._billStatus === 'exists') {
-          console.log(`[Order History] Bill already exists for this order`)
-          toast.success(`Order status updated to ${newStatus}. Bill already exists.`, {
-            duration: 4000,
-          })
-        } else {
-          toast.success(`Order status updated to ${newStatus}. Bill has been generated!`, {
-            duration: 4000,
-          })
-        }
-      } else {
-        toast.success('Order status updated successfully!')
-      }
-    } catch (error: any) {
-      console.error('Failed to update status:', error)
-      toast.error(error.message || 'Failed to update order status. Please try again.')
-    }
+      toast.success('Status synchronized.')
+    } catch { toast.error('Sync failure.') }
   }
 
-  const confirmStatusChange = async () => {
-    if (!statusConfirm.id || !statusConfirm.newStatus) return
-
-    await handleStatusChange(statusConfirm.id, statusConfirm.newStatus)
-    setStatusConfirm({ isOpen: false, id: null, newStatus: '', oldStatus: '' })
-  }
-
-  const handleDiscardSession = (orderId: string, sessionKey: string) => {
-    const sessionLabel = sanitizeMealLabel(sessionKey)
-    setSeparationConfirm({
-      isOpen: true,
-      orderId,
-      sessionKey,
-      sessionLabel,
-    })
-  }
-
-  const handleDiscardDate = (orderId: string, date: string) => {
-    setSeparationConfirm({
-      isOpen: true,
-      orderId,
-      sessionKey: null, // null means date-based
-      sessionLabel: formatDate(date),
-      date,
-    })
-  }
-
-  const confirmSeparation = async () => {
-    const { orderId, sessionKey, date } = separationConfirm
-    if (!orderId) return
-
-    try {
-      const endpoint = sessionKey ? apiUrl.POST_discardOrderSession : apiUrl.POST_discardOrderDate
-      const body = sessionKey ? { orderId, sessionKey } : { orderId, date }
-
-      await postRequest({
-        url: endpoint,
-        data: body
-      })
-
-      toast.success(sessionKey ? 'Session separated successfully' : 'Date group separated successfully')
-      setSeparationConfirm({ isOpen: false, orderId: null, sessionKey: null, sessionLabel: '', date: '' })
-      loadData()
-    } catch (error: any) {
-      console.error('Failed to separate:', error)
-      toast.error(error.message || 'Failed to separate')
-    }
+  const toggleOrderSelection = (id: string) => {
+    setSelectedOrderIds(prev => prev.includes(id) ? prev.filter(oid => oid !== id) : [...prev, id])
   }
 
   const handleMergeConfirm = async (primaryOrderId: string) => {
     const secondaryOrderIds = selectedOrderIds.filter(id => id !== primaryOrderId)
-    if (secondaryOrderIds.length === 0) {
-      toast.error('Please select more than one order to merge')
-      return
-    }
-
     setIsMerging(true)
     try {
-      await postRequest({
-        url: apiUrl.POST_mergeOrders,
-        data: { primaryOrderId, secondaryOrderIds }
-      })
-
-      toast.success('Orders merged successfully!')
+      await postRequest({ url: apiUrl.POST_mergeOrders, data: { primaryOrderId, secondaryOrderIds } })
+      toast.success('Cluster merged.')
       setSelectedOrderIds([])
       setIsMergeModalOpen(false)
       loadData()
-    } catch (error: any) {
-      console.error('Merge error:', error)
-      toast.error(error.message || 'Failed to merge orders')
-    } finally {
-      setIsMerging(false)
-    }
+    } catch { toast.error('Merge failure.') } finally { setIsMerging(false) }
   }
 
-  const toggleOrderSelection = (id: string) => {
-    setSelectedOrderIds(prev =>
-      prev.includes(id) ? prev.filter(oid => oid !== id) : [...prev, id]
-    )
-  }
-
-
-
-  const renderOrderToPdf = async (order: any, language: 'english' | 'telugu'): Promise<string | null> => {
-    const customer = order.customer
-    const supervisor = order.supervisor
-    const useEnglish = language === 'english'
-
-    // Extract event dates from meal types
-    const mealTypeAmounts = order.mealTypeAmounts as Record<string, { amount: number; date: string } | number> | null
-    const eventDates: string[] = []
-    if (mealTypeAmounts) {
-      Object.entries(mealTypeAmounts).forEach(([mealType, data]) => {
-        if (typeof data === 'object' && data !== null && data.date) {
-          const dateStr = formatDate(data.date)
-          if (!eventDates.includes(dateStr)) {
-            eventDates.push(dateStr)
-          }
-        }
-      })
-    }
-    const eventDateDisplay = eventDates.length > 0 ? eventDates.join(', ') : formatDate(order.createdAt)
-
-    // Create a temporary HTML element to render Telugu text properly
+  const generateAndDownloadPDF = async (order: any, language: 'english' | 'telugu') => {
+    const html = buildOrderPdfHtml(order, { useEnglish: language === 'english', formatDate, showFinancials: true, formatCurrency })
     const tempDiv = document.createElement('div')
-    tempDiv.style.position = 'absolute'
-    tempDiv.style.left = '-9999px'
-    tempDiv.style.width = '210mm' // A4 width
-    tempDiv.style.padding = '15mm'
-    tempDiv.style.fontFamily = 'Poppins, "Segoe UI", Tahoma, Geneva, Verdana, sans-serif'
-    tempDiv.style.fontSize = '11px'
-    tempDiv.style.lineHeight = '1.6'
-    tempDiv.style.background = 'white'
-    tempDiv.style.color = '#333'
-
-    let htmlContent = `
-      <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-      <style>
-        * { font-family: 'Poppins', sans-serif !important; }
-        .header { text-align: center; margin-bottom: 25px; padding-bottom: 15px; border-bottom: 2px solid #333; }
-        .header-top { display: flex; justify-content: space-between; font-size: 10px; margin-bottom: 10px; color: #555; font-family: 'Poppins', sans-serif; }
-        .header-main { font-size: 32px; font-weight: 700; margin: 15px 0 8px 0; letter-spacing: 2px; color: #1a1a1a; font-family: 'Poppins', sans-serif; }
-        .header-subtitle { font-size: 14px; color: #666; margin-bottom: 12px; font-style: italic; font-family: 'Poppins', sans-serif; }
-        .header-details { font-size: 9px; line-height: 1.6; color: #444; margin-top: 10px; font-family: 'Poppins', sans-serif; }
-        .header-details div { margin-bottom: 3px; }
-        .section { margin-bottom: 15px; font-family: 'Poppins', sans-serif; }
-        .section-title { font-size: 14px; font-weight: 600; margin-bottom: 8px; padding-bottom: 4px; border-bottom: 2px solid #ddd; color: #222; font-family: 'Poppins', sans-serif; }
-        .info-row { margin-bottom: 6px; font-family: 'Poppins', sans-serif; }
-        .info-label { font-weight: 600; display: inline-block; width: 120px; font-family: 'Poppins', sans-serif; }
-        .menu-item { padding: 2px 4px; font-family: 'Poppins', sans-serif; font-size: 9px; line-height: 1.3; font-weight: 600; }
-        .financial-row { display: flex; justify-content: space-between; padding: 6px 0; border-bottom: 1px solid #eee; font-family: 'Poppins', sans-serif; }
-        .financial-row.total { font-weight: 700; font-size: 13px; border-top: 2px solid #333; border-bottom: 2px solid #333; margin-top: 5px; padding-top: 8px; }
-        .financial-label { font-weight: 600; }
-      </style>
-      
-      <div class="header">
-        <div class="header-top">
-          <div>Telidevara Rajendraprasad</div>
-          <div>ART FOOD ZONE (A Food Caterers)</div>
-        </div>
-        <div class="header-main">SRIVATSASA & KOWNDINYA CATERERS</div>
-        <div class="header-subtitle">(Pure Vegetarian)</div>
-        <div class="header-details">
-          <div>Regd. No: 2361930100031</div>
-          <div>Plot No. 115, Padmavathi Nagar, Bank Colony, Saheb Nag Vanathalipuram, Hyderabad - 500070.</div>
-          <div>Email: pujyasri1989cya@gmail.com, Cell: 9866525102, 9963691393, 9390015302</div>
-        </div>
-      </div>
-      
-      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 25px;">
-        <div class="section">
-          <div class="section-title">Customer Details</div>
-          <div class="info-row"><span class="info-label">Name:</span> ${customer?.name || 'N/A'}</div>
-          <div class="info-row"><span class="info-label">Phone:</span> ${customer?.phone || 'N/A'}</div>
-          <div class="info-row"><span class="info-label">Email:</span> ${customer?.email || 'N/A'}</div>
-          <div class="info-row"><span class="info-label">Address:</span> ${customer?.address || 'N/A'}</div>
-        </div>
-        
-        <div class="section">
-          <div class="section-title">Order Information</div>
-          <div class="info-row"><span class="info-label">Event Date:</span> ${eventDateDisplay}</div>
-          <div class="info-row"><span class="info-label">Supervisor:</span> ${supervisor?.name || 'N/A'}</div>
-          <div class="info-row"><span class="info-label">Order ID:</span> SKC-ORDER-${(order as any).serialNumber || order.id.slice(0, 8).toUpperCase()}</div>
-        </div>
-      </div>
-      
-      <div class="section">
-        <div class="section-title">Menu Items</div>
-        <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; font-size: 9px;">
-    `
-
-    // Build date-wise structure for merged orders (same as order-pdf-html)
-    const getMealTypePriority = (type: string) => {
-      const p: Record<string, number> = { 'BREAKFAST': 1, 'LUNCH': 2, 'SNACKS': 3, 'DINNER': 4 }
-      return p[type?.toUpperCase()] || 99
-    }
-    type SessionGroup = { menuType: string; members?: number; services?: string[]; items: any[] }
-    const byDate: Record<string, SessionGroup[]> = {}
-
-    if (mealTypeAmounts) {
-      Object.entries(mealTypeAmounts).forEach(([key, data]) => {
-        const d = typeof data === 'object' && data !== null && (data as any).date ? String((data as any).date).split('T')[0] : null
-        if (d) {
-          if (!byDate[d]) byDate[d] = []
-          const menuType = (data as any)?.menuType || 'OTHER'
-          const groupKey = key || `legacy_${menuType}`
-          if (!byDate[d].some((s: any) => s._key === groupKey)) {
-            const session = { menuType, members: (data as any)?.numberOfMembers, services: (data as any)?.services, items: [] } as SessionGroup & { _key?: string }
-              ; (session as any)._key = groupKey
-            byDate[d].push(session)
-          }
-        }
-      })
-    }
-
-    const resolveSessionData = (sk: string): { data: any; resolvedKey: string } | null => {
-      const key = typeof sk === 'string' ? sk.trim() : ''
-      if (!key || !mealTypeAmounts) return null
-      const direct = mealTypeAmounts[key]
-      if (typeof direct === 'object' && direct !== null) return { data: direct, resolvedKey: key }
-      const keyLower = key.toLowerCase()
-      const found = Object.entries(mealTypeAmounts).find(([k]) => k.toLowerCase() === keyLower)
-      if (found) {
-        const v = found[1]
-        return (typeof v === 'object' && v !== null) ? { data: v, resolvedKey: found[0] } : null
-      }
-      return null
-    }
-
-    order.items.forEach((item: any) => {
-      const sessionKey = item.mealType || ''
-      const resolved = resolveSessionData(sessionKey)
-      const sessionData = resolved?.data ?? null
-      const resolvedKey = resolved?.resolvedKey || sessionKey
-
-      const menuType = sessionData?.menuType || item.menuItem?.type || 'OTHER'
-      const rawDate = sessionData?.date ? String(sessionData.date).split('T')[0] : null
-      const dateKey = rawDate || eventDateDisplay
-      const members = sessionData?.numberOfMembers
-      const services = sessionData?.services
-
-      const groupKey = resolvedKey || `legacy_${menuType}`
-      if (!byDate[dateKey]) byDate[dateKey] = []
-      let session = byDate[dateKey].find((s: any) => s._key === groupKey)
-      if (!session) {
-        session = { menuType, members, services, items: [] } as SessionGroup & { _key?: string }
-          ; (session as any)._key = groupKey
-        byDate[dateKey].push(session)
-      }
-      session.items.push(item)
-      if (members != null) session.members = members
-      if (services?.length) session.services = services
-    })
-
-    const sortedDates = Object.keys(byDate).sort((a, b) => {
-      const da = new Date(a).getTime()
-      const db = new Date(b).getTime()
-      return isNaN(da) ? 1 : isNaN(db) ? -1 : da - db
-    })
-    sortedDates.forEach((dateKey) => {
-      const sessions = byDate[dateKey]
-        .filter((s: any) => s.items.length > 0)
-        .sort((a: any, b: any) => getMealTypePriority(a.menuType) - getMealTypePriority(b.menuType))
-      if (sessions.length === 0) return
-      const dateDisplay = /^\d{4}-\d{2}-\d{2}/.test(dateKey) ? formatDate(dateKey) : dateKey
-      htmlContent += `
-        <div style="grid-column: span 4; font-weight: 700; font-size: 10px; margin-top: 12px; margin-bottom: 4px; color: #444; text-transform: uppercase; padding-bottom: 2px; border-bottom: 1px solid #ddd; font-family: 'Poppins', sans-serif;">
-          📅 ${dateDisplay}
-        </div>
-      `
-      sessions.forEach((session) => {
-        const memberInfo = session.members ? ` (${session.members} Members)` : ''
-        htmlContent += `
-        <div style="grid-column: span 4; font-weight: 700; font-size: 10px; margin-top: 6px; margin-bottom: 3px; color: #222; text-transform: uppercase; padding-bottom: 2px; font-family: 'Poppins', sans-serif;">
-          ${sanitizeMealLabel(session.menuType)}${memberInfo}
-        </div>
-      `
-        session.items.forEach((item: any, index: number) => {
-          const itemName = useEnglish
-            ? (item.menuItem?.name || item.menuItem?.nameTelugu || 'Unknown Item')
-            : (item.menuItem?.nameTelugu || item.menuItem?.name || 'Unknown Item')
-          htmlContent += `
-          <div style="padding: 2px 4px; font-family: 'Poppins', sans-serif; line-height: 1.3; font-weight: 600;">
-            ${index + 1}. ${itemName}${item.customization ? ` (${item.customization})` : ''}
-          </div>
-        `
-        })
-      })
-    })
-
-    htmlContent += `
-        </div>
-      </div>
-    `
-
-    // Add stalls if any
-    if (order.stalls && Array.isArray(order.stalls) && order.stalls.length > 0) {
-      htmlContent += `
-        <div class="section">
-          <div class="section-title">Stalls</div>
-          <div style="font-size: 11px;">
-      `
-      order.stalls.forEach((stall: any, idx: number) => {
-        htmlContent += `<div class="menu-item">${idx + 1}. ${stall.category}${stall.description ? ` - ${stall.description}` : ''}</div>`
-      })
-      htmlContent += `
-          </div>
-        </div>
-      `
-    }
-
-    // Add Footer Stamp
-    htmlContent += `
-      <div style="margin-top: 30px; text-align: center; width: 100%;">
-        <img src="${window.location.origin}/images/stamp.png" style="width: 300px; max-width: 90%; height: auto; display: block; margin: 0 auto;" alt="Stamp" />
-      </div>
-    `
-
-    tempDiv.innerHTML = htmlContent
-    tempDiv.style.overflow = 'visible'
-    document.body.appendChild(tempDiv)
-
-    // Wait for images to load
-    const images = tempDiv.getElementsByTagName('img')
-    if (images.length > 0) {
-      await Promise.all(Array.from(images).map(img => {
-        if (img.complete) return Promise.resolve()
-        return new Promise((resolve, reject) => {
-          img.onload = resolve
-          img.onerror = resolve // Resolve anyway to avoid hanging
-        })
-      }))
-    }
-    // Small buffer for layout
-    await new Promise(r => setTimeout(r, 200))
-
-    try {
-      const w = tempDiv.scrollWidth
-      const h = Math.max(tempDiv.scrollHeight + 20, 1)
-      const canvas = await html2canvas(tempDiv, {
-        scale: 3, // Increased scale for better quality
-        useCORS: true,
-        logging: false,
-        backgroundColor: '#ffffff',
-        width: w,
-        height: h,
-        windowWidth: w,
-        windowHeight: h,
-      })
-
-      // Remove temporary element
-      document.body.removeChild(tempDiv)
-
-      // Create PDF from canvas (JPEG for smaller size - avoids 413 on email send)
-      const imgData = canvas.toDataURL('image/jpeg', 0.9) // Increased quality
-
-      const pdf = new jsPDF('p', 'mm', 'a4')
-      const imgWidth = 210 // A4 width in mm
-      const pageHeight = 297 // A4 height in mm
-      const imgHeight = (canvas.height * imgWidth) / canvas.width
-      let heightLeft = imgHeight
-
-      let position = 0
-
-      pdf.addImage(imgData, 'JPEG', 0, position, imgWidth, imgHeight)
-      heightLeft -= pageHeight
-
-      while (heightLeft >= 0) {
-        position = heightLeft - imgHeight
-        pdf.addPage()
-        pdf.addImage(imgData, 'JPEG', 0, position, imgWidth, imgHeight)
-        heightLeft -= pageHeight
-      }
-
-      const dataUrl = pdf.output('datauristring')
-      return dataUrl ? dataUrl.split(',')[1] : null
-    } catch (error) {
-      tempDiv.parentNode?.removeChild(tempDiv)
-      console.error('Error generating PDF:', error)
-      return null
-    }
+    tempDiv.style.width = '210mm'; tempDiv.style.padding = '15mm'; tempDiv.style.background = 'white';
+    tempDiv.innerHTML = html; document.body.appendChild(tempDiv)
+    const canvas = await html2canvas(tempDiv, { scale: 2, useCORS: true })
+    document.body.removeChild(tempDiv)
+    const pdf = new jsPDF('p', 'mm', 'a4')
+    pdf.addImage(canvas.toDataURL('image/jpeg', 0.8), 'JPEG', 0, 0, 210, (canvas.height * 210) / canvas.width)
+    pdf.save(`SKC-ARCHIVE-${order.id.slice(0, 8)}.pdf`)
   }
 
-  const renderOrderToImage = async (order: any, language: 'english' | 'telugu', showFinancials = false): Promise<string | null> => {
-    if (!order?.items?.length) return null
-    const htmlContent = buildOrderPdfHtml(order, {
-      useEnglish: language === 'english',
-      formatDate,
-      showFinancials,
-      formatCurrency,
-    })
+  const generateAndDownloadImage = async (order: any) => {
+    const html = buildOrderPdfHtml(order, { useEnglish: true, formatDate, showFinancials: true, formatCurrency })
     const tempDiv = document.createElement('div')
-    tempDiv.style.position = 'absolute'
-    tempDiv.style.left = '-9999px'
-    tempDiv.style.width = '210mm'
-    tempDiv.style.padding = '15mm'
-    tempDiv.style.fontFamily = 'Poppins, sans-serif'
-    tempDiv.style.fontSize = '11px'
-    tempDiv.style.lineHeight = '1.6'
-    tempDiv.style.background = 'white'
-    tempDiv.style.color = '#333'
-    tempDiv.innerHTML = htmlContent
-    tempDiv.style.overflow = 'visible'
-    document.body.appendChild(tempDiv)
-
-    // Wait for images to load
-    const images = tempDiv.getElementsByTagName('img')
-    if (images.length > 0) {
-      await Promise.all(Array.from(images).map(img => {
-        if (img.complete) return Promise.resolve()
-        return new Promise((resolve, reject) => {
-          img.onload = resolve
-          img.onerror = resolve
-        })
-      }))
-    }
-    // Small buffer for layout
-    await new Promise(r => setTimeout(r, 200))
-
-    try {
-      const w = tempDiv.scrollWidth
-      const h = Math.max(tempDiv.scrollHeight + 20, 1)
-      const canvas = await html2canvas(tempDiv, {
-        scale: 3.5, // High quality for images
-        useCORS: true,
-        logging: false,
-        backgroundColor: '#ffffff',
-        width: w,
-        height: h,
-        windowWidth: w,
-        windowHeight: h,
-      })
-      document.body.removeChild(tempDiv)
-      return canvas.toDataURL('image/png')
-    } catch {
-      if (document.body.contains(tempDiv)) document.body.removeChild(tempDiv)
-      return null
-    }
-  }
-
-  const handleGeneratePDF = async (order: any, language: 'english' | 'telugu') => {
-    const freshOrder = await getRequest({ url: apiUrl.GET_getOrderById(order.id) }).catch(() => order)
-    const orderToUse = freshOrder?.items?.length ? freshOrder : order
-    const pdfBase64 = await renderOrderToPdf(orderToUse, language)
-    if (!pdfBase64) {
-      toast.error('Failed to generate PDF. Please try again.')
-      return
-    }
-    const byteChars = atob(pdfBase64)
-    const byteNumbers = new Array(byteChars.length)
-    for (let i = 0; i < byteChars.length; i++) byteNumbers[i] = byteChars.charCodeAt(i)
-    const blob = new Blob([new Uint8Array(byteNumbers)], { type: 'application/pdf' })
-    const url = URL.createObjectURL(blob)
+    tempDiv.style.width = '210mm'; tempDiv.style.padding = '15mm'; tempDiv.style.background = 'white';
+    tempDiv.innerHTML = html; document.body.appendChild(tempDiv)
+    const canvas = await html2canvas(tempDiv, { scale: 2, useCORS: true })
+    document.body.removeChild(tempDiv)
     const a = document.createElement('a')
-    a.href = url
-    a.download = `order-SKC-ORDER-${(order as any).serialNumber || order.id.slice(0, 8)}.pdf`
+    a.href = canvas.toDataURL('image/png')
+    a.download = `SKC-ARCHIVE-${order.id.slice(0, 8)}.png`
     a.click()
-    URL.revokeObjectURL(url)
-    toast.success(`PDF downloaded (${language === 'english' ? 'English' : 'Telugu'})`)
-  }
-
-  const handleGenerateImage = async (order: any, language: 'english' | 'telugu' = 'english') => {
-    const freshOrder = await getRequest({ url: apiUrl.GET_getOrderById(order.id) }).catch(() => order)
-    const orderToUse = freshOrder?.items?.length ? freshOrder : order
-    const imageDataUrl = await renderOrderToImage(orderToUse, language, true)
-    if (!imageDataUrl) {
-      toast.error('Failed to generate image. Please try again.')
-      return
-    }
-    const a = document.createElement('a')
-    a.href = imageDataUrl
-    a.download = `order-SKC-ORDER-${(order as any).serialNumber || order.id.slice(0, 8)}.png`
-    a.click()
-    toast.success('Order image downloaded!')
-  }
-
-  const handleSendOrderEmail = async (order: any, language: 'english' | 'telugu') => {
-    const customerEmail = order.customer?.email
-    if (!customerEmail) {
-      toast.error('Customer email not available')
-      return
-    }
-    setEmailSending(true)
-    try {
-      const freshOrder = await getRequest({ url: apiUrl.GET_getOrderById(order.id) }).catch(() => order)
-      const orderToUse = freshOrder?.items?.length ? freshOrder : order
-      const pdfBase64 = await renderOrderToPdf(orderToUse, language)
-      if (!pdfBase64) {
-        toast.error('Failed to generate PDF. Please try again.')
-        return
-      }
-
-      await postRequest({
-        url: apiUrl.POST_sendOrderEmail(order.id),
-        data: { email: customerEmail, pdfBase64 }
-      })
-      toast.success(`Order sent to ${customerEmail}`)
-      setEmailModal({ isOpen: false, order: null })
-    } catch (error: any) {
-      toast.error(error.message || 'Failed to send order email')
-    } finally {
-      setEmailSending(false)
-    }
   }
 
   return (
-    <div className="p-4 md:p-6">
-      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 md:gap-0 mb-6">
-        <h1 className="text-2xl md:text-3xl font-bold text-gray-800">Past Events</h1>
-        <div className="flex flex-wrap items-center gap-2 md:gap-3">
-          {selectedOrderIds.length > 1 && (
-            <button
-              onClick={() => setIsMergeModalOpen(true)}
-              className="flex items-center gap-2 px-6 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-all shadow-md animate-in slide-in-from-right-4"
-            >
-              <FaLayerGroup />
-              Merge Selected ({selectedOrderIds.length})
-            </button>
-          )}
-          <button
-            onClick={() => setShowFilters(!showFilters)}
-            className="flex items-center gap-2 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors"
-          >
-            <FaFilter />
-            {showFilters ? 'Hide Filters' : 'Show Filters'}
-          </button>
-        </div>
-      </div>
-
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 mb-6">
-        <div className="bg-white rounded-lg shadow-md p-4 border border-gray-100">
-          <div className="flex items-center justify-between mb-1">
-            <p className="text-xs font-medium text-gray-500 uppercase">Total</p>
-            <FaChartLine className="text-primary-500" />
-          </div>
-          <p className="text-2xl font-bold text-gray-800">{statusSummary.totalOrders}</p>
-        </div>
-        <div className="bg-white rounded-lg shadow-md p-4 border border-gray-100">
-          <div className="flex items-center justify-between mb-1">
-            <p className="text-xs font-medium text-gray-500 uppercase">Pending</p>
-            <FaClock className="text-yellow-500" />
-          </div>
-          <p className="text-2xl font-bold text-yellow-600">{statusSummary.pending}</p>
-        </div>
-        <div className="bg-white rounded-lg shadow-md p-4 border border-gray-100">
-          <div className="flex items-center justify-between mb-1">
-            <p className="text-xs font-medium text-gray-500 uppercase">In Progress</p>
-            <FaClock className="text-blue-500" />
-          </div>
-          <p className="text-2xl font-bold text-blue-600">{statusSummary.inProgress}</p>
-        </div>
-        <div className="bg-white rounded-lg shadow-md p-4 border border-gray-100">
-          <div className="flex items-center justify-between mb-1">
-            <p className="text-xs font-medium text-gray-500 uppercase">Completed</p>
-            <FaCheckCircle className="text-green-500" />
-          </div>
-          <p className="text-2xl font-bold text-green-600">{statusSummary.completed}</p>
-        </div>
-        <div className="bg-white rounded-lg shadow-md p-4 border border-gray-100">
-          <div className="flex items-center justify-between mb-1">
-            <p className="text-xs font-medium text-gray-500 uppercase">Cancelled</p>
-            <FaTimesCircle className="text-red-500" />
-          </div>
-          <p className="text-2xl font-bold text-red-600">{statusSummary.cancelled}</p>
-        </div>
-      </div>
-
-      {/* Filters */}
-      {showFilters && (
-        <div className="bg-white rounded-lg shadow-md p-6 mb-6">
-          <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4">
-            {/* Status Filter */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Status</label>
-              <select
-                value={statusFilter}
-                onChange={(e) => setStatusFilter(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-              >
-                <option value="all">Historical Logs</option>
-                <option value="completed">Completed</option>
-                <option value="cancelled">Cancelled</option>
-                <option value="pending">Pending (Active)</option>
-                <option value="in_progress">In Progress (Active)</option>
-              </select>
-            </div>
-
-            {/* Customer Search */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Customer/Event Search</label>
-              <input
-                type="text"
-                value={customerSearch}
-                onChange={(e) => setCustomerSearch(e.target.value)}
-                placeholder="Search by customer name, phone, email, or event name"
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-              />
-            </div>
-
-            {/* Specific Date Filter */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Specific Date</label>
-              <div className="relative">
-                <input
-                  type="date"
-                  value={filterDate}
-                  onChange={(e) => setFilterDate(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-                />
-                {filterDate && (
-                  <button
-                    onClick={() => setFilterDate('')}
-                    className="absolute right-2 top-1/2 transform -translate-y-1/2 p-1 text-gray-400 hover:text-gray-600 focus:outline-none bg-white rounded-md"
-                    title="Clear Specific Date"
-                  >
-                    ✕
-                  </button>
-                )}
-              </div>
-            </div>
-
-            {/* Month Filter */}
-            <div className={`transition-opacity duration-300 ${filterDate ? 'opacity-40 pointer-events-none' : 'opacity-100'}`}>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Month</label>
-              <select
-                value={selectedMonth}
-                onChange={(e) => setSelectedMonth(parseInt(e.target.value))}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-              >
-                {['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'].map((m, i) => (
-                  <option key={m} value={i + 1}>{m}</option>
-                ))}
-              </select>
-            </div>
-
-            {/* Year Filter */}
-            <div className={`transition-opacity duration-300 ${filterDate ? 'opacity-40 pointer-events-none' : 'opacity-100'}`}>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Year</label>
-              <select
-                value={selectedYear}
-                onChange={(e) => setSelectedYear(parseInt(e.target.value))}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-              >
-                {[2024, 2025, 2026].map(y => (
-                  <option key={y} value={y}>{y}</option>
-                ))}
-              </select>
-            </div>
-          </div>
-          <div className="mt-4 flex justify-end">
-            <button
-              onClick={() => {
-                setStatusFilter('all')
-                setCustomerSearch('')
-                setFilterDate('')
-                setSelectedMonth(new Date().getMonth() + 1)
-                setSelectedYear(new Date().getFullYear())
-                setCurrentPage(1)
-              }}
-              className="px-4 py-2 text-sm text-gray-600 hover:text-gray-800 underline"
-            >
-              Clear Filters
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* Orders - Mobile Card Layout (only on mobile) */}
-      {filteredOrders.length === 0 ? (
-        <div className="bg-white rounded-lg shadow-md p-8 text-center text-gray-500">
-          No orders found.
-        </div>
-      ) : (
-        <>
-          {/* Mobile Cards - visible only below md */}
-          <div className="md:hidden space-y-3">
-            {paginatedOrders.map((order: any) => {
-              const mealTypeAmounts = order.mealTypeAmounts as Record<string, { date: string; numberOfMembers?: number } | number> | null
-              const eventDates: string[] = []
-              if (mealTypeAmounts) {
-                Object.values(mealTypeAmounts).forEach((v) => {
-                  if (typeof v === 'object' && v !== null && v.date && !eventDates.includes(v.date)) {
-                    eventDates.push(v.date)
-                  }
-                })
-              }
-              eventDates.sort((a, b) => new Date(a).getTime() - new Date(b).getTime())
-              const firstDate = eventDates[0] ? new Date(eventDates[0]).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }) : null
-
-              return (
-                <div key={order.id} className="bg-white rounded-xl shadow-md border border-gray-100 overflow-hidden">
-                  <div className="p-4">
-                    <div className="flex items-start justify-between gap-3 mb-3">
-                      <div className="flex-1 min-w-0">
-                        <div className="font-semibold text-gray-900 truncate">{order.customer?.name || 'Unknown'}</div>
-                        <div className="text-sm text-gray-500 print:hidden">{order.customer?.phone || ''}</div>
-                        {(order as any).eventName && (
-                          <div className="text-sm text-gray-700 mt-0.5 truncate">{(order as any).eventName}</div>
-                        )}
-                      </div>
-                      <input
-                        type="checkbox"
-                        checked={selectedOrderIds.includes(order.id)}
-                        onChange={() => toggleOrderSelection(order.id)}
-                        className="w-5 h-5 rounded border-gray-300 text-primary-600 focus:ring-primary-500 flex-shrink-0 mt-0.5"
-                      />
-                    </div>
-                    <div className="flex flex-wrap items-center gap-2 mb-3">
-                      {firstDate && (
-                        <span className="inline-flex items-center gap-1 px-2 py-1 bg-slate-100 rounded-lg text-xs font-medium text-slate-700">
-                          <FaCalendarAlt className="text-slate-500" /> {firstDate}
-                          {eventDates.length > 1 && <span className="text-slate-500">+{eventDates.length - 1}</span>}
-                        </span>
-                      )}
-                      <select
-                        value={order.status}
-                        onChange={(e) => {
-                          if (e.target.value === order.status) return
-                          setStatusConfirm({ isOpen: true, id: order.id, newStatus: e.target.value, oldStatus: order.status })
-                        }}
-                        className={`px-3 py-1.5 text-xs font-semibold rounded-full border-0 cursor-pointer touch-manipulation ${order.status === 'completed' ? 'bg-green-100 text-green-800' : order.status === 'in_progress' ? 'bg-yellow-100 text-yellow-800' : order.status === 'cancelled' ? 'bg-red-100 text-red-800' : 'bg-gray-100 text-gray-800'}`}
-                      >
-                        <option value="pending">Pending</option>
-                        <option value="in_progress">In Progress</option>
-                        <option value="completed">Completed</option>
-                        <option value="cancelled">Cancelled</option>
-                      </select>
-                    </div>
-                    <div className="flex flex-wrap gap-2 pt-3 border-t border-gray-100 print:hidden">
-                      <Link href={`/orders/summary/${order.id}`} className="p-2.5 bg-blue-50 text-blue-600 rounded-lg touch-manipulation" title="Summary"><FaChartLine /></Link>
-                      <Link href={`/orders/edit/${order.id}`} className="p-2.5 bg-yellow-50 text-yellow-600 rounded-lg touch-manipulation" title="Edit"><FaEdit /></Link>
-                      <button onClick={() => setPdfLanguageModal({ isOpen: true, order })} className="p-2.5 bg-secondary-50 text-secondary-600 rounded-lg touch-manipulation" title="PDF"><FaFilePdf /></button>
-                      <button onClick={() => handleGenerateImage(order, 'english')} className="p-2.5 bg-indigo-50 text-indigo-600 rounded-lg touch-manipulation" title="Image"><FaFileImage /></button>
-                      <button onClick={() => order.customer?.email ? setEmailModal({ isOpen: true, order }) : toast.error('Customer email not available')} className="p-2.5 bg-green-50 text-green-600 rounded-lg touch-manipulation" title="Email"><FaEnvelope /></button>
-                      <button onClick={() => handleDelete(order.id)} className="p-2.5 bg-red-50 text-red-600 rounded-lg touch-manipulation" title="Delete"><FaTrash /></button>
-                    </div>
-                  </div>
-                </div>
-              )
-            })}
-          </div>
-
-          {/* Desktop Table - visible only md and up */}
-          <div className="hidden md:block bg-white rounded-lg shadow-md overflow-hidden">
-            <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th className="px-6 py-3 text-left">
-                      <input
-                        type="checkbox"
-                        checked={selectedOrderIds.length === paginatedOrders.length && paginatedOrders.length > 0}
-                        onChange={(e) => {
-                          if (e.target.checked) {
-                            setSelectedOrderIds(paginatedOrders.map(o => o.id))
-                          } else {
-                            setSelectedOrderIds([])
-                          }
-                        }}
-                        className="w-4 h-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500"
-                      />
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Customer</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Event Name</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Event Type</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Venue</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Event Dates / Guests</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Created</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider print:hidden">Actions</th>
-                  </tr>
-                </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
-                  {paginatedOrders.map((order: any) => {
-                    // Extract all event dates from meal types
-                    const mealTypeAmounts = order.mealTypeAmounts as Record<string, { amount: number; date: string; numberOfMembers?: number } | number> | null
-                    let totalMembersAll = 0
-                    if (mealTypeAmounts) {
-                      Object.values(mealTypeAmounts).forEach((value) => {
-                        if (typeof value === 'object' && value !== null && (value as any).numberOfMembers) {
-                          totalMembersAll += Number((value as any).numberOfMembers) || 0
-                        }
-                      })
-                    }
-                    const eventDates: Array<{ mealType: string; date: string; key: string; members?: number }> = []
-                    if (mealTypeAmounts) {
-                      Object.entries(mealTypeAmounts).forEach(([key, data]) => {
-                        if (typeof data === 'object' && data !== null && data.date) {
-                          // Priority: 1. menuType in data, 2. the session key if it's not a UUID/long ID, 3. "Meal"
-                          let displayLabel = (data as any).menuType
-                          if (!displayLabel) {
-                            if (key.length > 20 || key.includes('-') || key.startsWith('session_')) {
-                              // Try to extract name from session_NAME_serial
-                              if (key.startsWith('session_')) {
-                                const parts = key.split('_')
-                                if (parts.length > 1 && parts[1] !== 'merged') {
-                                  displayLabel = parts[1]
-                                } else {
-                                  displayLabel = 'Meal'
-                                }
-                              } else {
-                                displayLabel = 'Meal'
-                              }
-                            } else {
-                              displayLabel = key
-                            }
-                          }
-                          eventDates.push({
-                            mealType: displayLabel,
-                            date: data.date,
-                            key,
-                            members: (data as any).numberOfMembers
-                          })
-                        }
-                      })
-                    }
-
-                    return (
-                      <tr key={order.id} className="hover:bg-slate-50 transition-all border-b border-slate-100 group">
-                        <td className="px-6 py-4">
-                          <input
-                            type="checkbox"
-                            checked={selectedOrderIds.includes(order.id)}
-                            onChange={() => toggleOrderSelection(order.id)}
-                            className="w-4 h-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500"
-                          />
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="text-sm font-medium text-gray-900">{order.customer?.name || 'Unknown'}</div>
-                          <div className="text-sm text-gray-500 print:hidden">{order.customer?.phone || ''}</div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="text-sm font-medium text-gray-900">
-                            {(order as any).eventName || <span className="text-gray-400">-</span>}
-                          </div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="text-sm text-gray-900">
-                            {(order as any).eventType || <span className="text-gray-400">-</span>}
-                          </div>
-                        </td>
-                        <td className="px-6 py-4">
-                          <div className="text-sm text-gray-900 max-w-[200px] truncate" title={(order as any).venue || ''}>
-                            {(order as any).venue || <span className="text-gray-400">-</span>}
-                          </div>
-                        </td>
-                        <td className="px-6 py-4">
-                          <div className="text-sm text-gray-900 space-y-4">
-                            {(() => {
-                              const isCombinedOrder = eventDates.some(ed => ed.key.startsWith('session_') || ed.key.includes('_merged_'))
-                              const groupedByDate: Record<string, typeof eventDates> = {}
-                              eventDates.forEach(ed => {
-                                if (!groupedByDate[ed.date]) groupedByDate[ed.date] = []
-                                groupedByDate[ed.date].push(ed)
-                              })
-
-                              const sortedDates = Object.keys(groupedByDate).sort((a, b) => new Date(a).getTime() - new Date(b).getTime())
-
-                              return sortedDates.length > 0 ? (
-                                sortedDates.map((date) => (
-                                  <div key={date} className="relative group/date">
-                                    {/* Date Header / Badge */}
-                                    <div className="flex items-center gap-2 mb-1.5">
-                                      <div className="flex items-center gap-1.5 bg-slate-100 px-2 py-0.5 rounded-md border border-slate-200 shadow-sm">
-                                        <FaCalendarAlt className="text-slate-400 text-[10px]" />
-                                        <span className="text-[10px] font-black text-slate-600 uppercase tracking-widest leading-none">
-                                          {new Date(date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
-                                        </span>
-                                      </div>
-
-                                      {isCombinedOrder && sortedDates.length > 1 && (
-                                        <button
-                                          onClick={(e) => {
-                                            e.stopPropagation();
-                                            handleDiscardDate(order.id, date);
-                                          }}
-                                          className="text-red-400 hover:text-red-600 p-0.5 opacity-0 group-hover/date:opacity-100 transition-all hover:scale-110"
-                                          title="Separate all sessions on this date"
-                                        >
-                                          <FaTimesCircle size={14} />
-                                        </button>
-                                      )}
-                                    </div>
-
-                                    {/* Sessions List */}
-                                    <div className="flex flex-wrap gap-1.5 pl-1 border-l-2 border-slate-100 ml-1">
-                                      {groupedByDate[date].map(({ mealType, key, members }) => (
-                                        <div key={key} className="flex items-center gap-1.5 bg-white px-2.5 py-1 rounded-lg border border-slate-200 shadow-sm group/session hover:border-primary-300 transition-colors">
-                                          <span className="capitalize text-[11px] font-bold text-slate-700">
-                                            {sanitizeMealLabel(mealType)}
-                                            {members ? (
-                                              <span className="ml-1 text-primary-600 font-black">({members})</span>
-                                            ) : order.numberOfMembers ? (
-                                              <span className="ml-1 text-slate-400 font-medium">
-                                                ({totalMembersAll > 0 ? totalMembersAll : order.numberOfMembers})
-                                              </span>
-                                            ) : null}
-                                          </span>
-                                          {isCombinedOrder && eventDates.length > 1 && (
-                                            <button
-                                              onClick={(e) => {
-                                                e.stopPropagation();
-                                                handleDiscardSession(order.id, key);
-                                              }}
-                                              className="text-slate-300 hover:text-red-500 opacity-0 group-hover/session:opacity-100 transition-all hover:scale-110"
-                                              title="Separate only this session"
-                                            >
-                                              <FaTimesCircle size={12} />
-                                            </button>
-                                          )}
-                                        </div>
-                                      ))}
-                                    </div>
-                                  </div>
-                                ))
-                              ) : (
-                                <span className="text-gray-400 italic">No dates set</span>
-                              )
-                            })()}
-                          </div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <select
-                            value={order.status}
-                            onChange={(e) => {
-                              if (e.target.value === order.status) return
-                              setStatusConfirm({
-                                isOpen: true,
-                                id: order.id,
-                                newStatus: e.target.value,
-                                oldStatus: order.status
-                              })
-                            }}
-                            className={`px-3 py-1.5 text-xs font-semibold rounded-full border-0 cursor-pointer focus:ring-2 focus:ring-primary-500 focus:outline-none ${order.status === 'completed' ? 'bg-green-100 text-green-800 hover:bg-green-200' :
-                              order.status === 'in_progress' ? 'bg-yellow-100 text-yellow-800 hover:bg-yellow-200' :
-                                order.status === 'cancelled' ? 'bg-red-100 text-red-800 hover:bg-red-200' :
-                                  'bg-gray-100 text-gray-800 hover:bg-gray-200'
-                              }`}
-                          >
-                            <option value="pending">Pending</option>
-                            <option value="in_progress">In Progress</option>
-                            <option value="completed">Completed</option>
-                            <option value="cancelled">Cancelled</option>
-                          </select>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                          {formatDateTime(order.createdAt)}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium print:hidden">
-                          <div className="flex gap-2">
-                            <Link
-                              href={`/orders/summary/${order.id}`}
-                              className="text-blue-600 hover:text-blue-900 p-2 hover:bg-blue-50 rounded transition-colors"
-                              title="Order Summary"
-                            >
-                              <FaChartLine />
-                            </Link>
-                            <Link
-                              href={`/orders/edit/${order.id}`}
-                              className="text-yellow-600 hover:text-yellow-900 p-2 hover:bg-yellow-50 rounded transition-colors"
-                              title="Edit Order"
-                            >
-                              <FaEdit />
-                            </Link>
-                            <button
-                              onClick={() => setPdfLanguageModal({ isOpen: true, order })}
-                              className="text-secondary-500 hover:text-secondary-700 p-2 hover:bg-secondary-50 rounded"
-                              title="Download PDF"
-                            >
-                              <FaFilePdf />
-                            </button>
-                            <button
-                              onClick={() => handleGenerateImage(order, 'english')}
-                              className="text-indigo-600 hover:text-indigo-800 p-2 hover:bg-indigo-50 rounded"
-                              title="Download Image (PNG)"
-                            >
-                              <FaFileImage />
-                            </button>
-                            <button
-                              onClick={() => {
-                                if (!order.customer?.email) {
-                                  toast.error('Customer email not available')
-                                  return
-                                }
-                                setEmailModal({ isOpen: true, order })
-                              }}
-                              className="text-green-600 hover:text-green-800 p-2 hover:bg-green-50 rounded"
-                              title="Email Order (Menu + Event Details)"
-                            >
-                              <FaEnvelope />
-                            </button>
-                            <button
-                              onClick={() => handleDelete(order.id)}
-                              className="text-secondary-500 hover:text-secondary-700 p-2 hover:bg-secondary-50 rounded"
-                              title="Delete"
-                            >
-                              <FaTrash />
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    )
-                  })}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        </>
-      )}
-
-      {/* Pagination Controls */}
-      {orders.length > itemsPerPage && (
-        <div className="mt-4 flex items-center justify-between bg-white px-4 py-3 rounded-lg shadow-md">
-          <div className="text-sm text-gray-700">
-            Showing {startIndex + 1} to {Math.min(endIndex, orders.length)} of {orders.length} orders
-          </div>
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
-              disabled={currentPage === 1}
-              className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${currentPage === 1
-                ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
-                : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-                }`}
-            >
-              <FaChevronLeft />
-            </button>
-            <div className="flex gap-1">
-              {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => {
-                if (
-                  page === 1 ||
-                  page === totalPages ||
-                  (page >= currentPage - 1 && page <= currentPage + 1)
-                ) {
-                  return (
-                    <button
-                      key={page}
-                      onClick={() => setCurrentPage(page)}
-                      className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${currentPage === page
-                        ? 'bg-blue-600 text-white'
-                        : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-                        }`}
-                    >
-                      {page}
-                    </button>
-                  )
-                } else if (page === currentPage - 2 || page === currentPage + 2) {
-                  return <span key={page} className="px-2 text-gray-400">...</span>
-                }
-                return null
-              })}
-            </div>
-            <button
-              onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
-              disabled={currentPage === totalPages}
-              className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${currentPage === totalPages
-                ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
-                : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-                }`}
-            >
-              <FaChevronRight />
-            </button>
-          </div>
-        </div>
-      )}
-
-      <ConfirmModal
-        isOpen={deleteConfirm.isOpen}
-        title="Delete Order"
-        message="Are you sure you want to delete this order? This action cannot be undone."
-        confirmText="Delete"
-        cancelText="Cancel"
-        onConfirm={confirmDelete}
-        onCancel={() => setDeleteConfirm({ isOpen: false, id: null })}
-        variant="danger"
-      />
-
-      <ConfirmModal
-        isOpen={statusConfirm.isOpen}
-        title="Change Order Status"
-        message={
+    <div className="p-4 md:p-8 bg-[#fafafa] min-h-screen pt-20">
+      <div className="max-w-[1600px] mx-auto">
+        <header className="flex flex-col xl:flex-row justify-between items-start xl:items-center gap-6 mb-10">
           <div>
-            <p>Are you sure you want to change the status from <strong>{statusConfirm.oldStatus?.replace('_', ' ').toUpperCase()}</strong> to <strong>{statusConfirm.newStatus?.replace('_', ' ').toUpperCase()}</strong>?</p>
-            {statusConfirm.newStatus === 'in_progress' && <p className="mt-2 text-sm text-yellow-600 font-medium">This will generate a bill if one does not exist.</p>}
-            {statusConfirm.newStatus === 'completed' && <p className="mt-2 text-sm text-green-600 font-medium">This will mark the bill as fully PAID.</p>}
-          </div>
-        }
-        confirmText="Yes, Update Status"
-        cancelText="Cancel"
-        onConfirm={confirmStatusChange}
-        onCancel={() => setStatusConfirm({ isOpen: false, id: null, newStatus: '', oldStatus: '' })}
-        variant="info"
-      />
-
-      {/* PDF Language Selection Modal */}
-      {pdfLanguageModal.isOpen && pdfLanguageModal.order && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-xl shadow-xl p-6 max-w-sm w-full mx-4">
-            <h3 className="text-lg font-semibold text-gray-800 mb-2">Download Order PDF</h3>
-            <p className="text-sm text-gray-600 mb-4">Do you want the menu items in English or Telugu?</p>
-            <div className="flex gap-3">
-              <button
-                onClick={() => {
-                  handleGeneratePDF(pdfLanguageModal.order, 'english')
-                  setPdfLanguageModal({ isOpen: false, order: null })
-                }}
-                className="flex-1 px-4 py-2.5 bg-primary-500 text-white rounded-lg font-medium hover:bg-primary-600 transition-colors"
-              >
-                English
-              </button>
-              <button
-                onClick={() => {
-                  handleGeneratePDF(pdfLanguageModal.order, 'telugu')
-                  setPdfLanguageModal({ isOpen: false, order: null })
-                }}
-                className="flex-1 px-4 py-2.5 bg-primary-500 text-white rounded-lg font-medium hover:bg-primary-600 transition-colors"
-              >
-                α░ñα▒åα░▓α▒üα░ùα▒ü (Telugu)
-              </button>
-            </div>
-            <button
-              onClick={() => setPdfLanguageModal({ isOpen: false, order: null })}
-              className="mt-3 w-full px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-lg text-sm font-medium transition-colors"
-            >
-              Cancel
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* Email Order Modal */}
-      {emailModal.isOpen && emailModal.order && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-xl shadow-xl p-6 max-w-sm w-full mx-4">
-            <h3 className="text-lg font-semibold text-gray-800 mb-2">Email Order to Customer</h3>
-            <p className="text-sm text-gray-600 mb-4">
-              Send order (menu + event details) to{' '}
-              <span className="font-medium text-gray-800">{emailModal.order.customer?.email}</span>
+            <h1 className="text-4xl font-black text-gray-900 tracking-tight">Archive Vault</h1>
+            <p className="text-gray-400 text-[10px] font-black uppercase tracking-[0.2em] mt-1 flex items-center gap-2">
+              <FaLayerGroup className="opacity-40" /> Historical Operation Catalog
             </p>
-            <p className="text-xs text-gray-500 mb-4">Menu items in:</p>
-            <div className="flex gap-3">
-              <button
-                onClick={() => handleSendOrderEmail(emailModal.order, 'english')}
-                disabled={emailSending}
-                className="flex-1 px-4 py-2.5 bg-green-600 text-white rounded-lg font-medium hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-              >
-                {emailSending ? 'Sending...' : 'English'}
-              </button>
-              <button
-                onClick={() => handleSendOrderEmail(emailModal.order, 'telugu')}
-                disabled={emailSending}
-                className="flex-1 px-4 py-2.5 bg-green-600 text-white rounded-lg font-medium hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-              >
-                {emailSending ? 'Sending...' : 'α░ñα▒åα░▓α▒üα░ùα▒ü'}
-              </button>
-            </div>
-            <button
-              onClick={() => setEmailModal({ isOpen: false, order: null })}
-              disabled={emailSending}
-              className="mt-3 w-full px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-lg text-sm font-medium transition-colors disabled:opacity-50"
-            >
-              Cancel
-            </button>
           </div>
-        </div>
-      )}
-      <ConfirmModal
-        isOpen={separationConfirm.isOpen}
-        title="Separate Session"
-        message={`Are you sure you want to separate the session "${separationConfirm.sessionLabel}" from this group? It will be removed from this order and become its own separate record in the list.`}
-        confirmText="Separate"
-        cancelText="Keep in Group"
-        onConfirm={confirmSeparation}
-        onCancel={() => setSeparationConfirm({ isOpen: false, orderId: null, sessionKey: null, sessionLabel: '', date: '' })}
-        variant="warning"
-      />
+          <div className="flex gap-3">
+             <button onClick={() => setShowFilters(!showFilters)} className={`px-6 py-3 rounded-xl font-black text-xs uppercase transition-all ${showFilters ? 'bg-gray-900 text-white shadow-xl' : 'bg-white border text-gray-400'}`}>
+                <FaFilter className="inline mr-2" /> Global Scopes
+             </button>
+             {selectedOrderIds.length > 1 && (
+               <button onClick={() => setIsMergeModalOpen(true)} className="px-6 py-3 bg-emerald-600 text-white rounded-xl font-black text-xs uppercase shadow-lg">Merge Items ({selectedOrderIds.length})</button>
+             )}
+          </div>
+        </header>
 
-      <MergeOrdersModal
-        isOpen={isMergeModalOpen}
-        onClose={() => setIsMergeModalOpen(false)}
-        selectedOrders={orders.filter(o => selectedOrderIds.includes(o.id))}
-        onMerge={handleMergeConfirm}
-        isMerging={isMerging}
-      />
+        <AnimatePresence>
+          {showFilters && (
+            <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="mb-10 overflow-hidden">
+               <div className="v2-card p-8 bg-gray-900 grid grid-cols-1 md:grid-cols-4 gap-6 text-white border-none">
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-black text-amber-400 uppercase">Search Identity</label>
+                    <input type="text" value={customerSearch} onChange={e => setCustomerSearch(e.target.value)} className="w-full h-11 bg-white/5 border border-white/10 rounded-xl px-4 text-xs font-black outline-none focus:ring-1 focus:ring-amber-500" placeholder="Name/Phone..." />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-black text-amber-400 uppercase">Archive Status</label>
+                    <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)} className="w-full h-11 bg-white/5 border border-white/10 rounded-xl px-4 text-xs font-black outline-none uppercase">
+                      <option value="all" className="bg-slate-900">Historical Logs</option>
+                      <option value="completed" className="bg-slate-900">Completed</option>
+                      <option value="cancelled" className="bg-slate-900">Cancelled</option>
+                    </select>
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-black text-amber-400 uppercase">Timeline Key</label>
+                    <input type="date" value={filterDate} onChange={e => setFilterDate(e.target.value)} className="w-full h-11 bg-white/5 border border-white/10 rounded-xl px-4 text-xs font-black outline-none [color-scheme:dark]" />
+                  </div>
+                  <div className="flex items-end">
+                    <button onClick={() => { setStatusFilter('all'); setCustomerSearch(''); setFilterDate(''); }} className="w-full h-11 bg-white/10 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-white/20 transition-all">Clear Scopes</button>
+                  </div>
+               </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-6 mb-10">
+           <div className="v2-card p-6 border-slate-50 shadow-sm"><p className="text-[9px] font-black text-gray-400 uppercase mb-2">Total Archive</p><p className="text-2xl font-black text-gray-900">{statusSummary.total}</p></div>
+           <div className="v2-card p-6 border-slate-50 shadow-sm"><p className="text-[9px] font-black text-emerald-400 uppercase mb-2">Verified</p><p className="text-2xl font-black text-emerald-600">{statusSummary.completed}</p></div>
+           <div className="v2-card p-6 border-slate-50 shadow-sm"><p className="text-[9px] font-black text-rose-400 uppercase mb-2">Terminated</p><p className="text-2xl font-black text-rose-600">{statusSummary.cancelled}</p></div>
+           <div className="v2-card p-6 border-slate-50 shadow-sm"><p className="text-[9px] font-black text-amber-400 uppercase mb-2">Cluster Ready</p><p className="text-2xl font-black text-amber-600">{selectedOrderIds.length}</p></div>
+        </div>
+
+        <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+          {paginatedOrders.length === 0 ? (
+            <div className="col-span-full v2-card p-20 text-center opacity-40 uppercase font-black text-xs tracking-widest">No vault data found</div>
+          ) : (
+            paginatedOrders.map((order, idx) => (
+              <motion.div key={order.id} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: idx * 0.05 }} className="v2-card p-8 bg-white flex flex-col group border-slate-200">
+                <div className="flex justify-between items-start mb-6">
+                   <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 mb-2">
+                         <span className={`w-3 h-3 rounded-full ${order.status === 'completed' ? 'bg-emerald-500' : 'bg-rose-500'}`} />
+                         <span className="text-[10px] font-black text-gray-400 uppercase">ID: {order.id.slice(0, 12)}</span>
+                      </div>
+                      <h3 className="text-2xl font-black text-slate-900 uppercase tracking-tighter truncate">{order.customer?.name || 'Walk-in Subject'}</h3>
+                      <p className="text-[10px] font-black text-primary-600 uppercase mt-1">{(order as any).eventName || 'Audited Event'}</p>
+                   </div>
+                   <input type="checkbox" checked={selectedOrderIds.includes(order.id)} onChange={() => toggleOrderSelection(order.id)} className="w-6 h-6 border-2 border-slate-100 rounded-xl" />
+                </div>
+                
+                <div className="flex items-center justify-between pt-6 border-t border-slate-50 mt-auto">
+                   <div className="text-[10px] font-black text-slate-400 uppercase">Snapshot: {formatDate(order.createdAt)}</div>
+                   <div className="flex gap-2">
+                      <button onClick={() => generateAndDownloadPDF(order, 'english')} className="v2-btn-icon bg-slate-50 text-slate-500 hover:bg-primary-600 hover:text-white transition-all"><FaFilePdf size={14} /></button>
+                      <button onClick={() => generateAndDownloadImage(order)} className="v2-btn-icon bg-slate-50 text-slate-500 hover:bg-indigo-600 hover:text-white transition-all"><FaFileImage size={14} /></button>
+                      <button onClick={() => handleDelete(order.id)} className="v2-btn-icon bg-slate-50 text-rose-300 hover:bg-rose-600 hover:text-white transition-all"><FaTrash size={14} /></button>
+                   </div>
+                </div>
+              </motion.div>
+            ))
+          )}
+        </div>
+
+        {totalPages > 1 && (
+          <footer className="mt-12 flex justify-between items-center bg-white p-6 rounded-3xl border border-slate-100 shadow-xl">
+             <div className="text-[10px] font-black text-slate-400 uppercase">Vault Segment {currentPage} of {totalPages}</div>
+             <div className="flex gap-2">
+               <button onClick={() => setCurrentPage(p => Math.max(1, p - 1))} disabled={currentPage === 1} className="w-10 h-10 border rounded-xl flex items-center justify-center opacity-50 hover:opacity-100 transition-opacity"><FaChevronLeft size={10} /></button>
+               <button onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))} disabled={currentPage === totalPages} className="w-10 h-10 border rounded-xl flex items-center justify-center opacity-50 hover:opacity-100 transition-opacity"><FaChevronRight size={10} /></button>
+             </div>
+          </footer>
+        )}
+      </div>
+
+      <ConfirmModal isOpen={deleteConfirm.isOpen} title="Purge Record" message="Irreversible data erasure. Proceed?" confirmText="Purge" onConfirm={confirmDelete} onCancel={() => setDeleteConfirm({ isOpen: false, id: null })} variant="danger" />
+      <MergeOrdersModal isOpen={isMergeModalOpen} onClose={() => setIsMergeModalOpen(false)} selectedOrders={orders.filter(o => selectedOrderIds.includes(o.id))} onMerge={handleMergeConfirm} isMerging={isMerging} />
     </div>
   )
 }

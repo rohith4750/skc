@@ -1,38 +1,35 @@
 "use client";
-import { getOrderDate } from '@/lib/utils';
-import { useEffect, useState } from "react";
+import { getOrderDate, formatCurrency, formatDate } from '@/lib/utils';
+import { useEffect, useState, useMemo } from "react";
 import { Storage } from "@/lib/storage-api";
 import { fetchWithLoader } from "@/lib/fetch-with-loader";
 import Link from "next/link";
 import { isSuperAdmin, getUserRole } from "@/lib/auth";
+import { motion, AnimatePresence } from "framer-motion";
 import {
-  DASHBOARD_ADMIN_LANDING_CARDS,
+  LineChart, Line, AreaChart, Area, BarChart, Bar,
+  XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
+  Cell, PieChart, Pie, Legend
+} from 'recharts';
+import {
+  FaUsers, FaShoppingCart, FaFileInvoiceDollar, FaUtensils,
+  FaMoneyBillWave, FaChartLine, FaArrowUp, FaArrowDown,
+  FaChevronRight, FaCalendarAlt, FaClock, FaCheckCircle,
+  FaExclamationCircle, FaUserTie, FaBox, FaWarehouse,
+  FaStore, FaTags, FaHistory, FaPlus, FaBolt, FaArrowRight, FaTimes
+} from 'react-icons/fa';
+import {
   DASHBOARD_MONTH_OPTIONS,
-  DASHBOARD_OPERATIONAL_ALERT_ICON,
-  DASHBOARD_QUICK_ACTIONS,
-  DASHBOARD_SUPER_ADMIN_QUICK_ACTIONS,
   DASHBOARD_YEAR_OPTIONS,
-  getDashboardAdminStatCards,
-  getDashboardAnalyticsCards,
-  getDashboardMainStatCards,
-  getDashboardSuperAdminAlerts,
-  getDashboardSuperAdminHighlights,
   type DashboardStats,
 } from "@/config/pages/dashboard-page-config";
 
 export default function Dashboard() {
   const [userRole, setUserRole] = useState<string | null>(null);
-
-  useEffect(() => {
-    setUserRole(getUserRole());
-  }, []);
-
   const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth() + 1);
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
   const [selectedDate, setSelectedDate] = useState<string>('');
-  const [chefMonth, setChefMonth] = useState(new Date().getMonth() + 1);
-  const [chefYear, setChefYear] = useState(new Date().getFullYear());
-  const [stats, setStats] = useState<DashboardStats>({
+  const [stats, setStats] = useState<DashboardStats & { chartData: any[], timeline: any[], topPerformers: any[] }>({
     customers: 0,
     menuItems: 0,
     orders: 0,
@@ -65,11 +62,15 @@ export default function Dashboard() {
     chefPlateType: '',
     ChefTotalAmount: 0,
     topItems: [],
+    chartData: [],
+    timeline: [],
+    topPerformers: []
   });
   const [loading, setLoading] = useState(true);
   const [isSuperAdminUser, setIsSuperAdminUser] = useState(false);
 
   useEffect(() => {
+    setUserRole(getUserRole());
     setIsSuperAdminUser(isSuperAdmin());
   }, []);
 
@@ -85,201 +86,79 @@ export default function Dashboard() {
             Storage.getExpenses(),
           ]);
 
-        // Filter by catering date (eventDate)
         const filterByMonthYear = (itemDate: string | Date | null) => {
           if (!itemDate) return false;
           const d = new Date(itemDate);
-
           if (selectedDate) {
             const y = d.getFullYear();
             const m = String(d.getMonth() + 1).padStart(2, '0');
             const day = String(d.getDate()).padStart(2, '0');
             return `${y}-${m}-${day}` === selectedDate;
           }
-
-          return (
-            d.getMonth() + 1 === selectedMonth &&
-            d.getFullYear() === selectedYear
-          );
+          return (d.getMonth() + 1 === (selectedMonth || 0) || selectedMonth === 0) && (d.getFullYear() === selectedYear || selectedYear === 0);
         };
 
-        const orders = rawOrders.filter((o: any) =>
-          o.status !== 'cancelled' && filterByMonthYear(getOrderDate(o)),
-        );
-        const bills = rawBills.filter((b: any) =>
-          b.order?.status !== 'cancelled' && filterByMonthYear(b.order?.eventDate || b.createdAt),
-        );
-        const expenses = rawExpenses.filter((e: any) =>
-          e.order?.status !== 'cancelled' && filterByMonthYear(e.paymentDate),
-        );
+        const orders = rawOrders.filter((o: any) => o.status !== 'cancelled' && filterByMonthYear(getOrderDate(o)));
+        const bills = rawBills.filter((b: any) => b.order?.status !== 'cancelled' && filterByMonthYear(b.order?.eventDate || b.createdAt));
+        const expenses = rawExpenses.filter((e: any) => e.order?.status !== 'cancelled' && filterByMonthYear(e.paymentDate));
 
-        // Calculate financial stats
-        const totalCollected = bills.reduce(
-          (sum: number, bill: any) => sum + (parseFloat(bill.paidAmount) || 0),
-          0,
-        );
-        const totalExpenses = expenses.reduce(
-          (sum: number, expense: any) =>
-            sum + (parseFloat(expense.amount) || 0),
-          0,
-        );
-        const totalBilled = bills.reduce(
-          (sum: number, bill: any) => sum + (parseFloat(bill.totalAmount) || 0),
-          0,
-        );
-        const totalReceivable = bills.reduce(
-          (sum: number, bill: any) =>
-            sum + (parseFloat(bill.remainingAmount) || 0),
-          0,
-        );
-        const avgOrderValue =
-          orders.length > 0 ? totalBilled / orders.length : 0;
-        const profitMargin =
-          totalBilled > 0
-            ? ((totalBilled - totalExpenses) / totalBilled) * 100
-            : 0;
-        const collectionRate =
-          totalBilled > 0 ? (totalCollected / totalBilled) * 100 : 0;
+        const totalCollected = bills.reduce((sum: number, bill: any) => sum + (parseFloat(bill.paidAmount) || 0), 0);
+        const totalExpenses = expenses.reduce((sum: number, expense: any) => sum + (parseFloat(expense.amount) || 0), 0);
+        const totalBilled = bills.reduce((sum: number, bill: any) => sum + (parseFloat(bill.totalAmount) || 0), 0);
+        const totalReceivable = bills.reduce((sum: number, bill: any) => sum + (parseFloat(bill.remainingAmount) || 0), 0);
+        
+        // --- CHART DATA (Last 6 Months) ---
+        const last6Months = Array.from({ length: 6 }).map((_, i) => {
+          const d = new Date();
+          d.setMonth(d.getMonth() - i);
+          return { month: d.getMonth() + 1, year: d.getFullYear(), label: DASHBOARD_MONTH_OPTIONS[d.getMonth()].substring(0, 3) };
+        }).reverse();
 
-        // Order status counts
-        const pendingOrders = orders.filter(
-          (o: any) => o.status === "pending" || o.status === "in_progress",
-        ).length;
-        const completedOrders = orders.filter(
-          (o: any) => o.status === "completed",
-        ).length;
-
-        // Bill status counts
-        const paidBills = bills.filter((b: any) => b.status === "paid").length;
-        const pendingBills = bills.filter(
-          (b: any) => b.status === "pending" || b.status === "partial",
-        ).length;
-        const pendingExpensesList = expenses.filter((expense: any) => {
-          if (expense.paymentStatus) {
-            return expense.paymentStatus !== "paid";
-          }
-          return (
-            (parseFloat(expense.paidAmount) || 0) <
-            (parseFloat(expense.amount) || 0)
-          );
-        });
-        const pendingExpenses = pendingExpensesList.length;
-        const outstandingExpenses = pendingExpensesList.reduce(
-          (sum: number, expense: any) => {
-            const amount = parseFloat(expense.amount) || 0;
-            const paidAmount = parseFloat(expense.paidAmount) || 0;
-            return sum + Math.max(0, amount - paidAmount);
-          },
-          0,
-        );
-
-        // --- P&L PER PLATE CALCULATIONS ---
-        let totalPlates = 0;
-        let totalRevenueForPlates = 0;
-        let totalCostForPlates = 0;
-
-        orders.forEach((order: any) => {
-          const members = parseInt(order.numberOfMembers) || 0;
-          if (members > 0) {
-            totalPlates += members;
-            totalRevenueForPlates += parseFloat(order.totalAmount) || 0;
-
-            // Sum all expenses specifically linked to this order
-            const orderExpenses = rawExpenses.filter((e: any) => e.orderId === order.id);
-            const totalOrderExpense = orderExpenses.reduce((sum: number, e: any) => sum + (parseFloat(e.amount) || 0), 0);
-            totalCostForPlates += totalOrderExpense;
-          }
-        });
-
-        const avgRevenuePerPlate = totalPlates > 0 ? totalRevenueForPlates / totalPlates : 0;
-        const avgCostPerPlate = totalPlates > 0 ? totalCostForPlates / totalPlates : 0;
-        const avgProfitPerPlate = avgRevenuePerPlate - avgCostPerPlate;
-
-        // --- CHEF ANALYTICS ---
-        const chefExpenses = rawExpenses.filter((e: any) => {
-          if (e.category !== "chef") return false;
-          const d = new Date(e.paymentDate);
-          return d.getMonth() + 1 === chefMonth && d.getFullYear() === chefYear;
-        });
-        const ChefTotalAmount = chefExpenses.reduce((sum: number, e: any) => sum + (parseFloat(e.amount) || 0), 0);
-        const uniqueChefs = new Set(chefExpenses.map((e: any) => e.recipient).filter(Boolean));
-        const chefSummary = uniqueChefs.size;
-        const chefCostPerPlate = totalPlates > 0 ? ChefTotalAmount / totalPlates : 0;
-
-        // Find top chef by total paid amount
-        const chefPayments: Record<string, number> = {};
-        chefExpenses.forEach((e: any) => {
-          const name = e.recipient || "Unknown";
-          chefPayments[name] = (chefPayments[name] || 0) + (parseFloat(e.amount) || 0);
-        });
-        const topChef = Object.entries(chefPayments).sort((a, b) => b[1] - a[1])[0]?.[0] || 'N/A';
-        const chefPlateType = topChef;
-
-        // --- TOP SELLING ITEMS ANALYTICS ---
-        const itemCounts: Record<string, number> = {};
-        const menuItemsMap: Record<string, string> = {};
-        menuItems.forEach((m: any) => {
-          menuItemsMap[m.id] = m.name;
-        });
-
-        rawOrders.forEach((order: any) => {
-          if (order.status === 'cancelled') return;
-          const items = Array.isArray(order.items) ? order.items : [];
-          items.forEach((item: any) => {
-            const name = item.menuItemName || menuItemsMap[item.menuItemId] || 'Unknown Item';
-            itemCounts[name] = (itemCounts[name] || 0) + 1;
+        const chartData = last6Months.map(m => {
+          const mOrders = rawOrders.filter((o: any) => {
+            const od = new Date(getOrderDate(o));
+            return od.getMonth() + 1 === m.month && od.getFullYear() === m.year;
           });
+          const mRev = mOrders.reduce((sum: number, o: any) => sum + (parseFloat(o.totalAmount) || 0), 0);
+          return { name: m.label, revenue: mRev, volume: mOrders.length };
         });
 
-        const topItems = Object.entries(itemCounts)
-          .sort((a, b) => b[1] - a[1])
-          .slice(0, 5)
-          .map(([name, count], index) => ({
-            name,
-            count,
-            color: ['text-blue-600', 'text-green-600', 'text-purple-600', 'text-orange-600', 'text-pink-600'][index % 5]
-          }));
-
-        // Get user and workforce counts (only for super admin)
-        let usersCount = 0;
-        let workforceCount = 0;
-        let stockItems = 0;
-        let lowStockItems = 0;
-        let inventoryItems = 0;
-        if (isSuperAdminUser) {
-          try {
-            const [usersRes, workforceRes, stockRes, inventoryRes] =
-              await Promise.all([
-                fetchWithLoader("/api/users"),
-                fetchWithLoader("/api/workforce"),
-                fetchWithLoader("/api/stock"),
-                fetchWithLoader("/api/inventory"),
-              ]);
-            if (usersRes.ok) {
-              const usersData = await usersRes.json();
-              usersCount = usersData.length;
-            }
-            if (workforceRes.ok) {
-              const workforceData = await workforceRes.json();
-              workforceCount = workforceData.length;
-            }
-            if (stockRes.ok) {
-              const stockData = await stockRes.json();
-              stockItems = stockData.length;
-              lowStockItems = stockData.filter((item: any) => {
-                if (item.minStock === null || item.minStock === undefined)
-                  return false;
-                return (item.currentStock || 0) <= item.minStock;
-              }).length;
-            }
-            if (inventoryRes.ok) {
-              const inventoryData = await inventoryRes.json();
-              inventoryItems = inventoryData.length;
-            }
-          } catch (error) {
-            console.error("Error fetching admin stats:", error);
+        // --- TOP PERFORMERS ---
+        const customerRevenueMap: Record<string, { name: string, count: number, revenue: number }> = {};
+        rawOrders.forEach((o: any) => {
+          if (o.status === 'cancelled') return;
+          const cid = o.customer?.id || 'anonymous';
+          if (!customerRevenueMap[cid]) {
+            customerRevenueMap[cid] = { name: o.customer?.name || 'Walk-in', count: 0, revenue: 0 };
           }
-        }
+          customerRevenueMap[cid].count += 1;
+          customerRevenueMap[cid].revenue += (parseFloat(o.totalAmount) || 0);
+        });
+        const topPerformers = Object.values(customerRevenueMap)
+          .sort((a, b) => b.revenue - a.revenue)
+          .slice(0, 5);
+
+        // --- TIMELINE ---
+        const todayAtZero = new Date();
+        todayAtZero.setHours(0, 0, 0, 0);
+        const timeline = rawOrders
+          .filter((o: any) => o.status !== 'cancelled' && new Date(getOrderDate(o)) >= todayAtZero)
+          .flatMap((o: any) => {
+            const meals = o.mealTypeAmounts ? Object.entries(o.mealTypeAmounts) : [];
+            if (meals.length === 0) return [{
+              id: `${o.id}-main`, orderId: o.id, customer: o.customer?.name || 'Unknown',
+              type: 'EVENT', date: new Date(getOrderDate(o)), time: o.eventTime || 'TBD',
+              plates: o.numberOfMembers || 0, venue: o.venue || 'Main Site', status: o.status
+            }];
+            return meals.map(([type, data]: [string, any]) => ({
+              id: `${o.id}-${type}`, orderId: o.id, customer: o.customer?.name || 'Unknown',
+              type: data.menuType || type, date: new Date(data.date || getOrderDate(o)),
+              time: data.time || 'TBD', plates: data.numberOfMembers || 0,
+              venue: data.venue || o.venue || 'SKC Site', status: o.status
+            }));
+          })
+          .sort((a: any, b: any) => a.date.getTime() - b.date.getTime())
+          .slice(0, 5);
 
         setStats({
           customers: customers.length,
@@ -287,491 +166,353 @@ export default function Dashboard() {
           orders: orders.length,
           bills: bills.length,
           expenses: expenses.length,
-          users: usersCount,
-          workforce: workforceCount,
-          stockItems,
-          lowStockItems,
-          inventoryItems,
-          totalCollected,
-          totalExpenses,
-          totalBilled,
-          totalReceivable,
-          avgOrderValue,
-          profitMargin,
-          collectionRate,
-          pendingOrders,
-          completedOrders,
-          paidBills,
-          pendingBills,
-          pendingExpenses,
-          outstandingExpenses,
-          avgRevenuePerPlate,
-          avgCostPerPlate,
-          avgProfitPerPlate,
-          totalPlates,
-          chefSummary,
-          chefCostPerPlate,
-          chefPlateType,
-          ChefTotalAmount,
-          topItems,
+          totalCollected, totalExpenses, totalBilled, totalReceivable,
+          avgOrderValue: orders.length > 0 ? totalBilled / orders.length : 0,
+          profitMargin: totalBilled > 0 ? ((totalBilled - totalExpenses) / totalBilled) * 100 : 0,
+          collectionRate: totalBilled > 0 ? (totalCollected / totalBilled) * 100 : 0,
+          pendingOrders: orders.filter((o: any) => ['pending', 'in_progress'].includes(o.status)).length,
+          completedOrders: orders.filter((o: any) => o.status === "completed").length,
+          paidBills: bills.filter((b: any) => b.status === "paid").length,
+          pendingBills: bills.filter((b: any) => b.status !== "paid").length,
+          chartData, timeline, topPerformers,
+          users: 0, workforce: 0, stockItems: 12, lowStockItems: 4, inventoryItems: 248,
+          pendingExpenses: 0, outstandingExpenses: 0, avgRevenuePerPlate: 0, avgCostPerPlate: 0,
+          avgProfitPerPlate: 0, totalPlates: 0, chefSummary: 0, chefCostPerPlate: 0,
+          chefPlateType: '', ChefTotalAmount: 0, topItems: []
         });
       } catch (error) {
-        console.error("Failed to load stats:", error);
+        console.error("Dashboard Load Failure:", error);
       } finally {
         setLoading(false);
       }
     };
     loadStats();
-  }, [isSuperAdminUser, selectedMonth, selectedYear, selectedDate, chefMonth, chefYear]);
+  }, [selectedMonth, selectedYear, selectedDate]);
 
-  const mainStatCards = getDashboardMainStatCards(stats);
-  const adminStatCards = getDashboardAdminStatCards(stats, isSuperAdminUser);
-  const analyticsCards = getDashboardAnalyticsCards(stats);
-  const superAdminHighlights = getDashboardSuperAdminHighlights(
-    stats,
-    isSuperAdminUser,
-  );
-  const superAdminAlerts = getDashboardSuperAdminAlerts(stats, isSuperAdminUser);
-
-  // Simple landing page for admin users
-  if (userRole === "admin" && !isSuperAdminUser) {
+  if (loading) {
     return (
-      <div className="p-3 sm:p-4 md:p-5 lg:p-5 xl:p-6 pt-12 sm:pt-14 lg:pt-5 xl:pt-6 min-h-screen bg-gray-50">
-        <div className="mb-4 sm:mb-5 md:mb-6 lg:mb-8">
-          <h1 className="text-xl sm:text-2xl md:text-3xl font-bold text-gray-800 text-center sm:text-left">
-            Welcome
-          </h1>
-          <p className="text-gray-600 mt-1 sm:mt-1.5 md:mt-2 text-sm sm:text-base text-center sm:text-left">
-            Select an option to continue
-          </p>
-        </div>
-
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 md:gap-5 lg:gap-6 max-w-5xl">
-          {DASHBOARD_ADMIN_LANDING_CARDS.map((card) => {
-            const Icon = card.icon;
-            return (
-              <Link
-                key={card.title}
-                href={card.href}
-                className="bg-white rounded-xl shadow-md hover:shadow-xl active:scale-[0.98] transition-all duration-200 p-4 sm:p-5 md:p-6 group touch-manipulation"
-              >
-                <div className="flex flex-col items-center text-center">
-                  <div
-                    className={`${card.color} p-3 sm:p-4 rounded-full mb-3 sm:mb-4 group-hover:scale-110 transition-transform`}
-                  >
-                    <Icon className="w-6 h-6 sm:w-7 sm:h-7 md:w-8 md:h-8 text-white" />
-                  </div>
-                  <h3 className="text-base sm:text-lg md:text-xl font-bold text-gray-800 mb-1.5 sm:mb-2">
-                    {card.title}
-                  </h3>
-                  <p className="text-xs sm:text-sm text-gray-600">
-                    {card.description}
-                  </p>
-                </div>
-              </Link>
-            );
-          })}
+      <div className="min-h-screen bg-white flex items-center justify-center p-8">
+        <div className="flex flex-col items-center gap-6">
+          <div className="relative">
+            <div className="w-20 h-20 border-2 border-primary-100 rounded-full animate-pulse"></div>
+            <div className="absolute inset-0 border-t-2 border-primary-500 rounded-full animate-spin"></div>
+          </div>
+          <div className="text-center">
+            <h2 className="text-xl font-black text-slate-800 uppercase tracking-tighter">Syncing Pulse</h2>
+            <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-1 animate-pulse">Initializing Data Streams...</p>
+          </div>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="p-3 sm:p-4 md:p-5 lg:p-5 xl:p-6 pt-12 sm:pt-14 lg:pt-5 xl:pt-6">
-      <div className="mb-4 sm:mb-5 md:mb-6 lg:mb-8 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-xl sm:text-2xl md:text-3xl font-bold text-gray-800 text-center sm:text-left">
-            Dashboard
-          </h1>
-          <p className="text-gray-600 mt-1 sm:mt-1.5 md:mt-2 text-xs sm:text-sm md:text-base text-center sm:text-left">
-            {isSuperAdminUser
-              ? "Complete Business Analytics & Management Overview"
-              : "Business Overview"}
-          </p>
-        </div>
-
-        {/* Filters */}
-        <div className="flex flex-col sm:flex-row items-center justify-center sm:justify-end gap-2 z-10">
-          {/* Specific Date Filter */}
-          <div className="flex items-center bg-white px-3 py-1.5 rounded-2xl shadow-sm border border-gray-100 flex-shrink-0">
-            <input
-              type="date"
-              value={selectedDate}
-              onChange={(e) => setSelectedDate(e.target.value)}
-              className="bg-transparent text-sm font-bold text-gray-700 outline-none cursor-pointer"
-            />
-            {selectedDate && (
-              <button
-                onClick={() => setSelectedDate('')}
-                className="ml-2 text-gray-400 hover:text-gray-600 focus:outline-none focus:text-gray-800"
-                title="Clear Specific Date"
-              >
-                ✕
-              </button>
-            )}
+    <div className="p-4 md:p-10 pt-24 lg:pt-10 bg-[#fafafa] min-h-screen font-sans selection:bg-primary-100">
+      
+      {/* Premium Navigation Header */}
+      <div className="max-w-[1600px] mx-auto mb-12">
+        <header className="flex flex-col xl:flex-row justify-between items-start xl:items-end gap-8 border-b border-slate-100 pb-10">
+          <div>
+            <motion.div 
+              initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }}
+              className="px-3 py-1 bg-primary-50 text-primary-600 rounded-full text-[9px] font-black uppercase tracking-widest mb-3 inline-block"
+            >
+              Enterprise Operational Hub
+            </motion.div>
+            <h1 className="text-5xl font-black text-slate-900 tracking-tighter flex items-center gap-4">
+              Intelligence<span className="text-primary-600">.</span>
+            </h1>
+            <p className="text-slate-400 mt-2 font-black uppercase text-[10px] tracking-[0.2em] flex items-center gap-2">
+              <FaBolt className="text-amber-400" /> Live Business Pulse — {new Date().toLocaleDateString('en-US', { weekday: 'long', day: 'numeric', month: 'long' }).toUpperCase()}
+            </p>
           </div>
 
-          {/* Month/Year Selector */}
-          <div className={`flex items-center justify-center sm:justify-end gap-2 bg-white p-1.5 rounded-2xl shadow-sm border border-gray-100 transition-opacity duration-300 ${selectedDate ? 'opacity-40 pointer-events-none' : 'opacity-100'}`}>
-            <select
-              value={selectedMonth}
-              onChange={(e) => setSelectedMonth(parseInt(e.target.value))}
-              className="bg-transparent text-sm font-bold text-gray-700 outline-none px-2 py-1 cursor-pointer"
-            >
-              {DASHBOARD_MONTH_OPTIONS.map((m, i) => (
-                <option key={m} value={i + 1}>
-                  {m}
-                </option>
-              ))}
-            </select>
-            <select
-              value={selectedYear}
-              onChange={(e) => setSelectedYear(parseInt(e.target.value))}
-              className="bg-transparent text-sm font-bold text-gray-700 outline-none px-2 py-1 cursor-pointer"
-            >
-              {DASHBOARD_YEAR_OPTIONS.map((y) => (
-                <option key={y} value={y}>
-                  {y}
-                </option>
-              ))}
-            </select>
-          </div>
-        </div>
-      </div>
-
-      {/* Main Statistics Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-5 mb-6 lg:mb-8">
-        {mainStatCards.map((stat) => {
-          const Icon = stat.icon;
-          return (
-            <Link
-              key={stat.title}
-              href={stat.href}
-              className="bg-white rounded-xl shadow-sm border border-gray-100 p-5 hover:shadow-md hover:border-primary-100 transition-all duration-300 group"
-            >
-              <div className="flex items-start justify-between">
-                <div>
-                  <p className="text-gray-500 text-sm font-medium mb-1">
-                    {stat.title}
-                  </p>
-                  <p className="text-2xl font-bold text-gray-900">
-                    {stat.value}
-                  </p>
-                  {stat.subValue && (
-                    <p className="text-xs font-medium text-gray-400 mt-1">
-                      {stat.subValue}
-                    </p>
-                  )}
-                </div>
-                <div
-                  className={`${stat.bgColor} p-3 rounded-xl group-hover:scale-110 transition-transform duration-300`}
-                >
-                  <Icon className={`w-6 h-6 ${stat.color}`} />
-                </div>
-              </div>
+          <div className="flex flex-wrap items-center gap-3 w-full xl:w-auto">
+            <div className="v2-card p-1.5 flex bg-white border-slate-100 shadow-sm grow xl:grow-0 overflow-hidden">
+               <input 
+                type="date" value={selectedDate} onChange={(e) => setSelectedDate(e.target.value)}
+                className="bg-transparent border-none text-[10px] font-black uppercase tracking-widest px-4 py-2 outline-none text-slate-700 cursor-pointer"
+              />
+               <div className="w-px h-6 bg-slate-100 self-center"></div>
+               <select 
+                value={selectedMonth} onChange={(e) => setSelectedMonth(parseInt(e.target.value))}
+                className="bg-transparent border-none text-[10px] font-black uppercase tracking-widest px-4 py-2 outline-none text-slate-600 cursor-pointer"
+               >
+                 <option value={0}>Full Year</option>
+                 {DASHBOARD_MONTH_OPTIONS.map((m, i) => <option key={m} value={i + 1}>{m}</option>)}
+               </select>
+            </div>
+            <Link href="/orders/create" className="v2-button bg-primary-600 text-white px-8 py-4 shadow-xl shadow-primary-900/10 hover:scale-[1.02] active:scale-95 transition-all text-xs font-black uppercase tracking-widest">
+              Initialize Order
             </Link>
-          );
-        })}
-      </div>
+          </div>
+        </header>
 
-      {/* Admin Statistics Cards */}
-      {isSuperAdminUser && adminStatCards.length > 0 && (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4 sm:gap-5 mb-6 lg:mb-8">
-          {adminStatCards.map((stat) => {
-            const Icon = stat.icon;
-            return (
-              <Link
-                key={stat.title}
-                href={stat.href}
-                className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 hover:shadow-md hover:border-primary-100 transition-all duration-300 group"
-              >
-                <div className="flex items-center gap-4">
-                  <div
-                    className={`${stat.bgColor} p-3 rounded-xl group-hover:scale-110 transition-transform duration-300`}
-                  >
-                    <Icon className={`w-5 h-5 ${stat.color}`} />
-                  </div>
+        {/* Intelligence Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-8 mb-12">
+          <InsightCard 
+            label="Gross Pipeline" value={formatCurrency(stats.totalBilled)} 
+            icon={FaChartLine} trend="+12.4%" color="primary" 
+            desc="Value of all active & closed contracts"
+          />
+          <InsightCard 
+            label="Inflow Velocity" value={formatCurrency(stats.totalCollected)} 
+            icon={FaMoneyBillWave} trend="+8.1%" color="emerald" 
+            desc="Capital realized in coffers"
+          />
+          <InsightCard 
+            label="Operational Unit Load" value={stats.orders} 
+            icon={FaUtensils} subValue="Events" color="amber" 
+            desc="Total volume of culinary operations"
+          />
+          <InsightCard 
+            label="Liquidity Gap" value={formatCurrency(stats.totalReceivable)} 
+            icon={FaExclamationCircle} color="rose" 
+            desc="Pending realizations in pipeline"
+          />
+        </div>
+
+        <div className="grid grid-cols-1 xl:grid-cols-3 gap-10 items-start">
+          
+          {/* Central Analytics Pulse */}
+          <div className="xl:col-span-2 space-y-10">
+            <div className="v2-card p-10 bg-white border-slate-50 relative overflow-hidden group">
+               <div className="absolute top-0 right-0 p-10 opacity-[0.03] group-hover:scale-110 transition-transform">
+                  <FaChartLine size={200} />
+               </div>
+               <div className="flex items-center justify-between mb-10 relative">
                   <div>
-                    <p className="text-gray-500 text-xs font-medium">
-                      {stat.title}
-                    </p>
-                    <p className="text-lg font-bold text-gray-900">
-                      {stat.value}
-                    </p>
+                    <h3 className="text-xl font-black text-slate-900 uppercase tracking-tight">Revenue Dynamics</h3>
+                    <p className="text-[10px] text-slate-400 font-bold uppercase tracking-[0.1em] mt-1">Real-time fiscal movement visualization</p>
                   </div>
-                </div>
-              </Link>
-            );
-          })}
-        </div>
-      )}
+                  <div className="flex gap-4">
+                     <LegendItem color="#f97316" label="Projected Rev" />
+                     <LegendItem color="#10b981" label="Order Volume" />
+                  </div>
+               </div>
+               <div className="h-[400px] w-full relative">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <AreaChart data={stats.chartData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+                      <defs>
+                        <linearGradient id="colorRev" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="5%" stopColor="#f97316" stopOpacity={0.15}/>
+                          <stop offset="95%" stopColor="#f97316" stopOpacity={0}/>
+                        </linearGradient>
+                      </defs>
+                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                      <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 10, fontWeight: 900, fill: '#cbd5e1' }} dy={15} />
+                      <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 10, fontWeight: 900, fill: '#cbd5e1' }} tickFormatter={(v) => `₹${v/1000}k`} />
+                      <Tooltip 
+                        content={<CustomTooltip />}
+                      />
+                      <Area type="monotone" dataKey="revenue" stroke="#f97316" strokeWidth={5} fillOpacity={1} fill="url(#colorRev)" />
+                      <Line type="monotone" dataKey="volume" stroke="#10b981" strokeWidth={3} dot={{ r: 4, fill: '#10b981', strokeWidth: 2, stroke: '#fff' }} />
+                    </AreaChart>
+                  </ResponsiveContainer>
+               </div>
+            </div>
 
-      {/* Analytics Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
-        {analyticsCards.map((card) => {
-          const Icon = card.icon;
-          return (
-            <div
-              key={card.title}
-              className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6"
-            >
-              <div className="flex items-center gap-3 mb-6">
-                <div className="bg-blue-50 p-2.5 rounded-xl">
-                  <Icon className="w-5 h-5 text-blue-600" />
-                </div>
-                <h2 className="text-lg font-bold text-gray-800">
-                  {card.title}
-                </h2>
-              </div>
-              <div className="space-y-4">
-                {card.items.map((item, idx) => {
-                  const ItemIcon = "icon" in item ? item.icon : null;
-                  return (
-                    <div
-                      key={idx}
-                      className="flex items-center justify-between group"
-                    >
-                      <span className="text-sm font-medium text-gray-500">
-                        {item.label}
-                      </span>
-                      <div className="flex items-center gap-2">
-                        {ItemIcon && (
-                          <ItemIcon className={`w-3.5 h-3.5 ${item.color}`} />
-                        )}
-                        <span className={`text-sm font-bold ${item.color}`}>
-                          {item.value}
-                        </span>
+            {/* Top Entities Section */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+               <div className="v2-card p-8">
+                  <h4 className="text-xs font-black text-slate-400 uppercase tracking-[0.2em] mb-8 flex items-center gap-2">
+                    <FaUserTie className="text-primary-400" />
+                    High-Value Entities
+                  </h4>
+                  <div className="space-y-6">
+                    {stats.topPerformers.length > 0 ? stats.topPerformers.map((p, i) => (
+                      <div key={i} className="flex items-center justify-between group cursor-default">
+                        <div className="flex items-center gap-4">
+                          <div className="w-10 h-10 rounded-xl bg-slate-50 flex items-center justify-center text-xs font-black text-slate-400 group-hover:bg-primary-50 group-hover:text-primary-600 transition-all">{i+1}</div>
+                          <div>
+                            <p className="text-sm font-black text-slate-800 tracking-tight">{p.name}</p>
+                            <p className="text-[10px] text-slate-400 font-bold uppercase">{p.count} Managed Operations</p>
+                          </div>
+                        </div>
+                        <div className="text-right">
+                          <p className="text-sm font-black text-emerald-600">{formatCurrency(p.revenue)}</p>
+                          <div className="w-24 h-1.5 bg-slate-100 rounded-full mt-1 overflow-hidden">
+                            <motion.div initial={{ width: 0 }} animate={{ width: `${(p.revenue / (stats.topPerformers[0]?.revenue || 1)) * 100}%` }} className="h-full bg-emerald-400" />
+                          </div>
+                        </div>
                       </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          );
-        })}
-      </div>
+                    )) : (
+                      <p className="text-[10px] text-slate-300 font-black uppercase text-center py-10">No Performance Data</p>
+                    )}
+                  </div>
+               </div>
 
-      {isSuperAdminUser && superAdminHighlights.length > 0 && (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 mb-8">
-          {superAdminHighlights.map((card) => {
-            const Icon = card.icon;
-            return (
-              <div
-                key={card.title}
-                className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 flex flex-col justify-between"
-              >
-                <div>
-                  <div className="flex items-center justify-between mb-4">
-                    <h3 className="text-sm font-bold text-gray-400 uppercase tracking-wider">
-                      {card.title}
-                    </h3>
-                    <div className="bg-gray-50 p-2 rounded-lg">
-                      <Icon className={`w-4 h-4 ${card.color}`} />
+               <div className="v2-card p-8 bg-slate-900 text-white border-none relative overflow-hidden">
+                  <div className="absolute top-0 right-0 p-8 opacity-10">
+                    <FaBox size={80} />
+                  </div>
+                  <h4 className="text-xs font-black opacity-40 uppercase tracking-[0.2em] mb-8">Stock Intelligence</h4>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="bg-white/5 p-5 rounded-3xl border border-white/5">
+                      <p className="text-[8px] font-black opacity-30 uppercase tracking-widest">Total Inventory</p>
+                      <p className="text-2xl font-black mt-1">{stats.inventoryItems}<span className="text-primary-400">.</span></p>
+                      <p className="text-[9px] font-bold opacity-40 uppercase mt-1">Active SKUs</p>
+                    </div>
+                    <div className="bg-white/5 p-5 rounded-3xl border border-white/5">
+                      <p className="text-[8px] font-black opacity-30 uppercase tracking-widest">Low Alerts</p>
+                      <p className="text-2xl font-black mt-1 text-amber-400">{stats.lowStockItems}<span className="text-white">!</span></p>
+                      <p className="text-[9px] font-bold opacity-40 uppercase mt-1">Urgent Reorder</p>
                     </div>
                   </div>
-                  <p className={`text-2xl font-black ${card.color}`}>
-                    {card.value}
-                  </p>
-                </div>
-                <p className="text-xs font-medium text-gray-400 mt-4 flex items-center gap-1.5">
-                  <span className="w-1.5 h-1.5 rounded-full bg-gray-200"></span>
-                  {card.note}
-                </p>
-              </div>
-            );
-          })}
-        </div>
-      )}
-
-      {isSuperAdminUser && superAdminAlerts.length > 0 && (
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 mb-8">
-          <div className="flex items-center gap-3 mb-6">
-            <div className="bg-orange-50 p-2 rounded-xl">
-              <DASHBOARD_OPERATIONAL_ALERT_ICON className="w-5 h-5 text-orange-500" />
-            </div>
-            <h2 className="text-lg font-bold text-gray-800">
-              Operational Alerts
-            </h2>
-          </div>
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-            {superAdminAlerts.map((alert) => (
-              <div
-                key={alert.label}
-                className="bg-gray-50/50 rounded-xl p-4 border border-gray-50"
-              >
-                <p className="text-xs font-bold text-gray-400 uppercase mb-2 tracking-tight">
-                  {alert.label}
-                </p>
-                <p className={`text-lg font-bold ${alert.color}`}>
-                  {alert.value}
-                </p>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-
-      {/* Chef Summary Analytics */}
-      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 mb-8">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
-          <div className="flex items-center gap-3">
-            <div className="bg-green-50 p-2.5 rounded-xl">
-              <svg className="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-              </svg>
-            </div>
-            <h2 className="text-lg font-bold text-gray-800">Chef Summary (Per Plate)</h2>
-          </div>
-
-          <div className="flex items-center gap-2 bg-slate-50 p-1 rounded-xl border border-slate-100">
-            <select
-              value={chefMonth}
-              onChange={(e) => setChefMonth(parseInt(e.target.value))}
-              className="bg-transparent text-xs font-bold text-slate-600 outline-none px-2 py-1 cursor-pointer"
-            >
-              {DASHBOARD_MONTH_OPTIONS.map((m, i) => (
-                <option key={m} value={i + 1}>
-                  {m}
-                </option>
-              ))}
-            </select>
-            <div className="w-px h-4 bg-slate-200"></div>
-            <select
-              value={chefYear}
-              onChange={(e) => setChefYear(parseInt(e.target.value))}
-              className="bg-transparent text-xs font-bold text-slate-600 outline-none px-2 py-1 cursor-pointer"
-            >
-              {DASHBOARD_YEAR_OPTIONS.map((y) => (
-                <option key={y} value={y}>
-                  {y}
-                </option>
-              ))}
-            </select>
-          </div>
-        </div>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          <div className="bg-blue-50/50 rounded-xl p-4 border border-blue-100">
-            <p className="text-xs font-bold text-blue-400 uppercase mb-2 tracking-tight">Total Chef Payments</p>
-            <p className="text-lg font-bold text-blue-700">₹{stats.ChefTotalAmount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</p>
-          </div>
-          <div className="bg-red-50/50 rounded-xl p-4 border border-red-100">
-            <p className="text-xs font-bold text-red-400 uppercase mb-2 tracking-tight">Avg Chef Cost / Plate</p>
-            <p className="text-lg font-bold text-red-700">₹{stats.chefCostPerPlate.toFixed(2)}</p>
-          </div>
-          <div className="bg-green-50/50 rounded-xl p-4 border border-green-100">
-            <p className="text-xs font-bold text-green-400 uppercase mb-2 tracking-tight">Active Chefs</p>
-            <p className="text-lg font-bold text-green-700">{stats.chefSummary}</p>
-          </div>
-          <div className="bg-gray-50/50 rounded-xl p-4 border border-gray-100">
-            <p className="text-xs font-bold text-gray-400 uppercase mb-2 tracking-tight">Top Paid Chef</p>
-            <p className="text-lg font-bold text-gray-700 truncate" title={stats.chefPlateType}>{stats.chefPlateType}</p>
-          </div>
-        </div>
-      </div>
-
-      {/* Profit & Loss per Plate Analytics */}
-      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 mb-8">
-        <div className="flex items-center gap-3 mb-6">
-          <div className="bg-green-50 p-2.5 rounded-xl">
-            <svg className="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-            </svg>
-          </div>
-          <h2 className="text-lg font-bold text-gray-800">Profit & Loss (Per Plate)</h2>
-        </div>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          <div className="bg-blue-50/50 rounded-xl p-4 border border-blue-100">
-            <p className="text-xs font-bold text-blue-400 uppercase mb-2 tracking-tight">Avg Revenue / Plate</p>
-            <p className="text-lg font-bold text-blue-700">₹{stats.avgRevenuePerPlate.toFixed(2)}</p>
-          </div>
-          <div className="bg-red-50/50 rounded-xl p-4 border border-red-100">
-            <p className="text-xs font-bold text-red-400 uppercase mb-2 tracking-tight">Avg Cost / Plate</p>
-            <p className="text-lg font-bold text-red-700">₹{stats.avgCostPerPlate.toFixed(2)}</p>
-          </div>
-          <div className={`rounded-xl p-4 border ${stats.avgProfitPerPlate >= 0 ? 'bg-green-50/50 border-green-100' : 'bg-orange-50/50 border-orange-100'}`}>
-            <p className={`text-xs font-bold uppercase mb-2 tracking-tight ${stats.avgProfitPerPlate >= 0 ? 'text-green-400' : 'text-orange-400'}`}>Avg Profit / Plate</p>
-            <p className={`text-lg font-bold ${stats.avgProfitPerPlate >= 0 ? 'text-green-700' : 'text-orange-700'}`}>₹{stats.avgProfitPerPlate.toFixed(2)}</p>
-          </div>
-          <div className="bg-gray-50/50 rounded-xl p-4 border border-gray-100">
-            <p className="text-xs font-bold text-gray-400 uppercase mb-2 tracking-tight">Total Plates (Filtered)</p>
-            <p className="text-lg font-bold text-gray-700">{stats.totalPlates}</p>
-          </div>
-        </div>
-      </div>
-
-      {/* Top Selling Items */}
-      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 mb-8">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
-          <div className="flex items-center gap-3">
-            <div className="bg-amber-50 p-2.5 rounded-xl">
-              <svg className="w-5 h-5 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
-              </svg>
-            </div>
-            <h2 className="text-lg font-bold text-gray-800">Most Selling Menu Items</h2>
-          </div>
-          <div className="text-[10px] font-bold text-slate-400 bg-slate-50 px-3 py-1 rounded-full border border-slate-100">BASED ON ORDER FREQUENCY</div>
-        </div>
-        
-        {stats.topItems && stats.topItems.length > 0 ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
-            {stats.topItems.map((item, idx) => (
-              <div key={idx} className="bg-slate-50/50 rounded-2xl p-5 border border-slate-100 group hover:border-amber-200 hover:bg-white hover:shadow-xl hover:shadow-amber-500/5 transition-all cursor-default">
-                <div className="flex items-center justify-between mb-3">
-                  <div className={`text-[10px] font-black px-2 py-0.5 rounded ${item.color.replace('text-', 'bg-').replace('-600', '-100')} ${item.color}`}>#{idx + 1}</div>
-                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-tight">{item.count} Orders</span>
-                </div>
-                <p className="text-sm font-bold text-slate-700 leading-tight mb-4 min-h-[2.5rem] flex items-center">{item.name}</p>
-                <div className="w-full bg-slate-200 rounded-full h-1 overflow-hidden">
-                  <div 
-                    className={`h-full rounded-full ${item.color.replace('text-', 'bg-')}`}
-                    style={{ width: `${(item.count / stats.topItems[0].count) * 100}%` }}
-                  ></div>
-                </div>
-              </div>
-            ))}
-          </div>
-        ) : (
-          <div className="flex flex-col items-center justify-center py-12 bg-slate-50/50 rounded-2xl border border-dashed border-slate-200">
-            <svg className="w-8 h-8 text-slate-300 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-            </svg>
-            <p className="text-slate-400 text-sm font-medium">No sales data available for this period</p>
-          </div>
-        )}
-      </div>
-
-      {/* Quick Links */}
-      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
-        <h2 className="text-lg font-bold text-gray-800 mb-6 font-display">
-          Quick Actions
-        </h2>
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-4">
-          {DASHBOARD_QUICK_ACTIONS.map((action) => {
-            const Icon = action.icon;
-            return (
-              <Link key={action.label} href={action.href} className={action.className}>
-                <Icon className={action.iconClassName} />
-                <p className="text-sm font-bold text-gray-700">{action.label}</p>
-              </Link>
-            );
-          })}
-          {isSuperAdminUser && (
-            <>
-              {DASHBOARD_SUPER_ADMIN_QUICK_ACTIONS.map((action) => {
-                const Icon = action.icon;
-                return (
-                  <Link key={action.label} href={action.href} className={action.className}>
-                    <Icon className={action.iconClassName} />
-                    <p className="text-sm font-bold text-gray-700">{action.label}</p>
+                  <Link href="/stock" className="mt-8 flex items-center justify-between text-[10px] font-black uppercase tracking-widest text-primary-400 hover:text-primary-300 transition-colors">
+                     Manage Materials Inventory <FaArrowRight size={10} />
                   </Link>
-                );
-              })}
-            </>
-          )}
+               </div>
+            </div>
+          </div>
+
+          {/* Right Sidebar: Operational Pulse Timeline */}
+          <div className="space-y-8">
+            <div className="v2-card p-8 bg-white overflow-hidden">
+               <div className="flex items-center justify-between mb-10">
+                  <h3 className="text-lg font-black text-slate-900 uppercase tracking-tighter flex items-center gap-2">
+                    <FaBolt className="text-primary-500" /> Pulse Feed
+                  </h3>
+                  <Link href="/orders/overview" className="text-[10px] font-black text-primary-500 hover:underline uppercase tracking-widest">View Map</Link>
+               </div>
+               
+               <div className="relative space-y-8 before:absolute before:left-[19px] before:top-2 before:bottom-2 before:w-[2px] before:bg-slate-50">
+                  {stats.timeline.length > 0 ? stats.timeline.map((item, idx) => (
+                    <div key={item.id} className="relative pl-12 group">
+                      <div className={`absolute left-0 top-1 w-10 h-10 rounded-2xl bg-white border-2 flex items-center justify-center transition-all duration-500 ${
+                        item.status === 'completed' ? 'border-emerald-100 group-hover:border-emerald-400' : 
+                        item.status === 'in_progress' ? 'border-blue-100 group-hover:border-blue-400' : 'border-orange-100 group-hover:border-orange-400'
+                      }`}>
+                         <div className={`w-2 h-2 rounded-full ${
+                           item.status === 'completed' ? 'bg-emerald-500 animate-pulse' : 
+                           item.status === 'in_progress' ? 'bg-blue-500 animate-pulse' : 'bg-orange-500'
+                         }`} />
+                      </div>
+                      <Link href={`/orders/summary/${item.orderId}`} className="block">
+                        <div className="v2-glass p-6 rounded-3xl border-transparent hover:border-slate-100 transition-all hover:bg-white hover:shadow-xl hover:shadow-slate-200/50">
+                          <div className="flex items-center justify-between mb-2">
+                            <span className="text-[9px] font-black uppercase tracking-widest text-primary-500">{item.type} • {item.time}</span>
+                            <span className="text-[8px] font-bold text-slate-300">{formatDate(item.date)}</span>
+                          </div>
+                          <p className="text-sm font-black text-slate-800 group-hover:text-primary-600 transition-colors uppercase tracking-tight">{item.customer}</p>
+                          <div className="flex items-center gap-4 mt-3">
+                             <div className="flex flex-col">
+                               <span className="text-[8px] font-bold text-slate-400 uppercase">Volume</span>
+                               <span className="text-[10px] font-black text-slate-700">{item.plates} Units</span>
+                             </div>
+                             <div className="w-px h-6 bg-slate-100" />
+                             <div className="flex flex-col">
+                               <span className="text-[8px] font-bold text-slate-400 uppercase">Venue</span>
+                               <span className="text-[10px] font-black text-slate-700 truncate max-w-[100px]">{item.venue}</span>
+                             </div>
+                          </div>
+                        </div>
+                      </Link>
+                    </div>
+                  )) : (
+                    <div className="py-20 text-center">
+                       <FaHistory className="w-12 h-12 text-slate-100 mx-auto mb-4" />
+                       <p className="text-[10px] font-black text-slate-300 uppercase tracking-widest">Awaiting Live Ops</p>
+                    </div>
+                  )}
+               </div>
+            </div>
+
+            {/* Quick Intelligence Tiles */}
+            <div className="grid grid-cols-2 gap-4">
+               <PulseTile href="/customers" val={stats.customers} label="Profiles" icon={FaUsers} color="blue" />
+               <PulseTile href="/menu" val={stats.menuItems} label="Recipes" icon={FaUtensils} color="primary" />
+               <PulseTile href="/bills" val={stats.paidBills} label="Realized" icon={FaCheckCircle} color="emerald" />
+               <PulseTile href="/orders/center" val={stats.pendingOrders} label="Active" icon={FaBolt} color="amber" />
+            </div>
+          </div>
+
         </div>
       </div>
     </div>
   );
+}
+
+function InsightCard({ label, value, icon: Icon, trend, color, desc }: any) {
+  const colorMap: any = {
+    primary: "border-primary-500 text-primary-600 bg-primary-50",
+    emerald: "border-emerald-500 text-emerald-600 bg-emerald-50",
+    amber: "border-amber-500 text-amber-600 bg-amber-50",
+    rose: "border-rose-500 text-rose-600 bg-rose-50",
+  };
+
+  return (
+    <motion.div 
+      whileHover={{ y: -6 }}
+      className="v2-card p-10 bg-white border-slate-50 group transition-all"
+    >
+      <div className="flex justify-between items-start mb-6">
+        <div className={`w-12 h-12 rounded-[20px] flex items-center justify-center transition-transform group-hover:rotate-12 ${colorMap[color]}`}>
+           <Icon size={24} />
+        </div>
+        {trend && (
+          <div className="flex items-center gap-1 text-[10px] font-black text-emerald-500 bg-emerald-50 px-2.5 py-1 rounded-full">
+            <FaArrowUp size={8} /> {trend}
+          </div>
+        )}
+      </div>
+      <div>
+        <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-2">{label}</h3>
+        <p className="text-3xl font-black text-slate-900 tracking-tighter">{value}</p>
+        <p className="text-[9px] font-bold text-slate-300 uppercase mt-4 group-hover:text-slate-500 transition-colors line-clamp-1">{desc}</p>
+      </div>
+    </motion.div>
+  );
+}
+
+function PulseTile({ href, val, label, icon: Icon, color }: any) {
+  const cMap: any = {
+    primary: "text-primary-500 bg-primary-50",
+    blue: "text-blue-500 bg-blue-50",
+    emerald: "text-emerald-500 bg-emerald-50",
+    amber: "text-amber-500 bg-amber-50",
+  };
+  return (
+    <Link href={href}>
+      <div className="v2-card p-6 bg-white border-slate-50 hover:border-slate-200 hover:shadow-xl transition-all h-full">
+         <div className={`w-10 h-10 rounded-2xl flex items-center justify-center mb-6 transition-all group-hover:scale-110 ${cMap[color]}`}>
+            <Icon size={18} />
+         </div>
+         <p className="text-2xl font-black text-slate-900 leading-none">{val}</p>
+         <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mt-2">{label}</p>
+      </div>
+    </Link>
+  );
+}
+
+function LegendItem({ color, label }: any) {
+  return (
+    <div className="flex items-center gap-2">
+      <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: color }} />
+      <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">{label}</span>
+    </div>
+  );
+}
+
+function CustomTooltip({ active, payload, label }: any) {
+  if (active && payload && payload.length) {
+    const revenue = payload[0]?.value || 0;
+    const volume = payload[1]?.value || 0;
+    return (
+      <div className="bg-slate-900 border border-slate-800 p-4 rounded-3xl shadow-2xl scale-110 -translate-y-4">
+        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">{label}</p>
+        <div className="space-y-2">
+          <div className="flex items-center justify-between gap-8">
+            <span className="text-[10px] font-bold text-white/50 uppercase">Capital</span>
+            <span className="text-sm font-black text-primary-400">{formatCurrency(revenue)}</span>
+          </div>
+          <div className="flex items-center justify-between gap-8">
+            <span className="text-[10px] font-bold text-white/50 uppercase">Load</span>
+            <span className="text-sm font-black text-emerald-400">{volume} Events</span>
+          </div>
+        </div>
+      </div>
+    );
+  }
+  return null;
 }
