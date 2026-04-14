@@ -2,7 +2,7 @@
 import { useEffect, useState, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { FaArrowLeft, FaCircle, FaCookieBite, FaUtensils, FaBox, FaWarehouse, FaTools } from 'react-icons/fa'
-import toast from 'react-hot-toast'
+import { toast } from 'sonner'
 import Link from 'next/link'
 import FormError from '@/components/FormError'
 
@@ -362,3 +362,4 @@ function CreateInventoryContent() {
     </div>
   )
 }
+

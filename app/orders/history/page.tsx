@@ -6,7 +6,7 @@ import { FaTrash, FaFilePdf, FaFileImage, FaChevronLeft, FaChevronRight, FaEdit,
 import Link from 'next/link'
 import jsPDF from 'jspdf'
 import html2canvas from 'html2canvas'
-import toast from 'react-hot-toast'
+import { toast } from 'sonner'
 import ConfirmModal from '@/components/ConfirmModal'
 import MergeOrdersModal from '@/components/MergeOrdersModal'
 import { FaLayerGroup } from 'react-icons/fa'
@@ -617,39 +617,53 @@ export default function OrderHistoryPage() {
   }
 
   const handleGeneratePDF = async (order: any, language: 'english' | 'telugu') => {
-    const freshOrder = await getRequest({ url: apiUrl.GET_getOrderById(order.id) }).catch(() => order)
-    const orderToUse = freshOrder?.items?.length ? freshOrder : order
-    const pdfBase64 = await renderOrderToPdf(orderToUse, language)
-    if (!pdfBase64) {
-      toast.error('Failed to generate PDF. Please try again.')
-      return
-    }
-    const byteChars = atob(pdfBase64)
-    const byteNumbers = new Array(byteChars.length)
-    for (let i = 0; i < byteChars.length; i++) byteNumbers[i] = byteChars.charCodeAt(i)
-    const blob = new Blob([new Uint8Array(byteNumbers)], { type: 'application/pdf' })
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.href = url
-    a.download = `order-SKC-ORDER-${(order as any).serialNumber || order.id.slice(0, 8)}.pdf`
-    a.click()
-    URL.revokeObjectURL(url)
-    toast.success(`PDF downloaded (${language === 'english' ? 'English' : 'Telugu'})`)
+    toast.promise(
+      async () => {
+        const freshOrder = await getRequest({ url: apiUrl.GET_getOrderById(order.id) }).catch(() => order)
+        const orderToUse = freshOrder?.items?.length ? freshOrder : order
+        const pdfBase64 = await renderOrderToPdf(orderToUse, language)
+        if (!pdfBase64) throw new Error('Failed to generate PDF')
+
+        const byteChars = atob(pdfBase64)
+        const byteNumbers = new Array(byteChars.length)
+        for (let i = 0; i < byteChars.length; i++) byteNumbers[i] = byteChars.charCodeAt(i)
+        const blob = new Blob([new Uint8Array(byteNumbers)], { type: 'application/pdf' })
+        const url = URL.createObjectURL(blob)
+        const a = document.createElement('a')
+        a.href = url
+        a.download = `order-SKC-ORDER-${(order as any).serialNumber || order.id.slice(0, 8)}.pdf`
+        a.click()
+        URL.revokeObjectURL(url)
+        return true
+      },
+      {
+        loading: `Generating PDF (${language})...`,
+        success: 'PDF downloaded successfully!',
+        error: 'Failed to generate PDF'
+      }
+    )
   }
 
   const handleGenerateImage = async (order: any, language: 'english' | 'telugu' = 'english') => {
-    const freshOrder = await getRequest({ url: apiUrl.GET_getOrderById(order.id) }).catch(() => order)
-    const orderToUse = freshOrder?.items?.length ? freshOrder : order
-    const imageDataUrl = await renderOrderToImage(orderToUse, language, true)
-    if (!imageDataUrl) {
-      toast.error('Failed to generate image. Please try again.')
-      return
-    }
-    const a = document.createElement('a')
-    a.href = imageDataUrl
-    a.download = `order-SKC-ORDER-${(order as any).serialNumber || order.id.slice(0, 8)}.png`
-    a.click()
-    toast.success('Order image downloaded!')
+    toast.promise(
+      async () => {
+        const freshOrder = await getRequest({ url: apiUrl.GET_getOrderById(order.id) }).catch(() => order)
+        const orderToUse = freshOrder?.items?.length ? freshOrder : order
+        const imageDataUrl = await renderOrderToImage(orderToUse, language, true)
+        if (!imageDataUrl) throw new Error('Failed to generate image')
+
+        const a = document.createElement('a')
+        a.href = imageDataUrl
+        a.download = `order-SKC-ORDER-${(order as any).serialNumber || order.id.slice(0, 8)}.png`
+        a.click()
+        return true
+      },
+      {
+        loading: `Generating Image (${language})...`,
+        success: 'Order image downloaded!',
+        error: 'Failed to generate image'
+      }
+    )
   }
 
   const handleSendOrderEmail = async (order: any, language: 'english' | 'telugu') => {
@@ -658,27 +672,27 @@ export default function OrderHistoryPage() {
       toast.error('Customer email not available')
       return
     }
-    setEmailSending(true)
-    try {
-      const freshOrder = await getRequest({ url: apiUrl.GET_getOrderById(order.id) }).catch(() => order)
-      const orderToUse = freshOrder?.items?.length ? freshOrder : order
-      const pdfBase64 = await renderOrderToPdf(orderToUse, language)
-      if (!pdfBase64) {
-        toast.error('Failed to generate PDF. Please try again.')
-        return
-      }
 
-      await postRequest({
-        url: apiUrl.POST_sendOrderEmail(order.id),
-        data: { email: customerEmail, pdfBase64 }
-      })
-      toast.success(`Order sent to ${customerEmail}`)
-      setEmailModal({ isOpen: false, order: null })
-    } catch (error: any) {
-      toast.error(error.message || 'Failed to send order email')
-    } finally {
-      setEmailSending(false)
-    }
+    toast.promise(
+      async () => {
+        const freshOrder = await getRequest({ url: apiUrl.GET_getOrderById(order.id) }).catch(() => order)
+        const orderToUse = freshOrder?.items?.length ? freshOrder : order
+        const pdfBase64 = await renderOrderToPdf(orderToUse, language)
+        if (!pdfBase64) throw new Error('Failed to generate PDF')
+
+        await postRequest({
+          url: apiUrl.POST_sendOrderEmail(order.id),
+          data: { email: customerEmail, pdfBase64 }
+        })
+        return true
+      },
+      {
+        loading: 'Preparing PDF and sending email...',
+        success: `Order sent successfully to ${customerEmail}`,
+        error: (err) => err.message || 'Failed to send order email'
+      }
+    )
+    setEmailModal({ isOpen: false, order: null })
   }
 
   return (
@@ -1363,3 +1377,4 @@ export default function OrderHistoryPage() {
     </div>
   )
 }
+

@@ -6,7 +6,7 @@ import { Customer, MenuItem, Order, OrderItem, Supervisor, StallTemplate } from 
 import { FaSearch, FaPlus, FaTimes, FaGripLines, FaUser, FaCalculator, FaWallet, FaUtensils, FaChevronDown, FaChevronUp, FaCalendarAlt, FaClock, FaMapMarkerAlt, FaUsers, FaTag, FaStore, FaTrash } from 'react-icons/fa'
 import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd'
 import { useRouter, useSearchParams } from 'next/navigation'
-import toast from 'react-hot-toast'
+import { toast } from 'sonner'
 import FormError from '@/components/FormError'
 import { Storage } from '@/lib/storage-api'
 

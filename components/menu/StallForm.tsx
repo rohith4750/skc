@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react'
 import { MenuItem, StallTemplate } from '@/types'
 import { FaSave, FaTimes, FaSearch, FaCheck, FaSortAlphaDown, FaUtensils, FaCheckCircle, FaMinusCircle, FaPlusCircle } from 'react-icons/fa'
 import { Storage } from '@/lib/storage-api'
-import toast from 'react-hot-toast'
+import { toast } from 'sonner'
 
 interface StallFormProps {
     stall: StallTemplate | null;
@@ -248,3 +248,4 @@ export default function StallForm({ stall, menuItems, onClose, onSuccess }: Stal
         </div>
     )
 }
+

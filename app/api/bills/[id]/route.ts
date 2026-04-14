@@ -48,9 +48,15 @@ export async function PUT(
       return NextResponse.json({ error: "Bill not found" }, { status: 404 });
     }
 
-    const paidAmount = parseFloat(data.paidAmount) || 0;
-    const remainingAmount = parseFloat(data.remainingAmount) || 0;
-    const status = data.status;
+    const totalAmount = data.totalAmount !== undefined ? parseFloat(data.totalAmount) : Number(existingBill.totalAmount);
+    const paidAmount = data.paidAmount !== undefined ? parseFloat(data.paidAmount) : Number(existingBill.paidAmount);
+    
+    // Auto-calculate remaining and status if totalAmount or paidAmount changed
+    const remainingAmount = data.remainingAmount !== undefined ? parseFloat(data.remainingAmount) : Math.max(0, totalAmount - paidAmount);
+    
+    // Auto-determine status if not provided or total changed
+    const status = data.status || (remainingAmount <= 0 ? "paid" : (paidAmount > 0 ? "partial" : "pending"));
+
     const paymentMethod = data.paymentMethod || "cash";
     const paymentNotes = data.paymentNotes || "";
     const billNote =
@@ -61,19 +67,12 @@ export async function PUT(
     }
     if (
       !isNonNegativeNumber(paidAmount) ||
-      !isNonNegativeNumber(remainingAmount)
+      !isNonNegativeNumber(remainingAmount) ||
+      !isNonNegativeNumber(totalAmount)
     ) {
       return NextResponse.json({ error: "Invalid amounts" }, { status: 400 });
     }
-    if (
-      paidAmount > Number(existingBill.totalAmount) ||
-      remainingAmount > Number(existingBill.totalAmount)
-    ) {
-      return NextResponse.json(
-        { error: "Amounts exceed total bill" },
-        { status: 400 },
-      );
-    }
+
     if (
       !validateEnum(paymentMethod, [
         "cash",
@@ -137,13 +136,14 @@ export async function PUT(
     const bill = await prisma.bill.update({
       where: { id },
       data: {
+        totalAmount: totalAmount,
         paidAmount: paidAmount,
         advancePaid:
           Number(existingBill.advancePaid) > 0
             ? existingBill.advancePaid
             : paidAmount,
         remainingAmount: remainingAmount,
-        status: status,
+        status: status as any,
         paymentHistory: updatedPaymentHistory,
       },
     });

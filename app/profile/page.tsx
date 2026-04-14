@@ -2,7 +2,7 @@
 import { useEffect, useState } from 'react'
 import { getAuth, getUserRole } from '@/lib/auth'
 import { FaUser, FaEnvelope, FaShieldAlt, FaEdit, FaLock, FaSave, FaTimes } from 'react-icons/fa'
-import toast from 'react-hot-toast'
+import { toast } from 'sonner'
 
 interface UserProfile {
   id?: string
@@ -442,3 +442,4 @@ export default function ProfilePage() {
     </div>
   )
 }
+

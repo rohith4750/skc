@@ -28,7 +28,7 @@ import {
   FaChevronDown,
   FaChevronUp
 } from 'react-icons/fa'
-import toast from 'react-hot-toast'
+import { toast } from 'sonner'
 import Table from '@/components/Table'
 import ConfirmModal from '@/components/ConfirmModal'
 import Link from 'next/link'
@@ -1005,3 +1005,4 @@ export default function ExpensesPage() {
     </div>
   )
 }
+

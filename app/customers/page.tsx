@@ -4,7 +4,7 @@ import { useRouter } from 'next/navigation'
 import { Storage } from '@/lib/storage-api'
 import { Customer } from '@/types'
 import { FaPlus, FaEdit, FaTrash, FaSearch } from 'react-icons/fa'
-import toast from 'react-hot-toast'
+import { toast } from 'sonner'
 import Table from '@/components/Table'
 import { getCustomerTableConfig } from '@/components/table-configs'
 import ConfirmModal from '@/components/ConfirmModal'
@@ -162,3 +162,4 @@ export default function CustomersPage() {
     </div>
   )
 }
+

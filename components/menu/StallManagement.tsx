@@ -3,7 +3,7 @@ import React, { useState } from 'react'
 import { MenuItem, StallTemplate } from '@/types'
 import { FaPlus, FaEdit, FaTrash, FaStore, FaSearch, FaHistory } from 'react-icons/fa'
 import { Storage } from '@/lib/storage-api'
-import toast from 'react-hot-toast'
+import { toast } from 'sonner'
 import ConfirmModal from '@/components/ConfirmModal'
 import StallForm from '@/components/menu/StallForm'
 
@@ -192,3 +192,4 @@ export default function StallManagement({ stallTemplates, menuItems, onRefresh }
         </div>
     )
 }
+

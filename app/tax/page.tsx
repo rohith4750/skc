@@ -10,7 +10,7 @@ import {
   FaChartBar,
   FaReceipt
 } from 'react-icons/fa'
-import toast from 'react-hot-toast'
+import { toast } from 'sonner'
 import jsPDF from 'jspdf'
 import html2canvas from 'html2canvas'
 
@@ -612,3 +612,4 @@ export default function TaxPage() {
     </div>
   )
 }
+

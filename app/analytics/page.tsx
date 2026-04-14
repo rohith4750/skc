@@ -29,7 +29,7 @@ import {
   FaCalendarWeek,
   FaCalculator
 } from 'react-icons/fa'
-import toast from 'react-hot-toast'
+import { toast } from 'sonner'
 import { fetchWithLoader } from '@/lib/fetch-with-loader'
 import jsPDF from 'jspdf'
 import html2canvas from 'html2canvas'
@@ -1330,3 +1330,4 @@ export default function AnalyticsPage() {
     </div>
   )
 }
+

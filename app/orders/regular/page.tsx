@@ -8,7 +8,7 @@ import {
     FaCalendarAlt, FaTag, FaChevronLeft, FaChevronRight
 } from 'react-icons/fa'
 import Link from 'next/link'
-import toast from 'react-hot-toast'
+import { toast } from 'sonner'
 import { getRequest, deleteRequest, putRequest } from '@/lib/api/api'
 import { apiUrl } from '@/lib/api/apiUrl'
 
@@ -235,3 +235,4 @@ export default function RegularOrdersListPage() {
         </div>
     )
 }
+

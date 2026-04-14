@@ -3,7 +3,7 @@
 import { useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { hasRole, isAuthenticated, UserRole } from '@/lib/auth'
-import toast from 'react-hot-toast'
+import { toast } from 'sonner'
 
 interface RoleGuardProps {
   children: React.ReactNode
@@ -54,3 +54,4 @@ export default function RoleGuard({
 
   return <>{children}</>
 }
+

@@ -7,7 +7,7 @@ import { FaArrowLeft, FaMoneyBillWave, FaSave, FaPlus, FaTrash, FaHistory, FaPer
 import { FaBottleWater } from 'react-icons/fa6'
 import { getRequest, putRequest } from '@/lib/api/api'
 import { apiUrl } from '@/lib/api/apiUrl'
-import toast from 'react-hot-toast'
+import { toast } from 'sonner'
 import Link from 'next/link'
 import FormError from '@/components/FormError'
 

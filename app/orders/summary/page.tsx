@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
-import toast from 'react-hot-toast'
+import { toast } from 'sonner'
 import { formatCurrency, formatDateTime } from '@/lib/utils'
 import { Order } from '@/types'
 import { FaChartLine } from 'react-icons/fa'
@@ -92,3 +92,4 @@ export default function OrdersSummaryListPage() {
     </div>
   )
 }
+

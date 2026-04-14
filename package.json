@@ -28,9 +28,9 @@
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "react-floating-whatsapp": "^5.0.8",
-    "react-hot-toast": "^2.6.0",
     "react-icons": "^4.12.0",
     "resend": "^6.7.0",
+    "sonner": "^2.0.7",
     "uuid": "^9.0.1"
   },
   "devDependencies": {

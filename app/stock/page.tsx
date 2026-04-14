@@ -17,7 +17,7 @@ import {
   FaCheckCircle,
   FaTimes,
 } from 'react-icons/fa'
-import toast from 'react-hot-toast'
+import { toast } from 'sonner'
 import Link from 'next/link'
 import Table from '@/components/Table'
 import ConfirmModal from '@/components/ConfirmModal'
@@ -481,3 +481,4 @@ export default function StockPage() {
     </div>
   )
 }
+

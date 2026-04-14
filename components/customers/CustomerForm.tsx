@@ -2,7 +2,7 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { FaArrowLeft } from 'react-icons/fa'
-import toast from 'react-hot-toast'
+import { toast } from 'sonner'
 import Link from 'next/link'
 import { isEmail, isPhone, isNonEmptyString } from '@/lib/validation'
 import FormError from '@/components/FormError'
@@ -211,3 +211,4 @@ export default function CustomerForm({ id }: CustomerFormProps) {
         </div>
     )
 }
+

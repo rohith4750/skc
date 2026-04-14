@@ -2,7 +2,7 @@
 import { useState, useEffect, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { FaLock, FaEnvelope, FaEye, FaEyeSlash, FaKey, FaCheckCircle } from 'react-icons/fa'
-import toast from 'react-hot-toast'
+import { toast } from 'sonner'
 import Logo from '@/components/Logo'
 import FormError from '@/components/FormError'
 
@@ -328,3 +328,4 @@ function ResetPasswordContent() {
     </div>
   )
 }
+

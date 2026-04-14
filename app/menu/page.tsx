@@ -4,7 +4,7 @@ import { Storage } from '@/lib/storage-api'
 import { initializeMenuItems } from '@/lib/initMenu'
 import { MenuItem, StallTemplate } from '@/types'
 import { FaPlus, FaEdit, FaTrash, FaDownload, FaPrint, FaStore, FaUtensils, FaSearch, FaTimes } from 'react-icons/fa'
-import toast from 'react-hot-toast'
+import { toast } from 'sonner'
 import Table from '@/components/Table'
 import { getMenuItemTableConfig } from '@/components/table-configs'
 import ConfirmModal from '@/components/ConfirmModal'
@@ -684,3 +684,4 @@ export default function MenuPage() {
     </div>
   )
 }
+

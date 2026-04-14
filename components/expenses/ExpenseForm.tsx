@@ -3,7 +3,7 @@ import { useEffect, useState, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import { Expense, Order, BulkAllocation } from '@/types'
 import { FaArrowLeft, FaLayerGroup, FaChevronDown, FaChevronUp, FaTimes, FaInfoCircle } from 'react-icons/fa'
-import toast from 'react-hot-toast'
+import { toast } from 'sonner'
 import Link from 'next/link'
 import { formatCurrency, getLocalISODate, getOrderDate } from '@/lib/utils'
 import FormError from '@/components/FormError'
@@ -1244,3 +1244,4 @@ export default function ExpenseForm({ id: expenseId }: ExpenseFormProps) {
         </div>
     )
 }
+

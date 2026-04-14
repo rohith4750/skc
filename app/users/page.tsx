@@ -2,7 +2,7 @@
 import { useEffect, useState } from 'react'
 import { formatDateTime } from '@/lib/utils'
 import { FaPlus, FaEdit, FaTrash, FaUserShield, FaUtensils, FaUserTie, FaTruck, FaUser, FaHistory } from 'react-icons/fa'
-import toast from 'react-hot-toast'
+import { toast } from 'sonner'
 import Table from '@/components/Table'
 import ConfirmModal from '@/components/ConfirmModal'
 import RoleGuard from '@/components/RoleGuard'
@@ -387,3 +387,4 @@ export default function UsersPage() {
     </RoleGuard>
   )
 }
+

@@ -6,7 +6,7 @@ import { FaPlus, FaEdit, FaTrash } from 'react-icons/fa'
 import Table from '@/components/Table'
 import { getSupervisorTableConfig } from '@/components/table-configs'
 import ConfirmModal from '@/components/ConfirmModal'
-import toast from 'react-hot-toast'
+import { toast } from 'sonner'
 import FormError from '@/components/FormError'
 
 export default function SupervisorsPage() {
@@ -305,3 +305,4 @@ export default function SupervisorsPage() {
     </div>
   )
 }
+

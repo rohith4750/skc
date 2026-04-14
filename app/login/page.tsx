@@ -7,7 +7,7 @@ import {
   FaPhone, FaEnvelope, FaMapMarkerAlt, FaLeaf, FaCheckCircle, FaUtensils,
   FaStar, FaHeart
 } from 'react-icons/fa'
-import toast from 'react-hot-toast'
+import { toast } from 'sonner'
 import { setAuth, isLoggedIn, getToken } from '@/lib/auth-storage'
 import { isNonEmptyString } from '@/lib/validation'
 import FormError from '@/components/FormError'
@@ -368,3 +368,4 @@ function LoginPageContent() {
     </div>
   )
 }
+

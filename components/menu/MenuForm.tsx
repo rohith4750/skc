@@ -4,7 +4,7 @@ import { Storage } from '@/lib/storage-api'
 import { MenuItem } from '@/types'
 import { isNonEmptyString } from '@/lib/validation'
 import FormError from '@/components/FormError'
-import toast from 'react-hot-toast'
+import { toast } from 'sonner'
 import { useRouter } from 'next/navigation'
 
 interface MenuFormProps {
@@ -249,3 +249,4 @@ export default function MenuForm({ id, onSuccess, onCancel }: MenuFormProps) {
         </div>
     )
 }
+

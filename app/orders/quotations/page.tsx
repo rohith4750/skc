@@ -13,7 +13,7 @@ import Link from 'next/link'
 import jsPDF from 'jspdf'
 import html2canvas from 'html2canvas'
 import { buildOrderPdfHtml } from '@/lib/order-pdf-html'
-import toast from 'react-hot-toast'
+import { toast } from 'sonner'
 import ConfirmModal from '@/components/ConfirmModal'
 import { getRequest, deleteRequest, putRequest } from '@/lib/api/api'
 import { apiUrl } from '@/lib/api/apiUrl'
@@ -645,3 +645,4 @@ function MenuModal({ order, onClose, onDownloadPDF, onDownloadImage }: {
     </div>
   )
 }
+

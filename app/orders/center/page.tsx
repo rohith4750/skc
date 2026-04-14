@@ -12,7 +12,7 @@ import {
 import Link from 'next/link'
 import jsPDF from 'jspdf'
 import html2canvas from 'html2canvas'
-import toast from 'react-hot-toast'
+import { toast } from 'sonner'
 import ConfirmModal from '@/components/ConfirmModal'
 import MergeOrdersModal from '@/components/MergeOrdersModal'
 import { getRequest, postRequest, putRequest, deleteRequest } from '@/lib/api/api'
@@ -1594,3 +1594,4 @@ export default function OrderCenterPage() {
     </div >
   )
 }
+

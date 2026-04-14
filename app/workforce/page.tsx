@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useState, useMemo, Fragment } from 'react'
 import { FaEdit, FaTrash, FaUtensils, FaUserTie, FaTruck, FaDollarSign, FaReceipt, FaChevronDown, FaChevronUp, FaUsers, FaUserFriends, FaFilter, FaSearch, FaTimes, FaCheckCircle, FaExclamationCircle, FaClock, FaGasPump, FaBox, FaStore, FaCircle, FaPlus, FaPrint, FaSync, FaUser, FaImage } from 'react-icons/fa'
-import toast from 'react-hot-toast'
+import { toast } from 'sonner'
 import Table from '@/components/Table'
 import ConfirmModal from '@/components/ConfirmModal'
 import { formatCurrency, formatDate } from '@/lib/utils'
@@ -1305,3 +1305,4 @@ export default function WorkforcePage() {
     </div>
   )
 }
+

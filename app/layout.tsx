@@ -2,7 +2,7 @@ import type { Metadata } from 'next'
 import { Poppins } from 'next/font/google'
 import './globals.css'
 import Sidebar from '@/components/layout/Sidebar'
-import { Toaster } from 'react-hot-toast'
+import { Toaster } from 'sonner'
 import AuthGuard from '@/components/AuthGuard'
 
 const poppins = Poppins({ 
@@ -57,30 +57,14 @@ export default function RootLayout({
           {children}
         </AuthGuard>
         <Toaster
-          position="top-center"
-          containerClassName="!top-14"
+          position="top-right"
+          richColors
+          expand={false}
+          closeButton
           toastOptions={{
-            duration: 4000,
             style: {
-              background: '#fff',
-              color: '#1f2937',
-              padding: '10px 14px',
-              borderRadius: '8px',
-              boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
-              maxWidth: '90vw',
-              fontSize: '14px',
-            },
-            success: {
-              iconTheme: {
-                primary: '#10b981',
-                secondary: '#fff',
-              },
-            },
-            error: {
-              iconTheme: {
-                primary: '#ef4444',
-                secondary: '#fff',
-              },
+              fontFamily: 'var(--font-poppins)',
+              borderRadius: '12px',
             },
           }}
         />

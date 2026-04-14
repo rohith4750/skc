@@ -9,7 +9,7 @@ import {
   FaCalendarAlt, FaHistory, FaLayerGroup, FaChevronLeft, FaChevronRight
 } from 'react-icons/fa'
 import Link from 'next/link'
-import toast from 'react-hot-toast'
+import { toast } from 'sonner'
 import ConfirmModal from '@/components/ConfirmModal'
 import { getRequest, deleteRequest, putRequest } from '@/lib/api/api'
 import { apiUrl } from '@/lib/api/apiUrl'
@@ -228,3 +228,4 @@ export default function OrdersListPage() {
     </div>
   )
 }
+

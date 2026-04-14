@@ -18,7 +18,7 @@ import {
     FaReceipt,
     FaShoppingBasket
 } from 'react-icons/fa'
-import toast from 'react-hot-toast'
+import { toast } from 'sonner'
 import Link from 'next/link'
 import ConfirmModal from '@/components/ConfirmModal'
 
@@ -871,3 +871,4 @@ export default function StoreCalculatorPage() {
         </div>
     )
 }
+

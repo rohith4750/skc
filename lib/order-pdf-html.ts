@@ -174,7 +174,7 @@ export function buildOrderPdfHtml(
       });
 
       meals.forEach((meal) => {
-        const count = Number(meal.numberOfMembers || meal.count || 0);
+        const count = Number(meal.numberOfPlates || meal.numberOfMembers || meal.count || 0);
         const amount = Number(meal.amount || 0);
         const rate = count > 0 ? amount / count : 0;
 
@@ -271,7 +271,7 @@ export function buildOrderPdfHtml(
               <div style="margin-bottom: 15px;">
                   <span style="background: ${isQuotation ? '#f5f3ff' : '#f0f0f0'}; padding: 2px 8px; border-radius: 4px;">${meal.label}${meal.eventName ? ` - ${meal.eventName}` : ''}</span>
                   ${meal.time ? `<span style="font-weight: 500; color: #666; text-transform: none;">@ ${meal.time}</span>` : ""}
-                  ${meal.numberOfMembers ? `<span style="font-weight: 500; color: #666; text-transform: none;">(${meal.numberOfMembers} Members)</span>` : ""}
+                  ${(meal.numberOfPlates || meal.numberOfMembers) ? `<span style="font-weight: 500; color: #666; text-transform: none;">(${meal.numberOfPlates || meal.numberOfMembers} Plates)</span>` : ""}
                   ${meal.venue ? `<span style="font-weight: 500; color: #333; text-transform: none; margin-left: auto;">📍 ${meal.venue}</span>` : ""}
                 </div>
                 ${meal.description ? `<div style="font-size: 9px; color: #666; margin-bottom: 8px; font-style: italic; border-left: 2px solid ${themeColor}; padding-left: 8px;">${meal.description}</div>` : ""}
@@ -430,7 +430,7 @@ export function buildOrderPdfHtml(
                 <thead>
                     <tr style="background-color: ${isQuotation ? '#f5f3ff' : '#f9f9f9'}; border-bottom: 2px solid ${themeColor};">
                         <th style="padding: 8px 10px; text-align: left; font-size: 10px; font-weight: 800; text-transform: uppercase; color: ${themeColor};">Description / Event</th>
-                        <th style="padding: 8px 10px; text-align: center; font-size: 10px; font-weight: 800; text-transform: uppercase; color: ${themeColor};">Guests</th>
+                        <th style="padding: 8px 10px; text-align: center; font-size: 10px; font-weight: 800; text-transform: uppercase; color: ${themeColor};">Plates</th>
                         <th style="padding: 8px 10px; text-align: center; font-size: 10px; font-weight: 800; text-transform: uppercase; color: ${themeColor};">Rate</th>
                         <th style="padding: 8px 10px; text-align: right; font-size: 10px; font-weight: 800; text-transform: uppercase; color: ${themeColor};">Total</th>
                     </tr>
