@@ -79,7 +79,7 @@ export default function QuickBillForm({ onSuccess, onCancel }: QuickBillFormProp
     const filteredCustomers = customers.filter(c => 
         c.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
         c.phone.includes(searchQuery)
-    ).slice(0, 5);
+    );
 
     const handleSelectCustomer = (c: Customer) => {
         setForm(prev => ({ ...prev, customerId: c.id, customerName: c.name, customerPhone: c.phone }));
@@ -215,7 +215,7 @@ export default function QuickBillForm({ onSuccess, onCancel }: QuickBillFormProp
                             />
                         </div>
                         {showDropdown && (searchQuery || filteredCustomers.length > 0) && (
-                            <div className="absolute z-10 w-full mt-2 bg-white border border-slate-200 rounded-xl shadow-xl overflow-hidden">
+                            <div className="absolute z-10 w-full mt-2 bg-white border border-slate-200 rounded-xl shadow-xl overflow-y-auto max-h-64">
                                 {filteredCustomers.map(c => (
                                     <button
                                         key={c.id}
