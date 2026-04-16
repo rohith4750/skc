@@ -385,7 +385,7 @@ export default function FinancialTrackingPage() {
                     <div className="w-1.5 h-4 bg-emerald-500 rounded-full"></div>
                     Meal Type Calculation
                   </h2>
-                  <span className="text-xs font-bold text-slate-500">Update members and pricing here</span>
+                  <span className="text-xs font-bold text-slate-500">Update plates and pricing here</span>
                 </div>
                 <div className="space-y-8">
                   {groupedMealTypes.length === 0 ? (
@@ -469,7 +469,7 @@ export default function FinancialTrackingPage() {
 
                                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                                   <div>
-                                    <label className="block text-[10px] font-black text-slate-600 uppercase tracking-widest mb-2">Current Members</label>
+                                    <label className="block text-[10px] font-black text-slate-600 uppercase tracking-widest mb-2">Current Plates</label>
                                     <input
                                       type="number"
                                       min="0"
@@ -483,7 +483,7 @@ export default function FinancialTrackingPage() {
                                     />
                                   </div>
                                   <div>
-                                    <label className="block text-[10px] font-black text-slate-600 uppercase tracking-widest mb-2">Add Members</label>
+                                    <label className="block text-[10px] font-black text-slate-600 uppercase tracking-widest mb-2">Add Plates</label>
                                     <input
                                       type="number"
                                       min="0"
@@ -496,7 +496,7 @@ export default function FinancialTrackingPage() {
                                       className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-[5px] text-sm font-bold text-slate-700 outline-none focus:ring-2 focus:ring-primary-500"
                                       placeholder="0"
                                     />
-                                    <p className="mt-1 text-[10px] font-bold text-slate-500">New total: {newMembers}</p>
+                                    <p className="mt-1 text-[10px] font-bold text-slate-500">New total: {newMembers} Plates</p>
                                   </div>
                                   <div>
                                     <label className="block text-[10px] font-black text-slate-600 uppercase tracking-widest mb-2">Pricing Method</label>

@@ -118,6 +118,7 @@ export default function BillsPage() {
 
   useEffect(() => {
     loadBills()
+    loadBillableOrders()
   }, [])
 
   const loadBillableOrders = async () => {
@@ -140,6 +141,7 @@ export default function BillsPage() {
           data: {}
         })
         loadBills()
+        loadBillableOrders()
         handleOpenDrawer(newBill)
         return newBill
       },
@@ -170,9 +172,10 @@ export default function BillsPage() {
         return matchesSearch && matchesDate
       }
 
-      const matchesMonth = (billDate.getMonth() + 1) === selectedMonth && billDate.getFullYear() === selectedYear
+      const matchesMonth = selectedMonth === 0 || (billDate.getMonth() + 1) === selectedMonth
+      const matchesYear = selectedYear === 0 || billDate.getFullYear() === selectedYear
 
-      return matchesSearch && matchesMonth
+      return matchesSearch && matchesMonth && matchesYear
     })
   }, [bills, searchQuery, selectedMonth, selectedYear, filterDate])
 
@@ -678,6 +681,7 @@ export default function BillsPage() {
                   onChange={(e) => setSelectedMonth(parseInt(e.target.value))}
                   className="bg-transparent text-sm font-bold text-slate-700 outline-none cursor-pointer"
                 >
+                  <option value={0}>All Months</option>
                   {['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'].map((m, i) => (
                     <option key={m} value={i + 1}>{m}</option>
                   ))}
@@ -688,7 +692,8 @@ export default function BillsPage() {
                   onChange={(e) => setSelectedYear(parseInt(e.target.value))}
                   className="bg-transparent text-sm font-bold text-slate-700 outline-none cursor-pointer"
                 >
-                  {[2024, 2025, 2026].map(y => (
+                  <option value={0}>All Years</option>
+                  {[2023, 2024, 2025, 2026, 2027, 2028, 2029, 2030].map(y => (
                     <option key={y} value={y}>{y}</option>
                   ))}
                 </select>
@@ -745,12 +750,65 @@ export default function BillsPage() {
             </div>
           </div>
         </div>
+ 
+        {/* Waiting for Bill Section */}
+        {billableOrders.length > 0 && !isQuickBillOpen && (
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <h3 className="text-sm font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
+                <div className="w-1.5 h-4 bg-amber-500 rounded-full"></div>
+                Waiting for Bill ({billableOrders.length})
+              </h3>
+              <p className="text-[10px] font-bold text-slate-400 italic">Select an order to generate a ledger</p>
+            </div>
+            
+            <div className="flex gap-4 overflow-x-auto pb-4 -mx-1 px-1 scrollbar-thin scrollbar-thumb-slate-200 scrollbar-track-transparent">
+              {billableOrders.map(order => (
+                <div 
+                  key={order.id} 
+                  className="flex-shrink-0 w-80 bg-white p-5 rounded-2xl border-2 border-slate-100 hover:border-amber-500 hover:shadow-xl transition-all group animate-in slide-in-from-bottom-2 duration-300"
+                >
+                  <div className="flex justify-between items-start mb-4">
+                    <div className="bg-amber-50 p-2 rounded-xl text-amber-600">
+                      <FaFileInvoiceDollar size={18} />
+                    </div>
+                    <span className="text-[10px] font-black bg-slate-100 text-slate-500 px-2 py-1 rounded-md uppercase tracking-tighter">
+                      Order READY
+                    </span>
+                  </div>
+                  
+                  <h4 className="font-bold text-slate-900 group-hover:text-amber-600 transition-colors line-clamp-1">{order.customer?.name}</h4>
+                  <p className="text-xs text-slate-500 mb-4">{order.eventName || 'Unnamed Event'}</p>
+                  
+                  <div className="grid grid-cols-2 gap-4 mb-5 p-3 bg-slate-50 rounded-xl">
+                    <div>
+                      <p className="text-[10px] text-slate-400 uppercase font-black tracking-widest leading-none mb-1">Date</p>
+                      <p className="text-xs font-bold text-slate-700">{order.eventDate ? formatDate(order.eventDate as any) : 'TBD'}</p>
+                    </div>
+                    <div>
+                      <p className="text-[10px] text-slate-400 uppercase font-black tracking-widest leading-none mb-1">Value</p>
+                      <p className="text-xs font-bold text-slate-700">{formatCurrency(order.totalAmount)}</p>
+                    </div>
+                  </div>
+                  
+                  <button
+                    onClick={() => handleCreateBill(order.id)}
+                    className="w-full py-2.5 bg-slate-900 text-white rounded-xl text-xs font-black shadow-lg shadow-slate-200 hover:bg-slate-800 transition-all active:scale-[0.97]"
+                  >
+                    CREATE LEDGER
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* Quick Bill Form Section */}
         {isQuickBillOpen && (
           <QuickBillForm 
             onSuccess={(newBill) => {
               loadBills()
+              loadBillableOrders()
               setIsQuickBillOpen(false)
               handleOpenDrawer(newBill)
             }}
@@ -939,10 +997,10 @@ export default function BillsPage() {
                       <p className="text-xs text-slate-500 mb-1">Paid to Date</p>
                       <p className="text-lg font-bold text-emerald-600">{formatCurrency(selectedBill?.paidAmount)}</p>
                     </div>
-                    <div className="p-4 bg-rose-50 rounded-xl border border-rose-100 col-span-2">
-                      <p className="text-xs text-rose-500 mb-1 font-semibold">Remaining Balance</p>
+                    <div className={`p-4 rounded-xl border col-span-2 ${Number(selectedBill?.remainingAmount) === 0 ? 'bg-emerald-50 border-emerald-100' : 'bg-rose-50 border-rose-100'}`}>
+                      <p className={`text-xs mb-1 font-semibold ${Number(selectedBill?.remainingAmount) === 0 ? 'text-emerald-500' : 'text-rose-500'}`}>Remaining Balance</p>
                       <div className="flex items-baseline justify-between">
-                        <p className="text-2xl font-black text-rose-600">{formatCurrency(selectedBill?.remainingAmount)}</p>
+                        <p className={`text-2xl font-black ${Number(selectedBill?.remainingAmount) === 0 ? 'text-emerald-600' : 'text-rose-600'}`}>{formatCurrency(selectedBill?.remainingAmount)}</p>
                         <button
                           onClick={() => setIsPaymentModalOpen(true)}
                           className="px-4 py-2 bg-white text-rose-600 rounded-lg text-sm font-bold border border-rose-200 hover:bg-rose-600 hover:text-white transition-all shadow-sm"
@@ -1445,7 +1503,7 @@ function BillCard({ bill, onOpen, onView, onDownload, onDownloadImage, onWhatsAp
           </div>
           <div className="text-right">
             <p className="text-[10px] text-slate-400 uppercase font-black tracking-widest">Remaining</p>
-            <p className="text-sm font-bold text-rose-600">{formatCurrency(bill.remainingAmount)}</p>
+            <p className={`text-sm font-bold ${Number(bill.remainingAmount) === 0 ? 'text-emerald-500' : 'text-rose-600'}`}>{formatCurrency(bill.remainingAmount)}</p>
           </div>
         </div>
       </div>
