@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useRef } from 'react'
 import { useParams } from 'next/navigation'
-import { FaMapMarkerAlt, FaSatellite, FaCheckCircle, FaExclamationTriangle, FaTruck, FaHistory, FaLightbulb } from 'react-icons/fa'
+import { FaMapMarkerAlt, FaSatellite, FaCheckCircle, FaExclamationTriangle, FaTruck, FaHistory } from 'react-icons/fa'
 
 import { toast } from 'sonner'
 
@@ -17,42 +17,16 @@ export default function DeliveryTrackPage() {
   const [status, setStatus] = useState<'idle' | 'tracking' | 'error'>('idle')
   const [isSyncing, setIsSyncing] = useState(false)
   const [consecutiveErrors, setConsecutiveErrors] = useState(0)
-  const [wakeLock, setWakeLock] = useState<any>(null)
   const watchId = useRef<number | null>(null)
   const heartbeatId = useRef<any>(null)
 
-  // 1. Wake Lock Handler
-  const requestWakeLock = async () => {
-    if ('wakeLock' in navigator) {
-      try {
-        const lock = await (navigator as any).wakeLock.request('screen')
-        setWakeLock(lock)
-        console.log('Wake Lock acquired')
-      } catch (err) {
-        console.error('Wake Lock failed:', err)
-      }
-    }
-  }
-
-  // 2. Re-acquire wake lock on visibility change
-  useEffect(() => {
-    const handleVisibilityChange = async () => {
-      if (wakeLock !== null && document.visibilityState === 'visible') {
-        await requestWakeLock()
-      }
-    }
-    document.addEventListener('visibilitychange', handleVisibilityChange)
-    return () => document.removeEventListener('visibilitychange', handleVisibilityChange)
-  }, [wakeLock])
-
-  // 3. Cleanup on unmount
+  // 1. Cleanup on unmount
   useEffect(() => {
     return () => {
       if (watchId.current !== null) navigator.geolocation.clearWatch(watchId.current)
       if (heartbeatId.current !== null) clearInterval(heartbeatId.current)
-      if (wakeLock) (wakeLock as any).release()
     }
-  }, [wakeLock])
+  }, [])
 
   const sendLocationUpdate = async (lat: number, lng: number) => {
     try {
@@ -97,7 +71,6 @@ export default function DeliveryTrackPage() {
 
     setStatus('tracking')
     setTracking(true)
-    requestWakeLock() // Keep screen on
     toast.success('Real-time tracking started')
 
     watchId.current = navigator.geolocation.watchPosition(
@@ -142,12 +115,6 @@ export default function DeliveryTrackPage() {
       heartbeatId.current = null
     }
 
-    // 3. Release wake lock
-    if (wakeLock) {
-      (wakeLock as any).release()
-      setWakeLock(null)
-    }
-
     // 3. Notify server to clear from Admin Map
     try {
       await fetch('/api/delivery/stop', {
@@ -181,13 +148,6 @@ export default function DeliveryTrackPage() {
         {/* Main Status Card */}
         <div className="bg-slate-800/50 backdrop-blur-xl border border-slate-700/50 rounded-3xl p-8 shadow-2xl relative overflow-hidden group">
           <div className={`absolute top-0 left-0 w-full h-1 transition-all duration-500 ${tracking ? 'bg-orange-500 animate-pulse' : 'bg-slate-600'}`}></div>
-
-          {tracking && (
-             <div className="absolute top-4 right-4 flex items-center gap-1.5 bg-orange-500/10 px-3 py-1 rounded-full border border-orange-500/20 animate-pulse">
-                <FaLightbulb className="text-orange-500 text-[10px]" />
-                <span className="text-[10px] font-black text-orange-200 uppercase tracking-widest">Always-On</span>
-             </div>
-          )}
 
           <div className="space-y-6">
             <div className="flex items-center justify-center">
@@ -261,7 +221,7 @@ export default function DeliveryTrackPage() {
         <div className="flex items-start bg-blue-500/10 border border-blue-500/20 p-4 rounded-2xl text-left">
           <FaCheckCircle className="text-blue-500 mt-1 mr-3 flex-shrink-0" />
           <p className="text-xs text-blue-200 leading-relaxed font-bold">
-            Stay Awake mode is active. Please keep your screen on and browser visible for continuous tracking.
+            Please keep this tab open and your GPS enabled during delivery. Data is transmitted securely to the admin dashboard.
           </p>
         </div>
 
