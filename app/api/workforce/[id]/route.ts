@@ -65,6 +65,8 @@ export async function PUT(
     if (data.name !== undefined) updateData.name = data.name
     if (data.role !== undefined) updateData.role = data.role
     if (data.isActive !== undefined) updateData.isActive = data.isActive
+    if (data.trackingToken !== undefined) updateData.trackingToken = data.trackingToken
+    if (data.isTrackingActive !== undefined) updateData.isTrackingActive = data.isTrackingActive
 
     const workforce = await (prisma as any).workforce.update({
       where: { id: params.id },

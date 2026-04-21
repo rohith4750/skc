@@ -8,6 +8,7 @@ export type PermissionKey =
 
 export type MenuSection =
   | "core"
+  | "transport"
   | "financial"
   | "tax"
   | "inventory"
@@ -16,6 +17,7 @@ export type MenuSection =
 
 export const MENU_SECTION_ORDER: MenuSection[] = [
   "core",
+  "transport",
   "financial",
   "tax",
   "inventory",
@@ -25,6 +27,7 @@ export const MENU_SECTION_ORDER: MenuSection[] = [
 
 export const MENU_SECTION_TITLES: Record<MenuSection, string> = {
   core: "Order Management",
+  transport: "Transport & Delivery",
   financial: "Financial Management",
   tax: "Tax Management",
   inventory: "Stock & Inventory",
@@ -97,6 +100,7 @@ export const menuData: RouteConfigItem[] = [
     permissions: "AUTHENTICATED",
     showInSideMenu: true,
     section: "core",
+    hideForRoles: ["transport_admin"],
   },
   {
     name: "Menu",
@@ -115,6 +119,7 @@ export const menuData: RouteConfigItem[] = [
     permissions: "AUTHENTICATED",
     showInSideMenu: true,
     section: "core",
+    hideForRoles: ["transport_admin"],
   },
   // {
   //   name: "Regular Orders",
@@ -142,6 +147,7 @@ export const menuData: RouteConfigItem[] = [
     permissions: "AUTHENTICATED",
     showInSideMenu: true,
     section: "core",
+    hideForRoles: ["transport_admin"],
   },
   {
     name: "Quotations",
@@ -178,6 +184,7 @@ export const menuData: RouteConfigItem[] = [
     permissions: "AUTHENTICATED",
     showInSideMenu: true,
     section: "core",
+    hideForRoles: ["transport_admin"],
   },
   {
     name: "Live Tracking",
@@ -186,7 +193,7 @@ export const menuData: RouteConfigItem[] = [
     icon: "tracking",
     permissions: "AUTHENTICATED",
     showInSideMenu: true,
-    section: "core",
+    section: "transport",
   },
 
 
@@ -225,10 +232,10 @@ export const menuData: RouteConfigItem[] = [
     route: "/workforce",
     file: "app/workforce/page.tsx",
     icon: "workforce",
-    permissions: "SUPER_ADMIN_ONLY",
+    permissions: "ADMIN_AND_SUPER_ADMIN",
     showInSideMenu: true,
-    section: "financial",
-    roles: ["super_admin"],
+    section: "transport",
+    roles: ["super_admin", "transport_admin"],
   },
   {
     name: "Analytics",
@@ -479,7 +486,7 @@ export function canAccessRoute(
   if (route.permissions === "SUPER_ADMIN_ONLY")
     return userRole === "super_admin";
   if (route.permissions === "ADMIN_AND_SUPER_ADMIN")
-    return userRole === "admin" || userRole === "super_admin";
+    return userRole === "admin" || userRole === "super_admin" || userRole === "transport_admin";
 
   if (userRole === "super_admin") return true;
   return userPermissions.includes(route.permissions);

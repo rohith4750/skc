@@ -9,6 +9,7 @@ import Link from 'next/link'
 import jsPDF from 'jspdf'
 import html2canvas from 'html2canvas'
 import { generatePDFTemplate, PDFTemplateData } from '@/lib/pdf-template'
+import { hasRole } from '@/lib/auth'
 
 interface Workforce {
   id: string
@@ -321,6 +322,30 @@ export default function WorkforcePage() {
     toast.success('Opening WhatsApp...')
   }
 
+  const handleRefreshTrackingLink = async (member: Workforce) => {
+    if (!confirm(`Are you sure you want to generate a new tracking link for ${member.name}? The old link will stop working.`)) return
+
+    try {
+      const newToken = crypto.randomUUID()
+      const response = await fetch(`/api/workforce/${member.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          trackingToken: newToken,
+          isTrackingActive: true // Automatically reactivate if it was stopped
+        }),
+      })
+
+      if (!response.ok) throw new Error('Failed to refresh tracking link')
+      
+      toast.success('New tracking link generated successfully!')
+      loadWorkforce()
+    } catch (error) {
+      console.error('Failed to refresh tracking link:', error)
+      toast.error('Failed to refresh tracking link. Please try again.')
+    }
+  }
+
   const handleClearPayments = async () => {
     if (workforce.length > 0) return
     setClearingPayments(true)
@@ -556,6 +581,13 @@ export default function WorkforcePage() {
           >
             <FaWhatsapp className="w-3 h-3" />
           </button>
+          <button
+            onClick={() => handleRefreshTrackingLink(member)}
+            className="p-1.5 bg-blue-100 text-blue-600 rounded hover:bg-blue-200 transition-colors"
+            title="Refresh/Generate New Link"
+          >
+            <FaSync className="w-3 h-3" />
+          </button>
         </div>
       ) : (
         <span className="text-gray-300 text-xs">N/A</span>
@@ -762,38 +794,40 @@ export default function WorkforcePage() {
       )}
 
       {/* Summary Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 mb-4 sm:mb-5 md:mb-6">
-        <div className="bg-white rounded-lg shadow border border-gray-100 p-4 sm:p-5 border-l-4 border-primary-500 relative overflow-hidden">
-          <div className="bg-primary-500 absolute top-0 right-0 p-2.5 rounded-bl-xl">
-            <FaUserTie className="w-5 h-5 text-white" />
+      {!hasRole('transport_admin') && (
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 mb-4 sm:mb-5 md:mb-6">
+          <div className="bg-white rounded-lg shadow border border-gray-100 p-4 sm:p-5 border-l-4 border-primary-500 relative overflow-hidden">
+            <div className="bg-primary-500 absolute top-0 right-0 p-2.5 rounded-bl-xl">
+              <FaUserTie className="w-5 h-5 text-white" />
+            </div>
+            <div className="relative pr-12">
+              <p className="text-sm text-gray-600 mb-1">Total Workforce</p>
+              <p className="text-lg font-bold text-gray-800">{filteredWorkforce.length}</p>
+              {workforce.length !== filteredWorkforce.length && (
+                <p className="text-xs text-gray-500 mt-1">of {workforce.length} total</p>
+              )}
+            </div>
           </div>
-          <div className="relative pr-12">
-            <p className="text-sm text-gray-600 mb-1">Total Workforce</p>
-            <p className="text-lg font-bold text-gray-800">{filteredWorkforce.length}</p>
-            {workforce.length !== filteredWorkforce.length && (
-              <p className="text-xs text-gray-500 mt-1">of {workforce.length} total</p>
-            )}
+          <div className="bg-white rounded-lg shadow border border-gray-100 p-4 sm:p-5 border-l-4 border-blue-500 relative overflow-hidden">
+            <div className="bg-blue-500 absolute top-0 right-0 p-2.5 rounded-bl-xl">
+              <FaDollarSign className="w-5 h-5 text-white" />
+            </div>
+            <div className="relative pr-12">
+              <p className="text-sm text-gray-600 mb-1">Total Amount</p>
+              <p className="text-lg font-bold text-gray-800">{formatCurrency(totalPayments)}</p>
+            </div>
+          </div>
+          <div className="bg-white rounded-lg shadow border border-gray-100 p-4 sm:p-5 border-l-4 border-green-500 relative overflow-hidden">
+            <div className="bg-green-500 absolute top-0 right-0 p-2.5 rounded-bl-xl">
+              <FaCheckCircle className="w-5 h-5 text-white" />
+            </div>
+            <div className="relative pr-12">
+              <p className="text-sm text-gray-600 mb-1">Total Paid</p>
+              <p className="text-lg font-bold text-green-600">{formatCurrency(totalPaid)}</p>
+            </div>
           </div>
         </div>
-        <div className="bg-white rounded-lg shadow border border-gray-100 p-4 sm:p-5 border-l-4 border-blue-500 relative overflow-hidden">
-          <div className="bg-blue-500 absolute top-0 right-0 p-2.5 rounded-bl-xl">
-            <FaDollarSign className="w-5 h-5 text-white" />
-          </div>
-          <div className="relative pr-12">
-            <p className="text-sm text-gray-600 mb-1">Total Amount</p>
-            <p className="text-lg font-bold text-gray-800">{formatCurrency(totalPayments)}</p>
-          </div>
-        </div>
-        <div className="bg-white rounded-lg shadow border border-gray-100 p-4 sm:p-5 border-l-4 border-green-500 relative overflow-hidden">
-          <div className="bg-green-500 absolute top-0 right-0 p-2.5 rounded-bl-xl">
-            <FaCheckCircle className="w-5 h-5 text-white" />
-          </div>
-          <div className="relative pr-12">
-            <p className="text-sm text-gray-600 mb-1">Total Paid</p>
-            <p className="text-lg font-bold text-green-600">{formatCurrency(totalPaid)}</p>
-          </div>
-        </div>
-      </div>
+      )}
 
       {/* Role Summary Cards */}
       {Object.keys(roleTotals).length > 0 && (
@@ -853,16 +887,18 @@ export default function WorkforcePage() {
                     </span>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-4 pt-2 border-t border-gray-50">
-                    <div className="space-y-1">
-                      <div className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Total Amount</div>
-                      <div className="text-sm font-bold text-gray-900">{formatCurrency(member.totalAmount || 0)}</div>
+                  {!hasRole('transport_admin') && (
+                    <div className="grid grid-cols-2 gap-4 pt-2 border-t border-gray-50">
+                      <div className="space-y-1">
+                        <div className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Total Amount</div>
+                        <div className="text-sm font-bold text-gray-900">{formatCurrency(member.totalAmount || 0)}</div>
+                      </div>
+                      <div className="space-y-1">
+                        <div className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Paid</div>
+                        <div className="text-sm font-bold text-green-600">{formatCurrency(member.totalPaidAmount || 0)}</div>
+                      </div>
                     </div>
-                    <div className="space-y-1">
-                      <div className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Paid</div>
-                      <div className="text-sm font-bold text-green-600">{formatCurrency(member.totalPaidAmount || 0)}</div>
-                    </div>
-                  </div>
+                  )}
 
                   <div className="flex items-center justify-between pt-2">
                     <div className="flex items-center gap-2">
@@ -915,7 +951,7 @@ export default function WorkforcePage() {
                       </div>
                     )}
 
-                    {hasExpenses && (
+                    {!hasRole('transport_admin') && hasExpenses && (
                       <button
                         onClick={() => toggleExpand(member.id)}
                         className="flex items-center gap-1.5 text-xs font-bold text-gray-500 hover:text-gray-700"
@@ -1002,7 +1038,7 @@ export default function WorkforcePage() {
                     <Fragment key={member.id}>
                       <tr className="hover:bg-gray-50 transition-colors">
                         <td className="px-6 py-4 whitespace-nowrap">
-                          {hasExpenses && (
+                          {!hasRole('transport_admin') && hasExpenses && (
                             <button
                               onClick={() => toggleExpand(member.id)}
                               className="text-gray-400 hover:text-gray-600"
@@ -1018,34 +1054,38 @@ export default function WorkforcePage() {
                         ))}
                         <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                           <div className="flex items-center gap-2">
-                            <button
-                              onClick={() => handleGeneratePDF(member)}
-                              className="text-primary-600 hover:text-primary-700 p-2 hover:bg-primary-50 rounded"
-                              title="Generate PDF Receipt"
-                            >
-                              <FaPrint />
-                            </button>
-                            <button
-                              onClick={() => handleDownloadImage(member)}
-                              className="text-amber-600 hover:text-amber-700 p-2 hover:bg-amber-50 rounded"
-                              title="Download Image Receipt"
-                            >
-                              <FaImage />
-                            </button>
-                            <button
-                              onClick={() => handleEdit(member)}
-                              className="text-primary-600 hover:text-primary-700 p-2 hover:bg-primary-50 rounded"
-                              title="Edit"
-                            >
-                              <FaEdit />
-                            </button>
-                            <button
-                              onClick={() => handleDelete(member.id)}
-                              className="text-red-600 hover:text-red-700 p-2 hover:bg-red-50 rounded"
-                              title="Delete"
-                            >
-                              <FaTrash />
-                            </button>
+                            {!hasRole('transport_admin') && (
+                              <>
+                                <button
+                                  onClick={() => handleGeneratePDF(member)}
+                                  className="text-primary-600 hover:text-primary-700 p-2 hover:bg-primary-50 rounded"
+                                  title="Generate PDF Receipt"
+                                >
+                                  <FaPrint />
+                                </button>
+                                <button
+                                  onClick={() => handleDownloadImage(member)}
+                                  className="text-amber-600 hover:text-amber-700 p-2 hover:bg-amber-50 rounded"
+                                  title="Download Image Receipt"
+                                >
+                                  <FaImage />
+                                </button>
+                                <button
+                                  onClick={() => handleEdit(member)}
+                                  className="text-primary-600 hover:text-primary-700 p-2 hover:bg-primary-50 rounded"
+                                  title="Edit"
+                                >
+                                  <FaEdit />
+                                </button>
+                                <button
+                                  onClick={() => handleDelete(member.id)}
+                                  className="text-red-600 hover:text-red-700 p-2 hover:bg-red-50 rounded"
+                                  title="Delete"
+                                >
+                                  <FaTrash />
+                                </button>
+                              </>
+                            )}
                           </div>
                         </td>
                       </tr>

@@ -6,8 +6,16 @@ import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 import { pusherClient } from '@/lib/pusher'
 import { formatDateTime } from '@/lib/utils'
-import { FaMapMarkedAlt, FaHistory, FaClock } from 'react-icons/fa'
+import { FaMapMarkedAlt, FaHistory, FaClock, FaFlagCheckered, FaChevronDown, FaSearch } from 'react-icons/fa'
 import { toast } from 'sonner'
+
+// Custom Destination Icon
+const destIcon = new L.Icon({
+  iconUrl: 'https://cdn-icons-png.flaticon.com/512/1483/1483155.png',
+  iconSize: [40, 40],
+  iconAnchor: [20, 40],
+  popupAnchor: [0, -40],
+})
 
 // Custom Auto Rickshaw Icon
 const autoIcon = new L.Icon({
@@ -46,6 +54,10 @@ export default function MapComponent() {
   const [adminLocation, setAdminLocation] = useState<[number, number] | null>(null)
   const [loading, setLoading] = useState(true)
   const [map, setMap] = useState<L.Map | null>(null)
+  const [orders, setOrders] = useState<any[]>([])
+  const [selectedOrderId, setSelectedOrderId] = useState<string>('')
+  const [destination, setDestination] = useState<{ lat: number; lng: number; venue: string } | null>(null)
+  const [isGeocoding, setIsGeocoding] = useState(false)
 
   // 1. Initial Fetch of Historical Data
   useEffect(() => {
@@ -63,6 +75,18 @@ export default function MapComponent() {
       }
     }
     fetchHistory()
+
+    // 1.1 Fetch Active Orders for Destination context
+    async function fetchOrders() {
+      try {
+        const res = await fetch('/api/delivery/orders')
+        const data = await res.json()
+        setOrders(data)
+      } catch (error) {
+        console.error('Failed to fetch delivery orders:', error)
+      }
+    }
+    fetchOrders()
   }, [])
 
   // 2. Real-time Updates via Pusher
@@ -133,6 +157,69 @@ export default function MapComponent() {
     }
   }
 
+  // 4. Geocode Order Venue
+  const handleOrderSelect = async (orderId: string) => {
+    setSelectedOrderId(orderId)
+    const order = orders.find(o => o.id === orderId)
+    if (!order || !order.venue) {
+      setDestination(null)
+      return
+    }
+
+    setIsGeocoding(true)
+    try {
+      // Use OSM Nominatim for free geocoding
+      const query = encodeURIComponent(order.venue + ", Hyderabad")
+      const res = await fetch(`https://nominatim.openstreetmap.org/search?q=${query}&format=json&limit=1`)
+      const data = await res.json()
+
+      if (data && data[0]) {
+        const newDest = {
+          lat: parseFloat(data[0].lat),
+          lng: parseFloat(data[0].lon),
+          venue: order.venue
+        }
+        setDestination(newDest)
+        
+        // Pan to destination
+        if (map) {
+          map.flyTo([newDest.lat, newDest.lng], 15)
+        }
+        toast.success(`Destination set to ${order.venue}`)
+      } else {
+        toast.error('Could not locate address on map')
+        setDestination(null)
+      }
+    } catch (error) {
+      console.error('Geocoding error:', error)
+      toast.error('Location service error')
+    } finally {
+      setIsGeocoding(false)
+    }
+  }
+
+  // 5. ETA Calculation Helper (Haversine)
+  const calculateETA = (lat1: number, lon1: number, lat2: number, lon2: number) => {
+    const R = 6371 // km
+    const dLat = (lat2 - lat1) * Math.PI / 180
+    const dLon = (lon2 - lon1) * Math.PI / 180
+    const a = 
+      Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+      Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * 
+      Math.sin(dLon / 2) * Math.sin(dLon / 2)
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
+    const distanceKm = R * c
+    
+    // Average speed 30km/h for auto rickshaw in traffic
+    const timeHours = distanceKm / 30
+    const timeMinutes = Math.round(timeHours * 60)
+    
+    return {
+      distance: distanceKm.toFixed(1),
+      minutes: timeMinutes
+    }
+  }
+
   const defaultCenter: [number, number] = [17.3850, 78.4867] // Hyderabad
 
   if (!pusherClient) {
@@ -170,6 +257,31 @@ export default function MapComponent() {
           <FaMapMarkedAlt className="w-4 h-4" />
           <span>Fit All</span>
         </button>
+
+        <div className="bg-white p-2 rounded-2xl shadow-xl border-2 border-slate-100 w-64">
+          <div className="flex items-center gap-2 px-2 mb-2">
+            <FaFlagCheckered className="text-slate-400 w-3 h-3" />
+            <span className="text-[9px] font-black uppercase tracking-widest text-slate-400">Target Destination</span>
+          </div>
+          <select
+            value={selectedOrderId}
+            onChange={(e) => handleOrderSelect(e.target.value)}
+            className="w-full bg-slate-50 border-none rounded-xl px-3 py-2 text-[11px] font-bold text-slate-700 focus:ring-2 focus:ring-orange-500 appearance-none cursor-pointer"
+          >
+            <option value="">Select Active Order...</option>
+            {orders.map(order => (
+              <option key={order.id} value={order.id}>
+                {order.eventName || order.id.slice(0,8)} - {order.venue?.slice(0, 20)}...
+              </option>
+            ))}
+          </select>
+          {isGeocoding && (
+             <div className="flex items-center gap-2 mt-2 px-2">
+               <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-orange-600"></div>
+               <span className="text-[9px] font-bold text-orange-600 animate-pulse">Locating Venue...</span>
+             </div>
+          )}
+        </div>
       </div>
 
       <MapContainer
@@ -184,12 +296,20 @@ export default function MapComponent() {
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
         />
 
-        {/* Admin/Current Location Marker */}
-        {adminLocation && (
-          <Marker position={adminLocation} icon={userIcon}>
+        {/* Order Destination Marker */}
+        {destination && (
+          <Marker position={[destination.lat, destination.lng]} icon={destIcon}>
             <Popup>
-              <div className="p-2 font-bold text-slate-800 text-xs">
-                Your Current Location
+              <div className="p-3 min-w-[200px]">
+                <div className="text-[9px] font-black uppercase tracking-widest text-blue-600 mb-1">
+                  Target Venue
+                </div>
+                <div className="font-black text-slate-900 text-sm mb-1 leading-tight">
+                  {destination.venue}
+                </div>
+                <div className="text-[10px] text-slate-500 font-medium">
+                  {orders.find(o => o.id === selectedOrderId)?.customer?.name}
+                </div>
               </div>
             </Popup>
           </Marker>
@@ -208,6 +328,21 @@ export default function MapComponent() {
                 lineJoin: 'round'
               }}
             />
+            {/* ETA Line to Destination */}
+            {destination && (
+              <Polyline
+                positions={[
+                  [worker.currentLocation.lat, worker.currentLocation.lng],
+                  [destination.lat, destination.lng]
+                ]}
+                pathOptions={{
+                  color: '#2563eb',
+                  weight: 2,
+                  dashArray: '10, 10',
+                  opacity: 0.4
+                }}
+              />
+            )}
             {/* Thinner outer line for "glowing" effect */}
             <Polyline
               positions={worker.history}
@@ -241,6 +376,21 @@ export default function MapComponent() {
                       <FaClock className="mr-2 text-orange-500" />
                       Last Seen: {formatDateTime(worker.lastUpdate)}
                     </div>
+                    {destination && (
+                      <div className="mt-3 pt-3 border-t border-slate-100">
+                        <div className="flex items-center justify-between mb-2">
+                          <span className="text-[9px] font-black text-blue-600 uppercase tracking-widest">Arrival Estimate</span>
+                          <span className="text-xl font-black text-slate-900">
+                            {calculateETA(worker.currentLocation.lat, worker.currentLocation.lng, destination.lat, destination.lng).minutes} 
+                            <span className="text-[10px] lowercase ml-0.5">m</span>
+                          </span>
+                        </div>
+                        <div className="flex items-center text-[9px] text-slate-400 font-bold uppercase tracking-widest">
+                          <FaFlagCheckered className="mr-1.5 text-blue-500" />
+                          Distance: {calculateETA(worker.currentLocation.lat, worker.currentLocation.lng, destination.lat, destination.lng).distance} km
+                        </div>
+                      </div>
+                    )}
                   </div>
 
                   <button

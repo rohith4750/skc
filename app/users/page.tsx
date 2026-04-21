@@ -23,6 +23,7 @@ interface User {
 const roleIcons: Record<string, any> = {
   super_admin: FaUserShield,
   admin: FaUserShield,
+  transport_admin: FaTruck,
   chef: FaUtensils,
   supervisor: FaUserTie,
   transport: FaTruck,
@@ -31,6 +32,7 @@ const roleIcons: Record<string, any> = {
 const roleColors: Record<string, string> = {
   super_admin: 'bg-purple-100 text-purple-800',
   admin: 'bg-blue-100 text-blue-800',
+  transport_admin: 'bg-amber-100 text-amber-800',
   chef: 'bg-orange-100 text-orange-800',
   supervisor: 'bg-green-100 text-green-800',
   transport: 'bg-yellow-100 text-yellow-800',
@@ -334,6 +336,7 @@ export default function UsersPage() {
                     required
                   >
                     <option value="admin">Admin</option>
+                    <option value="transport_admin">Transport Admin</option>
                     <option value="super_admin">Super Admin</option>
                   </select>
                   <p className="text-xs text-gray-500 mt-1">Note: Chef, Supervisor, and Transport roles are managed in Workforce Management</p>

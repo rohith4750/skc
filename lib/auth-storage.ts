@@ -11,7 +11,7 @@ const PERMISSIONS_KEY = 'permissions'
 const USER_KEY = 'user'
 const REMEMBER_ME_KEY = 'rememberMe'
 
-export type UserRole = 'admin' | 'super_admin' | 'chef' | 'supervisor' | 'transport'
+export type UserRole = 'admin' | 'super_admin' | 'transport_admin' | 'chef' | 'supervisor' | 'transport'
 
 export interface StoredUser {
   id: string

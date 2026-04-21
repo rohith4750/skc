@@ -18,6 +18,7 @@ import MergeOrdersModal from '@/components/MergeOrdersModal'
 import { getRequest, postRequest, putRequest, deleteRequest } from '@/lib/api/api'
 import { apiUrl } from '@/lib/api/apiUrl'
 import { buildOrderPdfHtml } from '@/lib/order-pdf-html'
+import { hasRole } from '@/lib/auth'
 
 export default function OrderCenterPage() {
   const router = useRouter()
@@ -1004,8 +1005,12 @@ export default function OrderCenterPage() {
                   <div className="p-5">
                     <div className="flex items-start justify-between gap-4 mb-4">
                       <div className="flex-1 min-w-0">
-                        <div className="font-bold text-slate-900 truncate">{order.customer?.name || 'Unknown'}</div>
-                        <div className="text-xs font-medium text-slate-400 mt-0.5 print:hidden">{order.customer?.phone || ''}</div>
+                        <div className="font-bold text-slate-900 truncate">
+                          {hasRole('transport_admin') ? 'Confidential Order' : (order.customer?.name || 'Unknown')}
+                        </div>
+                        <div className="text-xs font-medium text-slate-400 mt-0.5 print:hidden">
+                          {hasRole('transport_admin') ? 'Contact Hidden' : (order.customer?.phone || '')}
+                        </div>
                         {(order as any).eventName && (
                           <div className="text-sm font-bold text-indigo-600 mt-1 truncate">{(order as any).eventName}</div>
                         )}
@@ -1147,8 +1152,12 @@ export default function OrderCenterPage() {
                           />
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="text-sm font-bold text-slate-900">{order.customer?.name || 'Unknown'}</div>
-                          <div className="text-xs font-medium text-slate-400 mt-0.5 print:hidden">{order.customer?.phone || ''}</div>
+                          <div className="text-sm font-bold text-slate-900">
+                            {hasRole('transport_admin') ? 'Confidential Order' : (order.customer?.name || 'Unknown')}
+                          </div>
+                          <div className="text-xs font-medium text-slate-400 mt-0.5 print:hidden">
+                            {hasRole('transport_admin') ? 'Contact Hidden' : (order.customer?.phone || '')}
+                          </div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div className="text-sm font-bold text-indigo-600">

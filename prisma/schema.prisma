@@ -28,6 +28,7 @@ enum PaymentStatus {
 enum UserRole {
   admin
   super_admin
+  transport_admin
 }
 
 enum StockTransactionType {
