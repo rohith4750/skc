@@ -19,6 +19,7 @@ export default function DeliveryTrackPage() {
   const [consecutiveErrors, setConsecutiveErrors] = useState(0)
   const [wakeLock, setWakeLock] = useState<any>(null)
   const watchId = useRef<number | null>(null)
+  const heartbeatId = useRef<any>(null)
 
   // 1. Wake Lock Handler
   const requestWakeLock = async () => {
@@ -48,9 +49,45 @@ export default function DeliveryTrackPage() {
   useEffect(() => {
     return () => {
       if (watchId.current !== null) navigator.geolocation.clearWatch(watchId.current)
+      if (heartbeatId.current !== null) clearInterval(heartbeatId.current)
       if (wakeLock) (wakeLock as any).release()
     }
   }, [wakeLock])
+
+  const sendLocationUpdate = async (lat: number, lng: number) => {
+    try {
+      setIsSyncing(true)
+      const res = await fetch('/api/delivery/location', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          token,
+          lat,
+          lng
+        })
+      })
+
+      if (!res.ok) {
+        if (res.status === 403) {
+          const data = await res.json()
+          stopTracking()
+          const msg = data.error === 'Tracking disabled by admin'
+            ? 'Your tracking session has been ended by the administrator.'
+            : 'Invalid session. Please use a valid tracking link.'
+          toast.error(msg, { duration: 10000 })
+        } else {
+          setConsecutiveErrors(prev => prev + 1)
+        }
+      } else {
+        setConsecutiveErrors(0)
+      }
+    } catch (error) {
+      console.error('Sync Error:', error)
+      setConsecutiveErrors(prev => prev + 1)
+    } finally {
+      setIsSyncing(false)
+    }
+  }
 
   const startTracking = () => {
     if (!navigator.geolocation) {
@@ -64,47 +101,11 @@ export default function DeliveryTrackPage() {
     toast.success('Real-time tracking started')
 
     watchId.current = navigator.geolocation.watchPosition(
-      async (position) => {
+      (position) => {
         const { latitude, longitude, accuracy } = position.coords
         setCoords({ lat: latitude, lng: longitude })
         setAccuracy(accuracy)
-
-        try {
-          setIsSyncing(true)
-          const res = await fetch('/api/delivery/location', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              token,
-              lat: latitude,
-              lng: longitude
-            })
-          })
-
-          if (!res.ok) {
-            // Only stop if it's a permanent permission error (403)
-            if (res.status === 403) {
-              const data = await res.json()
-              stopTracking()
-              const msg = data.error === 'Tracking disabled by admin'
-                ? 'Your tracking session has been ended by the administrator.'
-                : 'Invalid session. Please use a valid tracking link.'
-              toast.error(msg, { duration: 10000 })
-            } else {
-              // For other errors (500, 502, 504), just increment errors and keep trying
-              setConsecutiveErrors(prev => prev + 1)
-              console.warn(`Sync Issue (${res.status}). Retrying next ping...`)
-            }
-          } else {
-            // Clear errors on success
-            setConsecutiveErrors(0)
-          }
-        } catch (error) {
-          console.error('Network Error during sync:', error)
-          setConsecutiveErrors(prev => prev + 1)
-        } finally {
-          setIsSyncing(false)
-        }
+        sendLocationUpdate(latitude, longitude)
       },
       (error) => {
         console.error(error)
@@ -113,10 +114,19 @@ export default function DeliveryTrackPage() {
       },
       {
         enableHighAccuracy: true,
-        maximumAge: 30000,
-        timeout: 27000
+        maximumAge: 0, // Force fresh GPS data
+        timeout: 30000
       }
     )
+
+    // 5. Heartbeat: Force an update every 10 seconds to keep connection alive
+    heartbeatId.current = setInterval(() => {
+      navigator.geolocation.getCurrentPosition(
+        (pos) => sendLocationUpdate(pos.coords.latitude, pos.coords.longitude),
+        null,
+        { enableHighAccuracy: true, maximumAge: 0 }
+      )
+    }, 10000)
   }
 
   const stopTracking = async () => {
@@ -126,7 +136,13 @@ export default function DeliveryTrackPage() {
       watchId.current = null
     }
 
-    // 2. Release wake lock
+    // 2. Clear heartbeat
+    if (heartbeatId.current !== null) {
+      clearInterval(heartbeatId.current)
+      heartbeatId.current = null
+    }
+
+    // 3. Release wake lock
     if (wakeLock) {
       (wakeLock as any).release()
       setWakeLock(null)

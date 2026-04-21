@@ -146,16 +146,20 @@ export default function MapComponent() {
     }
   }, [])
 
-  // 3. Admin Geolocation
+  // 3. Admin Geolocation (Watch)
   useEffect(() => {
+    let watchId: number | null = null
     if (navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition(
+      watchId = navigator.geolocation.watchPosition(
         (position) => {
           setAdminLocation([position.coords.latitude, position.coords.longitude])
         },
         (error) => console.error('Admin location error:', error),
-        { enableHighAccuracy: true }
+        { enableHighAccuracy: true, maximumAge: 0 }
       )
+    }
+    return () => {
+      if (watchId !== null) navigator.geolocation.clearWatch(watchId)
     }
   }, [])
 
