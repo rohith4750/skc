@@ -9,12 +9,14 @@ import { toast } from 'sonner'
 export default function DeliveryTrackPage() {
   const params = useParams()
   const token = params.token as string
-  
+
   const [tracking, setTracking] = useState(false)
   const [workerName, setWorkerName] = useState<string | null>(null)
   const [coords, setCoords] = useState<{ lat: number; lng: number } | null>(null)
   const [accuracy, setAccuracy] = useState<number | null>(null)
   const [status, setStatus] = useState<'idle' | 'tracking' | 'error'>('idle')
+  const [isSyncing, setIsSyncing] = useState(false)
+  const [consecutiveErrors, setConsecutiveErrors] = useState(0)
   const watchId = useRef<number | null>(null)
 
   // Verify token on mount
@@ -40,6 +42,7 @@ export default function DeliveryTrackPage() {
         setAccuracy(accuracy)
 
         try {
+          setIsSyncing(true)
           const res = await fetch('/api/delivery/location', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -51,17 +54,28 @@ export default function DeliveryTrackPage() {
           })
 
           if (!res.ok) {
-            const data = await res.json()
-            if (data.error === 'Invalid tracking token' || data.error === 'Tracking disabled by admin') {
+            // Only stop if it's a permanent permission error (403)
+            if (res.status === 403) {
+              const data = await res.json()
               stopTracking()
-              const msg = data.error === 'Tracking disabled by admin' 
-                ? 'Your tracking session has been ended by the administrator.' 
+              const msg = data.error === 'Tracking disabled by admin'
+                ? 'Your tracking session has been ended by the administrator.'
                 : 'Invalid session. Please use a valid tracking link.'
               toast.error(msg, { duration: 10000 })
+            } else {
+              // For other errors (500, 502, 504), just increment errors and keep trying
+              setConsecutiveErrors(prev => prev + 1)
+              console.warn(`Sync Issue (${res.status}). Retrying next ping...`)
             }
+          } else {
+            // Clear errors on success
+            setConsecutiveErrors(0)
           }
         } catch (error) {
-          console.error('Failed to send location:', error)
+          console.error('Network Error during sync:', error)
+          setConsecutiveErrors(prev => prev + 1)
+        } finally {
+          setIsSyncing(false)
         }
       },
       (error) => {
@@ -104,13 +118,15 @@ export default function DeliveryTrackPage() {
         {/* Main Status Card */}
         <div className="bg-slate-800/50 backdrop-blur-xl border border-slate-700/50 rounded-3xl p-8 shadow-2xl relative overflow-hidden group">
           <div className={`absolute top-0 left-0 w-full h-1 transition-all duration-500 ${tracking ? 'bg-orange-500 animate-pulse' : 'bg-slate-600'}`}></div>
-          
+
           <div className="space-y-6">
             <div className="flex items-center justify-center">
               {tracking ? (
                 <div className="flex items-center space-x-2 text-orange-500">
                   <div className="w-3 h-3 bg-orange-500 rounded-full animate-ping"></div>
-                  <span className="font-bold text-lg uppercase tracking-widest">Live: Transmitting</span>
+                  <span className="font-bold text-lg uppercase tracking-widest">
+                    {isSyncing ? 'Syncing...' : 'Live: Transmitting'}
+                  </span>
                 </div>
               ) : (
                 <div className="flex items-center space-x-2 text-slate-500">
@@ -143,6 +159,13 @@ export default function DeliveryTrackPage() {
                 <span>GPS Accuracy: ±{accuracy.toFixed(1)} meters</span>
               </div>
             )}
+
+            {consecutiveErrors > 0 && (
+              <div className="flex items-center justify-center space-x-2 text-xs text-rose-500 font-bold bg-rose-500/10 p-2 rounded-xl animate-pulse">
+                <FaExclamationTriangle />
+                <span>Connection weak... Reconnecting ({consecutiveErrors})</span>
+              </div>
+            )}
           </div>
         </div>
 
@@ -168,7 +191,7 @@ export default function DeliveryTrackPage() {
         <div className="flex items-start bg-blue-500/10 border border-blue-500/20 p-4 rounded-2xl text-left">
           <FaCheckCircle className="text-blue-500 mt-1 mr-3 flex-shrink-0" />
           <p className="text-xs text-blue-200 leading-relaxed">
-            Please keep this tab open and your GPS enabled during delivery. 
+            Please keep this tab open and your GPS enabled during delivery.
             Data is transmitted securely to the admin dashboard.
           </p>
         </div>

@@ -51,11 +51,11 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Password must be at least 6 characters' }, { status: 400 })
     }
 
-    // Validate role - only admin and super_admin allowed in User model
-    const validRoles = ['admin', 'super_admin']
+    // Validate role - only admin, super_admin, and transport_admin allowed in User model
+    const validRoles = ['admin', 'super_admin', 'transport_admin']
     if (!validRoles.includes(data.role)) {
       return NextResponse.json(
-        { error: 'Invalid role. Must be one of: admin, super_admin' },
+        { error: 'Invalid role. Must be one of: admin, super_admin, transport_admin' },
         { status: 400 }
       )
     }

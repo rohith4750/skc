@@ -45,12 +45,12 @@ export async function PUT(
   try {
     const data = await request.json()
 
-    // Validate role if provided - only admin and super_admin allowed in User model
+    // Validate role if provided - only admin, super_admin, and transport_admin allowed in User model
     if (data.role) {
-      const validRoles = ['admin', 'super_admin']
+      const validRoles = ['admin', 'super_admin', 'transport_admin']
       if (!validRoles.includes(data.role)) {
         return NextResponse.json(
-          { error: 'Invalid role. Must be one of: admin, super_admin' },
+          { error: 'Invalid role. Must be one of: admin, super_admin, transport_admin' },
           { status: 400 }
         )
       }

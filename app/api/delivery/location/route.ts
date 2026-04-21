@@ -21,7 +21,11 @@ export async function POST(req: NextRequest) {
     }
 
     if (!worker.isTrackingActive) {
-      return NextResponse.json({ error: 'Tracking disabled by admin' }, { status: 403 })
+      // Automatically re-activate if the driver is trying to start tracking again
+      await (prisma.workforce as any).update({
+        where: { id: worker.id },
+        data: { isTrackingActive: true }
+      })
     }
 
     // 2. Save the location to the database (History)

@@ -5,8 +5,8 @@ import { MapContainer, TileLayer, Marker, Popup, Polyline } from 'react-leaflet'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 import { pusherClient } from '@/lib/pusher'
-import { formatDateTime } from '@/lib/utils'
-import { FaMapMarkedAlt, FaHistory, FaClock, FaFlagCheckered, FaChevronDown, FaSearch } from 'react-icons/fa'
+import { formatDateTime, formatDate } from '@/lib/utils'
+import { FaMapMarkedAlt, FaHistory, FaClock, FaFlagCheckered, FaChevronDown, FaSearch, FaUser, FaCalendarAlt, FaTimes } from 'react-icons/fa'
 import { toast } from 'sonner'
 
 // Custom Destination Icon
@@ -58,6 +58,15 @@ export default function MapComponent() {
   const [selectedOrderId, setSelectedOrderId] = useState<string>('')
   const [destination, setDestination] = useState<{ lat: number; lng: number; venue: string } | null>(null)
   const [isGeocoding, setIsGeocoding] = useState(false)
+  
+  // History State
+  const [isHistoryMode, setIsHistoryMode] = useState(false)
+  const [allWorkers, setAllWorkers] = useState<any[]>([])
+  const [selectedHistoryWorker, setSelectedHistoryWorker] = useState<string>('')
+  const [selectedHistoryDate, setSelectedHistoryDate] = useState<string>(new Date().toISOString().split('T')[0])
+  const [historyPath, setHistoryPath] = useState<any[]>([])
+  const [historyLoading, setHistoryLoading] = useState(false)
+  const [historyStats, setHistoryStats] = useState<{ distance: string; points: number } | null>(null)
 
   // 1. Initial Fetch of Historical Data
   useEffect(() => {
@@ -87,6 +96,18 @@ export default function MapComponent() {
       }
     }
     fetchOrders()
+
+    // 1.2 Fetch All Workers for History Selection
+    async function fetchAllWorkers() {
+      try {
+        const res = await fetch('/api/delivery/workers')
+        const data = await res.json()
+        setAllWorkers(data)
+      } catch (error) {
+        console.error('Failed to fetch workers:', error)
+      }
+    }
+    fetchAllWorkers()
   }, [])
 
   // 2. Real-time Updates via Pusher
@@ -220,6 +241,50 @@ export default function MapComponent() {
     }
   }
 
+  // 6. Fetch History Data
+  const handleFetchHistory = async () => {
+    if (!selectedHistoryWorker || !selectedHistoryDate) {
+      toast.error('Please select both driver and date')
+      return
+    }
+
+    setHistoryLoading(true)
+    try {
+      const res = await fetch(`/api/delivery/history?workforceId=${selectedHistoryWorker}&date=${selectedHistoryDate}`)
+      const data = await res.json()
+      
+      if (data && data.length > 0) {
+        setHistoryPath(data)
+        
+        // Calculate total distance
+        let totalDist = 0
+        for (let i = 0; i < data.length - 1; i++) {
+          totalDist += parseFloat(calculateETA(data[i].lat, data[i].lng, data[i+1].lat, data[i+1].lng).distance)
+        }
+        setHistoryStats({
+          distance: totalDist.toFixed(1),
+          points: data.length
+        })
+
+        // Fit map to history
+        if (map) {
+          const bounds = L.latLngBounds(data.map((p: any) => [p.lat, p.lng]))
+          map.fitBounds(bounds, { padding: [50, 50] })
+        }
+        toast.success(`Loaded ${data.length} movement points`)
+      } else {
+        setHistoryPath([])
+        setHistoryStats(null)
+        toast.error('No location data found for this date')
+      }
+    } catch (error) {
+      console.error('History fetch error:', error)
+      toast.error('Failed to load history')
+    } finally {
+      setHistoryLoading(false)
+    }
+  }
+
   const defaultCenter: [number, number] = [17.3850, 78.4867] // Hyderabad
 
   if (!pusherClient) {
@@ -249,6 +314,7 @@ export default function MapComponent() {
       )}
 
       <div className="absolute top-4 right-4 z-[1000] flex flex-col gap-2">
+        {/* Fit All Button */}
         <button 
           onClick={handleFitAll}
           className="bg-white p-3 rounded-2xl shadow-xl flex items-center gap-2 text-slate-800 hover:bg-orange-50 hover:text-orange-600 transition-all font-bold uppercase tracking-widest text-[10px] border-2 border-slate-100"
@@ -258,30 +324,114 @@ export default function MapComponent() {
           <span>Fit All</span>
         </button>
 
-        <div className="bg-white p-2 rounded-2xl shadow-xl border-2 border-slate-100 w-64">
-          <div className="flex items-center gap-2 px-2 mb-2">
-            <FaFlagCheckered className="text-slate-400 w-3 h-3" />
-            <span className="text-[9px] font-black uppercase tracking-widest text-slate-400">Target Destination</span>
-          </div>
-          <select
-            value={selectedOrderId}
-            onChange={(e) => handleOrderSelect(e.target.value)}
-            className="w-full bg-slate-50 border-none rounded-xl px-3 py-2 text-[11px] font-bold text-slate-700 focus:ring-2 focus:ring-orange-500 appearance-none cursor-pointer"
+        {/* Live/History Toggle */}
+        <div className="bg-white p-1 rounded-2xl shadow-xl border-2 border-slate-100 flex">
+          <button 
+            onClick={() => setIsHistoryMode(false)}
+            className={`flex-1 py-2 px-4 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${!isHistoryMode ? 'bg-orange-600 text-white shadow-lg' : 'text-slate-400 hover:bg-slate-50'}`}
           >
-            <option value="">Select Active Order...</option>
-            {orders.map(order => (
-              <option key={order.id} value={order.id}>
-                {order.eventName || order.id.slice(0,8)} - {order.venue?.slice(0, 20)}...
-              </option>
-            ))}
-          </select>
-          {isGeocoding && (
-             <div className="flex items-center gap-2 mt-2 px-2">
-               <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-orange-600"></div>
-               <span className="text-[9px] font-bold text-orange-600 animate-pulse">Locating Venue...</span>
-             </div>
-          )}
+            Live
+          </button>
+          <button 
+            onClick={() => setIsHistoryMode(true)}
+            className={`flex-1 py-2 px-4 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${isHistoryMode ? 'bg-indigo-600 text-white shadow-lg' : 'text-slate-400 hover:bg-slate-50'}`}
+          >
+            History
+          </button>
         </div>
+
+        {/* Mode-specific Controls */}
+        {!isHistoryMode ? (
+          // LIVE MODE DESTINATION PICKER
+          <div className="bg-white p-2 rounded-2xl shadow-xl border-2 border-slate-100 w-64">
+            <div className="flex items-center gap-2 px-2 mb-2">
+              <FaFlagCheckered className="text-slate-400 w-3 h-3" />
+              <span className="text-[9px] font-black uppercase tracking-widest text-slate-400">Target Destination</span>
+            </div>
+            <select
+              value={selectedOrderId}
+              onChange={(e) => handleOrderSelect(e.target.value)}
+              className="w-full bg-slate-50 border-none rounded-xl px-3 py-2 text-[11px] font-bold text-slate-700 focus:ring-2 focus:ring-orange-500 appearance-none cursor-pointer"
+            >
+              <option value="">Select Active Order...</option>
+              {orders.map(order => (
+                <option key={order.id} value={order.id}>
+                  {order.eventName || order.id.slice(0,8)} - {order.venue?.slice(0, 20)}...
+                </option>
+              ))}
+            </select>
+            {isGeocoding && (
+               <div className="flex items-center gap-2 mt-2 px-2">
+                 <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-orange-600"></div>
+                 <span className="text-[9px] font-bold text-orange-600 animate-pulse">Locating Venue...</span>
+               </div>
+            )}
+          </div>
+        ) : (
+          // HISTORY MODE CONTROLS
+          <div className="bg-white p-3 rounded-2xl shadow-xl border-2 border-slate-100 w-64 space-y-3">
+            <div>
+              <div className="flex items-center gap-2 mb-2 px-1">
+                <FaUser className="text-indigo-400 w-3 h-3" />
+                <span className="text-[9px] font-black uppercase tracking-widest text-slate-400">Select Driver</span>
+              </div>
+              <select
+                value={selectedHistoryWorker}
+                onChange={(e) => setSelectedHistoryWorker(e.target.value)}
+                className="w-full bg-slate-50 border-none rounded-xl px-3 py-2 text-[11px] font-bold text-slate-700 focus:ring-2 focus:ring-indigo-500 appearance-none cursor-pointer"
+              >
+                <option value="">Select Driver...</option>
+                {allWorkers.map(worker => (
+                  <option key={worker.id} value={worker.id}>{worker.name}</option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <div className="flex items-center gap-2 mb-2 px-1">
+                <FaCalendarAlt className="text-indigo-400 w-3 h-3" />
+                <span className="text-[9px] font-black uppercase tracking-widest text-slate-400">Select Date</span>
+              </div>
+              <input 
+                type="date" 
+                value={selectedHistoryDate}
+                onChange={(e) => setSelectedHistoryDate(e.target.value)}
+                className="w-full bg-slate-50 border-none rounded-xl px-3 py-2 text-[11px] font-bold text-slate-700 focus:ring-2 focus:ring-indigo-500 cursor-pointer"
+              />
+            </div>
+
+            <button
+              onClick={handleFetchHistory}
+              disabled={historyLoading}
+              className="w-full py-2.5 bg-indigo-600 text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-indigo-700 transition-all flex items-center justify-center gap-2 disabled:opacity-50"
+            >
+              {historyLoading ? (
+                <>
+                  <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-white"></div>
+                  <span>Fetching...</span>
+                </>
+              ) : (
+                <>
+                  <FaSearch />
+                  <span>View History</span>
+                </>
+              )}
+            </button>
+
+            {historyStats && (
+              <div className="p-3 bg-indigo-50/50 rounded-xl border border-indigo-100 grid grid-cols-2 gap-2">
+                <div>
+                  <span className="block text-[8px] font-black text-indigo-400 uppercase tracking-widest mb-0.5">Distance</span>
+                  <span className="text-sm font-black text-indigo-700">{historyStats.distance} km</span>
+                </div>
+                <div>
+                  <span className="block text-[8px] font-black text-indigo-400 uppercase tracking-widest mb-0.5">Waypoints</span>
+                  <span className="text-sm font-black text-indigo-700">{historyStats.points}</span>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
       <MapContainer
@@ -315,7 +465,19 @@ export default function MapComponent() {
           </Marker>
         )}
 
-        {Object.entries(activeWorkers).map(([id, worker]) => (
+        {/* Admin/Current User Location Marker */}
+        {adminLocation && (
+          <Marker position={adminLocation} icon={userIcon}>
+            <Popup>
+              <div className="p-2 font-bold text-slate-800 text-xs">
+                Your Current Location
+              </div>
+            </Popup>
+          </Marker>
+        )}
+
+        {/* Live Workers Rendering */}
+        {!isHistoryMode && Object.entries(activeWorkers).map(([id, worker]) => (
           <Fragment key={id}>
             {/* Trail / Breadcrumbs with enhanced direction visual */}
             <Polyline
@@ -424,6 +586,42 @@ export default function MapComponent() {
             </Marker>
           </Fragment>
         ))}
+
+        {/* History Path Rendering */}
+        {isHistoryMode && historyPath.length > 0 && (
+          <Fragment>
+            <Polyline
+              positions={historyPath.map(p => [p.lat, p.lng])}
+              pathOptions={{
+                color: '#4f46e5', // Indigo for history
+                weight: 6,
+                opacity: 0.7,
+                lineCap: 'round',
+                lineJoin: 'round'
+              }}
+            />
+            
+            {/* Start Marker */}
+            <Marker position={[historyPath[0].lat, historyPath[0].lng]}>
+              <Popup>
+                <div className="p-2 text-center">
+                  <div className="text-[9px] font-black text-indigo-600 uppercase">Trip Start</div>
+                  <div className="text-xs font-bold">{formatDateTime(historyPath[0].timestamp)}</div>
+                </div>
+              </Popup>
+            </Marker>
+
+            {/* End Marker */}
+            <Marker position={[historyPath[historyPath.length - 1].lat, historyPath[historyPath.length - 1].lng]}>
+              <Popup>
+                <div className="p-2 text-center">
+                  <div className="text-[9px] font-black text-emerald-600 uppercase">Trip End</div>
+                  <div className="text-xs font-bold">{formatDateTime(historyPath[historyPath.length - 1].timestamp)}</div>
+                </div>
+              </Popup>
+            </Marker>
+          </Fragment>
+        )}
       </MapContainer>
     </div>
   )
