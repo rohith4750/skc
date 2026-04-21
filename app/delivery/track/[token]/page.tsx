@@ -52,9 +52,12 @@ export default function DeliveryTrackPage() {
 
           if (!res.ok) {
             const data = await res.json()
-            if (data.error === 'Invalid tracking token') {
+            if (data.error === 'Invalid tracking token' || data.error === 'Tracking disabled by admin') {
               stopTracking()
-              toast.error('Invalid session. Please use a valid tracking link.')
+              const msg = data.error === 'Tracking disabled by admin' 
+                ? 'Your tracking session has been ended by the administrator.' 
+                : 'Invalid session. Please use a valid tracking link.'
+              toast.error(msg, { duration: 10000 })
             }
           }
         } catch (error) {
@@ -154,13 +157,10 @@ export default function DeliveryTrackPage() {
               <span>Start Tracking</span>
             </button>
           ) : (
-            <button
-              onClick={stopTracking}
-              className="w-full py-5 bg-slate-700 hover:bg-slate-600 text-white rounded-2xl font-black text-xl uppercase tracking-widest shadow-xl transition-all active:scale-95 flex items-center justify-center space-x-3"
-            >
-              <FaHistory />
-              <span>Stop Tracking</span>
-            </button>
+            <div className="w-full py-5 bg-orange-600/20 border-2 border-orange-500/50 text-orange-500 rounded-2xl font-black text-xl uppercase tracking-widest flex items-center justify-center space-x-3 cursor-default">
+              <div className="w-2 h-2 bg-orange-500 rounded-full animate-ping"></div>
+              <span>Tracking Active</span>
+            </div>
           )}
         </div>
 

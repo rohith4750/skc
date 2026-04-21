@@ -6,15 +6,16 @@ import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 import { pusherClient } from '@/lib/pusher'
 import { formatDateTime } from '@/lib/utils'
-import { FaMapMarkedAlt } from 'react-icons/fa'
+import { FaMapMarkedAlt, FaHistory, FaClock } from 'react-icons/fa'
+import { toast } from 'sonner'
 
-
-// Fix Leaflet marker icon issue in Next.js
-const customIcon = new L.Icon({
-  iconUrl: 'https://cdn-icons-png.flaticon.com/512/3063/3063822.png', // Delivery truck icon
-  iconSize: [40, 40],
-  iconAnchor: [20, 40],
-  popupAnchor: [0, -40],
+// Custom Auto Rickshaw Icon
+const autoIcon = new L.Icon({
+  iconUrl: 'https://cdn-icons-png.flaticon.com/512/1048/1048313.png',
+  iconSize: [45, 45],
+  iconAnchor: [22, 45],
+  popupAnchor: [0, -45],
+  className: 'drop-shadow-2xl'
 })
 
 interface TrackingUpdate {
@@ -34,28 +35,31 @@ interface WorkerState {
 
 export default function MapComponent() {
   const [activeWorkers, setActiveWorkers] = useState<Record<string, WorkerState>>({})
+  const [loading, setLoading] = useState(true)
 
-  if (!pusherClient) {
-    return (
-      <div className="h-[calc(100vh-200px)] w-full bg-slate-900 rounded-2xl flex flex-col items-center justify-center p-8 text-center border-2 border-slate-800 shadow-2xl">
-        <div className="w-16 h-16 bg-orange-600/20 rounded-full flex items-center justify-center mb-4">
-          <FaMapMarkedAlt className="text-3xl text-orange-500 animate-pulse" />
-        </div>
-        <h3 className="text-xl font-bold text-white mb-2 tracking-tight">Real-Time Engine Disabled</h3>
-        <p className="text-slate-400 max-w-sm text-sm leading-relaxed">
-          Pusher keys are not configured in your Vercel settings. 
-          Please add <code className="text-orange-400 bg-orange-400/10 px-1 rounded">NEXT_PUBLIC_PUSHER_KEY</code> to see live movements.
-        </p>
-      </div>
-    )
-  }
-
+  // 1. Initial Fetch of Historical Data
   useEffect(() => {
+    async function fetchHistory() {
+      try {
+        const res = await fetch('/api/delivery/location')
+        const data = await res.json()
+        if (data.workers) {
+          setActiveWorkers(data.workers)
+        }
+      } catch (error) {
+        console.error('Failed to fetch tracking history:', error)
+      } finally {
+        setLoading(false)
+      }
+    }
+    fetchHistory()
+  }, [])
 
+  // 2. Real-time Updates via Pusher
+  useEffect(() => {
     if (!pusherClient) return
 
     const channel = pusherClient.subscribe('delivery-tracking')
-
 
     channel.bind('location-update', (data: TrackingUpdate) => {
       setActiveWorkers((prev) => {
@@ -64,12 +68,16 @@ export default function MapComponent() {
           history: [],
         }
 
+        // Avoid duplicate history points if they haven't moved
+        const lastPoint = worker.history[worker.history.length - 1]
+        const isNewPoint = !lastPoint || lastPoint[0] !== data.lat || lastPoint[1] !== data.lng
+
         return {
           ...prev,
           [data.workforceId]: {
             ...worker,
             currentLocation: { lat: data.lat, lng: data.lng },
-            history: [...worker.history, [data.lat, data.lng]],
+            history: isNewPoint ? [...worker.history, [data.lat, data.lng]] : worker.history,
             lastUpdate: data.timestamp,
           }
         }
@@ -83,16 +91,39 @@ export default function MapComponent() {
     }
   }, [])
 
-
-
   const defaultCenter: [number, number] = [17.3850, 78.4867] // Hyderabad
 
+  if (!pusherClient) {
+    return (
+      <div className="h-[calc(100vh-200px)] w-full bg-slate-900 rounded-3xl flex flex-col items-center justify-center p-8 text-center border-2 border-slate-800 shadow-2xl overflow-hidden relative">
+        <div className="absolute inset-0 bg-gradient-to-br from-orange-500/10 to-transparent"></div>
+        <div className="w-20 h-20 bg-orange-600/20 rounded-2xl flex items-center justify-center mb-6 relative">
+          <FaMapMarkedAlt className="text-4xl text-orange-500 animate-pulse" />
+        </div>
+        <h3 className="text-2xl font-black text-white mb-3 tracking-tight uppercase">Live Monitoring Disabled</h3>
+        <p className="text-slate-400 max-w-sm text-sm leading-relaxed font-medium">
+          Real-time capabilities require the Pusher engine. Please configure your <code className="text-orange-400 bg-orange-400/10 px-2 py-1 rounded-lg">KEYS</code> to start tracking.
+        </p>
+      </div>
+    )
+  }
+
   return (
-    <div className="h-[calc(100vh-200px)] w-full rounded-2xl overflow-hidden shadow-2xl border-4 border-white">
-      <MapContainer 
-        center={defaultCenter} 
-        zoom={13} 
+    <div className="h-[calc(100vh-200px)] w-full rounded-3xl overflow-hidden shadow-2xl border-4 border-white relative">
+      {loading && (
+        <div className="absolute inset-0 z-[1000] bg-slate-900/50 backdrop-blur-sm flex items-center justify-center">
+          <div className="bg-white p-6 rounded-2xl shadow-xl flex items-center space-x-4">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-orange-600"></div>
+            <span className="font-bold text-slate-800 uppercase tracking-widest text-xs">Loading Live Data...</span>
+          </div>
+        </div>
+      )}
+
+      <MapContainer
+        center={defaultCenter}
+        zoom={13}
         style={{ height: '100%', width: '100%' }}
+        className="z-0"
       >
         <TileLayer
           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
@@ -101,21 +132,78 @@ export default function MapComponent() {
 
         {Object.entries(activeWorkers).map(([id, worker]) => (
           <div key={id}>
-            {/* Trail / Breadcrumbs */}
-            <Polyline 
-              positions={worker.history} 
-              pathOptions={{ color: '#ea580c', weight: 3, opacity: 0.6, dashArray: '5, 10' }} 
+            {/* Trail / Breadcrumbs with enhanced direction visual */}
+            <Polyline
+              positions={worker.history}
+              pathOptions={{
+                color: '#ea580c',
+                weight: 5,
+                opacity: 0.8,
+                lineCap: 'round',
+                lineJoin: 'round'
+              }}
             />
-            
+            {/* Thinner outer line for "glowing" effect */}
+            <Polyline
+              positions={worker.history}
+              pathOptions={{
+                color: '#fb923c',
+                weight: 10,
+                opacity: 0.2,
+                lineCap: 'round',
+                lineJoin: 'round'
+              }}
+            />
+
             {/* Current Position Marker */}
-            <Marker position={[worker.currentLocation.lat, worker.currentLocation.lng]} icon={customIcon}>
+            <Marker position={[worker.currentLocation.lat, worker.currentLocation.lng]} icon={autoIcon}>
               <Popup>
-                <div className="p-2 min-w-[150px]">
-                  <div className="font-black text-orange-600 uppercase text-xs mb-1">Active Delivery</div>
-                  <div className="font-bold text-lg text-slate-800">{worker.name}</div>
-                  <hr className="my-2" />
-                  <div className="text-[10px] text-slate-500 uppercase font-bold">Last Updated</div>
-                  <div className="text-xs font-mono text-slate-600">{formatDateTime(worker.lastUpdate)}</div>
+                <div className="p-3 min-w-[180px] bg-white">
+                  <div className="flex items-center space-x-2 mb-2">
+                    <div className="px-2 py-0.5 bg-orange-100 text-orange-600 rounded text-[9px] font-black uppercase tracking-widest">
+                      Live Delivery
+                    </div>
+                  </div>
+                  <div className="font-black text-xl text-slate-900 tracking-tight leading-tight mb-3">
+                    {worker.name}
+                  </div>
+                  <div className="space-y-2">
+                    <div className="flex items-center text-[10px] text-slate-500 font-bold uppercase tracking-widest">
+                      <FaHistory className="mr-2 text-orange-500" />
+                      Trip History: {worker.history.length} pts
+                    </div>
+                    <div className="flex items-center text-[10px] text-slate-500 font-bold uppercase tracking-widest">
+                      <FaClock className="mr-2 text-orange-500" />
+                      Last Seen: {formatDateTime(worker.lastUpdate)}
+                    </div>
+                  </div>
+
+                  <button
+                    onClick={async () => {
+                      if (confirm(`Stop tracking for ${worker.name}?`)) {
+                        try {
+                          const res = await fetch('/api/delivery/stop', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ workforceId: id })
+                          })
+                          if (res.ok) {
+                            setActiveWorkers(prev => {
+                              const newState = { ...prev }
+                              delete newState[id]
+                              return newState
+                            })
+                            toast.success(`Tracking stopped for ${worker.name}`)
+                          }
+                        } catch (err) {
+                          toast.error('Failed to stop tracking')
+                        }
+                      }
+                    }}
+                    className="w-full mt-4 py-2 bg-red-50 text-red-600 rounded-lg text-[10px] font-black uppercase tracking-widest hover:bg-red-600 hover:text-white transition-all border border-red-100"
+                  >
+                    Stop Tracking
+                  </button>
                 </div>
               </Popup>
             </Marker>
