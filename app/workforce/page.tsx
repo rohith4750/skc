@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useState, useMemo, Fragment } from 'react'
-import { FaEdit, FaTrash, FaUtensils, FaUserTie, FaTruck, FaDollarSign, FaReceipt, FaChevronDown, FaChevronUp, FaUsers, FaUserFriends, FaFilter, FaSearch, FaTimes, FaCheckCircle, FaExclamationCircle, FaClock, FaGasPump, FaBox, FaStore, FaCircle, FaPlus, FaPrint, FaSync, FaUser, FaImage } from 'react-icons/fa'
+import { FaEdit, FaTrash, FaUtensils, FaUserTie, FaTruck, FaDollarSign, FaReceipt, FaChevronDown, FaChevronUp, FaUsers, FaUserFriends, FaFilter, FaSearch, FaTimes, FaCheckCircle, FaExclamationCircle, FaClock, FaGasPump, FaBox, FaStore, FaCircle, FaPlus, FaPrint, FaSync, FaUser, FaImage, FaWhatsapp, FaLink, FaCopy } from 'react-icons/fa'
 import { toast } from 'sonner'
 import Table from '@/components/Table'
 import ConfirmModal from '@/components/ConfirmModal'
@@ -15,6 +15,7 @@ interface Workforce {
   name: string
   role: string
   isActive: boolean
+  trackingToken?: string
   createdAt: string
   updatedAt: string
   expenses?: any[]
@@ -298,6 +299,28 @@ export default function WorkforcePage() {
     }
   }
 
+  const handleCopyTrackingLink = (member: Workforce) => {
+    if (!member.trackingToken) {
+      toast.error('No tracking token found for this member')
+      return
+    }
+    const link = `${window.location.origin}/delivery/track/${member.trackingToken}`
+    navigator.clipboard.writeText(link)
+    toast.success('Tracking link copied to clipboard!')
+  }
+
+  const handleWhatsAppTrackingShare = (member: Workforce) => {
+    if (!member.trackingToken) {
+      toast.error('No tracking token found for this member')
+      return
+    }
+    const link = `${window.location.origin}/delivery/track/${member.trackingToken}`
+    const message = `Hi ${member.name}, please use this link to start your delivery tracking for SKC Caterers: ${link}`
+    const encodedMessage = encodeURIComponent(message)
+    window.open(`https://wa.me/?text=${encodedMessage}`, '_blank')
+    toast.success('Opening WhatsApp...')
+  }
+
   const handleClearPayments = async () => {
     if (workforce.length > 0) return
     setClearingPayments(true)
@@ -512,6 +535,30 @@ export default function WorkforcePage() {
         <span className={`px-2 py-1 rounded-full text-xs font-medium ${member.isActive ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
           {member.isActive ? 'Active' : 'Inactive'}
         </span>
+      ),
+    },
+    {
+      key: 'tracking',
+      header: 'Tracking',
+      render: (member: Workforce) => member.role === 'transport' ? (
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => handleCopyTrackingLink(member)}
+            className="p-1.5 bg-slate-100 text-slate-600 rounded hover:bg-slate-200 transition-colors"
+            title="Copy Tracking Link"
+          >
+            <FaLink className="w-3 h-3" />
+          </button>
+          <button
+            onClick={() => handleWhatsAppTrackingShare(member)}
+            className="p-1.5 bg-green-100 text-green-600 rounded hover:bg-green-200 transition-colors"
+            title="Share via WhatsApp"
+          >
+            <FaWhatsapp className="w-3 h-3" />
+          </button>
+        </div>
+      ) : (
+        <span className="text-gray-300 text-xs">N/A</span>
       ),
     },
   ]
@@ -848,6 +895,25 @@ export default function WorkforcePage() {
                         <FaTrash className="w-4 h-4" />
                       </button>
                     </div>
+
+                    {member.role === 'transport' && (
+                      <div className="flex items-center gap-2 border-l border-gray-100 pl-2">
+                        <button
+                          onClick={() => handleCopyTrackingLink(member)}
+                          className="p-2.5 bg-slate-50 text-slate-600 rounded-xl hover:bg-slate-100 transition-colors"
+                          title="Copy Tracking Link"
+                        >
+                          <FaLink className="w-4 h-4" />
+                        </button>
+                        <button
+                          onClick={() => handleWhatsAppTrackingShare(member)}
+                          className="p-2.5 bg-green-50 text-green-600 rounded-xl hover:bg-green-100 transition-colors"
+                          title="Share via WhatsApp"
+                        >
+                          <FaWhatsapp className="w-4 h-4" />
+                        </button>
+                      </div>
+                    )}
 
                     {hasExpenses && (
                       <button

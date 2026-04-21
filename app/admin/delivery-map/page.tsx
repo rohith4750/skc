@@ -1,7 +1,7 @@
 'use client'
 
 import dynamic from 'next/dynamic'
-import { FaMapMarkedAlt, FaTruck, FaUsers, FaCircle } from 'react-icons/fa'
+import { FaMapMarkedAlt, FaTruck, FaUsers, FaCircle, FaLink, FaWhatsapp } from 'react-icons/fa'
 
 // Import MapComponent with SSR disabled as it uses Leaflet which requires 'window'
 const MapComponent = dynamic(
@@ -78,6 +78,22 @@ export default function DeliveryMapDashboard() {
             <div className="text-2xl font-black text-slate-800 tracking-tight">PostgreSQL</div>
             <div className="text-xs text-slate-400 font-bold uppercase tracking-widest">Location Storage</div>
           </div>
+        </div>
+      </div>
+      
+      {/* Information Box */}
+      <div className="bg-blue-50 border border-blue-200 rounded-2xl p-4 flex items-start gap-4 shadow-sm">
+        <div className="bg-blue-500 p-2 rounded-lg text-white">
+          <FaUsers className="w-4 h-4" />
+        </div>
+        <div>
+          <h4 className="text-sm font-bold text-blue-900 uppercase tracking-tight">How to track drivers?</h4>
+          <p className="text-xs text-blue-700 mt-1 leading-relaxed">
+            Go to <strong>Workforce Management</strong>, find the transport member, and click the 
+            <span className="mx-1 p-1 bg-white rounded border border-blue-200 inline-flex items-center"><FaLink className="text-[8px] mr-1" /> Link</span> 
+            or <span className="mx-1 p-1 bg-white rounded border border-blue-200 inline-flex items-center"><FaWhatsapp className="text-[8px] mr-1 text-green-600" /> WhatsApp</span> 
+            button to share their unique tracking link. Tracking begins once they click "Start Tracking" on their phone.
+          </p>
         </div>
       </div>
 
