@@ -292,14 +292,31 @@ model LoginAuditLog {
 }
 
 model Workforce {
-  id        String   @id @default(uuid())
-  name      String
-  role      String   // "chef", "supervisor", "transport"
-  isActive  Boolean  @default(true)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id            String   @id @default(uuid())
+  name          String
+  role          String   // "chef", "supervisor", "transport"
+  trackingToken String?  @unique @default(uuid())
+  isActive      Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  locations     DeliveryLocation[]
 
   @@map("workforce")
+}
+
+
+
+model DeliveryLocation {
+  id          String    @id @default(uuid())
+  workforceId String
+  workforce   Workforce @relation(fields: [workforceId], references: [id], onDelete: Cascade)
+  lat         Float
+  lng         Float
+  timestamp   DateTime  @default(now())
+
+  @@index([workforceId])
+  @@index([timestamp])
+  @@map("delivery_locations")
 }
 
 model WorkforcePayment {

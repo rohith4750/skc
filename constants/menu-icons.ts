@@ -20,7 +20,9 @@ import {
   FaUsers,
   FaUtensils,
   FaWarehouse,
+  FaMapMarkerAlt,
 } from "react-icons/fa";
+
 import type { IconKey } from "@/constants/menu";
 
 export const MENU_ICON_MAP: Record<IconKey, IconType> = {
@@ -46,4 +48,6 @@ export const MENU_ICON_MAP: Record<IconKey, IconType> = {
   regular: FaTag,
   quotations: FaClipboardList,
   profile: FaUserCircle,
+  tracking: FaMapMarkerAlt,
 };
+

@@ -54,7 +54,9 @@ export type IconKey =
   | "enquiries"
   | "regular"
   | "quotations"
+  | "tracking"
   | "profile";
+
 
 export interface RouteConfigItem {
   name: string;
@@ -177,6 +179,16 @@ export const menuData: RouteConfigItem[] = [
     showInSideMenu: true,
     section: "core",
   },
+  {
+    name: "Live Tracking",
+    route: "/admin/delivery-map",
+    file: "app/admin/delivery-map/page.tsx",
+    icon: "tracking",
+    permissions: "AUTHENTICATED",
+    showInSideMenu: true,
+    section: "core",
+  },
+
 
   {
     name: "Expenses",

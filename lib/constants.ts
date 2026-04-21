@@ -16,7 +16,10 @@ export const PUBLIC_PATHS = [
   '/api/auth/validate',
   '/api/auth/forgot-password',
   '/api/auth/reset-password',
+  '/delivery/track',
+  '/api/delivery/location',
 ]
+
 
 export function isPublicPath(pathname: string): boolean {
   return PUBLIC_PATHS.some((p) => pathname === p || pathname.startsWith(p + '/'))
