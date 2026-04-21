@@ -33,9 +33,19 @@ interface WorkerState {
   lastUpdate: string
 }
 
+// User Location Icon (Blue Dot)
+const userIcon = new L.Icon({
+  iconUrl: 'https://cdn-icons-png.flaticon.com/512/3601/3601831.png',
+  iconSize: [30, 30],
+  iconAnchor: [15, 15],
+  popupAnchor: [0, -15],
+})
+
 export default function MapComponent() {
   const [activeWorkers, setActiveWorkers] = useState<Record<string, WorkerState>>({})
+  const [adminLocation, setAdminLocation] = useState<[number, number] | null>(null)
   const [loading, setLoading] = useState(true)
+  const [map, setMap] = useState<L.Map | null>(null)
 
   // 1. Initial Fetch of Historical Data
   useEffect(() => {
@@ -88,8 +98,37 @@ export default function MapComponent() {
       if (pusherClient) {
         pusherClient.unsubscribe('delivery-tracking')
       }
+  // 3. Admin Geolocation
+  useEffect(() => {
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          setAdminLocation([position.coords.latitude, position.coords.longitude])
+        },
+        (error) => console.error('Admin location error:', error),
+        { enableHighAccuracy: true }
+      )
     }
   }, [])
+
+  const handleFitAll = () => {
+    if (!map) return
+
+    const points: L.LatLngExpression[] = []
+    
+    // Add admin location
+    if (adminLocation) points.push(adminLocation)
+    
+    // Add all workers
+    Object.values(activeWorkers).forEach(w => {
+      points.push([w.currentLocation.lat, w.currentLocation.lng])
+    })
+
+    if (points.length > 0) {
+      const bounds = L.latLngBounds(points)
+      map.fitBounds(bounds, { padding: [50, 50] })
+    }
+  }
 
   const defaultCenter: [number, number] = [17.3850, 78.4867] // Hyderabad
 
@@ -119,16 +158,39 @@ export default function MapComponent() {
         </div>
       )}
 
+      <div className="absolute top-4 right-4 z-[1000] flex flex-col gap-2">
+        <button 
+          onClick={handleFitAll}
+          className="bg-white p-3 rounded-2xl shadow-xl flex items-center gap-2 text-slate-800 hover:bg-orange-50 hover:text-orange-600 transition-all font-bold uppercase tracking-widest text-[10px] border-2 border-slate-100"
+          title="Zoom out to see everyone"
+        >
+          <FaMapMarkedAlt className="w-4 h-4" />
+          <span>Fit All</span>
+        </button>
+      </div>
+
       <MapContainer
         center={defaultCenter}
         zoom={13}
         style={{ height: '100%', width: '100%' }}
         className="z-0"
+        ref={setMap}
       >
         <TileLayer
           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
         />
+
+        {/* Admin/Current Location Marker */}
+        {adminLocation && (
+          <Marker position={adminLocation} icon={userIcon}>
+            <Popup>
+              <div className="p-2 font-bold text-slate-800 text-xs">
+                Your Current Location
+              </div>
+            </Popup>
+          </Marker>
+        )}
 
         {Object.entries(activeWorkers).map(([id, worker]) => (
           <div key={id}>
