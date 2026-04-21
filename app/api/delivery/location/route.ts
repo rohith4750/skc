@@ -12,10 +12,11 @@ export async function POST(req: NextRequest) {
     }
 
     // 1. Find the workforce member by token
-    const worker = await prisma.workforce.findFirst({
+    const worker = await (prisma.workforce as any).findFirst({
       where: { trackingToken: token },
       select: { id: true, name: true, role: true }
     })
+
 
 
     if (!worker) {
@@ -23,13 +24,14 @@ export async function POST(req: NextRequest) {
     }
 
     // 2. Save the location to the database (History)
-    const newLocation = await prisma.deliveryLocation.create({
+    const newLocation = await (prisma as any).deliveryLocation.create({
       data: {
         workforceId: worker.id,
         lat: parseFloat(lat),
         lng: parseFloat(lng),
       }
     })
+
 
     // 3. Broadcast the update via Pusher for real-time dashboard
     // Wrap in try-catch so invalid keys don't break the whole request

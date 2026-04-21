@@ -34,7 +34,10 @@ export default function MapComponent() {
   const [activeWorkers, setActiveWorkers] = useState<Record<string, WorkerState>>({})
 
   useEffect(() => {
+    if (!pusherClient) return
+
     const channel = pusherClient.subscribe('delivery-tracking')
+
 
     channel.bind('location-update', (data: TrackingUpdate) => {
       setActiveWorkers((prev) => {
@@ -56,9 +59,13 @@ export default function MapComponent() {
     })
 
     return () => {
-      pusherClient.unsubscribe('delivery-tracking')
+      if (pusherClient) {
+        pusherClient.unsubscribe('delivery-tracking')
+      }
     }
   }, [])
+
+
 
   const defaultCenter: [number, number] = [17.3850, 78.4867] // Hyderabad
 
