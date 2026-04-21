@@ -61,7 +61,10 @@ export async function GET() {
     
     const activeLocations = await (prisma as any).deliveryLocation.findMany({
       where: {
-        timestamp: { gte: fourHoursAgo }
+        timestamp: { gte: fourHoursAgo },
+        workforce: {
+          isTrackingActive: true
+        }
       },
       orderBy: { timestamp: 'asc' },
       include: {

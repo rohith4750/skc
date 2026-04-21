@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, Fragment } from 'react'
 import { MapContainer, TileLayer, Marker, Popup, Polyline } from 'react-leaflet'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
@@ -98,6 +98,9 @@ export default function MapComponent() {
       if (pusherClient) {
         pusherClient.unsubscribe('delivery-tracking')
       }
+    }
+  }, [])
+
   // 3. Admin Geolocation
   useEffect(() => {
     if (navigator.geolocation) {
@@ -193,7 +196,7 @@ export default function MapComponent() {
         )}
 
         {Object.entries(activeWorkers).map(([id, worker]) => (
-          <div key={id}>
+          <Fragment key={id}>
             {/* Trail / Breadcrumbs with enhanced direction visual */}
             <Polyline
               positions={worker.history}
@@ -269,7 +272,7 @@ export default function MapComponent() {
                 </div>
               </Popup>
             </Marker>
-          </div>
+          </Fragment>
         ))}
       </MapContainer>
     </div>
