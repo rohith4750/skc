@@ -6,6 +6,8 @@ import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 import { pusherClient } from '@/lib/pusher'
 import { formatDateTime } from '@/lib/utils'
+import { FaMapMarkedAlt } from 'react-icons/fa'
+
 
 // Fix Leaflet marker icon issue in Next.js
 const customIcon = new L.Icon({
@@ -33,7 +35,23 @@ interface WorkerState {
 export default function MapComponent() {
   const [activeWorkers, setActiveWorkers] = useState<Record<string, WorkerState>>({})
 
+  if (!pusherClient) {
+    return (
+      <div className="h-[calc(100vh-200px)] w-full bg-slate-900 rounded-2xl flex flex-col items-center justify-center p-8 text-center border-2 border-slate-800 shadow-2xl">
+        <div className="w-16 h-16 bg-orange-600/20 rounded-full flex items-center justify-center mb-4">
+          <FaMapMarkedAlt className="text-3xl text-orange-500 animate-pulse" />
+        </div>
+        <h3 className="text-xl font-bold text-white mb-2 tracking-tight">Real-Time Engine Disabled</h3>
+        <p className="text-slate-400 max-w-sm text-sm leading-relaxed">
+          Pusher keys are not configured in your Vercel settings. 
+          Please add <code className="text-orange-400 bg-orange-400/10 px-1 rounded">NEXT_PUBLIC_PUSHER_KEY</code> to see live movements.
+        </p>
+      </div>
+    )
+  }
+
   useEffect(() => {
+
     if (!pusherClient) return
 
     const channel = pusherClient.subscribe('delivery-tracking')

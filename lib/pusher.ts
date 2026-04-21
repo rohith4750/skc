@@ -11,7 +11,7 @@ export const pusherServer = new PusherServer({
 })
 
 // Client-side pusher instance
-export const pusherClient = typeof window !== 'undefined' 
+export const pusherClient = (typeof window !== 'undefined' && process.env.NEXT_PUBLIC_PUSHER_KEY)
   ? new PusherClient(
       process.env.NEXT_PUBLIC_PUSHER_KEY!,
       {
@@ -19,4 +19,5 @@ export const pusherClient = typeof window !== 'undefined'
       }
     )
   : null;
+
 

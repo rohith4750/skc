@@ -19,6 +19,8 @@ export async function POST(req: NextRequest) {
 
 
 
+
+
     if (!worker) {
       return NextResponse.json({ error: 'Invalid tracking token' }, { status: 403 })
     }
@@ -33,25 +35,23 @@ export async function POST(req: NextRequest) {
     })
 
 
+
+
     // 3. Broadcast the update via Pusher for real-time dashboard
-    // Wrap in try-catch so invalid keys don't break the whole request
     try {
-      if (process.env.NEXT_PUBLIC_PUSHER_KEY !== 'your_pusher_key') {
-        await pusherServer.trigger('delivery-tracking', 'location-update', {
-          workforceId: worker.id,
-          workerName: worker.name,
-          lat: parseFloat(lat),
-          lng: parseFloat(lng),
-          timestamp: newLocation.timestamp
-        })
-      } else {
-        console.warn('Pusher update skipped: Please configure real keys in .env')
-      }
+      await pusherServer.trigger('delivery-tracking', 'location-update', {
+        workforceId: worker.id,
+        workerName: worker.name,
+        lat: parseFloat(lat),
+        lng: parseFloat(lng),
+        timestamp: (newLocation as any).timestamp
+      })
     } catch (pusherError) {
-      console.error('Pusher Broadcast Error (Check your .env keys):', pusherError)
+      console.error('Pusher Broadcast Error:', pusherError)
     }
 
     return NextResponse.json({ success: true })
+
 
   } catch (error) {
     console.error('Tracking API Error:', error)
