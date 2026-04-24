@@ -42,11 +42,15 @@ export async function GET(request: NextRequest) {
       if (order) orders.push(order);
     }
 
-    return NextResponse.json(transformDecimal(orders));
+    return NextResponse.json({
+      success: true,
+      data: transformDecimal(orders),
+      message: "Orders fetched successfully"
+    });
   } catch (error) {
     console.error("Error fetching orders:", error);
     return NextResponse.json(
-      { error: "Failed to fetch orders" },
+      { success: false, error: "Failed to fetch orders" },
       { status: 500 },
     );
   }
@@ -236,7 +240,11 @@ export async function POST(request: NextRequest) {
     }
 
     return NextResponse.json(
-      { order: transformDecimal(order) },
+      { 
+        success: true, 
+        data: transformDecimal(order),
+        message: "Order created successfully" 
+      },
       { status: 201 },
     );
   } catch (error: any) {
@@ -249,6 +257,7 @@ export async function POST(request: NextRequest) {
     });
     return NextResponse.json(
       {
+        success: false,
         error: "Failed to create order",
         details: error.message || "Unknown error",
         code: error.code,

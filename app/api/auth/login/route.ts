@@ -166,7 +166,7 @@ export async function POST(request: NextRequest) {
     const maxAgeDays = rememberMe ? REFRESH_DAYS_REMEMBER : REFRESH_DAYS
     const maxAgeSeconds = maxAgeDays * 24 * 60 * 60
 
-    // Return user data (NOT tokens - they're in httpOnly cookies)
+    // Return user data AND tokens for mobile clients
     const response = NextResponse.json({
       success: true,
       user: {
@@ -175,6 +175,8 @@ export async function POST(request: NextRequest) {
         email: user.email,
         role,
       },
+      accessToken,
+      refreshToken,
     })
 
     // Set access token in httpOnly cookie (1 hour)
