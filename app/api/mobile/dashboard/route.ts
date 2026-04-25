@@ -17,7 +17,7 @@ export async function GET(request: NextRequest) {
       ordersCount,
       billsCount,
       todayOrders,
-      todayRevenue,
+      todayStats,
       outstandingAmount,
       recentOrders
     ] = await Promise.all([
@@ -40,6 +40,8 @@ export async function GET(request: NextRequest) {
         },
         _sum: {
           paidAmount: true,
+          totalAmount: true,
+          remainingAmount: true,
         },
       }),
       prisma.bill.aggregate({
@@ -65,7 +67,9 @@ export async function GET(request: NextRequest) {
         orders: ordersCount,
         bills: billsCount,
         todayOrders,
-        todayRevenue: todayRevenue._sum.paidAmount || 0,
+        todayRevenue: todayStats._sum.paidAmount || 0,
+        todayTotalAmount: todayStats._sum.totalAmount || 0,
+        todayPendingAmount: todayStats._sum.remainingAmount || 0,
         outstanding: outstandingAmount._sum.remainingAmount || 0,
       },
       recentOrders,
