@@ -9,12 +9,17 @@ export async function GET(request: NextRequest) {
   if (auth.response) return auth.response;
 
   try {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const tomorrow = new Date(today);
-    tomorrow.setDate(tomorrow.getDate() + 1);
+    // Use IST timezone (UTC+5.5) for dashboard "Today" logic
+    const now = new Date();
+    const istOffset = 5.5 * 60 * 60 * 1000;
+    const istNow = new Date(now.getTime() + istOffset);
+    
+    const today = new Date(istNow);
+    today.setUTCHours(0, 0, 0, 0);
+    const startOfTodayIST = new Date(today.getTime() - istOffset);
+    const endOfTodayIST = new Date(startOfTodayIST.getTime() + 24 * 60 * 60 * 1000);
 
-    console.log(`[DashboardAPI] Fetching stats for date range: ${today.toISOString()} to ${tomorrow.toISOString()}`);
+    console.log(`[DashboardAPI] Fetching stats (IST relative): ${startOfTodayIST.toISOString()} to ${endOfTodayIST.toISOString()}`);
 
     const [
       customersCount,
@@ -22,6 +27,7 @@ export async function GET(request: NextRequest) {
       ordersCount,
       billsCount,
       todayOrders,
+      todayOrdersSum,
       activeOrdersCount,
       todayStats,
       outstandingAmount,
@@ -34,9 +40,20 @@ export async function GET(request: NextRequest) {
       prisma.order.count({
         where: {
           createdAt: {
-            gte: today,
-            lt: tomorrow,
+            gte: startOfTodayIST,
+            lt: endOfTodayIST,
           },
+        },
+      }),
+      prisma.order.aggregate({
+        where: {
+          createdAt: {
+            gte: startOfTodayIST,
+            lt: endOfTodayIST,
+          },
+        },
+        _sum: {
+          totalAmount: true,
         },
       }),
       prisma.order.count({
@@ -49,8 +66,8 @@ export async function GET(request: NextRequest) {
       prisma.bill.aggregate({
         where: {
           createdAt: {
-            gte: today,
-            lt: tomorrow,
+            gte: startOfTodayIST,
+            lt: endOfTodayIST,
           },
         },
         _sum: {
@@ -83,7 +100,8 @@ export async function GET(request: NextRequest) {
       todayOrders,
       activeOrders: activeOrdersCount,
       todayRevenue: Number(todayStats._sum.paidAmount || 0),
-      todayTotalAmount: Number(todayStats._sum.totalAmount || 0),
+      // Today's Sales = Sum of all new Order totals created today
+      todayTotalAmount: Number(todayOrdersSum._sum.totalAmount || 0),
       todayPendingAmount: Number(todayStats._sum.remainingAmount || 0),
       outstanding: Number(outstandingAmount._sum.remainingAmount || 0),
     };

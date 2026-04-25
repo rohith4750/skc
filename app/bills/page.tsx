@@ -124,7 +124,7 @@ export default function BillsPage() {
   const loadBillableOrders = async () => {
     setIsLoadingBillable(true)
     try {
-      const data = await getRequest({ url: '/api/orders/billable' })
+      const data = await getRequest({ url: '/orders/billable' })
       setBillableOrders(data)
     } catch (error) {
       toast.error('Failed to load billable orders')
@@ -137,7 +137,7 @@ export default function BillsPage() {
     toast.promise(
       async () => {
         const newBill = await postRequest({
-          url: `/api/bills/order/${orderId}`,
+          url: `/bills/order/${orderId}`,
           data: {}
         })
         loadBills()
