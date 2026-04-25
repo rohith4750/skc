@@ -42,15 +42,11 @@ export async function GET(request: NextRequest) {
       if (order) orders.push(order);
     }
 
-    return NextResponse.json({
-      success: true,
-      data: transformDecimal(orders),
-      message: "Orders fetched successfully"
-    });
+    return NextResponse.json(transformDecimal(orders));
   } catch (error) {
     console.error("Error fetching orders:", error);
     return NextResponse.json(
-      { success: false, error: "Failed to fetch orders" },
+      { error: "Failed to fetch orders" },
       { status: 500 },
     );
   }

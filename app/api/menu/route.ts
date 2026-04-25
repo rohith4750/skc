@@ -10,14 +10,10 @@ export async function GET(request: NextRequest) {
     const menuItems = await prisma.menuItem.findMany({
       orderBy: { name: "asc" },
     });
-    return NextResponse.json({
-      success: true,
-      data: menuItems,
-      message: "Menu fetched successfully"
-    });
+    return NextResponse.json(menuItems);
   } catch (error) {
     return NextResponse.json(
-      { success: false, error: "Failed to fetch menu items" },
+      { error: "Failed to fetch menu items" },
       { status: 500 },
     );
   }

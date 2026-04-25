@@ -261,7 +261,7 @@ export default function Dashboard() {
             }
             if (workforceRes.ok) {
               const workforceData = await workforceRes.json();
-              workforceCount = workforceData.length;
+              workforceCount = Array.isArray(workforceData) ? workforceData.length : (workforceData.workforce?.length || 0);
             }
             if (stockRes.ok) {
               const stockData = await stockRes.json();
