@@ -7,8 +7,19 @@ import { requireAuth } from '@/lib/require-auth'
 export async function GET(request: NextRequest) {
   const auth = await requireAuth(request)
   if (auth.response) return auth.response
+  
+  const currentUserRole = auth.payload.role
+
   try {
+    const where: any = {}
+    
+    // If transport_admin, only show transport users
+    if (currentUserRole === 'transport_admin') {
+      where.role = 'transport'
+    }
+
     const users = await prisma.user.findMany({
+      where,
       orderBy: { createdAt: 'desc' },
       select: {
         id: true,
@@ -18,7 +29,6 @@ export async function GET(request: NextRequest) {
         isActive: true,
         createdAt: true,
         updatedAt: true,
-        // Don't return passwordHash
       }
     })
     return NextResponse.json(users)
@@ -34,6 +44,9 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   const auth = await requireAuth(request)
   if (auth.response) return auth.response
+  
+  const currentUserRole = auth.payload.role
+
   try {
     const data = await request.json()
 
@@ -44,6 +57,22 @@ export async function POST(request: NextRequest) {
         { status: 400 }
       )
     }
+
+    // Role-based permissions
+    if (currentUserRole === 'transport_admin') {
+      if (data.role !== 'transport') {
+        return NextResponse.json(
+          { error: 'Transport Admin can only create users with "transport" role' },
+          { status: 403 }
+        )
+      }
+    } else if (currentUserRole !== 'super_admin' && currentUserRole !== 'admin') {
+      return NextResponse.json(
+        { error: 'Insufficient permissions to create users' },
+        { status: 403 }
+      )
+    }
+
     if (!isEmail(data.email)) {
       return NextResponse.json({ error: 'Invalid email address' }, { status: 400 })
     }
@@ -51,11 +80,11 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Password must be at least 6 characters' }, { status: 400 })
     }
 
-    // Validate role - only admin, super_admin, and transport_admin allowed in User model
-    const validRoles = ['admin', 'super_admin', 'transport_admin']
+    // Validate role
+    const validRoles = ['admin', 'super_admin', 'transport_admin', 'transport']
     if (!validRoles.includes(data.role)) {
       return NextResponse.json(
-        { error: 'Invalid role. Must be one of: admin, super_admin, transport_admin' },
+        { error: `Invalid role. Must be one of: ${validRoles.join(', ')}` },
         { status: 400 }
       )
     }

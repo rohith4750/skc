@@ -6,7 +6,7 @@ import { toast } from 'sonner'
 import Table from '@/components/Table'
 import ConfirmModal from '@/components/ConfirmModal'
 import RoleGuard from '@/components/RoleGuard'
-import { isSuperAdmin } from '@/lib/auth'
+import { isSuperAdmin, getUserRole } from '@/lib/auth'
 import FormError from '@/components/FormError'
 import Link from 'next/link'
 
@@ -77,11 +77,12 @@ export default function UsersPage() {
 
   const handleCreate = () => {
     setEditingUser(null)
+    const currentRole = getUserRole()
     setFormData({
       username: '',
       email: '',
       password: '',
-      role: 'admin',
+      role: currentRole === 'transport_admin' ? 'transport' : 'admin',
       isActive: true,
     })
     setFormError('')
@@ -222,12 +223,12 @@ export default function UsersPage() {
   ]
 
   return (
-    <RoleGuard requiredRole="super_admin">
+    <RoleGuard requiredRole={['super_admin', 'transport_admin']}>
       <div className="p-6 lg:p-8">
         <div className="flex justify-between items-center mb-6">
           <div>
             <h1 className="text-3xl font-bold text-gray-800">User Management</h1>
-            <p className="text-gray-600 mt-2">Manage internal users (chef, supervisor, transport, admin)</p>
+            <p className="text-gray-600 mt-2">Manage internal users (drivers, supervisors, admin)</p>
           </div>
           <button
             onClick={handleCreate}
@@ -332,14 +333,26 @@ export default function UsersPage() {
                   <select
                     value={formData.role}
                     onChange={(e) => setFormData({ ...formData, role: e.target.value })}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
                     required
+                    disabled={getUserRole() === 'transport_admin'}
                   >
-                    <option value="admin">Admin</option>
-                    <option value="transport_admin">Transport Admin</option>
-                    <option value="super_admin">Super Admin</option>
+                    {getUserRole() === 'transport_admin' ? (
+                      <option value="transport">Transport (Driver)</option>
+                    ) : (
+                      <>
+                        <option value="admin">Admin</option>
+                        <option value="transport_admin">Transport Admin</option>
+                        <option value="transport">Transport (Driver)</option>
+                        <option value="super_admin">Super Admin</option>
+                      </>
+                    )}
                   </select>
-                  <p className="text-xs text-gray-500 mt-1">Note: Chef, Supervisor, and Transport roles are managed in Workforce Management</p>
+                  <p className="text-xs text-gray-500 mt-1">
+                    {getUserRole() === 'transport_admin' 
+                      ? 'Note: You can only create Transport (Driver) users.' 
+                      : 'Note: Chef, Supervisor, and other workforce types are managed in Workforce Management'}
+                  </p>
                 </div>
 
                 <div className="flex items-center">

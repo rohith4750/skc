@@ -29,6 +29,7 @@ enum UserRole {
   admin
   super_admin
   transport_admin
+  transport
 }
 
 enum StockTransactionType {

@@ -281,10 +281,10 @@ export const menuData: RouteConfigItem[] = [
     route: "/users",
     file: "app/users/page.tsx",
     icon: "users",
-    permissions: "SUPER_ADMIN_ONLY",
+    permissions: "AUTHENTICATED",
     showInSideMenu: true,
     section: "system",
-    roles: ["super_admin"],
+    roles: ["super_admin", "transport_admin"],
   },
   {
     name: "Login Audit Logs",

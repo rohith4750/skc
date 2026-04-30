@@ -3,10 +3,17 @@ import { prisma } from '@/lib/prisma'
 import bcrypt from 'bcryptjs'
 import { isEmail, isNonEmptyString } from '@/lib/validation'
 
+import { requireAuth } from '@/lib/require-auth'
+
 export async function GET(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
+  const auth = await requireAuth(request)
+  if (auth.response) return auth.response
+  
+  const currentUserRole = auth.payload.role
+
   try {
     const user = await prisma.user.findUnique({
       where: { id: params.id },
@@ -28,6 +35,14 @@ export async function GET(
       )
     }
 
+    // If transport_admin, only allow seeing transport users
+    if (currentUserRole === 'transport_admin' && user.role !== 'transport') {
+      return NextResponse.json(
+        { error: 'Forbidden - Transport Admin can only access transport users' },
+        { status: 403 }
+      )
+    }
+
     return NextResponse.json(user)
   } catch (error: any) {
     console.error('Error fetching user:', error)
@@ -42,15 +57,49 @@ export async function PUT(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
+  const auth = await requireAuth(request)
+  if (auth.response) return auth.response
+  
+  const currentUserRole = auth.payload.role
+
   try {
     const data = await request.json()
 
-    // Validate role if provided - only admin, super_admin, and transport_admin allowed in User model
+    // Get current target user data
+    const targetUser = await prisma.user.findUnique({
+      where: { id: params.id }
+    })
+
+    if (!targetUser) {
+      return NextResponse.json({ error: 'User not found' }, { status: 404 })
+    }
+
+    // Role-based permissions
+    if (currentUserRole === 'transport_admin') {
+      // transport_admin can only update 'transport' users
+      if (targetUser.role !== 'transport') {
+        return NextResponse.json(
+          { error: 'Transport Admin can only update users with "transport" role' },
+          { status: 403 }
+        )
+      }
+      // transport_admin cannot change role to anything other than 'transport'
+      if (data.role && data.role !== 'transport') {
+        return NextResponse.json(
+          { error: 'Transport Admin can only set role to "transport"' },
+          { status: 403 }
+        )
+      }
+    } else if (currentUserRole !== 'super_admin' && currentUserRole !== 'admin') {
+      return NextResponse.json({ error: 'Insufficient permissions' }, { status: 403 })
+    }
+
+    // Validate role if provided
     if (data.role) {
-      const validRoles = ['admin', 'super_admin', 'transport_admin']
+      const validRoles = ['admin', 'super_admin', 'transport_admin', 'transport']
       if (!validRoles.includes(data.role)) {
         return NextResponse.json(
-          { error: 'Invalid role. Must be one of: admin, super_admin, transport_admin' },
+          { error: `Invalid role. Must be one of: ${validRoles.join(', ')}` },
           { status: 400 }
         )
       }
@@ -113,6 +162,11 @@ export async function DELETE(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
+  const auth = await requireAuth(request)
+  if (auth.response) return auth.response
+  
+  const currentUserRole = auth.payload.role
+
   try {
     // Check if user exists
     const user = await prisma.user.findUnique({
@@ -124,6 +178,19 @@ export async function DELETE(
         { error: 'User not found' },
         { status: 404 }
       )
+    }
+
+    // Role-based permissions
+    if (currentUserRole === 'transport_admin') {
+      if (user.role !== 'transport') {
+        return NextResponse.json(
+          { error: 'Transport Admin can only delete users with "transport" role' },
+          { status: 403 }
+        )
+      }
+    } else if (currentUserRole !== 'super_admin') {
+      // Only super_admin can delete other admins
+      return NextResponse.json({ error: 'Only Super Admin can delete users' }, { status: 403 })
     }
 
     // Don't allow deleting super_admin users (safety measure)
