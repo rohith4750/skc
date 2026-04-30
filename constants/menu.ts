@@ -10,7 +10,6 @@ export type MenuSection =
   | "core"
   | "transport"
   | "financial"
-  | "tax"
   | "inventory"
   | "system"
   | "profile";
@@ -19,7 +18,6 @@ export const MENU_SECTION_ORDER: MenuSection[] = [
   "core",
   "transport",
   "financial",
-  "tax",
   "inventory",
   "system",
   "profile",
@@ -29,7 +27,6 @@ export const MENU_SECTION_TITLES: Record<MenuSection, string> = {
   core: "Order Management",
   transport: "Transport & Delivery",
   financial: "Financial Management",
-  tax: "Tax Management",
   inventory: "Stock & Inventory",
   system: "System Administration",
   profile: "My Account",
@@ -241,17 +238,6 @@ export const menuData: RouteConfigItem[] = [
     permissions: "SUPER_ADMIN_ONLY",
     showInSideMenu: true,
     section: "financial",
-    roles: ["super_admin"],
-  },
-
-  {
-    name: "Income Tax Return",
-    route: "/tax",
-    file: "app/tax/page.tsx",
-    icon: "tax",
-    permissions: "SUPER_ADMIN_ONLY",
-    showInSideMenu: true,
-    section: "tax",
     roles: ["super_admin"],
   },
 
