@@ -7,16 +7,22 @@ export type PermissionKey =
   | "AUTHENTICATED";
 
 export type MenuSection =
-  | "core"
-  | "transport"
+  | "overview"
+  | "directory"
+  | "order_entry"
+  | "order_views"
+  | "logistics"
   | "financial"
   | "inventory"
   | "system"
   | "profile";
 
 export const MENU_SECTION_ORDER: MenuSection[] = [
-  "core",
-  "transport",
+  "overview",
+  "directory",
+  "order_entry",
+  "order_views",
+  "logistics",
   "financial",
   "inventory",
   "system",
@@ -24,8 +30,11 @@ export const MENU_SECTION_ORDER: MenuSection[] = [
 ];
 
 export const MENU_SECTION_TITLES: Record<MenuSection, string> = {
-  core: "Order Management",
-  transport: "Transport & Delivery",
+  overview: "Overview",
+  directory: "Directory",
+  order_entry: "Order Operations",
+  order_views: "Reports & Planning",
+  logistics: "Transport & Delivery",
   financial: "Financial Management",
   inventory: "Stock & Inventory",
   system: "System Administration",
@@ -78,7 +87,7 @@ export const menuData: RouteConfigItem[] = [
     icon: "dashboard",
     permissions: "AUTHENTICATED",
     showInSideMenu: true,
-    section: "core",
+    section: "overview",
   },
   {
     name: "Alerts",
@@ -87,7 +96,7 @@ export const menuData: RouteConfigItem[] = [
     icon: "alerts",
     permissions: "AUTHENTICATED",
     showInSideMenu: true,
-    section: "core",
+    section: "overview",
   },
   {
     name: "Customers",
@@ -96,7 +105,7 @@ export const menuData: RouteConfigItem[] = [
     icon: "customers",
     permissions: "AUTHENTICATED",
     showInSideMenu: true,
-    section: "core",
+    section: "directory",
   },
   {
     name: "Menu",
@@ -105,7 +114,7 @@ export const menuData: RouteConfigItem[] = [
     icon: "menu",
     permissions: "AUTHENTICATED",
     showInSideMenu: true,
-    section: "core",
+    section: "directory",
   },
   {
     name: "Create Order",
@@ -114,17 +123,8 @@ export const menuData: RouteConfigItem[] = [
     icon: "orders",
     permissions: "AUTHENTICATED",
     showInSideMenu: true,
-    section: "core",
+    section: "order_entry",
   },
-  // {
-  //   name: "Regular Orders",
-  //   route: "/orders/regular",
-  //   file: "app/orders/regular/page.tsx",
-  //   icon: "regular",
-  //   permissions: "AUTHENTICATED",
-  //   showInSideMenu: true,
-  //   section: "core",
-  // },
   {
     name: "Order Hub",
     route: "/orders/center",
@@ -132,16 +132,7 @@ export const menuData: RouteConfigItem[] = [
     icon: "planner",
     permissions: "AUTHENTICATED",
     showInSideMenu: true,
-    section: "core",
-  },
-  {
-    name: "Past Events",
-    route: "/orders/history",
-    file: "app/orders/history/page.tsx",
-    icon: "history",
-    permissions: "AUTHENTICATED",
-    showInSideMenu: true,
-    section: "core",
+    section: "order_entry",
   },
   {
     name: "Quotations",
@@ -150,7 +141,16 @@ export const menuData: RouteConfigItem[] = [
     icon: "quotations",
     permissions: "AUTHENTICATED",
     showInSideMenu: true,
-    section: "core",
+    section: "order_entry",
+  },
+  {
+    name: "Past Events",
+    route: "/orders/history",
+    file: "app/orders/history/page.tsx",
+    icon: "history",
+    permissions: "AUTHENTICATED",
+    showInSideMenu: true,
+    section: "order_views",
   },
   {
     name: "Calendar",
@@ -159,7 +159,7 @@ export const menuData: RouteConfigItem[] = [
     icon: "planner",
     permissions: "AUTHENTICATED",
     showInSideMenu: true,
-    section: "core",
+    section: "order_views",
   },
   {
     name: "Event Planner",
@@ -168,7 +168,16 @@ export const menuData: RouteConfigItem[] = [
     icon: "planner",
     permissions: "AUTHENTICATED",
     showInSideMenu: true,
-    section: "core",
+    section: "order_views",
+  },
+  {
+    name: "Kitchen Prep",
+    route: "/reports/prep-list",
+    file: "app/reports/prep-list/page.tsx",
+    icon: "planner",
+    permissions: "ADMIN_AND_SUPER_ADMIN",
+    showInSideMenu: true,
+    section: "order_views",
   },
   {
     name: "Bills",
@@ -177,7 +186,7 @@ export const menuData: RouteConfigItem[] = [
     icon: "bills",
     permissions: "AUTHENTICATED",
     showInSideMenu: true,
-    section: "core",
+    section: "financial",
   },
   {
     name: "Live Tracking",
@@ -186,7 +195,7 @@ export const menuData: RouteConfigItem[] = [
     icon: "tracking",
     permissions: "AUTHENTICATED",
     showInSideMenu: true,
-    section: "core",
+    section: "logistics",
   },
 
 
