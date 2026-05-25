@@ -5,12 +5,15 @@
 export const applySmartPaging = async (container: HTMLElement, pageHeightMm: number = 297, pageWidthMm: number = 210) => {
   if (!container) return;
 
-  // 1. Wait for fonts to be ready
+  // 1. Enforce box-sizing to border-box so offsetWidth equals total styled width (210mm)
+  container.style.boxSizing = 'border-box';
+
+  // 2. Wait for fonts to be ready
   if (typeof document !== 'undefined' && (document as any).fonts) {
     await (document as any).fonts.ready;
   }
 
-  // 2. Wait for all images in the container to load
+  // 3. Wait for all images in the container to load
   const images = Array.from(container.querySelectorAll('img'));
   await Promise.all(
     images.map(img => {
@@ -25,15 +28,15 @@ export const applySmartPaging = async (container: HTMLElement, pageHeightMm: num
   // Give the browser a moment to settle layout
   await new Promise(r => setTimeout(r, 100));
 
-  // 3. Calculate page height in pixels based on the current container width
+  // 4. Calculate page height in pixels based on the current container width
   const containerWidthPx = container.offsetWidth;
   const pxPerMm = containerWidthPx / pageWidthMm;
   const pageHeightPx = pageHeightMm * pxPerMm;
 
-  // 4. Find all elements that shouldn't be split (rows, section headers) or should break before
+  // 5. Find all elements that shouldn't be split (rows, section headers) or should break before
   const breakables = container.querySelectorAll('.pdf-row, .pdf-page-break-before');
   
-  // 5. Process each element and insert spacers if needed
+  // 6. Process each element and insert spacers if needed
   breakables.forEach((el: any) => {
     const rect = el.getBoundingClientRect();
     const parentRect = container.getBoundingClientRect();

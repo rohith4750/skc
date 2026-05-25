@@ -14,6 +14,7 @@ export function buildOrderPdfHtml(
     bill?: any;
     isQuotation?: boolean;
     hideMenuDetails?: boolean;
+    hideBillDetails?: boolean;
   },
 ): string {
   const {
@@ -21,6 +22,7 @@ export function buildOrderPdfHtml(
     formatCurrency = (v) => `\u20B9${v.toLocaleString("en-IN")}`,
     bill: externalBill,
     isQuotation = false,
+    hideBillDetails = false,
   } = options;
 
   const themeColor = isQuotation ? "#7c3aed" : "#000000"; // Purple-600 for quotations, Black for bills
@@ -241,7 +243,7 @@ export function buildOrderPdfHtml(
   let menuDetailsHtml = "";
   if (sortedDates.length > 0 && !options.hideMenuDetails) {
     menuDetailsHtml = `
-      <div class="pdf-page-break-before" style="margin-top: 25px;">
+      <div class="${hideBillDetails ? '' : 'pdf-page-break-before'}" style="margin-top: 25px;">
         <!-- Running Header for Menu Details Page -->
         <div style="display: flex; align-items: center; justify-content: space-between; border-bottom: 2px solid ${themeColor}; padding-bottom: 6px; margin-bottom: 20px;">
           <span style="font-size: 11px; font-weight: 800; color: #000; text-transform: uppercase; letter-spacing: 0.5px;">SRIVATSASA & KOWNDINYA CATERERS</span>
@@ -418,9 +420,8 @@ export function buildOrderPdfHtml(
         <div style="margin-bottom: 10px; font-size: 11px; line-height: 1.4; border-top: 1px dashed #ccc; padding-top: 6px;">
             <div><span style="font-weight: 700; width: 100px; display: inline-block;">${idLabel}</span> ${billNo}</div>
             <div><span style="font-weight: 500; width: 100px; display: inline-block;">Date:</span> ${formatDate(new Date().toISOString())}</div>
-        </div>
-
-        <!-- BILL SUMMARY BOX -->
+              <!-- BILL SUMMARY BOX -->
+        ${!hideBillDetails ? `
         <div style="border: 2px solid ${themeColor}; padding: 0;">
              <!-- Box Header -->
              <div style="text-align: center; padding: 5px; font-weight: 800; font-size: 12px; text-transform: uppercase; border-bottom: 1px solid ${themeColor}; background-color: ${isQuotation ? '#f5f3ff' : 'transparent'}; color: ${themeColor};">
@@ -429,7 +430,7 @@ export function buildOrderPdfHtml(
              
              <!-- Table -->
              <table style="width: 100%; border-collapse: collapse;">
-                 <colgroup>
+                  <colgroup>
                     <col style="width: 45%;">
                     <col style="width: 15%;">
                     <col style="width: 20%;">
@@ -482,19 +483,20 @@ export function buildOrderPdfHtml(
                     <div>Advance Paid:</div>
                     <div>${formatCurrency(finalPaid)}</div>
                  </div>
-                  <div style="display: flex; justify-content: space-between; padding: 6px 12px; font-size: 13px; font-weight: 800; border-top: 2px solid ${themeColor}; background-color: ${isQuotation ? '#f5f3ff' : '#f9f9f9'};">
+                   <div style="display: flex; justify-content: space-between; padding: 6px 12px; font-size: 13px; font-weight: 800; border-top: 2px solid ${themeColor}; background-color: ${isQuotation ? '#f5f3ff' : '#f9f9f9'};">
                     <div>Estimated Total:</div>
                     <div style="color: ${themeColor};">${formatCurrency(finalTotal)}</div>
-                  </div>
+                   </div>
                  <div style="display: flex; justify-content: space-between; padding: 5px 12px; font-size: 12px; font-weight: 800; color: #000;">
                     <div>Balance Amount:</div>
                     <div>${formatCurrency(finalRemaining)}</div>
                  </div>
             </div>
         </div>
+        ` : ""}
 
         ${
-          billNote
+          billNote && !hideBillDetails
             ? `
         <div class="pdf-row" style="margin-top: 10px; border: 1px solid #ddd; background-color: #fafafa; border-radius: 6px; padding: 8px 10px; page-break-inside: avoid; break-inside: avoid;">
             <div style="font-size: 10px; font-weight: 700; text-transform: uppercase; margin-bottom: 3px;">Note</div>
@@ -505,6 +507,7 @@ export function buildOrderPdfHtml(
         }
 
         <!-- TERMS & CONDITIONS -->
+        ${!hideBillDetails ? `
         <div class="pdf-row" style="margin-top: 15px; page-break-inside: avoid; break-inside: avoid;">
             <div style="font-weight: 700; font-size: 11px; text-align: center; text-transform: uppercase; margin-bottom: 6px;">TERMS & CONDITIONS</div>
             <div style="font-size: 9px; line-height: 1.4; color: #000;">
@@ -514,8 +517,10 @@ export function buildOrderPdfHtml(
                 <div>Preparation of Seasonal/Revelantables veg food is sololy handled by Srivatsaa & Kowndinya Caterers only.</div>
             </div>
         </div>
+        ` : ""}
 
         <!-- SIGNATURES -->
+        ${!hideBillDetails ? `
         <div class="pdf-row" style="margin-top: 5px; display: flex; justify-content: space-between; align-items: flex-end; page-break-inside: avoid; break-inside: avoid;">
             <div style="text-align: left; position: relative; width: 300px;">
                  <img src="${window.location.origin}/images/billstamp.png" alt="Stamp" style="position: relative; top: 10px; left: -40px; width: 90%; height: auto; max-height: 90px; object-fit: contain; opacity: 0.9;" />
@@ -527,6 +532,7 @@ export function buildOrderPdfHtml(
                 <div style="font-size: 10px; font-weight: 600;">Customer Signature</div>
             </div>
         </div>
+        ` : ""}
 
         <!-- MENU DETAILS SECTION (Annex on a new page) -->
         ${menuDetailsHtml}

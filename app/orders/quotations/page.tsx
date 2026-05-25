@@ -100,7 +100,7 @@ export default function QuotationsPage() {
   }
 
   // --- PDF & IMAGE GENERATION ---
-  const renderQuotationToPdf = async (order: Order): Promise<string | null> => {
+  const renderQuotationToPdf = async (order: Order, type: 'bill' | 'menu'): Promise<string | null> => {
     let tempDiv: HTMLDivElement | null = null;
     try {
       const htmlContent = buildOrderPdfHtml(order, {
@@ -108,13 +108,18 @@ export default function QuotationsPage() {
         formatDate,
         showFinancials: true,
         formatCurrency,
-        isQuotation: true
+        isQuotation: true,
+        hideMenuDetails: type === 'bill',
+        hideBillDetails: type === 'menu'
       })
 
       tempDiv = document.createElement('div')
       tempDiv.style.position = 'absolute'
       tempDiv.style.left = '-9999px'
       tempDiv.style.width = '210mm'
+      tempDiv.style.minWidth = '210mm'
+      tempDiv.style.maxWidth = '210mm'
+      tempDiv.style.boxSizing = 'border-box'
       tempDiv.style.padding = '10mm'
       tempDiv.style.fontFamily = 'Poppins, sans-serif'
       tempDiv.style.background = 'white'
@@ -168,7 +173,7 @@ export default function QuotationsPage() {
     }
   }
 
-  const renderQuotationToImage = async (order: Order): Promise<string | null> => {
+  const renderQuotationToImage = async (order: Order, type: 'bill' | 'menu'): Promise<string | null> => {
     let tempDiv: HTMLDivElement | null = null;
     try {
       const htmlContent = buildOrderPdfHtml(order, {
@@ -176,13 +181,18 @@ export default function QuotationsPage() {
         formatDate,
         showFinancials: true,
         formatCurrency,
-        isQuotation: true
+        isQuotation: true,
+        hideMenuDetails: type === 'bill',
+        hideBillDetails: type === 'menu'
       })
 
       tempDiv = document.createElement('div')
       tempDiv.style.position = 'absolute'
       tempDiv.style.left = '-9999px'
       tempDiv.style.width = '210mm'
+      tempDiv.style.minWidth = '210mm'
+      tempDiv.style.maxWidth = '210mm'
+      tempDiv.style.boxSizing = 'border-box'
       tempDiv.style.padding = '10mm'
       tempDiv.style.fontFamily = 'Poppins, sans-serif'
       tempDiv.style.background = 'white'
@@ -215,10 +225,10 @@ export default function QuotationsPage() {
     }
   }
 
-  const handleViewPDF = async (order: Order) => {
-    const toastId = toast.loading('Opening preview...')
+  const handleViewPDF = async (order: Order, type: 'bill' | 'menu') => {
+    const toastId = toast.loading(`Opening ${type} preview...`)
     try {
-      const pdfBase64 = await renderQuotationToPdf(order)
+      const pdfBase64 = await renderQuotationToPdf(order, type)
       if (pdfBase64) {
         const byteCharacters = atob(pdfBase64)
         const byteNumbers = new Array(byteCharacters.length)
@@ -234,39 +244,39 @@ export default function QuotationsPage() {
     }
   }
 
-  const handleDownloadPDF = async (order: Order) => {
-    const toastId = toast.loading('Generating PDF...')
+  const handleDownloadPDF = async (order: Order, type: 'bill' | 'menu') => {
+    const toastId = toast.loading(`Generating ${type} PDF...`)
     try {
-      const pdfBase64 = await renderQuotationToPdf(order)
+      const pdfBase64 = await renderQuotationToPdf(order, type)
       if (pdfBase64) {
           const link = document.createElement('a')
           link.href = `data:application/pdf;base64,${pdfBase64}`
-          link.download = `SKC-Quotation-${order.customer?.name?.replace(/\s+/g, '-') || 'Draft'}.pdf`
+          link.download = `SKC-Quotation-${type}-${order.customer?.name?.replace(/\s+/g, '-') || 'Draft'}.pdf`
           document.body.appendChild(link)
           link.click()
           document.body.removeChild(link)
-          toast.success('PDF downloaded!', { id: toastId })
+          toast.success(`${type.charAt(0).toUpperCase() + type.slice(1)} PDF downloaded!`, { id: toastId })
       }
     } catch (error) {
-      toast.error('Error downloading PDF', { id: toastId })
+      toast.error(`Error downloading ${type} PDF`, { id: toastId })
     }
   }
 
-  const handleDownloadImage = async (order: Order) => {
-    const toastId = toast.loading('Generating Image...')
+  const handleDownloadImage = async (order: Order, type: 'bill' | 'menu') => {
+    const toastId = toast.loading(`Generating ${type} Image...`)
     try {
-      const imageDataUrl = await renderQuotationToImage(order)
+      const imageDataUrl = await renderQuotationToImage(order, type)
       if (imageDataUrl) {
           const link = document.createElement('a')
           link.href = imageDataUrl
-          link.download = `SKC-Quotation-${order.customer?.name?.replace(/\s+/g, '-') || 'Draft'}.png`
+          link.download = `SKC-Quotation-${type}-${order.customer?.name?.replace(/\s+/g, '-') || 'Draft'}.png`
           document.body.appendChild(link)
           link.click()
           document.body.removeChild(link)
-          toast.success('Image downloaded!', { id: toastId })
+          toast.success(`${type.charAt(0).toUpperCase() + type.slice(1)} Image downloaded!`, { id: toastId })
       }
     } catch (error) {
-      toast.error('Error downloading image', { id: toastId })
+      toast.error(`Error downloading ${type} image`, { id: toastId })
     }
   }
 
@@ -348,30 +358,23 @@ export default function QuotationsPage() {
                         <button
                           onClick={() => setSelectedOrderForMenu(order)}
                           className="p-2 text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"
-                          title="View Selected Menu"
+                          title="View Selected Menu Items"
                         >
                           <FaEye className="w-5 h-5" />
                         </button>
                         <button
-                          onClick={() => handleViewPDF(order)}
-                          className="p-2 text-slate-500 hover:bg-slate-100 rounded-lg transition-colors"
-                          title="View PDF Preview"
+                          onClick={() => handleViewPDF(order, 'bill')}
+                          className="p-2 text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors"
+                          title="View Bill PDF"
                         >
-                          <FaFilePdf className="w-4 h-4" />
+                          <FaClipboardList className="w-4 h-4 text-emerald-600" />
                         </button>
                         <button
-                          onClick={() => handleDownloadPDF(order)}
-                          className="p-2 text-slate-500 hover:bg-slate-100 rounded-lg transition-colors"
-                          title="Download PDF"
+                          onClick={() => handleViewPDF(order, 'menu')}
+                          className="p-2 text-purple-600 hover:bg-purple-50 rounded-lg transition-colors"
+                          title="View Menu PDF"
                         >
-                          <FaClipboardList className="w-4 h-4 text-purple-600" />
-                        </button>
-                        <button
-                          onClick={() => handleDownloadImage(order)}
-                          className="p-2 text-slate-500 hover:bg-slate-100 rounded-lg transition-colors"
-                          title="Download Image"
-                        >
-                          <FaFileImage className="w-4 h-4 text-indigo-500" />
+                          <FaFilePdf className="w-4 h-4 text-purple-600" />
                         </button>
                         <div className="w-px h-4 bg-slate-200 self-center mx-1"></div>
                         <button
@@ -434,8 +437,8 @@ export default function QuotationsPage() {
         <MenuModal 
           order={selectedOrderForMenu} 
           onClose={() => setSelectedOrderForMenu(null)} 
-          onDownloadPDF={() => handleDownloadPDF(selectedOrderForMenu)}
-          onDownloadImage={() => handleDownloadImage(selectedOrderForMenu)}
+          onDownloadPDF={() => handleDownloadPDF(selectedOrderForMenu, 'menu')}
+          onDownloadImage={() => handleDownloadImage(selectedOrderForMenu, 'menu')}
         />
       )}
     </div>
