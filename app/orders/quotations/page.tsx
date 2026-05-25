@@ -364,61 +364,111 @@ export default function QuotationsPage() {
                     <td className="px-6 py-4 text-sm text-slate-500">
                       {formatDateTime(order.createdAt)}
                     </td>
-                    <td className="px-6 py-4 text-right">
-                      <div className="flex justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                        <button
-                          onClick={() => setSelectedOrderForMenu(order)}
-                          className="p-2 text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"
-                          title="View Selected Menu Items"
-                        >
-                          <FaEye className="w-5 h-5" />
-                        </button>
-                        <button
-                          onClick={() => handleViewPDF(order, 'bill')}
-                          className="p-2 text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors"
-                          title="View Bill PDF"
-                        >
-                          <FaClipboardList className="w-4 h-4 text-emerald-600" />
-                        </button>
-                        <button
-                          onClick={() => handleDownloadImage(order, 'bill')}
-                          className="p-2 text-emerald-700 hover:bg-emerald-50 rounded-lg transition-colors"
-                          title="Download Bill Image"
-                        >
-                          <FaFileImage className="w-4 h-4 text-emerald-600" />
-                        </button>
-                        <button
-                          onClick={() => handleViewPDF(order, 'menu')}
-                          className="p-2 text-purple-600 hover:bg-purple-50 rounded-lg transition-colors"
-                          title="View Menu PDF"
-                        >
-                          <FaFilePdf className="w-4 h-4 text-purple-600" />
-                        </button>
-                        <button
-                          onClick={() => handleDownloadImage(order, 'menu')}
-                          className="p-2 text-purple-700 hover:bg-purple-50 rounded-lg transition-colors"
-                          title="Download Menu Image"
-                        >
-                          <FaFileImage className="w-4 h-4 text-purple-600" />
-                        </button>
+                    <td className="px-6 py-4 text-right print:hidden">
+                      <div className="flex justify-end items-center gap-2">
+                        {/* Bill Dropdown */}
+                        <div className="relative inline-block text-left">
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setActiveDropdown(activeDropdown?.orderId === order.id && activeDropdown?.type === 'bill' 
+                                ? null 
+                                : { orderId: order.id, type: 'bill' }
+                              );
+                            }}
+                            className="px-2.5 py-1.5 text-xs font-bold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 rounded-xl transition-all border border-emerald-100 flex items-center gap-1 shadow-sm"
+                            title="Bill Document Options"
+                          >
+                            <FaFilePdf className="w-3 h-3 text-emerald-600" /> Bill <FaChevronDown className="w-2 h-2 opacity-50" />
+                          </button>
+                          {activeDropdown?.orderId === order.id && activeDropdown?.type === 'bill' && (
+                            <div className="absolute right-0 mt-2 w-36 bg-white rounded-xl shadow-xl border border-slate-100 py-1.5 z-20 animate-in fade-in slide-in-from-top-2 duration-155 text-left">
+                              <button
+                                onClick={() => handleViewPDF(order, 'bill')}
+                                className="w-full px-4 py-2 text-left text-xs font-semibold text-slate-700 hover:bg-slate-50 flex items-center gap-2 transition-colors"
+                              >
+                                View PDF
+                              </button>
+                              <button
+                                onClick={() => handleDownloadPDF(order, 'bill')}
+                                className="w-full px-4 py-2 text-left text-xs font-semibold text-slate-700 hover:bg-slate-50 flex items-center gap-2 transition-colors"
+                              >
+                                Download PDF
+                              </button>
+                              <button
+                                onClick={() => handleDownloadImage(order, 'bill')}
+                                className="w-full px-4 py-2 text-left text-xs font-semibold text-slate-700 hover:bg-slate-50 flex items-center gap-2 transition-colors"
+                              >
+                                Download Image
+                              </button>
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Menu Dropdown */}
+                        <div className="relative inline-block text-left">
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setActiveDropdown(activeDropdown?.orderId === order.id && activeDropdown?.type === 'menu' 
+                                ? null 
+                                : { orderId: order.id, type: 'menu' }
+                              );
+                            }}
+                            className="px-2.5 py-1.5 text-xs font-bold text-purple-700 bg-purple-50 hover:bg-purple-100 rounded-xl transition-all border border-purple-100 flex items-center gap-1 shadow-sm"
+                            title="Menu Document Options"
+                          >
+                            <FaFilePdf className="w-3 h-3 text-purple-600" /> Menu <FaChevronDown className="w-2 h-2 opacity-50" />
+                          </button>
+                          {activeDropdown?.orderId === order.id && activeDropdown?.type === 'menu' && (
+                            <div className="absolute right-0 mt-2 w-44 bg-white rounded-xl shadow-xl border border-slate-100 py-1.5 z-20 animate-in fade-in slide-in-from-top-2 duration-155 text-left">
+                              <button
+                                onClick={() => setSelectedOrderForMenu(order)}
+                                className="w-full px-4 py-2 text-left text-xs font-semibold text-slate-700 hover:bg-slate-50 flex items-center gap-2 transition-colors"
+                              >
+                                Preview Menu Items
+                              </button>
+                              <button
+                                onClick={() => handleViewPDF(order, 'menu')}
+                                className="w-full px-4 py-2 text-left text-xs font-semibold text-slate-700 hover:bg-slate-50 flex items-center gap-2 transition-colors"
+                              >
+                                View PDF
+                              </button>
+                              <button
+                                onClick={() => handleDownloadPDF(order, 'menu')}
+                                className="w-full px-4 py-2 text-left text-xs font-semibold text-slate-700 hover:bg-slate-50 flex items-center gap-2 transition-colors"
+                              >
+                                Download PDF
+                              </button>
+                              <button
+                                onClick={() => handleDownloadImage(order, 'menu')}
+                                className="w-full px-4 py-2 text-left text-xs font-semibold text-slate-700 hover:bg-slate-50 flex items-center gap-2 transition-colors"
+                              >
+                                Download Image
+                              </button>
+                            </div>
+                          )}
+                        </div>
+
                         <div className="w-px h-4 bg-slate-200 self-center mx-1"></div>
+
                         <button
                           onClick={() => handleConvertToPending(order.id)}
-                          className="p-2 text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors"
+                          className="p-2 text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors"
                           title="Convert to Confirmed Order"
                         >
                           <FaCheckCircle className="w-5 h-5" />
                         </button>
                         <Link
                           href={`/orders/edit/${order.id}`}
-                          className="p-2 text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"
+                          className="p-2 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"
                           title="Edit Quotation"
                         >
                           <FaEdit className="w-5 h-5" />
                         </Link>
                         <button
                           onClick={() => handleDelete(order.id)}
-                          className="p-2 text-rose-600 hover:bg-rose-50 rounded-lg transition-colors"
+                          className="p-2 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors"
                           title="Delete"
                         >
                           <FaTrash className="w-5 h-5" />
