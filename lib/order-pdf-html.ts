@@ -241,11 +241,13 @@ export function buildOrderPdfHtml(
   let menuDetailsHtml = "";
   if (sortedDates.length > 0 && !options.hideMenuDetails) {
     menuDetailsHtml = `
-      <div style="margin-top: 25px; page-break-before: auto;">
-        <div style="text-align: center; margin-bottom: 15px;">
-          <div style="font-weight: 800; font-size: 14px; text-transform: uppercase; border-bottom: 2px solid ${themeColor}; display: inline-block; padding-bottom: 3px; color: ${themeColor};">MENU DETAILS</div>
+      <div class="pdf-page-break-before" style="margin-top: 25px;">
+        <!-- Running Header for Menu Details Page -->
+        <div style="display: flex; align-items: center; justify-content: space-between; border-bottom: 2px solid ${themeColor}; padding-bottom: 6px; margin-bottom: 20px;">
+          <span style="font-size: 11px; font-weight: 800; color: #000; text-transform: uppercase; letter-spacing: 0.5px;">SRIVATSASA & KOWNDINYA CATERERS</span>
+          <span style="font-size: 11px; font-weight: 800; color: ${themeColor}; text-transform: uppercase; letter-spacing: 0.5px;">MENU DETAILS</span>
         </div>
-        <div style="border: 2px solid ${themeColor}; padding: 15px; border-radius: 8px;">
+        <div style="display: flex; flex-direction: column; gap: 15px;">
     `;
 
     sortedDates.forEach((dateStr) => {
@@ -258,8 +260,8 @@ export function buildOrderPdfHtml(
       if (meals.length > 0) {
         if (isMultiEvent) {
           menuDetailsHtml += `
-            <div style="font-weight: 700; font-size: 11px; margin-top: 15px; margin-bottom: 10px; color: #333; border-bottom: 1px dashed #ccc; padding-bottom: 5px;">
-              📅 ${dateDisplay}
+            <div style="font-weight: 700; font-size: 11px; margin-top: 10px; margin-bottom: 5px; color: #333; border-bottom: 1px dashed #ccc; padding-bottom: 5px;">
+              📅 Event Date: ${dateDisplay}
             </div>
           `;
         }
@@ -268,13 +270,21 @@ export function buildOrderPdfHtml(
           const items = itemsByMealType[meal.id] || [];
           if (items.length > 0) {
             menuDetailsHtml += `
-              <div style="margin-bottom: 15px;">
-                  <span style="background: ${isQuotation ? '#f5f3ff' : '#f0f0f0'}; padding: 2px 8px; border-radius: 4px;">${meal.label}${meal.eventName ? ` - ${meal.eventName}` : ''}</span>
-                  ${meal.time ? `<span style="font-weight: 500; color: #666; text-transform: none;">@ ${meal.time}</span>` : ""}
-                  ${(meal.numberOfPlates || meal.numberOfMembers) ? `<span style="font-weight: 500; color: #666; text-transform: none;">(${meal.numberOfPlates || meal.numberOfMembers} Plates)</span>` : ""}
-                  ${meal.venue ? `<span style="font-weight: 500; color: #333; text-transform: none; margin-left: auto;">📍 ${meal.venue}</span>` : ""}
+              <div class="pdf-row" style="border: 1.5px solid ${themeColor}; padding: 12px; border-radius: 8px; page-break-inside: avoid; break-inside: avoid; background-color: ${isQuotation ? '#fdfdfd' : '#ffffff'};">
+                <!-- Meal Header -->
+                <div style="display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid #eee; padding-bottom: 6px; margin-bottom: 10px;">
+                  <span style="font-weight: 700; color: ${themeColor}; font-size: 11px; text-transform: uppercase;">
+                    ${meal.label}${meal.eventName ? ` - ${meal.eventName}` : ''}
+                  </span>
+                  <div style="font-size: 9px; color: #666; font-weight: 600;">
+                    ${meal.time ? `@ ${meal.time}` : ""}
+                    ${(meal.numberOfPlates || meal.numberOfMembers) ? ` • ${meal.numberOfPlates || meal.numberOfMembers} Plates` : ""}
+                    ${meal.venue ? ` • 📍 ${meal.venue}` : ""}
+                  </div>
                 </div>
-                ${meal.description ? `<div style="font-size: 9px; color: #666; margin-bottom: 8px; font-style: italic; border-left: 2px solid ${themeColor}; padding-left: 8px;">${meal.description}</div>` : ""}
+                
+                ${meal.description ? `<div style="font-size: 9px; color: #666; margin-bottom: 8px; font-style: italic; border-left: 2px solid ${themeColor}; padding-left: 8px;">Note: ${meal.description}</div>` : ""}
+                
                 <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px;">
                   ${items.map((it, idx) => {
                     const name = it.menuItem?.name || "Item";
@@ -483,12 +493,10 @@ export function buildOrderPdfHtml(
             </div>
         </div>
 
-        ${menuDetailsHtml}
-
         ${
           billNote
             ? `
-        <div style="margin-top: 10px; border: 1px solid #ddd; background-color: #fafafa; border-radius: 6px; padding: 8px 10px;">
+        <div class="pdf-row" style="margin-top: 10px; border: 1px solid #ddd; background-color: #fafafa; border-radius: 6px; padding: 8px 10px; page-break-inside: avoid; break-inside: avoid;">
             <div style="font-size: 10px; font-weight: 700; text-transform: uppercase; margin-bottom: 3px;">Note</div>
             <div style="font-size: 10px; line-height: 1.45; color: #333; white-space: pre-wrap;">${safeString(billNote)}</div>
         </div>
@@ -497,7 +505,7 @@ export function buildOrderPdfHtml(
         }
 
         <!-- TERMS & CONDITIONS -->
-        <div style="margin-top: 15px;">
+        <div class="pdf-row" style="margin-top: 15px; page-break-inside: avoid; break-inside: avoid;">
             <div style="font-weight: 700; font-size: 11px; text-align: center; text-transform: uppercase; margin-bottom: 6px;">TERMS & CONDITIONS</div>
             <div style="font-size: 9px; line-height: 1.4; color: #000;">
                 <div style="margin-bottom: 2px;">70% Advance Amount should be paid at the time of booking.</div>
@@ -508,7 +516,7 @@ export function buildOrderPdfHtml(
         </div>
 
         <!-- SIGNATURES -->
-        <div style="margin-top: 5px; display: flex; justify-content: space-between; align-items: flex-end;">
+        <div class="pdf-row" style="margin-top: 5px; display: flex; justify-content: space-between; align-items: flex-end; page-break-inside: avoid; break-inside: avoid;">
             <div style="text-align: left; position: relative; width: 300px;">
                  <img src="${window.location.origin}/images/billstamp.png" alt="Stamp" style="position: relative; top: 10px; left: -40px; width: 90%; height: auto; max-height: 90px; object-fit: contain; opacity: 0.9;" />
                 <div style="border-top: 1px dashed #999; width: 100%; margin-top: 3px;"></div>
@@ -519,6 +527,9 @@ export function buildOrderPdfHtml(
                 <div style="font-size: 10px; font-weight: 600;">Customer Signature</div>
             </div>
         </div>
+
+        <!-- MENU DETAILS SECTION (Annex on a new page) -->
+        ${menuDetailsHtml}
 
     </div>
   `;

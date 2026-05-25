@@ -13,6 +13,7 @@ import Link from 'next/link'
 import jsPDF from 'jspdf'
 import html2canvas from 'html2canvas'
 import { buildOrderPdfHtml } from '@/lib/order-pdf-html'
+import { applySmartPaging } from '@/lib/pdf-utils'
 import { toast } from 'sonner'
 import ConfirmModal from '@/components/ConfirmModal'
 import { getRequest, deleteRequest, putRequest } from '@/lib/api/api'
@@ -120,52 +121,8 @@ export default function QuotationsPage() {
       tempDiv.innerHTML = htmlContent
       document.body.appendChild(tempDiv)
 
-      // --- SMART PAGING LOGIC ---
-      // 1mm is approx 3.78px at 96dpi, but we calculate it from actual width
-      const pageHeightMm = 297;
-      const containerWidthPx = tempDiv.offsetWidth;
-      const pxPerMm = containerWidthPx / 210;
-      const pageHeightPx = pageHeightMm * pxPerMm;
-
-      // Find all rows that shouldn't be split
-      const rows = tempDiv.querySelectorAll('.pdf-row');
-      
-      // We process them in order and keep track of cumulative offset from added spacers
-      rows.forEach((row: any) => {
-        const rect = row.getBoundingClientRect();
-        const parentRect = tempDiv!.getBoundingClientRect();
-        const relativeTop = rect.top - parentRect.top;
-        const relativeBottom = rect.bottom - parentRect.top;
-
-        const startPage = Math.floor((relativeTop + 1) / pageHeightPx);
-        const endPage = Math.floor((relativeBottom - 1) / pageHeightPx);
-
-        if (startPage !== endPage) {
-          // This row crosses a page boundary!
-          // Insert a spacer before it to push it to the next page
-          const spacerHeight = (endPage * pageHeightPx) - relativeTop;
-          const spacer = document.createElement('div');
-          spacer.style.height = `${spacerHeight}px`;
-          spacer.style.width = '100%';
-          // To ensure it doesn't cause weird table issues, we wrap it if needed or use a row
-          if (row.tagName === 'TR') {
-            const table = row.closest('table');
-            if (table) {
-              const spacerRow = document.createElement('tr');
-              const spacerCell = document.createElement('td');
-              spacerCell.colSpan = 10;
-              spacerCell.style.height = `${spacerHeight}px`;
-              spacerCell.style.border = 'none';
-              spacerRow.appendChild(spacerCell);
-              row.parentNode.insertBefore(spacerRow, row);
-            }
-          } else {
-            row.parentNode.insertBefore(spacer, row);
-          }
-        }
-      });
-
-      await new Promise(r => setTimeout(r, 600)) // Give it a bit more time for layout adjustment
+      // Apply improved centralized smart paging (waits for fonts & images, handles page-break-before)
+      await applySmartPaging(tempDiv)
 
       const w = tempDiv.scrollWidth
       const h = tempDiv.scrollHeight // Use actual scrollHeight after spacers

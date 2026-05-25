@@ -14,6 +14,7 @@ import jsPDF from 'jspdf'
 import html2canvas from 'html2canvas'
 import { generatePDFTemplate } from '@/lib/pdf-template'
 import { buildOrderPdfHtml } from '@/lib/order-pdf-html'
+import { applySmartPaging } from '@/lib/pdf-utils'
 import ConfirmModal from '@/components/ConfirmModal'
 import Logo from '@/components/Logo'
 import QuickBillForm from '@/components/bills/QuickBillForm'
@@ -392,7 +393,8 @@ export default function BillsPage() {
       tempDiv.style.overflow = 'visible'
       document.body.appendChild(tempDiv)
 
-      await new Promise(r => setTimeout(r, 500))
+      // Apply improved centralized smart paging (waits for fonts & images)
+      await applySmartPaging(tempDiv)
 
       const w = tempDiv.scrollWidth
       const h = Math.max(tempDiv.scrollHeight + 20, 1)
