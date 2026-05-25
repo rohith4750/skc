@@ -370,11 +370,25 @@ export default function QuotationsPage() {
                           <FaClipboardList className="w-4 h-4 text-emerald-600" />
                         </button>
                         <button
+                          onClick={() => handleDownloadImage(order, 'bill')}
+                          className="p-2 text-emerald-700 hover:bg-emerald-50 rounded-lg transition-colors"
+                          title="Download Bill Image"
+                        >
+                          <FaFileImage className="w-4 h-4 text-emerald-600" />
+                        </button>
+                        <button
                           onClick={() => handleViewPDF(order, 'menu')}
                           className="p-2 text-purple-600 hover:bg-purple-50 rounded-lg transition-colors"
                           title="View Menu PDF"
                         >
                           <FaFilePdf className="w-4 h-4 text-purple-600" />
+                        </button>
+                        <button
+                          onClick={() => handleDownloadImage(order, 'menu')}
+                          className="p-2 text-purple-700 hover:bg-purple-50 rounded-lg transition-colors"
+                          title="Download Menu Image"
+                        >
+                          <FaFileImage className="w-4 h-4 text-purple-600" />
                         </button>
                         <div className="w-px h-4 bg-slate-200 self-center mx-1"></div>
                         <button
