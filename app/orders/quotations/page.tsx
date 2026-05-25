@@ -7,7 +7,7 @@ import {
   FaPlus, FaPrint, FaCheck, FaEdit, FaTrash, FaSearch, FaFilter, FaFilePdf, FaFileImage,
   FaEnvelope, FaChartLine, FaCheckCircle, FaClock, FaTimesCircle, FaEye,
   FaLayerGroup, FaCalendarAlt, FaHistory, FaMapMarkerAlt, FaUsers,
-  FaBars, FaTimes, FaUtensils, FaChevronLeft, FaChevronRight, FaClipboardList
+  FaBars, FaTimes, FaUtensils, FaChevronLeft, FaChevronRight, FaClipboardList, FaChevronDown
 } from 'react-icons/fa'
 import Link from 'next/link'
 import jsPDF from 'jspdf'
@@ -31,6 +31,17 @@ export default function QuotationsPage() {
   })
   const [customerSearch, setCustomerSearch] = useState<string>('')
   const [selectedOrderForMenu, setSelectedOrderForMenu] = useState<Order | null>(null)
+  const [activeDropdown, setActiveDropdown] = useState<{ orderId: string, type: 'bill' | 'menu' } | null>(null)
+
+  useEffect(() => {
+    const handleOutsideClick = () => {
+      setActiveDropdown(null)
+    }
+    document.addEventListener('click', handleOutsideClick)
+    return () => {
+      document.removeEventListener('click', handleOutsideClick)
+    }
+  }, [])
 
   useEffect(() => {
     loadData()
