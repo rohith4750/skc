@@ -478,9 +478,7 @@ function generateBillContent(data: PDFTemplateData): string {
   const sortedDates = Object.keys(groupedByDate).sort((a, b) => {
     if (a === 'Other') return 1
     if (b === 'Other') return -1
-    const da = new Date(a).getTime()
-    const db = new Date(b).getTime()
-    return (isNaN(da) ? Infinity : da) - (isNaN(db) ? Infinity : db)
+    return a.localeCompare(b)
   })
 
   // If we are NOT splitting, we just run the existing logic once for all dates

@@ -1184,7 +1184,7 @@ export default function OrderCenterPage() {
                                 groupedByDate[ed.date].push(ed)
                               })
 
-                              const sortedDates = Object.keys(groupedByDate).sort((a, b) => new Date(a).getTime() - new Date(b).getTime())
+                              const sortedDates = Object.keys(groupedByDate).sort((a, b) => a.localeCompare(b))
 
                               return sortedDates.length > 0 ? (
                                 sortedDates.map((date) => (

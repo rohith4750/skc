@@ -572,7 +572,7 @@ function MenuModal({ order, onClose, onDownloadPDF, onDownloadImage }: {
   const sortedDates = Object.keys(byDate).sort((a, b) => {
     if (a === 'unspecified') return 1
     if (b === 'unspecified') return -1
-    return new Date(a).getTime() - new Date(b).getTime()
+    return a.localeCompare(b)
   })
 
   return (

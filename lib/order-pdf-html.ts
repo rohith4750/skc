@@ -114,9 +114,11 @@ export function buildOrderPdfHtml(
     });
   }
   // Sort dates chronologically
-  const sortedDates = Object.keys(summaryByDate).sort(
-    (a, b) => new Date(a).getTime() - new Date(b).getTime(),
-  );
+  const sortedDates = Object.keys(summaryByDate).sort((a, b) => {
+    if (a === "no-date") return 1;
+    if (b === "no-date") return -1;
+    return a.localeCompare(b);
+  });
 
   // Map items by mealType for easy lookup
   const itemsByMealType: Record<string, any[]> = {};
