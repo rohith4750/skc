@@ -417,9 +417,10 @@ export function buildOrderPdfHtml(
         </div>
 
         <!-- BILL NO & DATE -->
-        <div style="margin-bottom: 10px; font-size: 11px; line-height: 1.4; border-top: 1px dashed #ccc; padding-top: 6px;">
+        <div style="margin-bottom: 15px; font-size: 11px; line-height: 1.4; border-top: 1px dashed #ccc; padding-top: 6px;">
             <div><span style="font-weight: 700; width: 100px; display: inline-block;">${idLabel}</span> ${billNo}</div>
             <div><span style="font-weight: 500; width: 100px; display: inline-block;">Date:</span> ${formatDate(new Date().toISOString())}</div>
+        </div>
               <!-- BILL SUMMARY BOX -->
         ${!hideBillDetails ? `
         <div style="border: 2px solid ${themeColor}; padding: 0;">
