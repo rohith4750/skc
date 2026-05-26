@@ -34,7 +34,11 @@ export default function QuotationsPage() {
   const [activeDropdown, setActiveDropdown] = useState<{ orderId: string, type: 'bill' | 'menu' } | null>(null)
 
   useEffect(() => {
-    const handleOutsideClick = () => {
+    const handleOutsideClick = (e: MouseEvent) => {
+      const target = e.target as HTMLElement
+      if (target.closest('.dropdown-toggle')) {
+        return
+      }
       setActiveDropdown(null)
     }
     document.addEventListener('click', handleOutsideClick)
@@ -376,7 +380,7 @@ export default function QuotationsPage() {
                                 : { orderId: order.id, type: 'bill' }
                               );
                             }}
-                            className="px-2.5 py-1.5 text-xs font-bold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 rounded-xl transition-all border border-emerald-100 flex items-center gap-1 shadow-sm"
+                            className="px-2.5 py-1.5 text-xs font-bold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 rounded-xl transition-all border border-emerald-100 flex items-center gap-1 shadow-sm dropdown-toggle"
                             title="Bill Document Options"
                           >
                             <FaFilePdf className="w-3 h-3 text-emerald-600" /> Bill <FaChevronDown className="w-2 h-2 opacity-50" />
@@ -415,7 +419,7 @@ export default function QuotationsPage() {
                                 : { orderId: order.id, type: 'menu' }
                               );
                             }}
-                            className="px-2.5 py-1.5 text-xs font-bold text-purple-700 bg-purple-50 hover:bg-purple-100 rounded-xl transition-all border border-purple-100 flex items-center gap-1 shadow-sm"
+                            className="px-2.5 py-1.5 text-xs font-bold text-purple-700 bg-purple-50 hover:bg-purple-100 rounded-xl transition-all border border-purple-100 flex items-center gap-1 shadow-sm dropdown-toggle"
                             title="Menu Document Options"
                           >
                             <FaFilePdf className="w-3 h-3 text-purple-600" /> Menu <FaChevronDown className="w-2 h-2 opacity-50" />
