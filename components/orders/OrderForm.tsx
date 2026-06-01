@@ -215,6 +215,13 @@ export default function OrderForm({ orderId, isEditMode = false, initialOrderTyp
                         itemPrices: data.itemPrices || itemPricesByMt[key] || {},
                         description: data.description || ''
                     }
+                }).sort((a, b) => {
+                    const dateA = a.date || ''
+                    const dateB = b.date || ''
+                    if (dateA !== dateB) return dateA.localeCompare(dateB)
+                    const timeA = a.time || ''
+                    const timeB = b.time || ''
+                    return timeA.localeCompare(timeB)
                 })
                 : []
 
@@ -588,8 +595,10 @@ export default function OrderForm({ orderId, isEditMode = false, initialOrderTyp
     const handleDragEnd = (result: any) => {
         if (!result.destination) return
         const { source, destination } = result
+        // droppableId is the mealType id; only allow reorder within the same session
         const mealTypeId = source.droppableId
         if (source.droppableId !== destination.droppableId) return
+        if (source.index === destination.index) return
 
         setFormData(prev => ({
             ...prev,
@@ -861,6 +870,7 @@ export default function OrderForm({ orderId, isEditMode = false, initialOrderTyp
                     </button>
                 </div>
 
+                <DragDropContext onDragEnd={handleDragEnd}>
                 {formData.mealTypes.map((mt, index) => (
                     <div key={mt.id} className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
                         <div className="bg-gray-50 p-4 border-b border-gray-200 flex items-center justify-between">
@@ -1136,103 +1146,104 @@ export default function OrderForm({ orderId, isEditMode = false, initialOrderTyp
                                     </h4>
 
                                     {!collapsedSelectedItems[mt.id] && mt.selectedMenuItems.length > 0 && (
-                                        <DragDropContext onDragEnd={handleDragEnd}>
-                                            <Droppable droppableId={mt.id}>
-                                                {(provided) => (
-                                                    <div {...provided.droppableProps} ref={provided.innerRef} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
-                                                        {mt.selectedMenuItems.map((itemId, idx) => {
-                                                            const item = menuItems.find(m => m.id === itemId)
-                                                            if (!item) return null
-                                                            return (
-                                                                <Draggable key={itemId} draggableId={itemId} index={idx}>
-                                                                    {(provided) => (
-                                                                        <div
-                                                                            ref={provided.innerRef}
-                                                                            {...provided.draggableProps}
-                                                                            className="flex items-center gap-2 p-2 bg-white border border-gray-100 rounded-lg group shadow-sm hover:border-primary-200 transition-all"
-                                                                        >
-                                                                            <div {...provided.dragHandleProps} className="text-gray-300 group-hover:text-gray-400 cursor-grab active:cursor-grabbing">
-                                                                                <FaGripLines size={12} />
-                                                                            </div>
-                                                                            <div className="flex-1 min-w-0">
-                                                                                <div className="font-bold text-gray-800 text-xs truncate leading-tight">{item.name}</div>
-                                                                                <input
-                                                                                    type="text"
-                                                                                    placeholder="Customization..."
-                                                                                    value={mt.itemCustomizations[itemId] || ''}
-                                                                                    onChange={(e) => {
-                                                                                        const val = e.target.value
-                                                                                        setFormData(prev => ({
-                                                                                            ...prev,
-                                                                                            mealTypes: prev.mealTypes.map(m => m.id === mt.id ? { ...m, itemCustomizations: { ...m.itemCustomizations, [itemId]: val } } : m)
-                                                                                        }))
-                                                                                    }}
-                                                                                    className="text-[10px] w-full mt-0.5 text-gray-500 bg-transparent border-b border-transparent focus:border-primary-300 outline-none placeholder:text-gray-300"
-                                                                                />
-                                                                                {mt.menuType === 'saree' && (
-                                                                                    <div className="mt-1.5 space-y-1.5">
-                                                                                        <div className="flex items-center gap-1.5">
-                                                                                            <div className="relative flex-1">
-                                                                                                <span className="absolute left-2 top-1/2 -translate-y-1/2 text-[9px] text-gray-400 font-bold">₹</span>
-                                                                                                <input
-                                                                                                    type="number"
-                                                                                                    placeholder="Price"
-                                                                                                    value={mt.itemPrices[itemId] || ''}
-                                                                                                    onChange={(e) => {
-                                                                                                        const val = e.target.value
-                                                                                                        setFormData(prev => ({
-                                                                                                            ...prev,
-                                                                                                            mealTypes: prev.mealTypes.map(m => m.id === mt.id ? { ...m, itemPrices: { ...m.itemPrices, [itemId]: val } } : m)
-                                                                                                        }))
-                                                                                                    }}
-                                                                                                    className="text-[10px] font-bold w-full text-primary-600 bg-white border border-primary-100 rounded pl-4 pr-1.5 py-1 outline-none focus:ring-1 focus:ring-primary-500"
-                                                                                                />
-                                                                                            </div>
-                                                                                            {item.unit && (
-                                                                                                <span className="text-[10px] font-bold text-gray-400 bg-gray-100 px-1.5 py-1 rounded">/ {item.unit}</span>
-                                                                                            )}
-                                                                                        </div>
-                                                                                        <div className="flex items-center gap-1.5">
-                                                                                            <span className="text-[10px] text-gray-400 font-bold uppercase">Qty:</span>
-                                                                                            <input
-                                                                                                type="number"
-                                                                                                value={mt.itemQuantities[itemId] || '1'}
-                                                                                                onChange={(e) => {
-                                                                                                    const val = e.target.value
-                                                                                                    setFormData(prev => ({
-                                                                                                        ...prev,
-                                                                                                        mealTypes: prev.mealTypes.map(m => m.id === mt.id ? { ...m, itemQuantities: { ...m.itemQuantities, [itemId]: val } } : m)
-                                                                                                    }))
-                                                                                                }}
-                                                                                                className="text-[10px] font-bold w-16 text-slate-700 bg-white border border-slate-200 rounded px-1.5 py-1 outline-none focus:ring-1 focus:ring-primary-500"
-                                                                                            />
-                                                                                        </div>
-                                                                                    </div>
-                                                                                )}
-                                                                            </div>
-                                                                            <button
-                                                                                type="button"
-                                                                                onClick={() => handleMenuItemToggle(mt.id, itemId)}
-                                                                                className="text-gray-300 hover:text-red-500 p-1"
-                                                                            >
-                                                                                <FaTimes size={14} />
-                                                                            </button>
-                                                                        </div>
-                                                                    )}
-                                                                </Draggable>
-                                                            )
-                                                        })}
-                                                        {provided.placeholder}
+                                        <Droppable droppableId={mt.id} direction="horizontal">
+                                            {(provided) => (
+                                                <div {...provided.droppableProps} ref={provided.innerRef} className="flex flex-wrap gap-3">
+                                                    {mt.selectedMenuItems.map((itemId, idx) => {
+                                                        const item = menuItems.find(m => m.id === itemId)
+                                                        if (!item) return null
+                                                        // Use composite id so draggableId is globally unique across sessions
+                                                        const draggableId = `${mt.id}::${itemId}`
+                                                        return (
+                                                            <Draggable key={draggableId} draggableId={draggableId} index={idx}>
+                                            {(provided) => (
+                                                <div
+                                                    ref={provided.innerRef}
+                                                    {...provided.draggableProps}
+                                                    className="w-44 flex items-center gap-2 p-2 bg-white border border-gray-100 rounded-lg group shadow-sm hover:border-primary-200 transition-all"
+                                                >
+                                                    <div {...provided.dragHandleProps} className="text-gray-300 group-hover:text-gray-400 cursor-grab active:cursor-grabbing">
+                                                        <FaGripLines size={12} />
                                                     </div>
-                                                )}
-                                            </Droppable>
-                                        </DragDropContext>
-                                    )}
+                                                    <div className="flex-1 min-w-0">
+                                                        <div className="font-bold text-gray-800 text-xs truncate leading-tight">{item.name}</div>
+                                                        <input
+                                                            type="text"
+                                                            placeholder="Customization..."
+                                                            value={mt.itemCustomizations[itemId] || ''}
+                                                            onChange={(e) => {
+                                                                const val = e.target.value
+                                                                setFormData(prev => ({
+                                                                    ...prev,
+                                                                    mealTypes: prev.mealTypes.map(m => m.id === mt.id ? { ...m, itemCustomizations: { ...m.itemCustomizations, [itemId]: val } } : m)
+                                                                }))
+                                                            }}
+                                                            className="text-[10px] w-full mt-0.5 text-gray-500 bg-transparent border-b border-transparent focus:border-primary-300 outline-none placeholder:text-gray-300"
+                                                        />
+                                                        {mt.menuType === 'saree' && (
+                                                            <div className="mt-1.5 space-y-1.5">
+                                                                <div className="flex items-center gap-1.5">
+                                                                    <div className="relative flex-1">
+                                                                        <span className="absolute left-2 top-1/2 -translate-y-1/2 text-[9px] text-gray-400 font-bold">₹</span>
+                                                                        <input
+                                                                            type="number"
+                                                                            placeholder="Price"
+                                                                            value={mt.itemPrices[itemId] || ''}
+                                                                            onChange={(e) => {
+                                                                                const val = e.target.value
+                                                                                setFormData(prev => ({
+                                                                                    ...prev,
+                                                                                    mealTypes: prev.mealTypes.map(m => m.id === mt.id ? { ...m, itemPrices: { ...m.itemPrices, [itemId]: val } } : m)
+                                                                                }))
+                                                                            }}
+                                                                            className="text-[10px] font-bold w-full text-primary-600 bg-white border border-primary-100 rounded pl-4 pr-1.5 py-1 outline-none focus:ring-1 focus:ring-primary-500"
+                                                                        />
+                                                                    </div>
+                                                                    {item.unit && (
+                                                                        <span className="text-[10px] font-bold text-gray-400 bg-gray-100 px-1.5 py-1 rounded">/ {item.unit}</span>
+                                                                    )}
+                                                                </div>
+                                                                <div className="flex items-center gap-1.5">
+                                                                    <span className="text-[10px] text-gray-400 font-bold uppercase">Qty:</span>
+                                                                    <input
+                                                                        type="number"
+                                                                        value={mt.itemQuantities[itemId] || '1'}
+                                                                        onChange={(e) => {
+                                                                            const val = e.target.value
+                                                                            setFormData(prev => ({
+                                                                                ...prev,
+                                                                                mealTypes: prev.mealTypes.map(m => m.id === mt.id ? { ...m, itemQuantities: { ...m.itemQuantities, [itemId]: val } } : m)
+                                                                            }))
+                                                                        }}
+                                                                        className="text-[10px] font-bold w-16 text-slate-700 bg-white border border-slate-200 rounded px-1.5 py-1 outline-none focus:ring-1 focus:ring-primary-500"
+                                                                    />
+                                                                </div>
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => handleMenuItemToggle(mt.id, itemId)}
+                                                        className="text-gray-300 hover:text-red-500 p-1"
+                                                    >
+                                                        <FaTimes size={14} />
+                                                    </button>
+                                                </div>
+                                            )}
+                                        </Draggable>
+                                        )
+                                    })}
+                                    {provided.placeholder}
+                                </div>
+                            )}
+                        </Droppable>
+                    )}
                                 </div>
                             </div>
                         )}
                     </div>
                 ))}
+                </DragDropContext>
             </div>
 
             <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
