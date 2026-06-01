@@ -4,6 +4,39 @@
  */
 import { sanitizeMealLabel } from "./utils";
 
+// ── Menu item serving order for PDF display ──────────────────────────────────
+// Priority 1 = first to print, higher number = later in list.
+// Matching is done case-insensitively against the item name.
+const MENU_CATEGORY_ORDER: Array<{ keywords: string[]; priority: number }> = [
+  { keywords: ['sweet', 'halwa', 'payasam', 'kheer', 'ladoo', 'laddu', 'barfi', 'burfi', 'jalebi', 'gulab', 'rasgulla', 'mysore pak', 'double ka meetha'], priority: 1 },
+  { keywords: ['hot', 'soup', 'manchow', 'tomato soup', 'hot and sour'], priority: 2 },
+  { keywords: ['flavoured rice', 'pulao', 'biryani', 'lemon rice', 'tamarind rice', 'coconut rice', 'curd rice', 'fried rice', 'vangi bath', 'bisi bele', 'chitrannam', 'pulihora'], priority: 3 },
+  { keywords: ['north indian', 'punjabi', 'matar paneer', 'palak paneer', 'paneer butter', 'shahi paneer', 'dal makhani', 'rajma', 'chana masala', 'aloo gobi', 'aloo matar'], priority: 4 },
+  { keywords: ['starter', 'manchuri', 'manchurian', 'aloo 65', 'gobi 65', 'paneer 65', 'veg 65', 'spring roll', 'samosa', 'pakoda', 'bajji', 'cutlet', 'tikki'], priority: 5 },
+  { keywords: ['dal', 'pappu', 'sambar dal', 'toor dal', 'moong dal', 'masoor dal', 'chana dal', 'yellow dal'], priority: 6 },
+  { keywords: ['south indian curry', 'curry', 'gravy', 'kofta', 'korma', 'masala', 'sabzi', 'koora', 'vepudu koora', 'avial', 'poriyal'], priority: 7 },
+  { keywords: ['fry', 'aloo fry', 'benda fry', 'bhindi fry', 'potato fry', 'vepudu', 'roast', 'stir fry'], priority: 8 },
+  { keywords: ['sambar', 'rasam', 'ulavacharu', 'liquid', 'soup', 'chaaru', 'charu', 'pepper water'], priority: 9 },
+  { keywords: ['chutney', 'pachadi', 'pickle', 'achar', 'tokku', 'thokku'], priority: 10 },
+  { keywords: ['powder', 'podi', 'kaaram', 'karam', 'chilli powder', 'gun powder', 'idli podi'], priority: 11 },
+  { keywords: ['ghee', 'butter'], priority: 12 },
+  { keywords: ['curd', 'raita', 'yogurt', 'dahi', 'perugu'], priority: 13 },
+  { keywords: ['white rice', 'steamed rice', 'plain rice', 'rice'], priority: 14 },
+  { keywords: ['chips', 'papad', 'appalam', 'fryums', 'wafer'], priority: 15 },
+  { keywords: ['pan', 'paan', 'betel'], priority: 16 },
+  { keywords: ['fruit salad', 'fruit', 'salad', 'raita salad'], priority: 17 },
+  { keywords: ['ice cream', 'icecream', 'kulfi', 'dessert'], priority: 18 },
+];
+
+function getMenuItemPriority(name: string): number {
+  const lower = name.toLowerCase();
+  for (const cat of MENU_CATEGORY_ORDER) {
+    if (cat.keywords.some(kw => lower.includes(kw))) return cat.priority;
+  }
+  return 99; // unknown items go to the end
+}
+
+
 export function buildOrderPdfHtml(
   order: any,
   options: {
@@ -290,7 +323,11 @@ export function buildOrderPdfHtml(
                 ${meal.description ? `<div style="font-size: 9px; color: #666; margin-bottom: 8px; font-style: italic; border-left: 2px solid ${themeColor}; padding-left: 8px;">Note: ${meal.description}</div>` : ""}
                 
                 <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px;">
-                  ${items.map((it, idx) => {
+                  ${[...items].sort((a, b) => {
+                    const nameA = a.menuItem?.name || a.menuItemName || '';
+                    const nameB = b.menuItem?.name || b.menuItemName || '';
+                    return getMenuItemPriority(nameA) - getMenuItemPriority(nameB);
+                  }).map((it, idx) => {
                     const name = it.menuItem?.name || "Item";
                     const telugu = it.menuItem?.nameTelugu;
                     const cust = it.customization;
