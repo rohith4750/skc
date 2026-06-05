@@ -215,6 +215,30 @@ export default function OrderForm({ orderId, isEditMode = false, initialOrderTyp
                         itemPrices: data.itemPrices || itemPricesByMt[key] || {},
                         description: data.description || ''
                     }
+                }).sort((a, b) => {
+                    // Primary: sort by full date ascending (YYYY-MM-DD)
+                    const dateA = a.date || ''
+                    const dateB = b.date || ''
+                    if (dateA !== dateB) return dateA.localeCompare(dateB)
+
+                    // Secondary: sort by time ascending (HH:MM)
+                    const timeA = a.time || ''
+                    const timeB = b.time || ''
+                    if (timeA !== timeB) return timeA.localeCompare(timeB)
+
+                    // Tertiary: sort by natural meal-time order
+                    const mealOrder: Record<string, number> = {
+                        breakfast: 1,
+                        lunch: 2,
+                        snacks: 3,
+                        dinner: 4,
+                        sweets: 5,
+                        saree: 6,
+                        special_order: 7,
+                    }
+                    const orderA = mealOrder[a.menuType] ?? 99
+                    const orderB = mealOrder[b.menuType] ?? 99
+                    return orderA - orderB
                 })
                 : []
 
@@ -307,6 +331,9 @@ export default function OrderForm({ orderId, isEditMode = false, initialOrderTyp
         let mealTypesTotal = 0
         let waterTotal = 0
 
+        // Per-session breakdown
+        const sessionBreakdown: Array<{ id: string; label: string; date: string; amount: number }> = []
+
         formData.mealTypes.forEach(mt => {
             let mtTotal = 0
             mt.selectedMenuItems.forEach(itemId => {
@@ -336,6 +363,13 @@ export default function OrderForm({ orderId, isEditMode = false, initialOrderTyp
                 mtTotal += parseFloat(mt.manualAmount) || 0
             }
             mealTypesTotal += mtTotal
+
+            sessionBreakdown.push({
+                id: mt.id,
+                label: mt.menuType ? sanitizeMealLabel(mt.menuType) : 'Session',
+                date: mt.date || '',
+                amount: mtTotal,
+            })
         })
 
         const stallsTotal = showStalls ? formData.stalls.reduce((sum, s) => {
@@ -357,7 +391,7 @@ export default function OrderForm({ orderId, isEditMode = false, initialOrderTyp
         const totalAdvance = isEditMode ? originalAdvancePaid + currentAdvance : currentAdvance
         const balance = Math.max(0, total - totalAdvance)
 
-        return { total, balance, waterTotal, stallsTotal, mealTypesTotal }
+        return { total, balance, waterTotal, stallsTotal, mealTypesTotal, sessionBreakdown }
     }, [formData, menuItems, showStalls, isEditMode, originalAdvancePaid])
 
     const handleUpdateMealType = (id: string, field: string, value: any) => {
@@ -416,17 +450,17 @@ export default function OrderForm({ orderId, isEditMode = false, initialOrderTyp
         const commonItems = menuItems.filter(item => {
             const isCommonFlag = (item as any).isCommon === true;
             const nameMatch = item.name.toLowerCase().includes('common');
-            const typeMatch = Array.isArray(item.type) 
+            const typeMatch = Array.isArray(item.type)
                 ? item.type.some(t => t?.toLowerCase()?.includes('common'))
                 : String(item.type || '').toLowerCase().includes('common');
-            
+
             return isCommonFlag || nameMatch || typeMatch;
         });
-        
+
         console.log(`Common Items Search: Found ${commonItems.length} items from ${menuItems.length} total.`, commonItems.map(i => i.name));
-        
+
         const commonItemIds = commonItems.map(item => item.id)
-        
+
         if (commonItemIds.length === 0) {
             toast.error(`No common items found. (Searched ${menuItems.length} menu items)`)
             return
@@ -437,10 +471,10 @@ export default function OrderForm({ orderId, isEditMode = false, initialOrderTyp
             mealTypes: prev.mealTypes.map(mt => {
                 if (mt.id === mealTypeId) {
                     const uniqueIds = Array.from(new Set([...mt.selectedMenuItems, ...commonItemIds]))
-                    
+
                     const newQuantities = { ...mt.itemQuantities }
                     const newCustomizations = { ...mt.itemCustomizations }
-                    
+
                     commonItems.forEach(item => {
                         // Pre-fill quantity
                         if (!newQuantities[item.id]) newQuantities[item.id] = '1'
@@ -450,8 +484,8 @@ export default function OrderForm({ orderId, isEditMode = false, initialOrderTyp
                         }
                     })
 
-                    return { 
-                        ...mt, 
+                    return {
+                        ...mt,
                         selectedMenuItems: uniqueIds,
                         itemQuantities: newQuantities,
                         itemCustomizations: newCustomizations
@@ -506,7 +540,7 @@ export default function OrderForm({ orderId, isEditMode = false, initialOrderTyp
                             }
                         }
                     }
-                    
+
                     return updatedMt
                 }
                 return mt
@@ -588,8 +622,10 @@ export default function OrderForm({ orderId, isEditMode = false, initialOrderTyp
     const handleDragEnd = (result: any) => {
         if (!result.destination) return
         const { source, destination } = result
+        // droppableId is the mealType id; only allow reorder within the same session
         const mealTypeId = source.droppableId
         if (source.droppableId !== destination.droppableId) return
+        if (source.index === destination.index) return
 
         setFormData(prev => ({
             ...prev,
@@ -691,7 +727,7 @@ export default function OrderForm({ orderId, isEditMode = false, initialOrderTyp
                 services: s.services
             }))
 
-            const totalAdvanceToStore = isEditMode 
+            const totalAdvanceToStore = isEditMode
                 ? (originalAdvancePaid + (parseFloat(formData.advancePaid) || 0))
                 : (parseFloat(formData.advancePaid) || 0)
 
@@ -861,295 +897,297 @@ export default function OrderForm({ orderId, isEditMode = false, initialOrderTyp
                     </button>
                 </div>
 
-                {formData.mealTypes.map((mt, index) => (
-                    <div key={mt.id} className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-                        <div className="bg-gray-50 p-4 border-b border-gray-200 flex items-center justify-between">
-                            <div className="flex items-center gap-3">
-                                <span className="w-8 h-8 rounded-full bg-primary-100 text-primary-600 flex items-center justify-center font-bold text-sm">
-                                    {index + 1}
-                                </span>
-                                <div>
-                                    <h3 className="font-bold text-gray-800">
-                                        {mt.menuType ? sanitizeMealLabel(mt.menuType) : "New Session"}
-                                        {mt.eventName && <span className="ml-2 text-sm font-normal text-gray-500">({mt.eventName})</span>}
-                                    </h3>
-                                    <div className="flex items-center gap-4 mt-1 text-xs text-gray-500">
-                                        {mt.date && <span className="flex items-center gap-1"><FaCalendarAlt /> {mt.date}</span>}
-                                        {mt.time && <span className="flex items-center gap-1"><FaClock /> {mt.time}</span>}
-                                        {mt.venue && <span className="flex items-center gap-1"><FaMapMarkerAlt /> {mt.venue}</span>}
+                <DragDropContext onDragEnd={handleDragEnd}>
+                    {formData.mealTypes.map((mt, index) => (
+                        <div key={mt.id} className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+                            <div className="bg-gray-50 p-4 border-b border-gray-200 flex items-center justify-between">
+                                <div className="flex items-center gap-3">
+                                    <span className="w-8 h-8 rounded-full bg-primary-100 text-primary-600 flex items-center justify-center font-bold text-sm">
+                                        {index + 1}
+                                    </span>
+                                    <div>
+                                        <h3 className="font-bold text-gray-800">
+                                            {mt.menuType ? sanitizeMealLabel(mt.menuType) : "New Session"}
+                                            {mt.eventName && <span className="ml-2 text-sm font-normal text-gray-500">({mt.eventName})</span>}
+                                        </h3>
+                                        <div className="flex items-center gap-4 mt-1 text-xs text-gray-500">
+                                            {mt.date && <span className="flex items-center gap-1"><FaCalendarAlt /> {mt.date}</span>}
+                                            {mt.time && <span className="flex items-center gap-1"><FaClock /> {mt.time}</span>}
+                                            {mt.venue && <span className="flex items-center gap-1"><FaMapMarkerAlt /> {mt.venue}</span>}
+                                        </div>
                                     </div>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                    <button
+                                        type="button"
+                                        onClick={() => setCollapsedMealTypes(p => ({ ...p, [mt.id]: !p[mt.id] }))}
+                                        className="p-2 text-gray-400 hover:text-gray-600"
+                                    >
+                                        {collapsedMealTypes[mt.id] ? <FaChevronDown /> : <FaChevronUp />}
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => handleRemoveMealType(mt.id)}
+                                        className="p-2 text-red-400 hover:text-red-600"
+                                    >
+                                        <FaTimes />
+                                    </button>
                                 </div>
                             </div>
-                            <div className="flex items-center gap-2">
-                                <button
-                                    type="button"
-                                    onClick={() => setCollapsedMealTypes(p => ({ ...p, [mt.id]: !p[mt.id] }))}
-                                    className="p-2 text-gray-400 hover:text-gray-600"
-                                >
-                                    {collapsedMealTypes[mt.id] ? <FaChevronDown /> : <FaChevronUp />}
-                                </button>
-                                <button
-                                    type="button"
-                                    onClick={() => handleRemoveMealType(mt.id)}
-                                    className="p-2 text-red-400 hover:text-red-600"
-                                >
-                                    <FaTimes />
-                                </button>
-                            </div>
-                        </div>
 
-                        {!collapsedMealTypes[mt.id] && (
-                            <div className="p-6 space-y-6">
-                                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                                    <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-2">Session Name</label>
-                                        <input
-                                            type="text"
-                                            value={mt.eventName}
-                                            onChange={(e) => handleUpdateMealType(mt.id, 'eventName', e.target.value)}
-                                            className="w-full px-4 py-2 bg-gray-50 border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary-500 outline-none"
-                                            placeholder="e.g., Mehendi Lunch"
-                                        />
-                                    </div>
-                                    <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-2">Meal Category</label>
-                                        <select
-                                            value={mt.menuType}
-                                            onChange={(e) => handleUpdateMealType(mt.id, 'menuType', e.target.value)}
-                                            className="w-full px-4 py-2 bg-gray-50 border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary-500 outline-none capitalize"
-                                        >
-                                            <option value="">Select Category</option>
-                                            <option value="breakfast">Breakfast</option>
-                                            <option value="lunch">Lunch</option>
-                                            <option value="dinner">Dinner</option>
-                                            <option value="snacks">Snacks</option>
-                                            <option value="tiffins">Tiffins</option>
-                                            <option value="sweets">Sweets</option>
-                                            <option value="saree">Saree</option>
-                                            <option value="special_order">Special Order</option>
-                                        </select>
-                                    </div>
-                                    <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-2">{formData.orderType === 'EVENT' ? 'Venue' : 'Delivery/Pickup Venue'}</label>
-                                        <input
-                                            type="text"
-                                            value={mt.venue}
-                                            onChange={(e) => handleUpdateMealType(mt.id, 'venue', e.target.value)}
-                                            className="w-full px-4 py-2 bg-gray-50 border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary-500 outline-none"
-                                        />
-                                    </div>
-                                </div>
-
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-2">Session Description / Internal Notes</label>
-                                    <textarea
-                                        value={mt.description}
-                                        onChange={(e) => handleUpdateMealType(mt.id, 'description', e.target.value)}
-                                        rows={2}
-                                        className="w-full px-4 py-2 bg-gray-50 border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary-500 outline-none text-sm"
-                                        placeholder="e.g., Any specific instructions for this session..."
-                                    />
-                                </div>
-
-                                <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-                                    <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-2">Event Date</label>
-                                        <input
-                                            type="date"
-                                            value={mt.date}
-                                            onChange={(e) => handleUpdateMealType(mt.id, 'date', e.target.value)}
-                                            className="w-full px-4 py-2 bg-gray-50 border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary-500 outline-none"
-                                        />
-                                    </div>
-                                    <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-2">Service Time</label>
-                                        <input
-                                            type="time"
-                                            value={mt.time}
-                                            onChange={(e) => handleUpdateMealType(mt.id, 'time', e.target.value)}
-                                            className="w-full px-4 py-2 bg-gray-50 border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary-500 outline-none"
-                                        />
-                                    </div>
-                                    <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-2">{formData.orderType === 'EVENT' ? 'Members Group Count' : 'Requested Quantity'}</label>
-                                        <input
-                                            type="number"
-                                            value={mt.numberOfMembers}
-                                            onChange={(e) => handleUpdateMealType(mt.id, 'numberOfMembers', e.target.value)}
-                                            className="w-full px-4 py-2 bg-gray-50 border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary-500 outline-none"
-                                        />
-                                    </div>
-                                    {mt.menuType !== 'saree' && (
+                            {!collapsedMealTypes[mt.id] && (
+                                <div className="p-6 space-y-6">
+                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                                         <div>
-                                            <label className="block text-sm font-medium text-gray-700 mb-2">Pricing Method</label>
-                                            <div className="flex bg-gray-100 p-1 rounded-lg">
-                                                <button
-                                                    type="button"
-                                                    onClick={() => handleUpdateMealType(mt.id, 'pricingMethod', 'manual')}
-                                                    className={`flex-1 py-1.5 px-3 text-sm rounded-md transition-all ${mt.pricingMethod === 'manual' ? 'bg-white shadow text-primary-600 font-bold' : 'text-gray-500'}`}
-                                                >
-                                                    Manual
-                                                </button>
-                                                <button
-                                                    type="button"
-                                                    onClick={() => handleUpdateMealType(mt.id, 'pricingMethod', 'plate-based')}
-                                                    className={`flex-1 py-1.5 px-3 text-sm rounded-md transition-all ${mt.pricingMethod === 'plate-based' ? 'bg-white shadow text-primary-600 font-bold' : 'text-gray-500'}`}
-                                                >
-                                                    Plate-wise
-                                                </button>
-                                            </div>
-                                        </div>
-                                    )}
-                                </div>
-
-                                {mt.menuType === 'saree' ? (
-                                    <div className="p-4 bg-primary-50 rounded-lg border border-primary-100 flex justify-between items-center">
-                                        <div>
-                                            <p className="text-xs font-bold text-primary-600 mb-1 uppercase tracking-tight">Saree Itemized Summary</p>
-                                            <p className="text-lg font-black text-primary-700">
-                                                Subtotal: {formatCurrency(mt.selectedMenuItems.reduce((sum, itemId) => {
-                                                    const price = parseFloat(mt.itemPrices?.[itemId] || '0') || 0
-                                                    const qty = parseFloat(mt.itemQuantities[itemId] || '1') || 0
-                                                    return sum + (price * qty)
-                                                }, 0))}
-                                            </p>
-                                        </div>
-                                        <div className="text-right">
-                                            <span className="text-[10px] font-bold text-primary-400 uppercase">Per Unit Calculations Enabled</span>
-                                        </div>
-                                    </div>
-                                ) : mt.pricingMethod === 'plate-based' ? (
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 p-4 bg-gray-50 rounded-lg border border-gray-100">
-                                        <div>
-                                            <label className="block text-sm font-medium text-gray-700 mb-2">{formData.orderType === 'EVENT' ? 'Number of Plates' : 'Quantity / Packs'}</label>
+                                            <label className="block text-sm font-medium text-gray-700 mb-2">Session Name</label>
                                             <input
-                                                type="number"
-                                                value={mt.numberOfPlates}
-                                                onChange={(e) => handleUpdateMealType(mt.id, 'numberOfPlates', e.target.value)}
-                                                className="w-full px-4 py-2 bg-white border border-gray-200 rounded-lg outline-none"
+                                                type="text"
+                                                value={mt.eventName}
+                                                onChange={(e) => handleUpdateMealType(mt.id, 'eventName', e.target.value)}
+                                                className="w-full px-4 py-2 bg-gray-50 border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary-500 outline-none"
+                                                placeholder="e.g., Mehendi Lunch"
                                             />
                                         </div>
                                         <div>
-                                            <label className="block text-sm font-medium text-gray-700 mb-2">{formData.orderType === 'EVENT' ? 'Price per Plate' : 'Unit Price'}</label>
+                                            <label className="block text-sm font-medium text-gray-700 mb-2">Meal Category</label>
+                                            <select
+                                                value={mt.menuType}
+                                                onChange={(e) => handleUpdateMealType(mt.id, 'menuType', e.target.value)}
+                                                className="w-full px-4 py-2 bg-gray-50 border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary-500 outline-none capitalize"
+                                            >
+                                                <option value="">Select Category</option>
+                                                <option value="breakfast">Breakfast</option>
+                                                <option value="lunch">Lunch</option>
+                                                <option value="dinner">Dinner</option>
+                                                <option value="snacks">Snacks</option>
+                                                <option value="tiffins">Tiffins</option>
+                                                <option value="sweets">Sweets</option>
+                                                <option value="saree">Saree</option>
+                                                <option value="special_order">Special Order</option>
+                                            </select>
+                                        </div>
+                                        <div>
+                                            <label className="block text-sm font-medium text-gray-700 mb-2">{formData.orderType === 'EVENT' ? 'Venue' : 'Delivery/Pickup Venue'}</label>
+                                            <input
+                                                type="text"
+                                                value={mt.venue}
+                                                onChange={(e) => handleUpdateMealType(mt.id, 'venue', e.target.value)}
+                                                className="w-full px-4 py-2 bg-gray-50 border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary-500 outline-none"
+                                            />
+                                        </div>
+                                    </div>
+
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 mb-2">Session Description / Internal Notes</label>
+                                        <textarea
+                                            value={mt.description}
+                                            onChange={(e) => handleUpdateMealType(mt.id, 'description', e.target.value)}
+                                            rows={2}
+                                            className="w-full px-4 py-2 bg-gray-50 border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary-500 outline-none text-sm"
+                                            placeholder="e.g., Any specific instructions for this session..."
+                                        />
+                                    </div>
+
+                                    <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+                                        <div>
+                                            <label className="block text-sm font-medium text-gray-700 mb-2">Event Date</label>
+                                            <input
+                                                type="date"
+                                                value={mt.date}
+                                                onChange={(e) => handleUpdateMealType(mt.id, 'date', e.target.value)}
+                                                className="w-full px-4 py-2 bg-gray-50 border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary-500 outline-none"
+                                            />
+                                        </div>
+                                        <div>
+                                            <label className="block text-sm font-medium text-gray-700 mb-2">Service Time</label>
+                                            <input
+                                                type="time"
+                                                value={mt.time}
+                                                onChange={(e) => handleUpdateMealType(mt.id, 'time', e.target.value)}
+                                                className="w-full px-4 py-2 bg-gray-50 border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary-500 outline-none"
+                                            />
+                                        </div>
+                                        <div>
+                                            <label className="block text-sm font-medium text-gray-700 mb-2">{formData.orderType === 'EVENT' ? 'Members Group Count' : 'Requested Quantity'}</label>
+                                            <input
+                                                type="number"
+                                                value={mt.numberOfMembers}
+                                                onChange={(e) => handleUpdateMealType(mt.id, 'numberOfMembers', e.target.value)}
+                                                className="w-full px-4 py-2 bg-gray-50 border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary-500 outline-none"
+                                            />
+                                        </div>
+                                        {mt.menuType !== 'saree' && (
+                                            <div>
+                                                <label className="block text-sm font-medium text-gray-700 mb-2">Pricing Method</label>
+                                                <div className="flex bg-gray-100 p-1 rounded-lg">
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => handleUpdateMealType(mt.id, 'pricingMethod', 'manual')}
+                                                        className={`flex-1 py-1.5 px-3 text-sm rounded-md transition-all ${mt.pricingMethod === 'manual' ? 'bg-white shadow text-primary-600 font-bold' : 'text-gray-500'}`}
+                                                    >
+                                                        Manual
+                                                    </button>
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => handleUpdateMealType(mt.id, 'pricingMethod', 'plate-based')}
+                                                        className={`flex-1 py-1.5 px-3 text-sm rounded-md transition-all ${mt.pricingMethod === 'plate-based' ? 'bg-white shadow text-primary-600 font-bold' : 'text-gray-500'}`}
+                                                    >
+                                                        Plate-wise
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        )}
+                                    </div>
+
+                                    {mt.menuType === 'saree' ? (
+                                        <div className="p-4 bg-primary-50 rounded-lg border border-primary-100 flex justify-between items-center">
+                                            <div>
+                                                <p className="text-xs font-bold text-primary-600 mb-1 uppercase tracking-tight">Saree Itemized Summary</p>
+                                                <p className="text-lg font-black text-primary-700">
+                                                    Subtotal: {formatCurrency(mt.selectedMenuItems.reduce((sum, itemId) => {
+                                                        const price = parseFloat(mt.itemPrices?.[itemId] || '0') || 0
+                                                        const qty = parseFloat(mt.itemQuantities[itemId] || '1') || 0
+                                                        return sum + (price * qty)
+                                                    }, 0))}
+                                                </p>
+                                            </div>
+                                            <div className="text-right">
+                                                <span className="text-[10px] font-bold text-primary-400 uppercase">Per Unit Calculations Enabled</span>
+                                            </div>
+                                        </div>
+                                    ) : mt.pricingMethod === 'plate-based' ? (
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 p-4 bg-gray-50 rounded-lg border border-gray-100">
+                                            <div>
+                                                <label className="block text-sm font-medium text-gray-700 mb-2">{formData.orderType === 'EVENT' ? 'Number of Plates' : 'Quantity / Packs'}</label>
+                                                <input
+                                                    type="number"
+                                                    value={mt.numberOfPlates}
+                                                    onChange={(e) => handleUpdateMealType(mt.id, 'numberOfPlates', e.target.value)}
+                                                    className="w-full px-4 py-2 bg-white border border-gray-200 rounded-lg outline-none"
+                                                />
+                                            </div>
+                                            <div>
+                                                <label className="block text-sm font-medium text-gray-700 mb-2">{formData.orderType === 'EVENT' ? 'Price per Plate' : 'Unit Price'}</label>
+                                                <div className="relative">
+                                                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">₹</span>
+                                                    <input
+                                                        type="number"
+                                                        value={mt.platePrice}
+                                                        onChange={(e) => handleUpdateMealType(mt.id, 'platePrice', e.target.value)}
+                                                        className="w-full pl-8 pr-4 py-2 bg-white border border-gray-200 rounded-lg outline-none"
+                                                    />
+                                                </div>
+                                            </div>
+                                        </div>
+                                    ) : (
+                                        <div className="p-4 bg-gray-50 rounded-lg border border-gray-100">
+                                            <label className="block text-sm font-medium text-gray-700 mb-2">Manual Total Amount for Session</label>
                                             <div className="relative">
                                                 <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">₹</span>
                                                 <input
                                                     type="number"
-                                                    value={mt.platePrice}
-                                                    onChange={(e) => handleUpdateMealType(mt.id, 'platePrice', e.target.value)}
+                                                    value={mt.manualAmount}
+                                                    onChange={(e) => handleUpdateMealType(mt.id, 'manualAmount', e.target.value)}
                                                     className="w-full pl-8 pr-4 py-2 bg-white border border-gray-200 rounded-lg outline-none"
+                                                    placeholder="0.00"
                                                 />
                                             </div>
                                         </div>
-                                    </div>
-                                ) : (
-                                    <div className="p-4 bg-gray-50 rounded-lg border border-gray-100">
-                                        <label className="block text-sm font-medium text-gray-700 mb-2">Manual Total Amount for Session</label>
-                                        <div className="relative">
-                                            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">₹</span>
-                                            <input
-                                                type="number"
-                                                value={mt.manualAmount}
-                                                onChange={(e) => handleUpdateMealType(mt.id, 'manualAmount', e.target.value)}
-                                                className="w-full pl-8 pr-4 py-2 bg-white border border-gray-200 rounded-lg outline-none"
-                                                placeholder="0.00"
-                                            />
-                                        </div>
-                                    </div>
-                                )}
+                                    )}
 
-                                <div className="space-y-6">
-                                    <div className="space-y-3">
-                                        <div className="relative">
-                                            <FaSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-                                            <input
-                                                type="text"
-                                                className="w-full pl-10 pr-4 py-2.5 bg-gray-50 border border-gray-100 rounded-xl outline-none focus:ring-2 focus:ring-primary-500 transition-all font-bold"
-                                                placeholder={`Search and pick ${mt.menuType || 'items'}...`}
-                                                value={menuItemSearch[mt.id] || ''}
-                                                onChange={(e) => setMenuItemSearch(p => ({ ...p, [mt.id]: e.target.value }))}
-                                            />
-                                        </div>
-
-                                        {(menuItemSearch[mt.id] || mt.menuType) && (
-                                            <div className="mt-2 max-h-[350px] overflow-y-auto pr-1">
-                                                <div className="grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-6 gap-1.5 pt-1">
-                                                    {menuItems
-                                                        .filter(item => {
-                                                            const search = (menuItemSearch[mt.id] || '').toLowerCase()
-                                                            const matchesSearch = item.name.toLowerCase().includes(search)
-                                                            const itemTypes = Array.isArray(item.type) ? item.type : [(item.type as any)]
-                                                            const isSpecialOrder = mt.menuType === 'special_order'
-                                                            const matchesType = isSpecialOrder || !mt.menuType || itemTypes.some((t: string) => t?.toLowerCase() === mt.menuType.toLowerCase())
-                                                            return matchesSearch && matchesType
-                                                        })
-                                                        .map(item => (
-                                                            <button
-                                                                key={item.id}
-                                                                type="button"
-                                                                onClick={() => handleMenuItemToggle(mt.id, item.id)}
-                                                                className={`p-2 text-left rounded-lg border transition-all ${mt.selectedMenuItems.includes(item.id)
-                                                                    ? 'bg-primary-600 border-primary-600 text-white font-black shadow-md shadow-primary-200 scale-[1.02]'
-                                                                    : 'bg-white border-gray-50 text-gray-700 hover:border-primary-300 hover:bg-primary-50 font-bold'}`}
-                                                            >
-                                                                <div className="text-[10px] font-black leading-tight mb-0.5 line-clamp-2">{item.name}</div>
-                                                                {item.description && (
-                                                                    <div className={`text-[8px] line-clamp-1 italic ${mt.selectedMenuItems.includes(item.id) ? 'text-primary-100' : 'text-gray-400 font-normal'}`}>
-                                                                        {item.description}
-                                                                    </div>
-                                                                )}
-                                                            </button>
-                                                        ))}
-                                                </div>
+                                    <div className="space-y-6">
+                                        <div className="space-y-3">
+                                            <div className="relative">
+                                                <FaSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                                                <input
+                                                    type="text"
+                                                    className="w-full pl-10 pr-4 py-2.5 bg-gray-50 border border-gray-100 rounded-xl outline-none focus:ring-2 focus:ring-primary-500 transition-all font-bold"
+                                                    placeholder={`Search and pick ${mt.menuType || 'items'}...`}
+                                                    value={menuItemSearch[mt.id] || ''}
+                                                    onChange={(e) => setMenuItemSearch(p => ({ ...p, [mt.id]: e.target.value }))}
+                                                />
                                             </div>
-                                        )}
-                                        <div className="flex gap-2">
-                                            <button
-                                                type="button"
-                                                onClick={() => handleSelectCommonItems(mt.id)}
-                                                className="flex-1 p-2 text-[10px] font-black text-center text-amber-600 border border-dashed border-amber-200 rounded-lg hover:bg-amber-50 transition-all flex items-center justify-center gap-1"
-                                            >
-                                                <FaPlus className="text-[8px]" /> ADD COMMON ITEMS
-                                            </button>
-                                            <button
-                                                type="button"
-                                                onClick={() => {
-                                                    setQuickAddMealTypeId(mt.id)
-                                                    setShowQuickAddModal(true)
-                                                }}
-                                                className="flex-1 p-2 text-[10px] font-black text-center text-primary-600 border border-dashed border-primary-100 rounded-lg hover:bg-primary-50 transition-all flex items-center justify-center gap-1"
-                                            >
-                                                <FaPlus className="text-[8px]" /> QUICK ADD
-                                            </button>
+
+                                            {(menuItemSearch[mt.id] || mt.menuType) && (
+                                                <div className="mt-2 max-h-[350px] overflow-y-auto pr-1">
+                                                    <div className="grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-6 gap-1.5 pt-1">
+                                                        {menuItems
+                                                            .filter(item => {
+                                                                const search = (menuItemSearch[mt.id] || '').toLowerCase()
+                                                                const matchesSearch = item.name.toLowerCase().includes(search)
+                                                                const itemTypes = Array.isArray(item.type) ? item.type : [(item.type as any)]
+                                                                const isSpecialOrder = mt.menuType === 'special_order'
+                                                                const matchesType = isSpecialOrder || !mt.menuType || itemTypes.some((t: string) => t?.toLowerCase() === mt.menuType.toLowerCase())
+                                                                return matchesSearch && matchesType
+                                                            })
+                                                            .map(item => (
+                                                                <button
+                                                                    key={item.id}
+                                                                    type="button"
+                                                                    onClick={() => handleMenuItemToggle(mt.id, item.id)}
+                                                                    className={`p-2 text-left rounded-lg border transition-all ${mt.selectedMenuItems.includes(item.id)
+                                                                        ? 'bg-primary-600 border-primary-600 text-white font-black shadow-md shadow-primary-200 scale-[1.02]'
+                                                                        : 'bg-white border-gray-50 text-gray-700 hover:border-primary-300 hover:bg-primary-50 font-bold'}`}
+                                                                >
+                                                                    <div className="text-[10px] font-black leading-tight mb-0.5 line-clamp-2">{item.name}</div>
+                                                                    {item.description && (
+                                                                        <div className={`text-[8px] line-clamp-1 italic ${mt.selectedMenuItems.includes(item.id) ? 'text-primary-100' : 'text-gray-400 font-normal'}`}>
+                                                                            {item.description}
+                                                                        </div>
+                                                                    )}
+                                                                </button>
+                                                            ))}
+                                                    </div>
+                                                </div>
+                                            )}
+                                            <div className="flex gap-2">
+                                                <button
+                                                    type="button"
+                                                    onClick={() => handleSelectCommonItems(mt.id)}
+                                                    className="flex-1 p-2 text-[10px] font-black text-center text-amber-600 border border-dashed border-amber-200 rounded-lg hover:bg-amber-50 transition-all flex items-center justify-center gap-1"
+                                                >
+                                                    <FaPlus className="text-[8px]" /> ADD COMMON ITEMS
+                                                </button>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => {
+                                                        setQuickAddMealTypeId(mt.id)
+                                                        setShowQuickAddModal(true)
+                                                    }}
+                                                    className="flex-1 p-2 text-[10px] font-black text-center text-primary-600 border border-dashed border-primary-100 rounded-lg hover:bg-primary-50 transition-all flex items-center justify-center gap-1"
+                                                >
+                                                    <FaPlus className="text-[8px]" /> QUICK ADD
+                                                </button>
+                                            </div>
                                         </div>
-                                    </div>
 
-                                    <h4 className="font-bold text-gray-800 flex items-center justify-between border-t border-gray-50 pt-4">
-                                        Selected Menu Items ({mt.selectedMenuItems.length})
-                                        <button
-                                            type="button"
-                                            onClick={() => setCollapsedSelectedItems(p => ({ ...p, [mt.id]: !p[mt.id] }))}
-                                            className="text-primary-600 text-sm font-medium hover:underline"
-                                        >
-                                            {collapsedSelectedItems[mt.id] ? "Show Items" : "Hide Items"}
-                                        </button>
-                                    </h4>
+                                        <h4 className="font-bold text-gray-800 flex items-center justify-between border-t border-gray-50 pt-4">
+                                            Selected Menu Items ({mt.selectedMenuItems.length})
+                                            <button
+                                                type="button"
+                                                onClick={() => setCollapsedSelectedItems(p => ({ ...p, [mt.id]: !p[mt.id] }))}
+                                                className="text-primary-600 text-sm font-medium hover:underline"
+                                            >
+                                                {collapsedSelectedItems[mt.id] ? "Show Items" : "Hide Items"}
+                                            </button>
+                                        </h4>
 
-                                    {!collapsedSelectedItems[mt.id] && mt.selectedMenuItems.length > 0 && (
-                                        <DragDropContext onDragEnd={handleDragEnd}>
-                                            <Droppable droppableId={mt.id}>
+                                        {!collapsedSelectedItems[mt.id] && mt.selectedMenuItems.length > 0 && (
+                                            <Droppable droppableId={mt.id} direction="horizontal">
                                                 {(provided) => (
-                                                    <div {...provided.droppableProps} ref={provided.innerRef} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
+                                                    <div {...provided.droppableProps} ref={provided.innerRef} className="flex flex-wrap gap-3">
                                                         {mt.selectedMenuItems.map((itemId, idx) => {
                                                             const item = menuItems.find(m => m.id === itemId)
                                                             if (!item) return null
+                                                            // Use composite id so draggableId is globally unique across sessions
+                                                            const draggableId = `${mt.id}::${itemId}`
                                                             return (
-                                                                <Draggable key={itemId} draggableId={itemId} index={idx}>
+                                                                <Draggable key={draggableId} draggableId={draggableId} index={idx}>
                                                                     {(provided) => (
                                                                         <div
                                                                             ref={provided.innerRef}
                                                                             {...provided.draggableProps}
-                                                                            className="flex items-center gap-2 p-2 bg-white border border-gray-100 rounded-lg group shadow-sm hover:border-primary-200 transition-all"
+                                                                            className="w-44 flex items-center gap-2 p-2 bg-white border border-gray-100 rounded-lg group shadow-sm hover:border-primary-200 transition-all"
                                                                         >
                                                                             <div {...provided.dragHandleProps} className="text-gray-300 group-hover:text-gray-400 cursor-grab active:cursor-grabbing">
                                                                                 <FaGripLines size={12} />
@@ -1226,13 +1264,13 @@ export default function OrderForm({ orderId, isEditMode = false, initialOrderTyp
                                                     </div>
                                                 )}
                                             </Droppable>
-                                        </DragDropContext>
-                                    )}
+                                        )}
+                                    </div>
                                 </div>
-                            </div>
-                        )}
-                    </div>
-                ))}
+                            )}
+                        </div>
+                    ))}
+                </DragDropContext>
             </div>
 
             <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
@@ -1557,6 +1595,89 @@ export default function OrderForm({ orderId, isEditMode = false, initialOrderTyp
                     <FaCalculator className="text-primary-500" /> Payment & Costs
                 </h2>
 
+                {/* ── Editable Session-wise Amount Table ── */}
+                {formData.mealTypes.length > 0 && (
+                    <div className="mb-6 rounded-xl border border-gray-100 overflow-hidden">
+                        <div className="px-4 py-3 bg-gray-50 border-b border-gray-100">
+                            <span className="text-xs font-black text-gray-500 uppercase tracking-widest">Session-wise Amounts</span>
+                        </div>
+                        <div className="divide-y divide-gray-50">
+                            {[...formData.mealTypes]
+                                .sort((a, b) => {
+                                    const da = a.date || '', db = b.date || ''
+                                    if (da !== db) return da.localeCompare(db)
+                                    const ta = a.time || '', tb = b.time || ''
+                                    if (ta !== tb) return ta.localeCompare(tb)
+                                    const mealOrder: Record<string, number> = { breakfast: 1, lunch: 2, snacks: 3, dinner: 4, sweets: 5, saree: 6, special_order: 7 }
+                                    return (mealOrder[a.menuType] ?? 99) - (mealOrder[b.menuType] ?? 99)
+                                })
+                                .map((mt, i) => (
+                                <div key={mt.id} className="flex items-center gap-4 px-4 py-2.5 hover:bg-gray-50/60 transition-colors">
+                                    <span className="w-5 h-5 rounded-full bg-primary-100 text-primary-600 flex items-center justify-center text-[9px] font-black shrink-0">{i + 1}</span>
+                                    <div className="flex-1 min-w-0">
+                                        <span className="font-bold text-gray-800 text-sm">{mt.menuType ? sanitizeMealLabel(mt.menuType) : 'Session'}</span>
+                                        {mt.date && <span className="ml-2 text-[10px] text-gray-400">{mt.date}</span>}
+                                        {mt.eventName && <span className="ml-1 text-[10px] text-gray-400">({mt.eventName})</span>}
+                                    </div>
+                                    {mt.menuType === 'saree' ? (
+                                        <span className="text-xs font-black text-primary-600 bg-primary-50 px-2 py-1 rounded">
+                                            {formatCurrency(mt.selectedMenuItems.reduce((sum, itemId) => {
+                                                const price = parseFloat(mt.itemPrices?.[itemId] || '0') || 0
+                                                const qty = parseFloat(mt.itemQuantities[itemId] || '1') || 0
+                                                return sum + (price * qty)
+                                            }, 0))}
+                                            <span className="text-[9px] text-primary-400 ml-1">(itemized)</span>
+                                        </span>
+                                    ) : mt.pricingMethod === 'plate-based' ? (
+                                        <div className="flex items-center gap-2 shrink-0">
+                                            {/* Plates input */}
+                                            <div className="relative w-20">
+                                                <input
+                                                    type="number"
+                                                    value={mt.numberOfPlates || mt.numberOfMembers}
+                                                    onChange={(e) => handleUpdateMealType(mt.id, 'numberOfPlates', e.target.value)}
+                                                    className="w-full px-2 py-1.5 bg-white border border-gray-200 rounded-lg outline-none text-sm font-bold text-gray-800 focus:ring-2 focus:ring-primary-400 text-center"
+                                                    placeholder="Plates"
+                                                />
+                                                <span className="block text-center text-[9px] text-gray-400 mt-0.5">plates</span>
+                                            </div>
+                                            <span className="text-gray-300 text-xs font-bold">×</span>
+                                            {/* Price per plate input */}
+                                            <div className="relative w-24">
+                                                <span className="absolute left-2 top-1/2 -translate-y-1/2 text-gray-400 text-xs">₹</span>
+                                                <input
+                                                    type="number"
+                                                    value={mt.platePrice}
+                                                    onChange={(e) => handleUpdateMealType(mt.id, 'platePrice', e.target.value)}
+                                                    className="w-full pl-6 pr-2 py-1.5 bg-white border border-gray-200 rounded-lg outline-none text-sm font-bold text-gray-800 focus:ring-2 focus:ring-primary-400"
+                                                    placeholder="0"
+                                                />
+                                                <span className="block text-center text-[9px] text-gray-400 mt-0.5">per plate</span>
+                                            </div>
+                                            <span className="text-gray-300 text-xs font-bold">=</span>
+                                            {/* Live total */}
+                                            <span className="text-sm font-black text-primary-700 w-24 text-right">
+                                                {formatCurrency((parseFloat(mt.numberOfPlates) || parseFloat(mt.numberOfMembers) || 0) * (parseFloat(mt.platePrice) || 0))}
+                                            </span>
+                                        </div>
+                                    ) : (
+                                        <div className="relative w-36 shrink-0">
+                                            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs">₹</span>
+                                            <input
+                                                type="number"
+                                                value={mt.manualAmount}
+                                                onChange={(e) => handleUpdateMealType(mt.id, 'manualAmount', e.target.value)}
+                                                className="w-full pl-7 pr-3 py-1.5 bg-white border border-gray-200 rounded-lg outline-none text-sm font-bold text-gray-800 focus:ring-2 focus:ring-primary-400 focus:border-primary-400 transition-all"
+                                                placeholder="0"
+                                            />
+                                        </div>
+                                    )}
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                )}
+
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                     <div>
                         <label className="block text-sm font-medium text-gray-700 mb-2">Transport Cost</label>
@@ -1617,6 +1738,7 @@ export default function OrderForm({ orderId, isEditMode = false, initialOrderTyp
                         placeholder="Add any specific notes about the payment or order..."
                     />
                 </div>
+
 
                 <div className="mt-8 p-8 bg-white rounded-3xl border border-gray-100 grid grid-cols-1 md:grid-cols-3 gap-8 shadow-xl shadow-gray-100/50">
                     <div className="text-center md:text-left space-y-1">

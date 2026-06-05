@@ -4,6 +4,39 @@
  */
 import { sanitizeMealLabel } from "./utils";
 
+// ── Menu item serving order for PDF display ──────────────────────────────────
+// Priority 1 = first to print, higher number = later in list.
+// Matching is done case-insensitively against the item name.
+const MENU_CATEGORY_ORDER: Array<{ keywords: string[]; priority: number }> = [
+  { keywords: ['sweet', 'halwa', 'payasam', 'kheer', 'ladoo', 'laddu', 'barfi', 'burfi', 'jalebi', 'gulab', 'rasgulla', 'mysore pak', 'double ka meetha'], priority: 1 },
+  { keywords: ['hot', 'soup', 'manchow', 'tomato soup', 'hot and sour'], priority: 2 },
+  { keywords: ['flavoured rice', 'pulao', 'biryani', 'lemon rice', 'tamarind rice', 'coconut rice', 'curd rice', 'fried rice', 'vangi bath', 'bisi bele', 'chitrannam', 'pulihora'], priority: 3 },
+  { keywords: ['north indian', 'punjabi', 'matar paneer', 'palak paneer', 'paneer butter', 'shahi paneer', 'dal makhani', 'rajma', 'chana masala', 'aloo gobi', 'aloo matar'], priority: 4 },
+  { keywords: ['starter', 'manchuri', 'manchurian', 'aloo 65', 'gobi 65', 'paneer 65', 'veg 65', 'spring roll', 'samosa', 'pakoda', 'bajji', 'cutlet', 'tikki'], priority: 5 },
+  { keywords: ['dal', 'pappu', 'sambar dal', 'toor dal', 'moong dal', 'masoor dal', 'chana dal', 'yellow dal'], priority: 6 },
+  { keywords: ['south indian curry', 'curry', 'gravy', 'kofta', 'korma', 'masala', 'sabzi', 'koora', 'vepudu koora', 'avial', 'poriyal'], priority: 7 },
+  { keywords: ['fry', 'aloo fry', 'benda fry', 'bhindi fry', 'potato fry', 'vepudu', 'roast', 'stir fry'], priority: 8 },
+  { keywords: ['sambar', 'rasam', 'ulavacharu', 'liquid', 'soup', 'chaaru', 'charu', 'pepper water'], priority: 9 },
+  { keywords: ['chutney', 'pachadi', 'pickle', 'achar', 'tokku', 'thokku'], priority: 10 },
+  { keywords: ['powder', 'podi', 'kaaram', 'karam', 'chilli powder', 'gun powder', 'idli podi'], priority: 11 },
+  { keywords: ['ghee', 'butter'], priority: 12 },
+  { keywords: ['curd', 'raita', 'yogurt', 'dahi', 'perugu'], priority: 13 },
+  { keywords: ['white rice', 'steamed rice', 'plain rice', 'rice'], priority: 14 },
+  { keywords: ['chips', 'papad', 'appalam', 'fryums', 'wafer'], priority: 15 },
+  { keywords: ['pan', 'paan', 'betel'], priority: 16 },
+  { keywords: ['fruit salad', 'fruit', 'salad', 'raita salad'], priority: 17 },
+  { keywords: ['ice cream', 'icecream', 'kulfi', 'dessert'], priority: 18 },
+];
+
+function getMenuItemPriority(name: string): number {
+  const lower = name.toLowerCase();
+  for (const cat of MENU_CATEGORY_ORDER) {
+    if (cat.keywords.some(kw => lower.includes(kw))) return cat.priority;
+  }
+  return 99; // unknown items go to the end
+}
+
+
 export function buildOrderPdfHtml(
   order: any,
   options: {
@@ -44,25 +77,102 @@ export function buildOrderPdfHtml(
   > | null;
 
   // Organize data by Date -> MealTypes/Stalls
+  // Organize data by Date -> MealTypes/Stalls
   const summaryByDate: Record<string, any[]> = {};
 
   const safeString = (val: any) =>
     typeof val === "string" ? val : String(val || "");
 
+  // 1. Get the unified year from all dates to resolve user typos (e.g. 2023 instead of 2026)
+  const getUnifiedYear = (): number => {
+    const years: Record<number, number> = {};
+    const addYear = (d: any) => {
+      if (!d) return;
+      const s = String(d).trim();
+      if (!s) return;
+      let y: number | null = null;
+      if (/^\d{4}/.test(s)) {
+        y = parseInt(s.substring(0, 4), 10);
+      } else {
+        const date = new Date(s);
+        if (!isNaN(date.getTime())) {
+          y = date.getFullYear();
+        }
+      }
+      if (y && y >= 2000 && y <= 2100) {
+        years[y] = (years[y] || 0) + 1;
+      }
+    };
+
+    if (mealTypeAmounts && typeof mealTypeAmounts === "object") {
+      Object.values(mealTypeAmounts).forEach((mt: any) => {
+        if (mt && typeof mt === "object" && mt.date) {
+          addYear(mt.date);
+        }
+      });
+    }
+
+    if (order.stalls && Array.isArray(order.stalls)) {
+      order.stalls.forEach((stall: any) => {
+        if (stall && stall.date) {
+          addYear(stall.date);
+        }
+      });
+    }
+
+    let maxCount = 0;
+    let bestYear = 0;
+    Object.entries(years).forEach(([yStr, count]) => {
+      const y = parseInt(yStr, 10);
+      if (count > maxCount) {
+        maxCount = count;
+        bestYear = y;
+      }
+    });
+
+    if (bestYear > 0) return bestYear;
+
+    if (order.eventDate) {
+      const s = String(order.eventDate);
+      if (/^\d{4}/.test(s)) {
+        const y = parseInt(s.substring(0, 4), 10);
+        if (y >= 2000 && y <= 2100) return y;
+      }
+    }
+
+    if (order.createdAt) {
+      const date = new Date(order.createdAt);
+      if (!isNaN(date.getTime())) {
+        return date.getFullYear();
+      }
+    }
+
+    return new Date().getFullYear();
+  };
+
+  const unifiedYear = getUnifiedYear();
+
+  // 2. Normalize date to YYYY-MM-DD using the unified year to resolve typos
   const normalizeDate = (d: any): string => {
     if (!d) return "no-date";
-    const s = String(d);
-    if (s.includes("T")) return s.split("T")[0];
-    // If it's YYYY-MM-DD but no T
-    if (/^\d{4}-\d{2}-\d{2}/.test(s)) return s.substring(0, 10);
-    // Otherwise try parsing
+    const s = String(d).trim();
+    if (!s) return "no-date";
+
+    const makeDateStr = (month: number, day: number) => {
+      const mm = String(month).padStart(2, '0');
+      const dd = String(day).padStart(2, '0');
+      return `${unifiedYear}-${mm}-${dd}`;
+    };
+
+    const match = s.match(/^(\d{4})-(\d{2})-(\d{2})/);
+    if (match) {
+      return makeDateStr(parseInt(match[2], 10), parseInt(match[3], 10));
+    }
+
     try {
       const date = new Date(s);
       if (isNaN(date.getTime())) return "no-date";
-      const year = date.getFullYear();
-      const month = String(date.getMonth() + 1).padStart(2, '0');
-      const day = String(date.getDate()).padStart(2, '0');
-      return `${year}-${month}-${day}`;
+      return makeDateStr(date.getMonth() + 1, date.getDate());
     } catch {
       return "no-date";
     }
@@ -132,6 +242,37 @@ export function buildOrderPdfHtml(
 
   const isMultiEvent = sortedDates.length > 1;
 
+  // 3. Helper to sort meals by priority (chronological order)
+  const sortMealsByPriority = (mealsList: any[]) => {
+    const mealOrders: Record<string, number> = { 
+      'breakfast': 1, 
+      'lunch': 2, 
+      'hi-tea': 3,
+      'hi tea': 3,
+      'snacks': 4, 
+      'tiffin': 5,
+      'dinner': 6,
+      'special_order': 7,
+      'special order': 7,
+      'special': 7,
+      'stalls': 8,
+      'session': 9,
+      'other': 10 
+    };
+
+    return [...mealsList].sort((a, b) => {
+      const pa = mealOrders[a.type?.toLowerCase()] || 99;
+      const pb = mealOrders[b.type?.toLowerCase()] || 99;
+      
+      if (pa !== pb) return pa - pb;
+
+      if (a.time && b.time) {
+        return String(a.time).localeCompare(String(b.time));
+      }
+      return 0;
+    });
+  };
+
   // Build Summary Rows HTML
   let summaryRowsHtml = "";
   if (sortedDates.length === 0) {
@@ -141,48 +282,23 @@ export function buildOrderPdfHtml(
     sortedDates.forEach((dateStr: string) => {
       // Date Header Row - ONLY SHOW if multi-event
       if (isMultiEvent) {
+        const headerText = dateStr === "no-date" ? "General / Special Orders" : `Event Date: ${formatDate(dateStr)}`;
         summaryRowsHtml += `
             <tr class="pdf-row pdf-section-header" style="background-color: #f3f3f3;">
                 <td colspan="4" style="padding: 4px 10px; font-weight: 700; font-size: 11px; border-bottom: 1px solid #000;">
-                    Event Date: ${formatDate(dateStr)}
+                    ${headerText}
                 </td>
             </tr>
           `;
       }
 
-      // Sort meals by priority (chronological order)
-      const meals = summaryByDate[dateStr].sort((a, b) => {
-        // 1. Priority by meal type
-        const mealOrders: Record<string, number> = { 
-          'breakfast': 1, 
-          'lunch': 2, 
-          'hi-tea': 3,
-          'hi tea': 3,
-          'snacks': 4, 
-          'tiffin': 5,
-          'dinner': 6,
-          'session': 7,
-          'stalls': 8,
-          'other': 9 
-        };
-        const pa = mealOrders[a.type?.toLowerCase()] || 99;
-        const pb = mealOrders[b.type?.toLowerCase()] || 99;
-        
-        if (pa !== pb) return pa - pb;
-
-        // 2. Secondary sort by time if available
-        if (a.time && b.time) {
-          return String(a.time).localeCompare(String(b.time));
-        }
-        return 0;
-      });
+      // Sort meals by priority
+      const meals = sortMealsByPriority(summaryByDate[dateStr]);
 
       meals.forEach((meal) => {
         const count = Number(meal.numberOfPlates || meal.numberOfMembers || meal.count || 0);
         const amount = Number(meal.amount || 0);
         const rate = count > 0 ? amount / count : 0;
-
-        const menuItemsHtml = "";
 
         summaryRowsHtml += `
                 <tr class="pdf-row">
@@ -190,7 +306,7 @@ export function buildOrderPdfHtml(
                         ${meal.label}
                         ${meal.eventName ? `<span style="font-size: 9px; color: #666; margin-left: 5px;">(${meal.eventName})</span>` : ""}
                         ${meal.time ? `<span style="font-size: 9px; color: #666; margin-left: 5px;">@ ${meal.time}</span>` : ""}
-                        <div style="font-size: 9px; color: #333; font-weight: 400; margin-top: 1px;">${formatDate(dateStr)}${meal.venue ? ` • Venue: ${meal.venue}` : ""}</div>
+                        <div style="font-size: 9px; color: #333; font-weight: 400; margin-top: 1px;">${dateStr !== "no-date" ? formatDate(dateStr) : ""}${meal.venue ? `${dateStr !== "no-date" ? " • " : ""}Venue: ${meal.venue}` : ""}</div>
                         ${meal.description ? `<div style="font-size: 8px; color: #7c3aed; font-weight: 500; font-style: italic; margin-top: 2px;">Note: ${meal.description}</div>` : ""}
                     </td>
                     <td style="padding: 5px 10px; font-size: 11px; border-bottom: 1px solid #ddd; text-align: center; font-weight: 500; vertical-align: top;">
@@ -255,17 +371,15 @@ export function buildOrderPdfHtml(
     `;
 
     sortedDates.forEach((dateStr) => {
-      const dateDisplay = formatDate(dateStr);
-      const meals = summaryByDate[dateStr].filter(m => !m.isStall).sort((a, b) => {
-        const mealOrders: Record<string, number> = { 'breakfast': 1, 'lunch': 2, 'hi-tea': 3, 'hi tea': 3, 'snacks': 4, 'tiffin': 5, 'dinner': 6, 'session': 7, 'other': 9 };
-        return (mealOrders[a.type?.toLowerCase()] || 99) - (mealOrders[b.type?.toLowerCase()] || 99);
-      });
+      const dateDisplay = dateStr === "no-date" ? "General / Special Orders" : formatDate(dateStr);
+      const meals = sortMealsByPriority(summaryByDate[dateStr].filter(m => !m.isStall));
 
       if (meals.length > 0) {
         if (isMultiEvent) {
+          const headerText = dateStr === "no-date" ? "📅 General / Special Orders" : `📅 Event Date: ${dateDisplay}`;
           menuDetailsHtml += `
             <div style="font-weight: 700; font-size: 11px; margin-top: 10px; margin-bottom: 5px; color: #333; border-bottom: 1px dashed #ccc; padding-bottom: 5px;">
-              📅 Event Date: ${dateDisplay}
+              ${headerText}
             </div>
           `;
         }
@@ -290,7 +404,11 @@ export function buildOrderPdfHtml(
                 ${meal.description ? `<div style="font-size: 9px; color: #666; margin-bottom: 8px; font-style: italic; border-left: 2px solid ${themeColor}; padding-left: 8px;">Note: ${meal.description}</div>` : ""}
                 
                 <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px;">
-                  ${items.map((it, idx) => {
+                  ${[...items].sort((a, b) => {
+                    const nameA = a.menuItem?.name || a.menuItemName || '';
+                    const nameB = b.menuItem?.name || b.menuItemName || '';
+                    return getMenuItemPriority(nameA) - getMenuItemPriority(nameB);
+                  }).map((it, idx) => {
                     const name = it.menuItem?.name || "Item";
                     const telugu = it.menuItem?.nameTelugu;
                     const cust = it.customization;
@@ -409,9 +527,9 @@ export function buildOrderPdfHtml(
                 ${
                   !isMultiEvent
                     ? `
-                <div style="display: flex; margin-bottom: 2px;">
+                 <div style="display: flex; margin-bottom: 2px;">
                     <div style="width: 120px; font-weight: 600;">Function Date:</div>
-                    <div style="font-weight: 500;">${sortedDates.length > 0 ? formatDate(sortedDates[0]) : "N/A"}</div>
+                    <div style="font-weight: 500;">${sortedDates.length > 0 && sortedDates[0] !== "no-date" ? formatDate(sortedDates[0]) : "N/A"}</div>
                 </div>`
                     : ""
                 }
