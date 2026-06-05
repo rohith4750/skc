@@ -48,87 +48,91 @@ export async function PUT(
     if (data.status && Object.keys(data).length === 1) {
       const status = data.status;
 
-      const order = await prisma.order.update({
-        where: { id: params.id },
-        data: { status: status },
-      });
-
-      let bill = await prisma.bill.findUnique({
-        where: { orderId: params.id },
-      });
-
-      // Create bill ONLY when order starts or completes
-      if (!bill && ["in_progress", "completed"].includes(status)) {
-        const initialPaymentHistory =
-          Number(order.advancePaid) > 0
-            ? [
-                {
-                  id: generateId(),
-                  amount: order.advancePaid,
-                  totalPaid: order.advancePaid,
-                  remainingAmount: order.remainingAmount,
-                  status:
-                    Number(order.remainingAmount) > 0
-                      ? Number(order.advancePaid) > 0
-                        ? "partial"
-                        : "pending"
-                      : "paid",
-                  date: order.createdAt.toISOString(),
-                  source: "booking",
-                  method: "cash", // Default for initial advance if not specified
-                  notes: "Initial advance taken at order creation",
-                },
-              ]
-            : [];
-
-        const billCreateData: any = {
-          orderId: params.id,
-          totalAmount: order.totalAmount,
-          advancePaid: order.advancePaid,
-          remainingAmount: order.remainingAmount,
-          paidAmount: order.advancePaid,
-          paymentHistory: initialPaymentHistory,
-          status:
-            Number(order.remainingAmount) > 0
-              ? Number(order.advancePaid) > 0
-                ? "partial"
-                : "pending"
-              : "paid",
-        };
-
-        bill = await prisma.bill.create({
-          data: billCreateData,
-        });
-      }
-
-      // If order reverted to pending or cancelled -> delete the bill
-      if (bill && ["pending", "cancelled"].includes(status)) {
-        await prisma.bill.delete({
-          where: { id: bill.id },
-        });
-        bill = null;
-      }
-
-      // If order completed → mark bill paid
-      if (bill && status === "completed") {
-        bill = await prisma.bill.update({
-          where: { id: bill.id },
-          data: {
-            advancePaid: order.advancePaid, // Preserve original advance
-            paidAmount: bill.totalAmount,
-            remainingAmount: 0,
-            status: "paid",
-          },
-        });
-
-        await prisma.order.update({
+      const result = await prisma.$transaction(async (tx) => {
+        const order = await tx.order.update({
           where: { id: params.id },
-          data: {
-            advancePaid: bill.totalAmount,
-            remainingAmount: 0,
-          },
+          data: { status: status },
         });
-      }
+
+        let bill = await tx.bill.findUnique({
+          where: { orderId: params.id },
+        });
+
+        // Create bill ONLY when order starts or completes
+        if (!bill && ["in_progress", "completed"].includes(status)) {
+          const initialPaymentHistory =
+            Number(order.advancePaid) > 0
+              ? [
+                  {
+                    id: generateId(),
+                    amount: order.advancePaid,
+                    totalPaid: order.advancePaid,
+                    remainingAmount: order.remainingAmount,
+                    status:
+                      Number(order.remainingAmount) > 0
+                        ? Number(order.advancePaid) > 0
+                          ? "partial"
+                          : "pending"
+                        : "paid",
+                    date: order.createdAt.toISOString(),
+                    source: "booking",
+                    method: "cash", // Default for initial advance if not specified
+                    notes: "Initial advance taken at order creation",
+                  },
+                ]
+              : [];
+
+          const billCreateData: any = {
+            orderId: params.id,
+            totalAmount: order.totalAmount,
+            advancePaid: order.advancePaid,
+            remainingAmount: order.remainingAmount,
+            paidAmount: order.advancePaid,
+            paymentHistory: initialPaymentHistory,
+            status:
+              Number(order.remainingAmount) > 0
+                ? Number(order.advancePaid) > 0
+                  ? "partial"
+                  : "pending"
+                : "paid",
+          };
+
+          bill = await tx.bill.create({
+            data: billCreateData,
+          });
+        }
+
+        // If order reverted to pending or cancelled -> delete the bill
+        if (bill && ["pending", "cancelled"].includes(status)) {
+          await tx.bill.delete({
+            where: { id: bill.id },
+          });
+          bill = null;
+        }
+
+        // If order completed → mark bill paid
+        if (bill && status === "completed") {
+          bill = await tx.bill.update({
+            where: { id: bill.id },
+            data: {
+              advancePaid: order.advancePaid, // Preserve original advance
+              paidAmount: bill.totalAmount,
+              remainingAmount: 0,
+              status: "paid",
+            },
+          });
+
+          await tx.order.update({
+            where: { id: params.id },
+            data: {
+              advancePaid: bill.totalAmount,
+              remainingAmount: 0,
+            },
+          });
+        }
+
+        return { order, bill };
+      });
 
       publishNotification({
         type: "orders",
@@ -154,10 +158,10 @@ export async function PUT(
 
       return NextResponse.json({
         order: transformDecimal(updatedOrderWithRelations),
-        bill: transformDecimal(bill),
-        _billCreated: bill ? true : false,
-        _billId: bill?.id,
-        _billStatus: bill ? "created" : "none",
+        bill: transformDecimal(result.bill),
+        _billCreated: result.bill ? true : false,
+        _billId: result.bill?.id,
+        _billStatus: result.bill ? "created" : "none",
       });
     }
 
@@ -284,17 +288,21 @@ export async function PUT(
         ? (recalculatedTotal > 0 ? recalculatedTotal : Number(existingOrder.totalAmount || 0))
         : totalAmount;
 
+    const finalAdvancePaid = data.status === "completed" ? finalTotalAmount : advancePaid;
+
     const finalRemainingAmount =
-      totalAmount === 0 
-        ? Math.max(0, finalTotalAmount - advancePaid)
-        : remainingAmount;
+      data.status === "completed"
+        ? 0
+        : (totalAmount === 0 
+            ? Math.max(0, finalTotalAmount - finalAdvancePaid)
+            : remainingAmount);
 
     const orderUpdateData: any = {
       customerId: data.customerId,
       totalAmount: finalTotalAmount,
-      advancePaid,
+      advancePaid: finalAdvancePaid,
       remainingAmount: finalRemainingAmount,
-      status: data.status,
+      status: data.status || existingOrder.status,
       orderType: data.orderType || "EVENT",
       eventName: data.eventName || null,
       eventDate: data.eventDate
@@ -352,114 +360,169 @@ export async function PUT(
         where: { orderId: params.id },
       });
 
-      if (bill) {
-        const paymentHistory = Array.isArray((bill as any).paymentHistory)
-          ? (bill as any).paymentHistory
-          : [];
-        const historyEntries: any[] = [];
-        const totalAdvanceDelta = Math.max(
-          0,
-          advancePaid - Number(existingOrder.advancePaid || 0),
-        );
-        const baseAdvanceDelta = Math.max(
-          0,
-          totalAdvanceDelta - additionalPayment,
-        );
-        const statusLabel =
-          remainingAmount <= 0
-            ? "paid"
-            : advancePaid > 0
-              ? "partial"
-              : "pending";
+      const newStatus = data.status || existingOrder.status;
 
-        if (baseAdvanceDelta > 0) {
-          historyEntries.push({
-            id: generateId(),
-            amount: baseAdvanceDelta,
-            totalPaid: advancePaid,
-            remainingAmount,
-            status: statusLabel,
-            date: paymentHistoryDateIso,
-            source:
-              Number(existingOrder.advancePaid || 0) === 0
-                ? "booking"
-                : "revision",
-            method: paymentMethod,
-            notes: paymentNotes || mealTypeNotes || "Advance updated",
+      // Handle bill deletion on revert to pending or cancelled
+      if (bill && ["pending", "cancelled"].includes(newStatus)) {
+        await tx.bill.delete({
+          where: { id: bill.id },
+        });
+        bill = null;
+      }
+
+      if (["in_progress", "completed"].includes(newStatus)) {
+        if (!bill) {
+          // Create new bill
+          const initialPaymentHistory =
+            Number(finalAdvancePaid) > 0
+              ? [
+                  {
+                    id: generateId(),
+                    amount: finalAdvancePaid,
+                    totalPaid: finalAdvancePaid,
+                    remainingAmount: finalRemainingAmount,
+                    status:
+                      Number(finalRemainingAmount) > 0
+                        ? Number(finalAdvancePaid) > 0
+                          ? "partial"
+                          : "pending"
+                        : "paid",
+                    date: paymentHistoryDateIso,
+                    source: "booking",
+                    method: paymentMethod,
+                    notes: paymentNotes || mealTypeNotes || "Initial advance taken at order creation",
+                  },
+                ]
+              : [];
+
+          const billCreateData: any = {
+            orderId: params.id,
+            totalAmount: finalTotalAmount,
+            advancePaid: finalAdvancePaid,
+            remainingAmount: finalRemainingAmount,
+            paidAmount: finalAdvancePaid,
+            paymentHistory: initialPaymentHistory,
+            status:
+              Number(finalRemainingAmount) > 0
+                ? Number(finalAdvancePaid) > 0
+                  ? "partial"
+                  : "pending"
+                : "paid",
+          };
+
+          bill = await tx.bill.create({
+            data: billCreateData,
           });
-        }
+        } else {
+          // Update existing bill
+          const paymentHistory = Array.isArray((bill as any).paymentHistory)
+            ? (bill as any).paymentHistory
+            : [];
+          const historyEntries: any[] = [];
+          const totalAdvanceDelta = Math.max(
+            0,
+            finalAdvancePaid - Number(existingOrder.advancePaid || 0),
+          );
+          const baseAdvanceDelta = Math.max(
+            0,
+            totalAdvanceDelta - additionalPayment,
+          );
+          const statusLabel =
+            finalRemainingAmount <= 0
+              ? "paid"
+              : finalAdvancePaid > 0
+                ? "partial"
+                : "pending";
 
-        if (additionalPayment > 0) {
-          historyEntries.push({
-            id: generateId(),
-            amount: additionalPayment,
-            totalPaid: advancePaid,
-            remainingAmount,
-            status: statusLabel,
-            date: paymentHistoryDateIso,
-            source:
-              Number(existingOrder.advancePaid || 0) === 0 &&
-              baseAdvanceDelta === 0
-                ? "booking"
-                : "payment",
-            method: paymentMethod,
-            notes: paymentNotes || mealTypeNotes || "Payment recorded",
-          });
-        }
-
-        if (mealTypeChanges.length > 0) {
-          if (historyEntries.length > 0) {
-            const lastEntry = historyEntries[historyEntries.length - 1];
-            lastEntry.membersChanged =
-              totalMembersChanged !== 0 ? totalMembersChanged : undefined;
-            lastEntry.totalPriceChange =
-              totalMemberPriceDifference !== 0
-                ? totalMemberPriceDifference
-                : undefined;
-          } else {
+          if (baseAdvanceDelta > 0) {
             historyEntries.push({
               id: generateId(),
-              amount: 0,
-              totalPaid: advancePaid,
-              remainingAmount,
+              amount: baseAdvanceDelta,
+              totalPaid: finalAdvancePaid,
+              remainingAmount: finalRemainingAmount,
               status: statusLabel,
-              date: new Date().toISOString(),
-              source: "revision",
-              method: undefined,
-              notes: mealTypeNotes,
-              membersChanged:
-                totalMembersChanged !== 0 ? totalMembersChanged : undefined,
-              totalPriceChange:
-                totalMemberPriceDifference !== 0
-                  ? totalMemberPriceDifference
-                  : undefined,
+              date: paymentHistoryDateIso,
+              source:
+                Number(existingOrder.advancePaid || 0) === 0
+                  ? "booking"
+                  : "revision",
+              method: paymentMethod,
+              notes: paymentNotes || mealTypeNotes || "Advance updated",
             });
           }
+
+          if (additionalPayment > 0) {
+            historyEntries.push({
+              id: generateId(),
+              amount: additionalPayment,
+              totalPaid: finalAdvancePaid,
+              remainingAmount: finalRemainingAmount,
+              status: statusLabel,
+              date: paymentHistoryDateIso,
+              source:
+                Number(existingOrder.advancePaid || 0) === 0 &&
+                baseAdvanceDelta === 0
+                  ? "booking"
+                  : "payment",
+              method: paymentMethod,
+              notes: paymentNotes || mealTypeNotes || "Payment recorded",
+            });
+          }
+
+          if (mealTypeChanges.length > 0) {
+            if (historyEntries.length > 0) {
+              const lastEntry = historyEntries[historyEntries.length - 1];
+              lastEntry.membersChanged =
+                totalMembersChanged !== 0 ? totalMembersChanged : undefined;
+              lastEntry.totalPriceChange =
+                totalMemberPriceDifference !== 0
+                  ? totalMemberPriceDifference
+                  : undefined;
+            } else {
+              historyEntries.push({
+                id: generateId(),
+                amount: 0,
+                totalPaid: finalAdvancePaid,
+                remainingAmount: finalRemainingAmount,
+                status: statusLabel,
+                date: new Date().toISOString(),
+                source: "revision",
+                method: undefined,
+                notes: mealTypeNotes,
+                membersChanged:
+                  totalMembersChanged !== 0 ? totalMembersChanged : undefined,
+                totalPriceChange:
+                  totalMemberPriceDifference !== 0
+                    ? totalMemberPriceDifference
+                    : undefined,
+              });
+            }
+          }
+
+          const updatedPaymentHistory =
+            historyEntries.length > 0
+              ? [...paymentHistory, ...historyEntries]
+              : paymentHistory;
+
+          const billUpdateData: any = {
+            totalAmount: finalTotalAmount,
+            advancePaid: finalAdvancePaid,
+            paidAmount: finalAdvancePaid,
+            remainingAmount: finalRemainingAmount,
+            status:
+              finalRemainingAmount <= 0
+                ? "paid"
+                : finalAdvancePaid > 0
+                  ? "partial"
+                  : "pending",
+            paymentHistory: updatedPaymentHistory,
+          };
+
+          bill = await tx.bill.update({
+            where: { id: bill.id },
+            data: billUpdateData,
+          });
         }
-
-        const updatedPaymentHistory =
-          historyEntries.length > 0
-            ? [...paymentHistory, ...historyEntries]
-            : paymentHistory;
-
-        const billUpdateData: any = {
-          totalAmount,
-          advancePaid,
-          paidAmount: advancePaid,
-          remainingAmount,
-          status:
-            remainingAmount <= 0
-              ? "paid"
-              : advancePaid > 0
-                ? "partial"
-                : "pending",
-          paymentHistory: updatedPaymentHistory,
-        };
-
-        bill = await tx.bill.update({
-          where: { id: bill.id },
-          data: billUpdateData,
-        });
       }
 
       return { order, bill };
