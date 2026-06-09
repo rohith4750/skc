@@ -59,7 +59,7 @@ export async function PUT(
         });
 
         // Create bill ONLY when order starts or completes
-        if (!bill && ["in_progress", "completed"].includes(status)) {
+        if (!bill && ["pending", "in_progress", "completed"].includes(status)) {
           const initialPaymentHistory =
             Number(order.advancePaid) > 0
               ? [
@@ -102,8 +102,8 @@ export async function PUT(
           });
         }
 
-        // If order reverted to pending or cancelled -> delete the bill
-        if (bill && ["pending", "cancelled"].includes(status)) {
+        // If order reverted to quotation or cancelled -> delete the bill
+        if (bill && ["quotation", "cancelled"].includes(status)) {
           await tx.bill.delete({
             where: { id: bill.id },
           });
@@ -362,15 +362,15 @@ export async function PUT(
 
       const newStatus = data.status || existingOrder.status;
 
-      // Handle bill deletion on revert to pending or cancelled
-      if (bill && ["pending", "cancelled"].includes(newStatus)) {
+      // Handle bill deletion on revert to quotation or cancelled
+      if (bill && ["quotation", "cancelled"].includes(newStatus)) {
         await tx.bill.delete({
           where: { id: bill.id },
         });
         bill = null;
       }
 
-      if (["in_progress", "completed"].includes(newStatus)) {
+      if (["pending", "in_progress", "completed"].includes(newStatus)) {
         if (!bill) {
           // Create new bill
           const initialPaymentHistory =

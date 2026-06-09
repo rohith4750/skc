@@ -190,19 +190,68 @@ export async function POST(request: NextRequest) {
       },
     };
 
-    // Create order only - bills will be generated when status changes to in_progress or completed
-    const order = await prisma.order.create({
-      data: orderData,
-      include: {
-        customer: true,
-        supervisor: true,
-        items: {
-          include: {
-            menuItem: true,
+    // Create order and optionally bill if status requires it
+    const result = await prisma.$transaction(async (tx) => {
+      const order = await tx.order.create({
+        data: orderData,
+        include: {
+          customer: true,
+          supervisor: true,
+          items: {
+            include: {
+              menuItem: true,
+            },
           },
         },
-      },
+      });
+
+      let bill = null;
+      if (["pending", "in_progress", "completed"].includes(order.status)) {
+        const initialPaymentHistory =
+          Number(advancePaid) > 0
+            ? [
+                {
+                  id: require('crypto').randomUUID ? require('crypto').randomUUID() : Math.random().toString(36).substring(2, 15),
+                  amount: advancePaid,
+                  totalPaid: advancePaid,
+                  remainingAmount: finalRemainingAmount,
+                  status:
+                    Number(finalRemainingAmount) > 0
+                      ? Number(advancePaid) > 0
+                        ? "partial"
+                        : "pending"
+                      : "paid",
+                  date: new Date().toISOString(),
+                  source: "booking",
+                  method: "cash",
+                  notes: "Initial advance taken at order creation",
+                },
+              ]
+            : [];
+
+        const billCreateData: any = {
+          orderId: order.id,
+          totalAmount: finalTotalAmount,
+          advancePaid: advancePaid,
+          remainingAmount: finalRemainingAmount,
+          paidAmount: advancePaid,
+          paymentHistory: initialPaymentHistory,
+          status:
+            Number(finalRemainingAmount) > 0
+              ? Number(advancePaid) > 0
+                ? "partial"
+                : "pending"
+              : "paid",
+        };
+
+        bill = await tx.bill.create({
+          data: billCreateData,
+        });
+      }
+      return { order, bill };
     });
+
+    const order = result.order;
 
     console.log("Order created successfully:", { orderId: order.id });
 
