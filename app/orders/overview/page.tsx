@@ -10,6 +10,7 @@ import { getRequest } from '@/lib/api/api'
 import { apiUrl } from '@/lib/api/apiUrl'
 import jsPDF from 'jspdf'
 import html2canvas from 'html2canvas'
+import { applySmartPaging } from '@/lib/pdf-utils'
 import { FaFilePdf, FaFileImage, FaChevronDown, FaUtensils } from 'react-icons/fa'
 
 export default function OrdersOverviewPage() {
@@ -382,7 +383,7 @@ function OrdersOverviewContent() {
             </tfoot>
           </table>
           
-          <div style="margin-top: 40px; border-top: 1px dashed #ce621b; padding-top: 25px; display: flex; justify-content: space-between; align-items: center;">
+          <div class="pdf-row" style="margin-top: 40px; border-top: 1px dashed #ce621b; padding-top: 25px; display: flex; justify-content: space-between; align-items: center; page-break-inside: avoid; break-inside: avoid;">
              <div style="font-size: 11px; color: #666; max-width: 400px; line-height: 1.5;">
                 <strong>Disclaimer:</strong> This report includes person counts and menu items calculated for ${new Date(selectedYear, selectedMonth).toLocaleString('default', { month: 'long', year: 'numeric' })}. Generated on ${new Date().toLocaleDateString()}.
              </div>
@@ -414,6 +415,7 @@ function OrdersOverviewContent() {
         }))
       }
       await new Promise(resolve => setTimeout(resolve, 500))
+      await applySmartPaging(tempDiv)
 
       const canvas = await html2canvas(tempDiv, {
         scale: 3, // High quality

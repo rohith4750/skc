@@ -11,6 +11,7 @@ import ConfirmModal from '@/components/ConfirmModal'
 import MergeOrdersModal from '@/components/MergeOrdersModal'
 import { FaLayerGroup } from 'react-icons/fa'
 import { buildOrderPdfHtml } from '@/lib/order-pdf-html'
+import { applySmartPaging } from '@/lib/pdf-utils'
 import { getRequest, postRequest, putRequest, deleteRequest } from '@/lib/api/api'
 import { apiUrl } from '@/lib/api/apiUrl'
 
@@ -489,7 +490,7 @@ export default function OrderHistoryPage() {
 
     // Add Footer Stamp
     htmlContent += `
-      <div style="margin-top: 30px; text-align: center; width: 100%;">
+      <div class="pdf-row" style="margin-top: 30px; text-align: center; width: 100%; page-break-inside: avoid; break-inside: avoid;">
         <img src="${window.location.origin}/images/stamp.png" style="width: 300px; max-width: 90%; height: auto; display: block; margin: 0 auto;" alt="Stamp" />
       </div>
     `
@@ -511,6 +512,7 @@ export default function OrderHistoryPage() {
     }
     // Small buffer for layout
     await new Promise(r => setTimeout(r, 200))
+    await applySmartPaging(tempDiv)
 
     try {
       const w = tempDiv.scrollWidth
@@ -594,6 +596,7 @@ export default function OrderHistoryPage() {
     }
     // Small buffer for layout
     await new Promise(r => setTimeout(r, 200))
+    await applySmartPaging(tempDiv)
 
     try {
       const w = tempDiv.scrollWidth

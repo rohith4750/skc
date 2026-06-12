@@ -18,6 +18,7 @@ import MergeOrdersModal from '@/components/MergeOrdersModal'
 import { getRequest, postRequest, putRequest, deleteRequest } from '@/lib/api/api'
 import { apiUrl } from '@/lib/api/apiUrl'
 import { buildOrderPdfHtml } from '@/lib/order-pdf-html'
+import { applySmartPaging } from '@/lib/pdf-utils'
 import { hasRole } from '@/lib/auth'
 
 export default function OrderCenterPage() {
@@ -537,7 +538,7 @@ export default function OrderCenterPage() {
 
     // Add Footer Stamp
     htmlContent += `
-      <div style="margin-top: 30px; text-align: center; width: 100%;">
+      <div class="pdf-row" style="margin-top: 30px; text-align: center; width: 100%; page-break-inside: avoid; break-inside: avoid;">
         <img src="${window.location.origin}/images/stamp.png" style="width: 300px; max-width: 90%; height: auto; display: block; margin: 0 auto;" alt="Stamp" />
       </div>
     `
@@ -576,6 +577,7 @@ export default function OrderCenterPage() {
       }))
     }
     await new Promise(r => setTimeout(r, 200)) // Layout buffer
+    await applySmartPaging(tempDiv)
 
     try {
       const w = tempDiv.scrollWidth
@@ -654,6 +656,7 @@ export default function OrderCenterPage() {
       }))
     }
     await new Promise(r => setTimeout(r, 200)) // Layout buffer
+    await applySmartPaging(tempDiv)
 
     try {
       const w = tempDiv.scrollWidth
