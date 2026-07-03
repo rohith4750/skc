@@ -10,6 +10,127 @@ import { toast } from 'sonner'
 import FormError from '@/components/FormError'
 import { Storage } from '@/lib/storage-api'
 
+const FOOD_CATEGORIES = [
+    { id: 'all', label: 'All Items' },
+    { id: 'sweets', label: '🍬 Sweets & Desserts' },
+    { id: 'rice', label: '🍚 Rices & Biryani' },
+    { id: 'curry', label: '🍛 Curries & Gravies' },
+    { id: 'dal', label: '🍲 Dal & Liquids' },
+    { id: 'roti', label: '🫓 Rotis & Breads' },
+    { id: 'starter', label: '🧆 Starters & Frys' },
+    { id: 'chutney', label: '🥒 Pickles & Chutneys' },
+    { id: 'drinks', label: '🍹 Drinks & Soups' },
+    { id: 'breakfast', label: '🥞 Breakfast / Tiffins' },
+    { id: 'common', label: '🍽️ Common & Extras' },
+];
+
+const getItemSubCategory = (item: MenuItem): string => {
+    const types = Array.isArray(item.type) ? item.type.map(t => String(t || '').toLowerCase()) : [String(item.type || '').toLowerCase()];
+    const category = String((item as any).category || '').toLowerCase();
+    const desc = String(item.description || '').toLowerCase();
+    const name = String(item.name || '').toLowerCase();
+
+    if (
+        types.includes('sweets') || types.includes('saree') || types.includes('saare') ||
+        category.includes('sweet') || category.includes('saare') || desc.includes('sweet') ||
+        name.includes('laddu') || name.includes('jamoon') || name.includes('jamun') || name.includes('payasam') ||
+        name.includes('paayasam') || name.includes('halwa') || name.includes('kheer') || name.includes('burfi') ||
+        name.includes('burfee') || name.includes('khaja') || name.includes('badusha') || name.includes('peda') ||
+        name.includes('mysorepak') || name.includes('ras malai') || name.includes('jilebi') || name.includes('jangir') ||
+        name.includes('jhangir') || name.includes('kalakand') || name.includes('kathli') || name.includes('meetha') ||
+        name.includes('pongali') || name.includes('prasadam') || name.includes('burelu') || name.includes('bobbatlu') ||
+        name.includes('ice cream') || name.includes('basundi') || name.includes('cham cham') || name.includes('kesari')
+    ) {
+        return 'sweets';
+    }
+
+    if (
+        types.includes('rice') || category.includes('rice') || desc.includes('rice') ||
+        name.includes('rice') || name.includes('biryani') || name.includes('pulihora') || name.includes('pulao') ||
+        name.includes('bath') || name.includes('baath') || name.includes('fried rice') || name.includes('jeera rice') ||
+        name.includes('zeera rice')
+    ) {
+        return 'rice';
+    }
+
+    if (
+        types.includes('dal') || types.includes('liquid') || category.includes('dal') || category.includes('liquid') ||
+        desc.includes('dal') || desc.includes('liquid') || name.includes('pappu') || name.includes('dal ') || name === 'dal' ||
+        name.includes('sambar') || name.includes('rasam') || name.includes('pulusu') || name.includes('chaaru') ||
+        name.includes('aviyal') || name.includes('majjiga') || name.includes('makhani')
+    ) {
+        return 'dal';
+    }
+
+    if (
+        types.includes('roti') || category.includes('roti') || desc.includes('roti') ||
+        name.includes('roti') || name.includes('naan') || name.includes('pulka') || name.includes('paratha') ||
+        (name.includes('puri') && !name.includes('kova') && !types.includes('breakfast'))
+    ) {
+        return 'roti';
+    }
+
+    if (
+        types.includes('pickle') || types.includes('chutney') || types.includes('powder') ||
+        category.includes('pickle') || category.includes('chutney') || category.includes('powder') ||
+        desc.includes('pickle') || desc.includes('chutney') || desc.includes('powder') ||
+        name.includes('aavakaaya') || name.includes('pickle') || name.includes('chutney') ||
+        name.includes('pachadi') || name.includes('podi') || name.includes('thokku')
+    ) {
+        return 'chutney';
+    }
+
+    if (
+        types.includes('starter') || types.includes('fry') || types.includes('hot') || types.includes('snacks') ||
+        category.includes('starter') || category.includes('fry') || category.includes('hot') || category.includes('snack') ||
+        desc.includes('starter') || desc.includes('fry') || desc.includes('hot') ||
+        name.includes('fry') || name.includes('pakoda') || name.includes('bajji') || name.includes('wada') ||
+        name.includes('vada') || name.includes('65') || name.includes('manchuria') || name.includes('spring roll') ||
+        name.includes('cut mirchi') || name.includes('kebab') || name.includes('tikka')
+    ) {
+        return 'starter';
+    }
+
+    if (
+        types.includes('welcome_drink') || types.includes('soup') || types.includes('water_bottles') ||
+        category.includes('drink') || category.includes('soup') || category.includes('water') ||
+        desc.includes('drink') || desc.includes('soup') || desc.includes('water') ||
+        name.includes('juice') || name.includes('soup') || name.includes('badam milk') ||
+        name.includes('water') || name.includes('bottle') || name.includes('coffee') || name.includes('tea') || name.includes('milk')
+    ) {
+        return 'drinks';
+    }
+
+    if (
+        types.includes('north_indian') || types.includes('south_indian_curry') ||
+        category.includes('curry') || category.includes('dishes') || desc.includes('curry') ||
+        name.includes('curry') || name.includes('masala') || name.includes('kurma') || name.includes('paneer') ||
+        name.includes('kofta') || name.includes('aalu ') || name.includes('vankaaya') || name.includes('dondakaaya') ||
+        name.includes('donda ') || name.includes('capsicum') || name.includes('gobi') || name.includes('chole') ||
+        name.includes('salan') || name.includes('baigan') || name.includes('rajma') || name.includes('makhni')
+    ) {
+        return 'curry';
+    }
+
+    if (
+        types.includes('breakfast') || types.includes('tiffins') || category.includes('breakfast') ||
+        desc.includes('breakfast') || name.includes('idli') || name.includes('dosa') || name.includes('upma') ||
+        name.includes('pesarattu') || name.includes('uthappa') || name.includes('pongal') || name.includes('poori')
+    ) {
+        return 'breakfast';
+    }
+
+    if (
+        types.includes('common') || item.isCommon || category.includes('common') || desc.includes('common') ||
+        name.includes('ghee') || name.includes('papad') || name.includes('chips') || name.includes('curd') ||
+        name.includes('raitha') || name.includes('salad') || name.includes('pan ') || name === 'pan' || name.includes('oori mirchi')
+    ) {
+        return 'common';
+    }
+
+    return 'common';
+};
+
 interface OrderFormProps {
     orderId?: string | null;
     isEditMode?: boolean;
@@ -1108,38 +1229,122 @@ export default function OrderForm({ orderId, isEditMode = false, initialOrderTyp
                                                 />
                                             </div>
 
-                                            {(menuItemSearch[mt.id] || mt.menuType) && (
-                                                <div className="mt-2 max-h-[350px] overflow-y-auto pr-1">
-                                                    <div className="grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-6 gap-1.5 pt-1">
-                                                        {menuItems
-                                                            .filter(item => {
-                                                                const search = (menuItemSearch[mt.id] || '').toLowerCase()
-                                                                const matchesSearch = item.name.toLowerCase().includes(search)
-                                                                const itemTypes = Array.isArray(item.type) ? item.type : [(item.type as any)]
-                                                                const isSpecialOrder = mt.menuType === 'special_order'
-                                                                const matchesType = isSpecialOrder || !mt.menuType || itemTypes.some((t: string) => t?.toLowerCase() === mt.menuType.toLowerCase())
-                                                                return matchesSearch && matchesType
-                                                            })
-                                                            .map(item => (
-                                                                <button
-                                                                    key={item.id}
-                                                                    type="button"
-                                                                    onClick={() => handleMenuItemToggle(mt.id, item.id)}
-                                                                    className={`p-2 text-left rounded-lg border transition-all ${mt.selectedMenuItems.includes(item.id)
-                                                                        ? 'bg-primary-600 border-primary-600 text-white font-black shadow-md shadow-primary-200 scale-[1.02]'
-                                                                        : 'bg-white border-gray-50 text-gray-700 hover:border-primary-300 hover:bg-primary-50 font-bold'}`}
-                                                                >
-                                                                    <div className="text-[10px] font-black leading-tight mb-0.5 line-clamp-2">{item.name}</div>
-                                                                    {item.description && (
-                                                                        <div className={`text-[8px] line-clamp-1 italic ${mt.selectedMenuItems.includes(item.id) ? 'text-primary-100' : 'text-gray-400 font-normal'}`}>
-                                                                            {item.description}
+                                            <div className="flex items-center gap-1.5 overflow-x-auto pb-1 no-scrollbar pt-1">
+                                                {FOOD_CATEGORIES.map(cat => {
+                                                    const isSelected = (selectedSubFilter[mt.id] || 'all') === cat.id;
+                                                    return (
+                                                        <button
+                                                            key={cat.id}
+                                                            type="button"
+                                                            onClick={() => setSelectedSubFilter(p => ({ ...p, [mt.id]: cat.id }))}
+                                                            className={`px-3 py-1.5 rounded-lg text-[11px] font-black whitespace-nowrap transition-all flex items-center gap-1 ${
+                                                                isSelected
+                                                                    ? 'bg-primary-600 text-white shadow-sm scale-[1.02]'
+                                                                    : 'bg-white border border-gray-100 text-gray-600 hover:bg-gray-50 hover:border-gray-200'
+                                                            }`}
+                                                        >
+                                                            {cat.label}
+                                                        </button>
+                                                    );
+                                                })}
+                                            </div>
+
+                                            {(menuItemSearch[mt.id] || mt.menuType || selectedSubFilter[mt.id]) && (() => {
+                                                const activeSubCategory = selectedSubFilter[mt.id] || 'all';
+                                                const search = (menuItemSearch[mt.id] || '').toLowerCase().trim();
+                                                const matchingItems = menuItems.filter(item => {
+                                                    const matchesSearch = !search || item.name.toLowerCase().includes(search) || (item.nameTelugu && item.nameTelugu.toLowerCase().includes(search));
+                                                    const itemTypes = Array.isArray(item.type) ? item.type : [(item.type as any)];
+                                                    const isMajorMeal = !mt.menuType || mt.menuType === 'lunch' || mt.menuType === 'dinner' || mt.menuType === 'special_order';
+                                                    const matchesMealType = isMajorMeal || activeSubCategory !== 'all' || itemTypes.some((t: string) => 
+                                                        t?.toLowerCase() === mt.menuType.toLowerCase() || 
+                                                        t?.toLowerCase() === 'common' || 
+                                                        t?.toLowerCase() === 'sweets' || 
+                                                        t?.toLowerCase() === 'welcome_drink'
+                                                    );
+                                                    const subCat = getItemSubCategory(item);
+                                                    const matchesSubCategory = activeSubCategory === 'all' || subCat === activeSubCategory;
+                                                    return matchesSearch && matchesMealType && matchesSubCategory;
+                                                });
+
+                                                if (matchingItems.length === 0) {
+                                                    return (
+                                                        <div className="mt-2 py-8 text-center bg-gray-50/50 rounded-xl border border-dashed border-gray-200">
+                                                            <div className="text-xs font-bold text-gray-500">No menu items found in this category</div>
+                                                        </div>
+                                                    );
+                                                }
+
+                                                return (
+                                                    <div className="mt-2 max-h-[400px] overflow-y-auto pr-1">
+                                                        {activeSubCategory === 'all' ? (
+                                                            <div className="space-y-4 pt-1">
+                                                                {FOOD_CATEGORIES.filter(c => c.id !== 'all').map(cat => {
+                                                                    const catItems = matchingItems.filter(item => getItemSubCategory(item) === cat.id);
+                                                                    if (catItems.length === 0) return null;
+                                                                    return (
+                                                                        <div key={cat.id} className="space-y-2">
+                                                                            <div className="flex items-center justify-between border-b border-gray-100 pb-1 sticky top-0 bg-white/95 backdrop-blur-sm z-10">
+                                                                                <span className="text-xs font-black text-primary-600 uppercase tracking-wider">{cat.label}</span>
+                                                                                <span className="text-[10px] font-bold bg-primary-50 text-primary-600 px-2 py-0.5 rounded-full">{catItems.length}</span>
+                                                                            </div>
+                                                                            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-1.5 pt-1">
+                                                                                {catItems.map(item => (
+                                                                                    <button
+                                                                                        key={item.id}
+                                                                                        type="button"
+                                                                                        onClick={() => handleMenuItemToggle(mt.id, item.id)}
+                                                                                        className={`p-2.5 text-left rounded-xl border transition-all relative ${mt.selectedMenuItems.includes(item.id)
+                                                                                            ? 'bg-primary-600 border-primary-600 text-white font-black shadow-md shadow-primary-200 scale-[1.02]'
+                                                                                            : 'bg-white border-gray-100 text-gray-700 hover:border-primary-300 hover:bg-primary-50/50 font-bold'}`}
+                                                                                    >
+                                                                                        <div className="text-[11px] font-black leading-tight mb-0.5 line-clamp-2">{item.name}</div>
+                                                                                        {item.nameTelugu && (
+                                                                                            <div className={`text-[10px] line-clamp-1 ${mt.selectedMenuItems.includes(item.id) ? 'text-primary-100 font-semibold' : 'text-gray-500 font-normal'}`}>
+                                                                                                {item.nameTelugu}
+                                                                                            </div>
+                                                                                        )}
+                                                                                        {item.description && !item.nameTelugu && (
+                                                                                            <div className={`text-[9px] line-clamp-1 italic ${mt.selectedMenuItems.includes(item.id) ? 'text-primary-100' : 'text-gray-400 font-normal'}`}>
+                                                                                                {item.description}
+                                                                                            </div>
+                                                                                        )}
+                                                                                    </button>
+                                                                                ))}
+                                                                            </div>
                                                                         </div>
-                                                                    )}
-                                                                </button>
-                                                            ))}
+                                                                    );
+                                                                })}
+                                                            </div>
+                                                        ) : (
+                                                            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-1.5 pt-1">
+                                                                {matchingItems.map(item => (
+                                                                    <button
+                                                                        key={item.id}
+                                                                        type="button"
+                                                                        onClick={() => handleMenuItemToggle(mt.id, item.id)}
+                                                                        className={`p-2.5 text-left rounded-xl border transition-all relative ${mt.selectedMenuItems.includes(item.id)
+                                                                            ? 'bg-primary-600 border-primary-600 text-white font-black shadow-md shadow-primary-200 scale-[1.02]'
+                                                                            : 'bg-white border-gray-100 text-gray-700 hover:border-primary-300 hover:bg-primary-50/50 font-bold'}`}
+                                                                    >
+                                                                        <div className="text-[11px] font-black leading-tight mb-0.5 line-clamp-2">{item.name}</div>
+                                                                        {item.nameTelugu && (
+                                                                            <div className={`text-[10px] line-clamp-1 ${mt.selectedMenuItems.includes(item.id) ? 'text-primary-100 font-semibold' : 'text-gray-500 font-normal'}`}>
+                                                                                {item.nameTelugu}
+                                                                            </div>
+                                                                        )}
+                                                                        {item.description && !item.nameTelugu && (
+                                                                            <div className={`text-[9px] line-clamp-1 italic ${mt.selectedMenuItems.includes(item.id) ? 'text-primary-100' : 'text-gray-400 font-normal'}`}>
+                                                                                {item.description}
+                                                                            </div>
+                                                                        )}
+                                                                    </button>
+                                                                ))}
+                                                            </div>
+                                                        )}
                                                     </div>
-                                                </div>
-                                            )}
+                                                );
+                                            })()}
                                             <div className="flex gap-2">
                                                 <button
                                                     type="button"
@@ -1161,16 +1366,34 @@ export default function OrderForm({ orderId, isEditMode = false, initialOrderTyp
                                             </div>
                                         </div>
 
-                                        <h4 className="font-bold text-gray-800 flex items-center justify-between border-t border-gray-50 pt-4">
-                                            Selected Menu Items ({mt.selectedMenuItems.length})
-                                            <button
-                                                type="button"
-                                                onClick={() => setCollapsedSelectedItems(p => ({ ...p, [mt.id]: !p[mt.id] }))}
-                                                className="text-primary-600 text-sm font-medium hover:underline"
-                                            >
-                                                {collapsedSelectedItems[mt.id] ? "Show Items" : "Hide Items"}
-                                            </button>
-                                        </h4>
+                                        <div className="border-t border-gray-50 pt-4 space-y-2">
+                                            <h4 className="font-bold text-gray-800 flex items-center justify-between">
+                                                <span>Selected Menu Items ({mt.selectedMenuItems.length})</span>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setCollapsedSelectedItems(p => ({ ...p, [mt.id]: !p[mt.id] }))}
+                                                    className="text-primary-600 text-sm font-medium hover:underline"
+                                                >
+                                                    {collapsedSelectedItems[mt.id] ? "Show Items" : "Hide Items"}
+                                                </button>
+                                            </h4>
+                                            {!collapsedSelectedItems[mt.id] && mt.selectedMenuItems.length > 0 && (
+                                                <div className="flex flex-wrap gap-1.5 pb-1">
+                                                    {FOOD_CATEGORIES.filter(c => c.id !== 'all').map(cat => {
+                                                        const count = mt.selectedMenuItems.filter(id => {
+                                                            const item = menuItems.find(m => m.id === id);
+                                                            return item && getItemSubCategory(item) === cat.id;
+                                                        }).length;
+                                                        if (count === 0) return null;
+                                                        return (
+                                                            <span key={cat.id} className="text-[10px] font-bold bg-primary-50 text-primary-700 px-2 py-0.5 rounded-full border border-primary-100">
+                                                                {cat.label}: <strong className="font-black">{count}</strong>
+                                                            </span>
+                                                        );
+                                                    })}
+                                                </div>
+                                            )}
+                                        </div>
 
                                         {!collapsedSelectedItems[mt.id] && mt.selectedMenuItems.length > 0 && (
                                             <Droppable droppableId={mt.id} direction="horizontal">
@@ -1179,6 +1402,8 @@ export default function OrderForm({ orderId, isEditMode = false, initialOrderTyp
                                                         {mt.selectedMenuItems.map((itemId, idx) => {
                                                             const item = menuItems.find(m => m.id === itemId)
                                                             if (!item) return null
+                                                            const subCat = getItemSubCategory(item);
+                                                            const catObj = FOOD_CATEGORIES.find(c => c.id === subCat);
                                                             // Use composite id so draggableId is globally unique across sessions
                                                             const draggableId = `${mt.id}::${itemId}`
                                                             return (
@@ -1187,13 +1412,19 @@ export default function OrderForm({ orderId, isEditMode = false, initialOrderTyp
                                                                         <div
                                                                             ref={provided.innerRef}
                                                                             {...provided.draggableProps}
-                                                                            className="w-44 flex items-center gap-2 p-2 bg-white border border-gray-100 rounded-lg group shadow-sm hover:border-primary-200 transition-all"
+                                                                            className="w-48 flex items-center gap-2 p-2.5 bg-white border border-gray-100 rounded-xl group shadow-sm hover:border-primary-200 transition-all"
                                                                         >
                                                                             <div {...provided.dragHandleProps} className="text-gray-300 group-hover:text-gray-400 cursor-grab active:cursor-grabbing">
                                                                                 <FaGripLines size={12} />
                                                                             </div>
                                                                             <div className="flex-1 min-w-0">
+                                                                                {catObj && (
+                                                                                    <div className="text-[9px] font-black text-primary-600 uppercase tracking-wider mb-0.5 truncate">{catObj.label}</div>
+                                                                                )}
                                                                                 <div className="font-bold text-gray-800 text-xs truncate leading-tight">{item.name}</div>
+                                                                                {item.nameTelugu && (
+                                                                                    <div className="text-[10px] text-gray-500 truncate leading-tight">{item.nameTelugu}</div>
+                                                                                )}
                                                                                 <input
                                                                                     type="text"
                                                                                     placeholder="Customization..."
@@ -1495,52 +1726,140 @@ export default function OrderForm({ orderId, isEditMode = false, initialOrderTyp
                                     </div>
 
                                     <div className="min-h-[100px] mb-6">
-                                        {(menuItemSearch[stall.id] || stall.category) && (
-                                            <div className="mt-2 max-h-[350px] overflow-y-auto pr-1">
-                                                <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-6 gap-2 pt-1">
-                                                    {menuItems
-                                                        .filter(item => {
-                                                            const search = (menuItemSearch[stall.id] || '').toLowerCase()
-                                                            const matchesSearch = item.name.toLowerCase().includes(search)
-                                                            // For stalls, we might want to filter by certain types, but user wants to "add type add the stall items there"
-                                                            // So we check if item type matches the stall category name partially or fully
-                                                            const itemTypes = Array.isArray(item.type) ? item.type : [(item.type as any)]
-                                                            const matchesType = !stall.category || itemTypes.some((t: string) =>
-                                                                t?.toLowerCase().includes('stall') ||
-                                                                (stall.category && t?.toLowerCase() === stall.category.toLowerCase())
-                                                            )
-                                                            return matchesSearch && (matchesType || search.length > 0)
-                                                        })
-                                                        .map(item => (
-                                                            <button
-                                                                key={item.id}
-                                                                type="button"
-                                                                onClick={() => {
-                                                                    setFormData(prev => ({
-                                                                        ...prev,
-                                                                        stalls: prev.stalls.map(s => s.id === stall.id ? {
-                                                                            ...s,
-                                                                            selectedMenuItems: s.selectedMenuItems.includes(item.id)
-                                                                                ? s.selectedMenuItems.filter(i => i !== item.id)
-                                                                                : [...s.selectedMenuItems, item.id]
-                                                                        } : s)
-                                                                    }))
-                                                                }}
-                                                                className={`p-2 text-left rounded-xl border transition-all relative overflow-hidden ${stall.selectedMenuItems.includes(item.id)
-                                                                    ? 'bg-primary-600 border-primary-600 text-white font-black shadow-lg shadow-primary-200 scale-[1.02]'
-                                                                    : 'bg-white border-slate-100 text-slate-700 hover:border-primary-300 hover:bg-slate-50 font-bold'}`}
-                                                            >
-                                                                <div className="text-[10px] font-black leading-tight mb-0.5 line-clamp-2">{item.name}</div>
-                                                                {stall.selectedMenuItems.includes(item.id) && (
-                                                                    <div className="absolute -top-1 -right-1 opacity-20">
-                                                                        <FaUtensils size={30} />
+                                        <div className="flex items-center gap-1.5 overflow-x-auto pb-2 no-scrollbar">
+                                            {FOOD_CATEGORIES.map(cat => {
+                                                const isSelected = (selectedSubFilter[stall.id] || 'all') === cat.id;
+                                                return (
+                                                    <button
+                                                        key={cat.id}
+                                                        type="button"
+                                                        onClick={() => setSelectedSubFilter(p => ({ ...p, [stall.id]: cat.id }))}
+                                                        className={`px-3 py-1.5 rounded-lg text-[11px] font-black whitespace-nowrap transition-all flex items-center gap-1 ${
+                                                            isSelected
+                                                                ? 'bg-primary-600 text-white shadow-sm scale-[1.02]'
+                                                                : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-50'
+                                                        }`}
+                                                    >
+                                                        {cat.label}
+                                                    </button>
+                                                );
+                                            })}
+                                        </div>
+
+                                        {(menuItemSearch[stall.id] || stall.category || selectedSubFilter[stall.id]) && (() => {
+                                            const activeSubCategory = selectedSubFilter[stall.id] || 'all';
+                                            const search = (menuItemSearch[stall.id] || '').toLowerCase().trim();
+                                            const matchingItems = menuItems.filter(item => {
+                                                const matchesSearch = !search || item.name.toLowerCase().includes(search) || (item.nameTelugu && item.nameTelugu.toLowerCase().includes(search));
+                                                const itemTypes = Array.isArray(item.type) ? item.type : [(item.type as any)];
+                                                const matchesType = !stall.category || activeSubCategory !== 'all' || itemTypes.some((t: string) =>
+                                                    t?.toLowerCase().includes('stall') ||
+                                                    (stall.category && t?.toLowerCase() === stall.category.toLowerCase()) ||
+                                                    t?.toLowerCase() === 'common' || t?.toLowerCase() === 'sweets' || t?.toLowerCase() === 'snacks'
+                                                );
+                                                const subCat = getItemSubCategory(item);
+                                                const matchesSubCategory = activeSubCategory === 'all' || subCat === activeSubCategory;
+                                                return matchesSearch && (matchesType || search.length > 0) && matchesSubCategory;
+                                            });
+
+                                            if (matchingItems.length === 0) {
+                                                return (
+                                                    <div className="mt-2 py-8 text-center bg-slate-50/50 rounded-xl border border-dashed border-slate-200">
+                                                        <div className="text-xs font-bold text-slate-400">No stall items found in this category</div>
+                                                    </div>
+                                                );
+                                            }
+
+                                            return (
+                                                <div className="mt-2 max-h-[350px] overflow-y-auto pr-1">
+                                                    {activeSubCategory === 'all' ? (
+                                                        <div className="space-y-4 pt-1">
+                                                            {FOOD_CATEGORIES.filter(c => c.id !== 'all').map(cat => {
+                                                                const catItems = matchingItems.filter(item => getItemSubCategory(item) === cat.id);
+                                                                if (catItems.length === 0) return null;
+                                                                return (
+                                                                    <div key={cat.id} className="space-y-2">
+                                                                        <div className="flex items-center justify-between border-b border-slate-100 pb-1 sticky top-0 bg-white/95 backdrop-blur-sm z-10">
+                                                                            <span className="text-xs font-black text-primary-600 uppercase tracking-wider">{cat.label}</span>
+                                                                            <span className="text-[10px] font-bold bg-primary-50 text-primary-600 px-2 py-0.5 rounded-full">{catItems.length}</span>
+                                                                        </div>
+                                                                        <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-6 gap-2 pt-1">
+                                                                            {catItems.map(item => (
+                                                                                <button
+                                                                                    key={item.id}
+                                                                                    type="button"
+                                                                                    onClick={() => {
+                                                                                        setFormData(prev => ({
+                                                                                            ...prev,
+                                                                                            stalls: prev.stalls.map(s => s.id === stall.id ? {
+                                                                                                ...s,
+                                                                                                selectedMenuItems: s.selectedMenuItems.includes(item.id)
+                                                                                                    ? s.selectedMenuItems.filter(i => i !== item.id)
+                                                                                                    : [...s.selectedMenuItems, item.id]
+                                                                                            } : s)
+                                                                                        }))
+                                                                                    }}
+                                                                                    className={`p-2.5 text-left rounded-xl border transition-all relative overflow-hidden ${stall.selectedMenuItems.includes(item.id)
+                                                                                        ? 'bg-primary-600 border-primary-600 text-white font-black shadow-lg shadow-primary-200 scale-[1.02]'
+                                                                                        : 'bg-white border-slate-100 text-slate-700 hover:border-primary-300 hover:bg-slate-50 font-bold'}`}
+                                                                                >
+                                                                                    <div className="text-[11px] font-black leading-tight mb-0.5 line-clamp-2">{item.name}</div>
+                                                                                    {item.nameTelugu && (
+                                                                                        <div className={`text-[10px] line-clamp-1 ${stall.selectedMenuItems.includes(item.id) ? 'text-primary-100 font-semibold' : 'text-slate-500 font-normal'}`}>
+                                                                                            {item.nameTelugu}
+                                                                                        </div>
+                                                                                    )}
+                                                                                    {stall.selectedMenuItems.includes(item.id) && (
+                                                                                        <div className="absolute -top-1 -right-1 opacity-20">
+                                                                                            <FaUtensils size={30} />
+                                                                                        </div>
+                                                                                    )}
+                                                                                </button>
+                                                                            ))}
+                                                                        </div>
                                                                     </div>
-                                                                )}
-                                                            </button>
-                                                        ))}
+                                                                );
+                                                            })}
+                                                        </div>
+                                                    ) : (
+                                                        <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-6 gap-2 pt-1">
+                                                            {matchingItems.map(item => (
+                                                                <button
+                                                                    key={item.id}
+                                                                    type="button"
+                                                                    onClick={() => {
+                                                                        setFormData(prev => ({
+                                                                            ...prev,
+                                                                            stalls: prev.stalls.map(s => s.id === stall.id ? {
+                                                                                ...s,
+                                                                                selectedMenuItems: s.selectedMenuItems.includes(item.id)
+                                                                                    ? s.selectedMenuItems.filter(i => i !== item.id)
+                                                                                    : [...s.selectedMenuItems, item.id]
+                                                                            } : s)
+                                                                        }))
+                                                                    }}
+                                                                    className={`p-2.5 text-left rounded-xl border transition-all relative overflow-hidden ${stall.selectedMenuItems.includes(item.id)
+                                                                        ? 'bg-primary-600 border-primary-600 text-white font-black shadow-lg shadow-primary-200 scale-[1.02]'
+                                                                        : 'bg-white border-slate-100 text-slate-700 hover:border-primary-300 hover:bg-slate-50 font-bold'}`}
+                                                                >
+                                                                    <div className="text-[11px] font-black leading-tight mb-0.5 line-clamp-2">{item.name}</div>
+                                                                    {item.nameTelugu && (
+                                                                        <div className={`text-[10px] line-clamp-1 ${stall.selectedMenuItems.includes(item.id) ? 'text-primary-100 font-semibold' : 'text-slate-500 font-normal'}`}>
+                                                                            {item.nameTelugu}
+                                                                        </div>
+                                                                    )}
+                                                                    {stall.selectedMenuItems.includes(item.id) && (
+                                                                        <div className="absolute -top-1 -right-1 opacity-20">
+                                                                            <FaUtensils size={30} />
+                                                                        </div>
+                                                                    )}
+                                                                </button>
+                                                            ))}
+                                                        </div>
+                                                    )}
                                                 </div>
-                                            </div>
-                                        )}
+                                            );
+                                        })()}
                                     </div>
 
                                     {stall.selectedMenuItems.length > 0 && (
