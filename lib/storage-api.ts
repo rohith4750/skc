@@ -101,8 +101,10 @@ export class Storage {
         method: "PUT",
         body: JSON.stringify({
           name: item.name,
+          nameTelugu: item.nameTelugu,
           type: item.type,
           description: item.description,
+          descriptionTelugu: item.descriptionTelugu,
           price: item.price,
           unit: item.unit,
           isCommon: item.isCommon,
@@ -115,8 +117,10 @@ export class Storage {
         method: "POST",
         body: JSON.stringify({
           name: item.name,
+          nameTelugu: item.nameTelugu,
           type: item.type,
           description: item.description,
+          descriptionTelugu: item.descriptionTelugu,
           price: item.price,
           unit: item.unit,
           isCommon: item.isCommon !== undefined ? item.isCommon : false,

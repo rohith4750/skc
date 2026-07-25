@@ -3,12 +3,51 @@ import { useEffect, useState, useMemo, useRef } from 'react'
 import { v4 as uuidv4 } from 'uuid'
 import { formatCurrency, formatDateTime, sanitizeMealLabel } from '@/lib/utils'
 import { Customer, MenuItem, Order, OrderItem, Supervisor, StallTemplate } from '@/types'
-import { FaSearch, FaPlus, FaTimes, FaGripLines, FaUser, FaCalculator, FaWallet, FaUtensils, FaChevronDown, FaChevronUp, FaCalendarAlt, FaClock, FaMapMarkerAlt, FaUsers, FaTag, FaStore, FaTrash } from 'react-icons/fa'
-import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd'
+import { FaSearch, FaPlus, FaTimes, FaUser, FaCalculator, FaWallet, FaUtensils, FaChevronDown, FaChevronUp, FaCalendarAlt, FaClock, FaMapMarkerAlt, FaUsers, FaTag, FaStore, FaTrash } from 'react-icons/fa'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { toast } from 'sonner'
 import FormError from '@/components/FormError'
 import { Storage } from '@/lib/storage-api'
+
+interface PositionInputProps {
+    value: number;
+    min: number;
+    max: number;
+    onChange: (newVal: string) => void;
+}
+
+function PositionInput({ value, min, max, onChange }: PositionInputProps) {
+    const [localValue, setLocalValue] = useState(value.toString())
+
+    useEffect(() => {
+        setLocalValue(value.toString())
+    }, [value])
+
+    const handleBlurOrEnter = () => {
+        if (localValue && localValue !== value.toString()) {
+            onChange(localValue)
+        }
+    }
+
+    return (
+        <input
+            type="number"
+            value={localValue}
+            min={min}
+            max={max}
+            onChange={(e) => setLocalValue(e.target.value)}
+            onBlur={handleBlurOrEnter}
+            onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    handleBlurOrEnter();
+                }
+            }}
+            className="w-7 h-6 text-center text-[10px] font-black bg-gray-50 border border-gray-200 rounded-lg focus:ring-1 focus:ring-primary-500 outline-none text-slate-700 p-0"
+            title="Type number and press Enter or click away"
+        />
+    )
+}
 
 interface OrderFormProps {
     orderId?: string | null;
@@ -26,6 +65,9 @@ export default function OrderForm({ orderId, isEditMode = false, initialOrderTyp
     const [stallTemplates, setStallTemplates] = useState<StallTemplate[]>([])
     const [selectedSubFilter, setSelectedSubFilter] = useState<Record<string, string>>({})
     const [menuItemSearch, setMenuItemSearch] = useState<Record<string, string>>({})
+    const [showPasteArea, setShowPasteArea] = useState<Record<string, boolean>>({})
+    const [pastedText, setPastedText] = useState<Record<string, string>>({})
+    const [isParsing, setIsParsing] = useState<Record<string, boolean>>({})
     const [showStalls, setShowStalls] = useState<boolean>(false)
     const [loading, setLoading] = useState(!!orderId)
     const [currentOrderStatus, setCurrentOrderStatus] = useState<string>(initialStatus)
@@ -548,6 +590,180 @@ export default function OrderForm({ orderId, isEditMode = false, initialOrderTyp
         }))
     }
 
+    const handleItemOrderChange = (mealTypeId: string, itemId: string, newIndexStr: string) => {
+        let newIndex = parseInt(newIndexStr) - 1
+        if (isNaN(newIndex)) return
+
+        setFormData(prev => ({
+            ...prev,
+            mealTypes: prev.mealTypes.map(mt => {
+                if (mt.id === mealTypeId) {
+                    const items = [...mt.selectedMenuItems]
+                    const currentIndex = items.indexOf(itemId)
+                    if (currentIndex === -1) return mt
+
+                    // Constrain newIndex within valid bounds
+                    newIndex = Math.max(0, Math.min(newIndex, items.length - 1))
+
+                    // Move item from currentIndex to newIndex
+                    items.splice(currentIndex, 1)
+                    items.splice(newIndex, 0, itemId)
+
+                    return { ...mt, selectedMenuItems: items }
+                }
+                return mt
+            })
+        }))
+    }
+
+    const handlePasteImport = async (mealTypeId: string, menuType: string) => {
+        const text = pastedText[mealTypeId] || ''
+        if (!text.trim()) {
+            toast.error('Please paste some items first')
+            return
+        }
+
+        const normalizeForMatching = (str: string): string => {
+            return str
+                .toLowerCase()
+                .replace(/[^a-z0-9]/g, '')
+                .replace(/ee/g, 'i')
+                .replace(/oo/g, 'u')
+                .replace(/bh/g, 'b')
+                .replace(/dh/g, 'd')
+                .replace(/th/g, 't')
+                .replace(/gh/g, 'g')
+                .replace(/kh/g, 'k')
+                .replace(/ph/g, 'p')
+                .replace(/sh/g, 's')
+                .replace(/ch/g, 'c')
+                .replace(/y/g, 'i')
+                .replace(/([a-z])\1/g, '$1');
+        }
+
+        setIsParsing(p => ({ ...p, [mealTypeId]: true }))
+        try {
+            // Split by lines, filter out empty ones
+            const lines = text.split('\n')
+                .map(line => line.replace(/^[-\*\+•\d+\.\)\s]+/g, '').trim())
+                .filter(Boolean)
+
+            if (lines.length === 0) {
+                toast.error('No valid menu items found in the pasted text')
+                setIsParsing(p => ({ ...p, [mealTypeId]: false }))
+                return
+            }
+
+            const newlyCreatedItems: MenuItem[] = []
+            const itemIdsToAdd: string[] = []
+            const newQuantities: Record<string, string> = {}
+            const newCustomizations: Record<string, string> = {}
+
+            // Keep track of all loaded items dynamically so we don't save the same unmatched item twice
+            let currentMenuItems = [...menuItems]
+
+            for (const line of lines) {
+                let baseName = line;
+                let customization = '';
+                
+                // Extract customization if it's in parentheses
+                const parenMatch = line.match(/^(.*?)\((.*?)\)(.*)$/);
+                if (parenMatch) {
+                    baseName = (parenMatch[1] + parenMatch[3]).trim();
+                    customization = parenMatch[2].trim();
+                }
+
+                const normLine = normalizeForMatching(baseName)
+
+                // 1. Exact case-insensitive match on name or Telugu name
+                let matchedItem = currentMenuItems.find(item => 
+                    item.name.toLowerCase() === baseName.toLowerCase() ||
+                    (item.nameTelugu && item.nameTelugu.toLowerCase() === baseName.toLowerCase())
+                )
+
+                // 2. Normalized exact match
+                if (!matchedItem) {
+                    matchedItem = currentMenuItems.find(item => 
+                        normalizeForMatching(item.name) === normLine ||
+                        (item.nameTelugu && normalizeForMatching(item.nameTelugu) === normLine)
+                    )
+                }
+
+                // 3. Substring match on normalized strings (only if the query is reasonably long to avoid false matches)
+                if (!matchedItem && normLine.length >= 4) {
+                    matchedItem = currentMenuItems.find(item => {
+                        const normItemName = normalizeForMatching(item.name)
+                        // Require the matching part to be at least 4 characters to avoid tiny words matching inside long strings
+                        return normItemName.length >= 4 && (normItemName.includes(normLine) || normLine.includes(normItemName))
+                    })
+                }
+
+                if (matchedItem) {
+                    itemIdsToAdd.push(matchedItem.id)
+                    newQuantities[matchedItem.id] = '1'
+                    if (customization) {
+                        newCustomizations[matchedItem.id] = customization
+                    } else if (matchedItem.description) {
+                        newCustomizations[matchedItem.id] = matchedItem.description
+                    }
+                } else {
+                    // Create new menu item
+                    try {
+                        const savedItem = await Storage.saveMenuItem({
+                            name: baseName,
+                            description: customization || 'Quick added via paste',
+                            type: [menuType || 'other'],
+                            price: null,
+                            unit: 'plate',
+                            isActive: true
+                        })
+                        newlyCreatedItems.push(savedItem)
+                        currentMenuItems.push(savedItem)
+                        itemIdsToAdd.push(savedItem.id)
+                        newQuantities[savedItem.id] = '1'
+                        if (customization) {
+                            newCustomizations[savedItem.id] = customization
+                        }
+                    } catch (err) {
+                        console.error(`Failed to quick-add pasted item "${baseName}":`, err)
+                    }
+                }
+            }
+
+            // Update local menuItems list with any newly created items
+            if (newlyCreatedItems.length > 0) {
+                setMenuItems(prev => [...prev, ...newlyCreatedItems])
+            }
+
+            // Replace the selected items of this session with only the imported items
+            setFormData(prev => ({
+                ...prev,
+                mealTypes: prev.mealTypes.map(mt => {
+                    if (mt.id === mealTypeId) {
+                        return {
+                            ...mt,
+                            selectedMenuItems: itemIdsToAdd,
+                            itemQuantities: newQuantities,
+                            itemCustomizations: newCustomizations
+                        }
+                    }
+                    return mt
+                })
+            }))
+
+            // Clear pasted text and close paste area
+            setPastedText(p => ({ ...p, [mealTypeId]: '' }))
+            setShowPasteArea(p => ({ ...p, [mealTypeId]: false }))
+            toast.success(`Successfully imported ${itemIdsToAdd.length} items to this session!`)
+        } catch (error) {
+            console.error('Failed to import pasted items:', error)
+            toast.error('Failed to import items. Please try again.')
+        } finally {
+            setIsParsing(p => ({ ...p, [mealTypeId]: false }))
+        }
+    }
+
+
     const handleAddStall = () => {
         const id = uuidv4()
         setShowStalls(true)
@@ -619,27 +835,6 @@ export default function OrderForm({ orderId, isEditMode = false, initialOrderTyp
         toast.success(`Loaded ${template.name} template`)
     }
 
-    const handleDragEnd = (result: any) => {
-        if (!result.destination) return
-        const { source, destination } = result
-        // droppableId is the mealType id; only allow reorder within the same session
-        const mealTypeId = source.droppableId
-        if (source.droppableId !== destination.droppableId) return
-        if (source.index === destination.index) return
-
-        setFormData(prev => ({
-            ...prev,
-            mealTypes: prev.mealTypes.map(mt => {
-                if (mt.id === mealTypeId) {
-                    const newItems = Array.from(mt.selectedMenuItems)
-                    const [removed] = newItems.splice(source.index, 1)
-                    newItems.splice(destination.index, 0, removed)
-                    return { ...mt, selectedMenuItems: newItems }
-                }
-                return mt
-            })
-        }))
-    }
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault()
@@ -897,7 +1092,7 @@ export default function OrderForm({ orderId, isEditMode = false, initialOrderTyp
                     </button>
                 </div>
 
-                <DragDropContext onDragEnd={handleDragEnd}>
+                <div className="space-y-4">
                     {formData.mealTypes.map((mt, index) => (
                         <div key={mt.id} className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
                             <div className="bg-gray-50 p-4 border-b border-gray-200 flex items-center justify-between">
@@ -1158,7 +1353,46 @@ export default function OrderForm({ orderId, isEditMode = false, initialOrderTyp
                                                 >
                                                     <FaPlus className="text-[8px]" /> QUICK ADD
                                                 </button>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setShowPasteArea(p => ({ ...p, [mt.id]: !p[mt.id] }))}
+                                                    className="flex-1 p-2 text-[10px] font-black text-center text-indigo-600 border border-dashed border-indigo-200 rounded-lg hover:bg-indigo-50 transition-all flex items-center justify-center gap-1"
+                                                >
+                                                    <FaPlus className="text-[8px]" /> PASTE LIST
+                                                </button>
                                             </div>
+
+                                            {showPasteArea[mt.id] && (
+                                                <div className="mt-3 p-4 bg-slate-50 border border-slate-200 rounded-xl space-y-3">
+                                                    <label className="block text-xs font-bold text-slate-700">
+                                                        Paste list of items (one item per line):
+                                                    </label>
+                                                    <textarea
+                                                        value={pastedText[mt.id] || ''}
+                                                        onChange={(e) => setPastedText(p => ({ ...p, [mt.id]: e.target.value }))}
+                                                        rows={5}
+                                                        placeholder="e.g.&#10;1. Tomato Soup&#10;* Veg Manchuria&#10;- Pulihora"
+                                                        className="w-full p-2.5 bg-white border border-slate-200 rounded-lg text-xs outline-none focus:ring-2 focus:ring-primary-500 font-semibold text-slate-800"
+                                                    />
+                                                    <div className="flex justify-end gap-2">
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => setShowPasteArea(p => ({ ...p, [mt.id]: false }))}
+                                                            className="px-3 py-1.5 text-[10px] font-bold text-slate-500 hover:text-slate-700 bg-white border border-slate-200 rounded-lg"
+                                                        >
+                                                            Cancel
+                                                        </button>
+                                                        <button
+                                                            type="button"
+                                                            disabled={isParsing[mt.id]}
+                                                            onClick={() => handlePasteImport(mt.id, mt.menuType)}
+                                                            className="px-4 py-1.5 text-[10px] font-black text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg flex items-center gap-1 disabled:bg-slate-300"
+                                                        >
+                                                            {isParsing[mt.id] ? 'Importing...' : 'Import List'}
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            )}
                                         </div>
 
                                         <h4 className="font-bold text-gray-800 flex items-center justify-between border-t border-gray-50 pt-4">
@@ -1173,104 +1407,92 @@ export default function OrderForm({ orderId, isEditMode = false, initialOrderTyp
                                         </h4>
 
                                         {!collapsedSelectedItems[mt.id] && mt.selectedMenuItems.length > 0 && (
-                                            <Droppable droppableId={mt.id} direction="horizontal">
-                                                {(provided) => (
-                                                    <div {...provided.droppableProps} ref={provided.innerRef} className="flex flex-wrap gap-3">
-                                                        {mt.selectedMenuItems.map((itemId, idx) => {
-                                                            const item = menuItems.find(m => m.id === itemId)
-                                                            if (!item) return null
-                                                            // Use composite id so draggableId is globally unique across sessions
-                                                            const draggableId = `${mt.id}::${itemId}`
-                                                            return (
-                                                                <Draggable key={draggableId} draggableId={draggableId} index={idx}>
-                                                                    {(provided) => (
-                                                                        <div
-                                                                            ref={provided.innerRef}
-                                                                            {...provided.draggableProps}
-                                                                            className="w-44 flex items-center gap-2 p-2 bg-white border border-gray-100 rounded-lg group shadow-sm hover:border-primary-200 transition-all"
-                                                                        >
-                                                                            <div {...provided.dragHandleProps} className="text-gray-300 group-hover:text-gray-400 cursor-grab active:cursor-grabbing">
-                                                                                <FaGripLines size={12} />
-                                                                            </div>
-                                                                            <div className="flex-1 min-w-0">
-                                                                                <div className="font-bold text-gray-800 text-xs truncate leading-tight">{item.name}</div>
-                                                                                <input
-                                                                                    type="text"
-                                                                                    placeholder="Customization..."
-                                                                                    value={mt.itemCustomizations[itemId] || ''}
-                                                                                    onChange={(e) => {
-                                                                                        const val = e.target.value
-                                                                                        setFormData(prev => ({
-                                                                                            ...prev,
-                                                                                            mealTypes: prev.mealTypes.map(m => m.id === mt.id ? { ...m, itemCustomizations: { ...m.itemCustomizations, [itemId]: val } } : m)
-                                                                                        }))
-                                                                                    }}
-                                                                                    className="text-[10px] w-full mt-0.5 text-gray-500 bg-transparent border-b border-transparent focus:border-primary-300 outline-none placeholder:text-gray-300"
-                                                                                />
-                                                                                {mt.menuType === 'saree' && (
-                                                                                    <div className="mt-1.5 space-y-1.5">
-                                                                                        <div className="flex items-center gap-1.5">
-                                                                                            <div className="relative flex-1">
-                                                                                                <span className="absolute left-2 top-1/2 -translate-y-1/2 text-[9px] text-gray-400 font-bold">₹</span>
-                                                                                                <input
-                                                                                                    type="number"
-                                                                                                    placeholder="Price"
-                                                                                                    value={mt.itemPrices[itemId] || ''}
-                                                                                                    onChange={(e) => {
-                                                                                                        const val = e.target.value
-                                                                                                        setFormData(prev => ({
-                                                                                                            ...prev,
-                                                                                                            mealTypes: prev.mealTypes.map(m => m.id === mt.id ? { ...m, itemPrices: { ...m.itemPrices, [itemId]: val } } : m)
-                                                                                                        }))
-                                                                                                    }}
-                                                                                                    className="text-[10px] font-bold w-full text-primary-600 bg-white border border-primary-100 rounded pl-4 pr-1.5 py-1 outline-none focus:ring-1 focus:ring-primary-500"
-                                                                                                />
-                                                                                            </div>
-                                                                                            {item.unit && (
-                                                                                                <span className="text-[10px] font-bold text-gray-400 bg-gray-100 px-1.5 py-1 rounded">/ {item.unit}</span>
-                                                                                            )}
-                                                                                        </div>
-                                                                                        <div className="flex items-center gap-1.5">
-                                                                                            <span className="text-[10px] text-gray-400 font-bold uppercase">Qty:</span>
-                                                                                            <input
-                                                                                                type="number"
-                                                                                                value={mt.itemQuantities[itemId] || '1'}
-                                                                                                onChange={(e) => {
-                                                                                                    const val = e.target.value
-                                                                                                    setFormData(prev => ({
-                                                                                                        ...prev,
-                                                                                                        mealTypes: prev.mealTypes.map(m => m.id === mt.id ? { ...m, itemQuantities: { ...m.itemQuantities, [itemId]: val } } : m)
-                                                                                                    }))
-                                                                                                }}
-                                                                                                className="text-[10px] font-bold w-16 text-slate-700 bg-white border border-slate-200 rounded px-1.5 py-1 outline-none focus:ring-1 focus:ring-primary-500"
-                                                                                            />
-                                                                                        </div>
-                                                                                    </div>
-                                                                                )}
-                                                                            </div>
-                                                                            <button
-                                                                                type="button"
-                                                                                onClick={() => handleMenuItemToggle(mt.id, itemId)}
-                                                                                className="text-gray-300 hover:text-red-500 p-1"
-                                                                            >
-                                                                                <FaTimes size={14} />
-                                                                            </button>
+                                            <div className="flex flex-wrap gap-3">
+                                                {mt.selectedMenuItems.map((itemId, idx) => {
+                                                    const item = menuItems.find(m => m.id === itemId)
+                                                    if (!item) return null
+                                                    return (
+                                                        <div
+                                                            key={`${mt.id}::${itemId}`}
+                                                            className="w-48 flex items-start gap-2.5 p-2 bg-white border border-gray-100 rounded-xl shadow-sm hover:border-primary-200 transition-all"
+                                                        >
+                                                            <div className="flex-shrink-0 flex items-center justify-center pt-0.5">
+                                                                <PositionInput
+                                                                    value={idx + 1}
+                                                                    min={1}
+                                                                    max={mt.selectedMenuItems.length}
+                                                                    onChange={(val) => handleItemOrderChange(mt.id, itemId, val)}
+                                                                />
+                                                            </div>
+                                                            <div className="flex-1 min-w-0">
+                                                                <div className="font-bold text-gray-800 text-xs truncate leading-tight">{item.name}</div>
+                                                                <input
+                                                                    type="text"
+                                                                    placeholder="Customization..."
+                                                                    value={mt.itemCustomizations[itemId] || ''}
+                                                                    onChange={(e) => {
+                                                                        const val = e.target.value
+                                                                        setFormData(prev => ({
+                                                                            ...prev,
+                                                                            mealTypes: prev.mealTypes.map(m => m.id === mt.id ? { ...m, itemCustomizations: { ...m.itemCustomizations, [itemId]: val } } : m)
+                                                                        }))
+                                                                    }}
+                                                                    className="text-[9px] w-full mt-0.5 text-gray-500 bg-transparent border-b border-transparent focus:border-primary-300 outline-none placeholder:text-gray-300 font-medium"
+                                                                />
+                                                                {mt.menuType === 'saree' && (
+                                                                    <div className="mt-1.5 space-y-1 border-t border-gray-50 pt-1.5">
+                                                                        <div className="flex items-center gap-1">
+                                                                            <span className="text-[9px] text-gray-400 font-bold">₹</span>
+                                                                            <input
+                                                                                type="number"
+                                                                                placeholder="Price"
+                                                                                value={mt.itemPrices[itemId] || ''}
+                                                                                onChange={(e) => {
+                                                                                    const val = e.target.value
+                                                                                    setFormData(prev => ({
+                                                                                        ...prev,
+                                                                                        mealTypes: prev.mealTypes.map(m => m.id === mt.id ? { ...m, itemPrices: { ...m.itemPrices, [itemId]: val } } : m)
+                                                                                    }))
+                                                                                }}
+                                                                                className="text-[9px] font-bold w-full text-primary-600 bg-gray-50 border border-gray-100 rounded px-1 py-0.5 outline-none focus:ring-1 focus:ring-primary-500"
+                                                                            />
                                                                         </div>
-                                                                    )}
-                                                                </Draggable>
-                                                            )
-                                                        })}
-                                                        {provided.placeholder}
-                                                    </div>
-                                                )}
-                                            </Droppable>
+                                                                        <div className="flex items-center gap-1">
+                                                                            <span className="text-[9px] text-gray-400 font-bold whitespace-nowrap">Qty:</span>
+                                                                            <input
+                                                                                type="number"
+                                                                                value={mt.itemQuantities[itemId] || '1'}
+                                                                                onChange={(e) => {
+                                                                                    const val = e.target.value
+                                                                                    setFormData(prev => ({
+                                                                                        ...prev,
+                                                                                        mealTypes: prev.mealTypes.map(m => m.id === mt.id ? { ...m, itemQuantities: { ...m.itemQuantities, [itemId]: val } } : m)
+                                                                                    }))
+                                                                                }}
+                                                                                className="text-[9px] font-bold w-12 text-slate-700 bg-gray-50 border border-gray-100 rounded px-1 py-0.5 outline-none focus:ring-1 focus:ring-primary-500"
+                                                                            />
+                                                                        </div>
+                                                                    </div>
+                                                                )}
+                                                            </div>
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => handleMenuItemToggle(mt.id, itemId)}
+                                                                className="text-gray-300 hover:text-red-500 p-0.5 rounded flex-shrink-0"
+                                                            >
+                                                                <FaTimes size={12} />
+                                                            </button>
+                                                        </div>
+                                                    )
+                                                })}
+                                            </div>
                                         )}
                                     </div>
                                 </div>
                             )}
                         </div>
                     ))}
-                </DragDropContext>
+                </div>
             </div>
 
             <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">

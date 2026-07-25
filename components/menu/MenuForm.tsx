@@ -17,10 +17,14 @@ export default function MenuForm({ id, onSuccess, onCancel }: MenuFormProps) {
     const router = useRouter()
     const [loading, setLoading] = useState(!!id)
     const [formError, setFormError] = useState('')
+    const [translatingName, setTranslatingName] = useState(false)
+    const [translatingDesc, setTranslatingDesc] = useState(false)
     const [formData, setFormData] = useState({
         name: '',
+        nameTelugu: '',
         type: [] as string[],
         description: '',
+        descriptionTelugu: '',
         price: '',
         unit: '',
         isCommon: false,
@@ -41,8 +45,10 @@ export default function MenuForm({ id, onSuccess, onCancel }: MenuFormProps) {
             if (item) {
                 setFormData({
                     name: item.name,
+                    nameTelugu: item.nameTelugu || '',
                     type: Array.isArray(item.type) ? item.type : [item.type],
                     description: item.description || '',
+                    descriptionTelugu: item.descriptionTelugu || '',
                     price: item.price ? item.price.toString() : '',
                     unit: item.unit || '',
                     isCommon: item.isCommon || false,
@@ -60,21 +66,45 @@ export default function MenuForm({ id, onSuccess, onCancel }: MenuFormProps) {
         }
     }
 
+    const translateField = async (text: string, field: 'nameTelugu' | 'descriptionTelugu', setTranslating: (val: boolean) => void) => {
+        if (!text.trim()) {
+            toast.error('Please enter English text first')
+            return
+        }
+        setTranslating(true)
+        try {
+            const res = await fetch(`/api/translate?text=${encodeURIComponent(text)}`)
+            const data = await res.json()
+            if (data.translation) {
+                setFormData(prev => ({ ...prev, [field]: data.translation }))
+                toast.success('Translation complete!')
+            } else {
+                toast.error(data.error || 'Failed to translate')
+            }
+        } catch (error) {
+            console.error('Translation error:', error)
+            toast.error('Translation failed. Please try again.')
+        } finally {
+            setTranslating(false)
+        }
+    }
+
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault()
         setFormError('')
 
         try {
             if (!isNonEmptyString(formData.name) || formData.type.length === 0) {
-                // toast.error('Please enter name and select at least one type')
                 setFormError('Please enter name and select at least one type')
                 return
             }
 
             const menuItem: any = {
                 name: formData.name,
+                nameTelugu: formData.nameTelugu || null,
                 type: formData.type,
                 description: formData.description,
+                descriptionTelugu: formData.descriptionTelugu || null,
                 price: formData.price ? parseFloat(formData.price) : null,
                 unit: formData.unit,
                 isCommon: formData.isCommon,
@@ -115,20 +145,44 @@ export default function MenuForm({ id, onSuccess, onCancel }: MenuFormProps) {
             <form onSubmit={handleSubmit} className="p-4 sm:p-6">
 
                 <div className="space-y-4">
-                    <div>
-                        <label className="block text-sm font-medium text-slate-700 mb-1">
-                            Item Name *
-                        </label>
-                        <input
-                            type="text"
-                            required
-                            value={formData.name}
-                            onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                            className="w-full px-3 sm:px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm sm:text-base"
-                            placeholder="e.g., Biryani, Pulao, Water Bottle"
-                        />
-                        <FormError message={formError} className="mb-4" />
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label className="block text-sm font-medium text-slate-700 mb-1">
+                                Item Name (English) *
+                            </label>
+                            <input
+                                type="text"
+                                required
+                                value={formData.name}
+                                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                                className="w-full px-3 sm:px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm sm:text-base font-medium text-slate-800"
+                                placeholder="e.g., Biryani, Pulao, Water Bottle"
+                            />
+                        </div>
+                        <div>
+                            <div className="flex justify-between items-center mb-1">
+                                <label className="block text-sm font-medium text-slate-700">
+                                    Item Name (Telugu)
+                                </label>
+                                <button
+                                    type="button"
+                                    disabled={translatingName}
+                                    onClick={() => translateField(formData.name, 'nameTelugu', setTranslatingName)}
+                                    className="text-xs text-indigo-600 hover:text-indigo-800 font-bold transition-all disabled:text-slate-400"
+                                >
+                                    {translatingName ? 'Translating...' : 'Auto-Translate'}
+                                </button>
+                            </div>
+                            <input
+                                type="text"
+                                value={formData.nameTelugu}
+                                onChange={(e) => setFormData({ ...formData, nameTelugu: e.target.value })}
+                                className="w-full px-3 sm:px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm sm:text-base font-medium text-slate-800"
+                                placeholder="ఉదా: బిర్యాని, పులిహోర"
+                            />
+                        </div>
                     </div>
+                    <FormError message={formError} className="mb-4" />
                     <div>
                         <label className="block text-sm font-medium text-slate-700 mb-2">
                             Item Types *
@@ -164,17 +218,41 @@ export default function MenuForm({ id, onSuccess, onCancel }: MenuFormProps) {
                             ))}
                         </div>
                     </div>
-                    <div>
-                        <label className="block text-sm font-medium text-slate-700 mb-1">
-                            Item Description
-                        </label>
-                        <textarea
-                            value={formData.description}
-                            onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                            rows={4}
-                            className="w-full px-3 sm:px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm sm:text-base"
-                            placeholder="Enter item description..."
-                        />
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label className="block text-sm font-medium text-slate-700 mb-1">
+                                Item Description (English)
+                            </label>
+                            <textarea
+                                value={formData.description}
+                                onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                                rows={3}
+                                className="w-full px-3 sm:px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm sm:text-base font-medium text-slate-800"
+                                placeholder="Enter item description..."
+                            />
+                        </div>
+                        <div>
+                            <div className="flex justify-between items-center mb-1">
+                                <label className="block text-sm font-medium text-slate-700">
+                                    Item Description (Telugu)
+                                </label>
+                                <button
+                                    type="button"
+                                    disabled={translatingDesc}
+                                    onClick={() => translateField(formData.description, 'descriptionTelugu', setTranslatingDesc)}
+                                    className="text-xs text-indigo-600 hover:text-indigo-800 font-bold transition-all disabled:text-slate-400"
+                                >
+                                    {translatingDesc ? 'Translating...' : 'Auto-Translate'}
+                                </button>
+                            </div>
+                            <textarea
+                                value={formData.descriptionTelugu}
+                                onChange={(e) => setFormData({ ...formData, descriptionTelugu: e.target.value })}
+                                rows={3}
+                                className="w-full px-3 sm:px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm sm:text-base font-medium text-slate-800"
+                                placeholder="వివరణను నమోదు చేయండి..."
+                            />
+                        </div>
                     </div>
                     <div className="grid grid-cols-2 gap-4">
                         <div>
