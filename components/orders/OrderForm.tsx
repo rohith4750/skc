@@ -665,7 +665,7 @@ export default function OrderForm({ orderId, isEditMode = false, initialOrderTyp
             for (const line of lines) {
                 let baseName = line;
                 let customization = '';
-                
+
                 // Extract customization if it's in parentheses
                 const parenMatch = line.match(/^(.*?)\((.*?)\)(.*)$/);
                 if (parenMatch) {
@@ -676,14 +676,14 @@ export default function OrderForm({ orderId, isEditMode = false, initialOrderTyp
                 const normLine = normalizeForMatching(baseName)
 
                 // 1. Exact case-insensitive match on name or Telugu name
-                let matchedItem = currentMenuItems.find(item => 
+                let matchedItem = currentMenuItems.find(item =>
                     item.name.toLowerCase() === baseName.toLowerCase() ||
                     (item.nameTelugu && item.nameTelugu.toLowerCase() === baseName.toLowerCase())
                 )
 
                 // 2. Normalized exact match
                 if (!matchedItem) {
-                    matchedItem = currentMenuItems.find(item => 
+                    matchedItem = currentMenuItems.find(item =>
                         normalizeForMatching(item.name) === normLine ||
                         (item.nameTelugu && normalizeForMatching(item.nameTelugu) === normLine)
                     )
@@ -1303,38 +1303,121 @@ export default function OrderForm({ orderId, isEditMode = false, initialOrderTyp
                                                 />
                                             </div>
 
-                                            {(menuItemSearch[mt.id] || mt.menuType) && (
-                                                <div className="mt-2 max-h-[350px] overflow-y-auto pr-1">
-                                                    <div className="grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-6 gap-1.5 pt-1">
-                                                        {menuItems
-                                                            .filter(item => {
-                                                                const search = (menuItemSearch[mt.id] || '').toLowerCase()
-                                                                const matchesSearch = item.name.toLowerCase().includes(search)
-                                                                const itemTypes = Array.isArray(item.type) ? item.type : [(item.type as any)]
-                                                                const isSpecialOrder = mt.menuType === 'special_order'
-                                                                const matchesType = isSpecialOrder || !mt.menuType || itemTypes.some((t: string) => t?.toLowerCase() === mt.menuType.toLowerCase())
-                                                                return matchesSearch && matchesType
-                                                            })
-                                                            .map(item => (
-                                                                <button
-                                                                    key={item.id}
-                                                                    type="button"
-                                                                    onClick={() => handleMenuItemToggle(mt.id, item.id)}
-                                                                    className={`p-2 text-left rounded-lg border transition-all ${mt.selectedMenuItems.includes(item.id)
-                                                                        ? 'bg-primary-600 border-primary-600 text-white font-black shadow-md shadow-primary-200 scale-[1.02]'
-                                                                        : 'bg-white border-gray-50 text-gray-700 hover:border-primary-300 hover:bg-primary-50 font-bold'}`}
-                                                                >
-                                                                    <div className="text-[10px] font-black leading-tight mb-0.5 line-clamp-2">{item.name}</div>
-                                                                    {item.description && (
-                                                                        <div className={`text-[8px] line-clamp-1 italic ${mt.selectedMenuItems.includes(item.id) ? 'text-primary-100' : 'text-gray-400 font-normal'}`}>
-                                                                            {item.description}
+                                            <div className="flex items-center gap-1.5 overflow-x-auto pb-1 no-scrollbar pt-1">
+                                                {FOOD_CATEGORIES.map(cat => {
+                                                    const isSelected = (selectedSubFilter[mt.id] || 'all') === cat.id;
+                                                    return (
+                                                        <button
+                                                            key={cat.id}
+                                                            type="button"
+                                                            onClick={() => setSelectedSubFilter(p => ({ ...p, [mt.id]: cat.id }))}
+                                                            className={`px-3 py-1.5 rounded-lg text-[11px] font-black whitespace-nowrap transition-all flex items-center gap-1 ${isSelected
+                                                                    ? 'bg-primary-600 text-white shadow-sm scale-[1.02]'
+                                                                    : 'bg-white border border-gray-100 text-gray-600 hover:bg-gray-50 hover:border-gray-200'
+                                                                }`}
+                                                        >
+                                                            {cat.label}
+                                                        </button>
+                                                    );
+                                                })}
+                                            </div>
+
+                                            {(menuItemSearch[mt.id] || mt.menuType || selectedSubFilter[mt.id]) && (() => {
+                                                const activeSubCategory = selectedSubFilter[mt.id] || 'all';
+                                                const search = (menuItemSearch[mt.id] || '').toLowerCase().trim();
+                                                const matchingItems = menuItems.filter(item => {
+                                                    const matchesSearch = !search || item.name.toLowerCase().includes(search) || (item.nameTelugu && item.nameTelugu.toLowerCase().includes(search));
+                                                    const itemTypes = Array.isArray(item.type) ? item.type : [(item.type as any)];
+                                                    const isMajorMeal = !mt.menuType || mt.menuType === 'lunch' || mt.menuType === 'dinner' || mt.menuType === 'special_order';
+                                                    const matchesMealType = isMajorMeal || activeSubCategory !== 'all' || itemTypes.some((t: string) =>
+                                                        t?.toLowerCase() === mt.menuType.toLowerCase() ||
+                                                        t?.toLowerCase() === 'common' ||
+                                                        t?.toLowerCase() === 'sweets' ||
+                                                        t?.toLowerCase() === 'welcome_drink'
+                                                    );
+                                                    const subCat = getItemSubCategory(item);
+                                                    const matchesSubCategory = activeSubCategory === 'all' || subCat === activeSubCategory;
+                                                    return matchesSearch && matchesMealType && matchesSubCategory;
+                                                });
+
+                                                if (matchingItems.length === 0) {
+                                                    return (
+                                                        <div className="mt-2 py-8 text-center bg-gray-50/50 rounded-xl border border-dashed border-gray-200">
+                                                            <div className="text-xs font-bold text-gray-500">No menu items found in this category</div>
+                                                        </div>
+                                                    );
+                                                }
+
+                                                return (
+                                                    <div className="mt-2 max-h-[400px] overflow-y-auto pr-1">
+                                                        {activeSubCategory === 'all' ? (
+                                                            <div className="space-y-4 pt-1">
+                                                                {FOOD_CATEGORIES.filter(c => c.id !== 'all').map(cat => {
+                                                                    const catItems = matchingItems.filter(item => getItemSubCategory(item) === cat.id);
+                                                                    if (catItems.length === 0) return null;
+                                                                    return (
+                                                                        <div key={cat.id} className="space-y-2">
+                                                                            <div className="flex items-center justify-between border-b border-gray-100 pb-1 sticky top-0 bg-white/95 backdrop-blur-sm z-10">
+                                                                                <span className="text-xs font-black text-primary-600 uppercase tracking-wider">{cat.label}</span>
+                                                                                <span className="text-[10px] font-bold bg-primary-50 text-primary-600 px-2 py-0.5 rounded-full">{catItems.length}</span>
+                                                                            </div>
+                                                                            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-1.5 pt-1">
+                                                                                {catItems.map(item => (
+                                                                                    <button
+                                                                                        key={item.id}
+                                                                                        type="button"
+                                                                                        onClick={() => handleMenuItemToggle(mt.id, item.id)}
+                                                                                        className={`p-2.5 text-left rounded-xl border transition-all relative ${mt.selectedMenuItems.includes(item.id)
+                                                                                            ? 'bg-primary-600 border-primary-600 text-white font-black shadow-md shadow-primary-200 scale-[1.02]'
+                                                                                            : 'bg-white border-gray-100 text-gray-700 hover:border-primary-300 hover:bg-primary-50/50 font-bold'}`}
+                                                                                    >
+                                                                                        <div className="text-[11px] font-black leading-tight mb-0.5 line-clamp-2">{item.name}</div>
+                                                                                        {item.nameTelugu && (
+                                                                                            <div className={`text-[10px] line-clamp-1 ${mt.selectedMenuItems.includes(item.id) ? 'text-primary-100 font-semibold' : 'text-gray-500 font-normal'}`}>
+                                                                                                {item.nameTelugu}
+                                                                                            </div>
+                                                                                        )}
+                                                                                        {item.description && !item.nameTelugu && (
+                                                                                            <div className={`text-[9px] line-clamp-1 italic ${mt.selectedMenuItems.includes(item.id) ? 'text-primary-100' : 'text-gray-400 font-normal'}`}>
+                                                                                                {item.description}
+                                                                                            </div>
+                                                                                        )}
+                                                                                    </button>
+                                                                                ))}
+                                                                            </div>
                                                                         </div>
-                                                                    )}
-                                                                </button>
-                                                            ))}
+                                                                    );
+                                                                })}
+                                                            </div>
+                                                        ) : (
+                                                            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-1.5 pt-1">
+                                                                {matchingItems.map(item => (
+                                                                    <button
+                                                                        key={item.id}
+                                                                        type="button"
+                                                                        onClick={() => handleMenuItemToggle(mt.id, item.id)}
+                                                                        className={`p-2.5 text-left rounded-xl border transition-all relative ${mt.selectedMenuItems.includes(item.id)
+                                                                            ? 'bg-primary-600 border-primary-600 text-white font-black shadow-md shadow-primary-200 scale-[1.02]'
+                                                                            : 'bg-white border-gray-100 text-gray-700 hover:border-primary-300 hover:bg-primary-50/50 font-bold'}`}
+                                                                    >
+                                                                        <div className="text-[11px] font-black leading-tight mb-0.5 line-clamp-2">{item.name}</div>
+                                                                        {item.nameTelugu && (
+                                                                            <div className={`text-[10px] line-clamp-1 ${mt.selectedMenuItems.includes(item.id) ? 'text-primary-100 font-semibold' : 'text-gray-500 font-normal'}`}>
+                                                                                {item.nameTelugu}
+                                                                            </div>
+                                                                        )}
+                                                                        {item.description && !item.nameTelugu && (
+                                                                            <div className={`text-[9px] line-clamp-1 italic ${mt.selectedMenuItems.includes(item.id) ? 'text-primary-100' : 'text-gray-400 font-normal'}`}>
+                                                                                {item.description}
+                                                                            </div>
+                                                                        )}
+                                                                    </button>
+                                                                ))}
+                                                            </div>
+                                                        )}
                                                     </div>
-                                                </div>
-                                            )}
+                                                );
+                                            })()}
                                             <div className="flex gap-2">
                                                 <button
                                                     type="button"
@@ -1395,16 +1478,34 @@ export default function OrderForm({ orderId, isEditMode = false, initialOrderTyp
                                             )}
                                         </div>
 
-                                        <h4 className="font-bold text-gray-800 flex items-center justify-between border-t border-gray-50 pt-4">
-                                            Selected Menu Items ({mt.selectedMenuItems.length})
-                                            <button
-                                                type="button"
-                                                onClick={() => setCollapsedSelectedItems(p => ({ ...p, [mt.id]: !p[mt.id] }))}
-                                                className="text-primary-600 text-sm font-medium hover:underline"
-                                            >
-                                                {collapsedSelectedItems[mt.id] ? "Show Items" : "Hide Items"}
-                                            </button>
-                                        </h4>
+                                        <div className="border-t border-gray-50 pt-4 space-y-2">
+                                            <h4 className="font-bold text-gray-800 flex items-center justify-between">
+                                                <span>Selected Menu Items ({mt.selectedMenuItems.length})</span>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setCollapsedSelectedItems(p => ({ ...p, [mt.id]: !p[mt.id] }))}
+                                                    className="text-primary-600 text-sm font-medium hover:underline"
+                                                >
+                                                    {collapsedSelectedItems[mt.id] ? "Show Items" : "Hide Items"}
+                                                </button>
+                                            </h4>
+                                            {!collapsedSelectedItems[mt.id] && mt.selectedMenuItems.length > 0 && (
+                                                <div className="flex flex-wrap gap-1.5 pb-1">
+                                                    {FOOD_CATEGORIES.filter(c => c.id !== 'all').map(cat => {
+                                                        const count = mt.selectedMenuItems.filter(id => {
+                                                            const item = menuItems.find(m => m.id === id);
+                                                            return item && getItemSubCategory(item) === cat.id;
+                                                        }).length;
+                                                        if (count === 0) return null;
+                                                        return (
+                                                            <span key={cat.id} className="text-[10px] font-bold bg-primary-50 text-primary-700 px-2 py-0.5 rounded-full border border-primary-100">
+                                                                {cat.label}: <strong className="font-black">{count}</strong>
+                                                            </span>
+                                                        );
+                                                    })}
+                                                </div>
+                                            )}
+                                        </div>
 
                                         {!collapsedSelectedItems[mt.id] && mt.selectedMenuItems.length > 0 && (
                                             <div className="flex flex-wrap gap-3">
@@ -1717,52 +1818,139 @@ export default function OrderForm({ orderId, isEditMode = false, initialOrderTyp
                                     </div>
 
                                     <div className="min-h-[100px] mb-6">
-                                        {(menuItemSearch[stall.id] || stall.category) && (
-                                            <div className="mt-2 max-h-[350px] overflow-y-auto pr-1">
-                                                <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-6 gap-2 pt-1">
-                                                    {menuItems
-                                                        .filter(item => {
-                                                            const search = (menuItemSearch[stall.id] || '').toLowerCase()
-                                                            const matchesSearch = item.name.toLowerCase().includes(search)
-                                                            // For stalls, we might want to filter by certain types, but user wants to "add type add the stall items there"
-                                                            // So we check if item type matches the stall category name partially or fully
-                                                            const itemTypes = Array.isArray(item.type) ? item.type : [(item.type as any)]
-                                                            const matchesType = !stall.category || itemTypes.some((t: string) =>
-                                                                t?.toLowerCase().includes('stall') ||
-                                                                (stall.category && t?.toLowerCase() === stall.category.toLowerCase())
-                                                            )
-                                                            return matchesSearch && (matchesType || search.length > 0)
-                                                        })
-                                                        .map(item => (
-                                                            <button
-                                                                key={item.id}
-                                                                type="button"
-                                                                onClick={() => {
-                                                                    setFormData(prev => ({
-                                                                        ...prev,
-                                                                        stalls: prev.stalls.map(s => s.id === stall.id ? {
-                                                                            ...s,
-                                                                            selectedMenuItems: s.selectedMenuItems.includes(item.id)
-                                                                                ? s.selectedMenuItems.filter(i => i !== item.id)
-                                                                                : [...s.selectedMenuItems, item.id]
-                                                                        } : s)
-                                                                    }))
-                                                                }}
-                                                                className={`p-2 text-left rounded-xl border transition-all relative overflow-hidden ${stall.selectedMenuItems.includes(item.id)
-                                                                    ? 'bg-primary-600 border-primary-600 text-white font-black shadow-lg shadow-primary-200 scale-[1.02]'
-                                                                    : 'bg-white border-slate-100 text-slate-700 hover:border-primary-300 hover:bg-slate-50 font-bold'}`}
-                                                            >
-                                                                <div className="text-[10px] font-black leading-tight mb-0.5 line-clamp-2">{item.name}</div>
-                                                                {stall.selectedMenuItems.includes(item.id) && (
-                                                                    <div className="absolute -top-1 -right-1 opacity-20">
-                                                                        <FaUtensils size={30} />
+                                        <div className="flex items-center gap-1.5 overflow-x-auto pb-2 no-scrollbar">
+                                            {FOOD_CATEGORIES.map(cat => {
+                                                const isSelected = (selectedSubFilter[stall.id] || 'all') === cat.id;
+                                                return (
+                                                    <button
+                                                        key={cat.id}
+                                                        type="button"
+                                                        onClick={() => setSelectedSubFilter(p => ({ ...p, [stall.id]: cat.id }))}
+                                                        className={`px-3 py-1.5 rounded-lg text-[11px] font-black whitespace-nowrap transition-all flex items-center gap-1 ${isSelected
+                                                                ? 'bg-primary-600 text-white shadow-sm scale-[1.02]'
+                                                                : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-50'
+                                                            }`}
+                                                    >
+                                                        {cat.label}
+                                                    </button>
+                                                );
+                                            })}
+                                        </div>
+
+                                        {(menuItemSearch[stall.id] || stall.category || selectedSubFilter[stall.id]) && (() => {
+                                            const activeSubCategory = selectedSubFilter[stall.id] || 'all';
+                                            const search = (menuItemSearch[stall.id] || '').toLowerCase().trim();
+                                            const matchingItems = menuItems.filter(item => {
+                                                const matchesSearch = !search || item.name.toLowerCase().includes(search) || (item.nameTelugu && item.nameTelugu.toLowerCase().includes(search));
+                                                const itemTypes = Array.isArray(item.type) ? item.type : [(item.type as any)];
+                                                const matchesType = !stall.category || activeSubCategory !== 'all' || itemTypes.some((t: string) =>
+                                                    t?.toLowerCase().includes('stall') ||
+                                                    (stall.category && t?.toLowerCase() === stall.category.toLowerCase()) ||
+                                                    t?.toLowerCase() === 'common' || t?.toLowerCase() === 'sweets' || t?.toLowerCase() === 'snacks'
+                                                );
+                                                const subCat = getItemSubCategory(item);
+                                                const matchesSubCategory = activeSubCategory === 'all' || subCat === activeSubCategory;
+                                                return matchesSearch && (matchesType || search.length > 0) && matchesSubCategory;
+                                            });
+
+                                            if (matchingItems.length === 0) {
+                                                return (
+                                                    <div className="mt-2 py-8 text-center bg-slate-50/50 rounded-xl border border-dashed border-slate-200">
+                                                        <div className="text-xs font-bold text-slate-400">No stall items found in this category</div>
+                                                    </div>
+                                                );
+                                            }
+
+                                            return (
+                                                <div className="mt-2 max-h-[350px] overflow-y-auto pr-1">
+                                                    {activeSubCategory === 'all' ? (
+                                                        <div className="space-y-4 pt-1">
+                                                            {FOOD_CATEGORIES.filter(c => c.id !== 'all').map(cat => {
+                                                                const catItems = matchingItems.filter(item => getItemSubCategory(item) === cat.id);
+                                                                if (catItems.length === 0) return null;
+                                                                return (
+                                                                    <div key={cat.id} className="space-y-2">
+                                                                        <div className="flex items-center justify-between border-b border-slate-100 pb-1 sticky top-0 bg-white/95 backdrop-blur-sm z-10">
+                                                                            <span className="text-xs font-black text-primary-600 uppercase tracking-wider">{cat.label}</span>
+                                                                            <span className="text-[10px] font-bold bg-primary-50 text-primary-600 px-2 py-0.5 rounded-full">{catItems.length}</span>
+                                                                        </div>
+                                                                        <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-6 gap-2 pt-1">
+                                                                            {catItems.map(item => (
+                                                                                <button
+                                                                                    key={item.id}
+                                                                                    type="button"
+                                                                                    onClick={() => {
+                                                                                        setFormData(prev => ({
+                                                                                            ...prev,
+                                                                                            stalls: prev.stalls.map(s => s.id === stall.id ? {
+                                                                                                ...s,
+                                                                                                selectedMenuItems: s.selectedMenuItems.includes(item.id)
+                                                                                                    ? s.selectedMenuItems.filter(i => i !== item.id)
+                                                                                                    : [...s.selectedMenuItems, item.id]
+                                                                                            } : s)
+                                                                                        }))
+                                                                                    }}
+                                                                                    className={`p-2.5 text-left rounded-xl border transition-all relative overflow-hidden ${stall.selectedMenuItems.includes(item.id)
+                                                                                        ? 'bg-primary-600 border-primary-600 text-white font-black shadow-lg shadow-primary-200 scale-[1.02]'
+                                                                                        : 'bg-white border-slate-100 text-slate-700 hover:border-primary-300 hover:bg-slate-50 font-bold'}`}
+                                                                                >
+                                                                                    <div className="text-[11px] font-black leading-tight mb-0.5 line-clamp-2">{item.name}</div>
+                                                                                    {item.nameTelugu && (
+                                                                                        <div className={`text-[10px] line-clamp-1 ${stall.selectedMenuItems.includes(item.id) ? 'text-primary-100 font-semibold' : 'text-slate-500 font-normal'}`}>
+                                                                                            {item.nameTelugu}
+                                                                                        </div>
+                                                                                    )}
+                                                                                    {stall.selectedMenuItems.includes(item.id) && (
+                                                                                        <div className="absolute -top-1 -right-1 opacity-20">
+                                                                                            <FaUtensils size={30} />
+                                                                                        </div>
+                                                                                    )}
+                                                                                </button>
+                                                                            ))}
+                                                                        </div>
                                                                     </div>
-                                                                )}
-                                                            </button>
-                                                        ))}
+                                                                );
+                                                            })}
+                                                        </div>
+                                                    ) : (
+                                                        <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-6 gap-2 pt-1">
+                                                            {matchingItems.map(item => (
+                                                                <button
+                                                                    key={item.id}
+                                                                    type="button"
+                                                                    onClick={() => {
+                                                                        setFormData(prev => ({
+                                                                            ...prev,
+                                                                            stalls: prev.stalls.map(s => s.id === stall.id ? {
+                                                                                ...s,
+                                                                                selectedMenuItems: s.selectedMenuItems.includes(item.id)
+                                                                                    ? s.selectedMenuItems.filter(i => i !== item.id)
+                                                                                    : [...s.selectedMenuItems, item.id]
+                                                                            } : s)
+                                                                        }))
+                                                                    }}
+                                                                    className={`p-2.5 text-left rounded-xl border transition-all relative overflow-hidden ${stall.selectedMenuItems.includes(item.id)
+                                                                        ? 'bg-primary-600 border-primary-600 text-white font-black shadow-lg shadow-primary-200 scale-[1.02]'
+                                                                        : 'bg-white border-slate-100 text-slate-700 hover:border-primary-300 hover:bg-slate-50 font-bold'}`}
+                                                                >
+                                                                    <div className="text-[11px] font-black leading-tight mb-0.5 line-clamp-2">{item.name}</div>
+                                                                    {item.nameTelugu && (
+                                                                        <div className={`text-[10px] line-clamp-1 ${stall.selectedMenuItems.includes(item.id) ? 'text-primary-100 font-semibold' : 'text-slate-500 font-normal'}`}>
+                                                                            {item.nameTelugu}
+                                                                        </div>
+                                                                    )}
+                                                                    {stall.selectedMenuItems.includes(item.id) && (
+                                                                        <div className="absolute -top-1 -right-1 opacity-20">
+                                                                            <FaUtensils size={30} />
+                                                                        </div>
+                                                                    )}
+                                                                </button>
+                                                            ))}
+                                                        </div>
+                                                    )}
                                                 </div>
-                                            </div>
-                                        )}
+                                            );
+                                        })()}
                                     </div>
 
                                     {stall.selectedMenuItems.length > 0 && (
@@ -1834,68 +2022,68 @@ export default function OrderForm({ orderId, isEditMode = false, initialOrderTyp
                                     return (mealOrder[a.menuType] ?? 99) - (mealOrder[b.menuType] ?? 99)
                                 })
                                 .map((mt, i) => (
-                                <div key={mt.id} className="flex items-center gap-4 px-4 py-2.5 hover:bg-gray-50/60 transition-colors">
-                                    <span className="w-5 h-5 rounded-full bg-primary-100 text-primary-600 flex items-center justify-center text-[9px] font-black shrink-0">{i + 1}</span>
-                                    <div className="flex-1 min-w-0">
-                                        <span className="font-bold text-gray-800 text-sm">{mt.menuType ? sanitizeMealLabel(mt.menuType) : 'Session'}</span>
-                                        {mt.date && <span className="ml-2 text-[10px] text-gray-400">{mt.date}</span>}
-                                        {mt.eventName && <span className="ml-1 text-[10px] text-gray-400">({mt.eventName})</span>}
-                                    </div>
-                                    {mt.menuType === 'saree' ? (
-                                        <span className="text-xs font-black text-primary-600 bg-primary-50 px-2 py-1 rounded">
-                                            {formatCurrency(mt.selectedMenuItems.reduce((sum, itemId) => {
-                                                const price = parseFloat(mt.itemPrices?.[itemId] || '0') || 0
-                                                const qty = parseFloat(mt.itemQuantities[itemId] || '1') || 0
-                                                return sum + (price * qty)
-                                            }, 0))}
-                                            <span className="text-[9px] text-primary-400 ml-1">(itemized)</span>
-                                        </span>
-                                    ) : mt.pricingMethod === 'plate-based' ? (
-                                        <div className="flex items-center gap-2 shrink-0">
-                                            {/* Plates input */}
-                                            <div className="relative w-20">
-                                                <input
-                                                    type="number"
-                                                    value={mt.numberOfPlates || mt.numberOfMembers}
-                                                    onChange={(e) => handleUpdateMealType(mt.id, 'numberOfPlates', e.target.value)}
-                                                    className="w-full px-2 py-1.5 bg-white border border-gray-200 rounded-lg outline-none text-sm font-bold text-gray-800 focus:ring-2 focus:ring-primary-400 text-center"
-                                                    placeholder="Plates"
-                                                />
-                                                <span className="block text-center text-[9px] text-gray-400 mt-0.5">plates</span>
+                                    <div key={mt.id} className="flex items-center gap-4 px-4 py-2.5 hover:bg-gray-50/60 transition-colors">
+                                        <span className="w-5 h-5 rounded-full bg-primary-100 text-primary-600 flex items-center justify-center text-[9px] font-black shrink-0">{i + 1}</span>
+                                        <div className="flex-1 min-w-0">
+                                            <span className="font-bold text-gray-800 text-sm">{mt.menuType ? sanitizeMealLabel(mt.menuType) : 'Session'}</span>
+                                            {mt.date && <span className="ml-2 text-[10px] text-gray-400">{mt.date}</span>}
+                                            {mt.eventName && <span className="ml-1 text-[10px] text-gray-400">({mt.eventName})</span>}
+                                        </div>
+                                        {mt.menuType === 'saree' ? (
+                                            <span className="text-xs font-black text-primary-600 bg-primary-50 px-2 py-1 rounded">
+                                                {formatCurrency(mt.selectedMenuItems.reduce((sum, itemId) => {
+                                                    const price = parseFloat(mt.itemPrices?.[itemId] || '0') || 0
+                                                    const qty = parseFloat(mt.itemQuantities[itemId] || '1') || 0
+                                                    return sum + (price * qty)
+                                                }, 0))}
+                                                <span className="text-[9px] text-primary-400 ml-1">(itemized)</span>
+                                            </span>
+                                        ) : mt.pricingMethod === 'plate-based' ? (
+                                            <div className="flex items-center gap-2 shrink-0">
+                                                {/* Plates input */}
+                                                <div className="relative w-20">
+                                                    <input
+                                                        type="number"
+                                                        value={mt.numberOfPlates || mt.numberOfMembers}
+                                                        onChange={(e) => handleUpdateMealType(mt.id, 'numberOfPlates', e.target.value)}
+                                                        className="w-full px-2 py-1.5 bg-white border border-gray-200 rounded-lg outline-none text-sm font-bold text-gray-800 focus:ring-2 focus:ring-primary-400 text-center"
+                                                        placeholder="Plates"
+                                                    />
+                                                    <span className="block text-center text-[9px] text-gray-400 mt-0.5">plates</span>
+                                                </div>
+                                                <span className="text-gray-300 text-xs font-bold">×</span>
+                                                {/* Price per plate input */}
+                                                <div className="relative w-24">
+                                                    <span className="absolute left-2 top-1/2 -translate-y-1/2 text-gray-400 text-xs">₹</span>
+                                                    <input
+                                                        type="number"
+                                                        value={mt.platePrice}
+                                                        onChange={(e) => handleUpdateMealType(mt.id, 'platePrice', e.target.value)}
+                                                        className="w-full pl-6 pr-2 py-1.5 bg-white border border-gray-200 rounded-lg outline-none text-sm font-bold text-gray-800 focus:ring-2 focus:ring-primary-400"
+                                                        placeholder="0"
+                                                    />
+                                                    <span className="block text-center text-[9px] text-gray-400 mt-0.5">per plate</span>
+                                                </div>
+                                                <span className="text-gray-300 text-xs font-bold">=</span>
+                                                {/* Live total */}
+                                                <span className="text-sm font-black text-primary-700 w-24 text-right">
+                                                    {formatCurrency((parseFloat(mt.numberOfPlates) || parseFloat(mt.numberOfMembers) || 0) * (parseFloat(mt.platePrice) || 0))}
+                                                </span>
                                             </div>
-                                            <span className="text-gray-300 text-xs font-bold">×</span>
-                                            {/* Price per plate input */}
-                                            <div className="relative w-24">
-                                                <span className="absolute left-2 top-1/2 -translate-y-1/2 text-gray-400 text-xs">₹</span>
+                                        ) : (
+                                            <div className="relative w-36 shrink-0">
+                                                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs">₹</span>
                                                 <input
                                                     type="number"
-                                                    value={mt.platePrice}
-                                                    onChange={(e) => handleUpdateMealType(mt.id, 'platePrice', e.target.value)}
-                                                    className="w-full pl-6 pr-2 py-1.5 bg-white border border-gray-200 rounded-lg outline-none text-sm font-bold text-gray-800 focus:ring-2 focus:ring-primary-400"
+                                                    value={mt.manualAmount}
+                                                    onChange={(e) => handleUpdateMealType(mt.id, 'manualAmount', e.target.value)}
+                                                    className="w-full pl-7 pr-3 py-1.5 bg-white border border-gray-200 rounded-lg outline-none text-sm font-bold text-gray-800 focus:ring-2 focus:ring-primary-400 focus:border-primary-400 transition-all"
                                                     placeholder="0"
                                                 />
-                                                <span className="block text-center text-[9px] text-gray-400 mt-0.5">per plate</span>
                                             </div>
-                                            <span className="text-gray-300 text-xs font-bold">=</span>
-                                            {/* Live total */}
-                                            <span className="text-sm font-black text-primary-700 w-24 text-right">
-                                                {formatCurrency((parseFloat(mt.numberOfPlates) || parseFloat(mt.numberOfMembers) || 0) * (parseFloat(mt.platePrice) || 0))}
-                                            </span>
-                                        </div>
-                                    ) : (
-                                        <div className="relative w-36 shrink-0">
-                                            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs">₹</span>
-                                            <input
-                                                type="number"
-                                                value={mt.manualAmount}
-                                                onChange={(e) => handleUpdateMealType(mt.id, 'manualAmount', e.target.value)}
-                                                className="w-full pl-7 pr-3 py-1.5 bg-white border border-gray-200 rounded-lg outline-none text-sm font-bold text-gray-800 focus:ring-2 focus:ring-primary-400 focus:border-primary-400 transition-all"
-                                                placeholder="0"
-                                            />
-                                        </div>
-                                    )}
-                                </div>
-                            ))}
+                                        )}
+                                    </div>
+                                ))}
                         </div>
                     </div>
                 )}
