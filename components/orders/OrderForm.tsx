@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState, useMemo, useRef } from 'react'
+import React, { useEffect, useState, useMemo, useRef, useCallback, memo } from 'react'
 import { v4 as uuidv4 } from 'uuid'
 import { formatCurrency, formatDateTime, sanitizeMealLabel } from '@/lib/utils'
 import { Customer, MenuItem, Order, OrderItem, Supervisor, StallTemplate } from '@/types'
@@ -8,6 +8,170 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import { toast } from 'sonner'
 import FormError from '@/components/FormError'
 import { Storage } from '@/lib/storage-api'
+
+const FOOD_CATEGORIES = [
+    { id: 'all', label: 'All Items' },
+    { id: 'sweets', label: '🍬 Sweets & Desserts' },
+    { id: 'rice', label: '🍚 Rices & Biryani' },
+    { id: 'curry', label: '🍛 Curries & Gravies' },
+    { id: 'dal', label: '🍲 Dal & Liquids' },
+    { id: 'roti', label: '🫓 Rotis & Breads' },
+    { id: 'starter', label: '🧆 Starters & Frys' },
+    { id: 'chutney', label: '🥒 Pickles & Chutneys' },
+    { id: 'drinks', label: '🍹 Drinks & Soups' },
+    { id: 'breakfast', label: '🥞 Breakfast / Tiffins' },
+    { id: 'common', label: '🍽️ Common & Extras' },
+];
+
+const getItemSubCategory = (item: MenuItem): string => {
+    const types = Array.isArray(item.type) ? item.type.map(t => String(t || '').toLowerCase()) : [String(item.type || '').toLowerCase()];
+    const category = String((item as any).category || '').toLowerCase();
+    const desc = String(item.description || '').toLowerCase();
+    const name = String(item.name || '').toLowerCase();
+
+    if (
+        types.includes('sweets') || types.includes('saree') || types.includes('saare') ||
+        category.includes('sweet') || category.includes('saare') || desc.includes('sweet') ||
+        name.includes('laddu') || name.includes('jamoon') || name.includes('jamun') || name.includes('payasam') ||
+        name.includes('paayasam') || name.includes('halwa') || name.includes('kheer') || name.includes('burfi') ||
+        name.includes('burfee') || name.includes('khaja') || name.includes('badusha') || name.includes('peda') ||
+        name.includes('mysorepak') || name.includes('ras malai') || name.includes('jilebi') || name.includes('jangir') ||
+        name.includes('jhangir') || name.includes('kalakand') || name.includes('kathli') || name.includes('meetha') ||
+        name.includes('pongali') || name.includes('prasadam') || name.includes('burelu') || name.includes('bobbatlu') ||
+        name.includes('ice cream') || name.includes('basundi') || name.includes('cham cham') || name.includes('kesari')
+    ) {
+        return 'sweets';
+    }
+
+    if (
+        types.includes('rice') || category.includes('rice') || desc.includes('rice') ||
+        name.includes('rice') || name.includes('biryani') || name.includes('pulihora') || name.includes('pulao') ||
+        name.includes('bath') || name.includes('baath') || name.includes('fried rice') || name.includes('jeera rice') ||
+        name.includes('zeera rice')
+    ) {
+        return 'rice';
+    }
+
+    if (
+        types.includes('dal') || types.includes('liquid') || category.includes('dal') || category.includes('liquid') ||
+        desc.includes('dal') || desc.includes('liquid') || name.includes('pappu') || name.includes('dal ') || name === 'dal' ||
+        name.includes('sambar') || name.includes('rasam') || name.includes('pulusu') || name.includes('chaaru') ||
+        name.includes('aviyal') || name.includes('majjiga') || name.includes('makhani')
+    ) {
+        return 'dal';
+    }
+
+    if (
+        types.includes('roti') || category.includes('roti') || desc.includes('roti') ||
+        name.includes('roti') || name.includes('naan') || name.includes('pulka') || name.includes('paratha') ||
+        (name.includes('puri') && !name.includes('kova') && !types.includes('breakfast'))
+    ) {
+        return 'roti';
+    }
+
+    if (
+        types.includes('pickle') || types.includes('chutney') || types.includes('powder') ||
+        category.includes('pickle') || category.includes('chutney') || category.includes('powder') ||
+        desc.includes('pickle') || desc.includes('chutney') || desc.includes('powder') ||
+        name.includes('aavakaaya') || name.includes('pickle') || name.includes('chutney') ||
+        name.includes('pachadi') || name.includes('podi') || name.includes('thokku')
+    ) {
+        return 'chutney';
+    }
+
+    if (
+        types.includes('starter') || types.includes('fry') || types.includes('hot') || types.includes('snacks') ||
+        category.includes('starter') || category.includes('fry') || category.includes('hot') || category.includes('snack') ||
+        desc.includes('starter') || desc.includes('fry') || desc.includes('hot') ||
+        name.includes('fry') || name.includes('pakoda') || name.includes('bajji') || name.includes('wada') ||
+        name.includes('vada') || name.includes('65') || name.includes('manchuria') || name.includes('spring roll') ||
+        name.includes('cut mirchi') || name.includes('kebab') || name.includes('tikka')
+    ) {
+        return 'starter';
+    }
+
+    if (
+        types.includes('welcome_drink') || types.includes('soup') || types.includes('water_bottles') ||
+        category.includes('drink') || category.includes('soup') || category.includes('water') ||
+        desc.includes('drink') || desc.includes('soup') || desc.includes('water') ||
+        name.includes('juice') || name.includes('soup') || name.includes('badam milk') ||
+        name.includes('water') || name.includes('bottle') || name.includes('coffee') || name.includes('tea') || name.includes('milk')
+    ) {
+        return 'drinks';
+    }
+
+    if (
+        types.includes('north_indian') || types.includes('south_indian_curry') ||
+        category.includes('curry') || category.includes('dishes') || desc.includes('curry') ||
+        name.includes('curry') || name.includes('masala') || name.includes('kurma') || name.includes('paneer') ||
+        name.includes('kofta') || name.includes('aalu ') || name.includes('vankaaya') || name.includes('dondakaaya') ||
+        name.includes('donda ') || name.includes('capsicum') || name.includes('gobi') || name.includes('chole') ||
+        name.includes('salan') || name.includes('baigan') || name.includes('rajma') || name.includes('makhni')
+    ) {
+        return 'curry';
+    }
+
+    if (
+        types.includes('breakfast') || types.includes('tiffins') || category.includes('breakfast') ||
+        desc.includes('breakfast') || name.includes('idli') || name.includes('dosa') || name.includes('upma') ||
+        name.includes('pesarattu') || name.includes('uthappa') || name.includes('pongal') || name.includes('poori')
+    ) {
+        return 'breakfast';
+    }
+
+    if (
+        types.includes('common') || item.isCommon || category.includes('common') || desc.includes('common') ||
+        name.includes('ghee') || name.includes('papad') || name.includes('chips') || name.includes('curd') ||
+        name.includes('raitha') || name.includes('salad') || name.includes('pan ') || name === 'pan' || name.includes('oori mirchi')
+    ) {
+        return 'common';
+    }
+
+    return 'common';
+};
+
+interface MenuItemButtonProps {
+    item: MenuItem;
+    isSelected: boolean;
+    onToggle: (itemId: string) => void;
+    showUtensilsIcon?: boolean;
+}
+
+const MenuItemButton = memo(function MenuItemButton({
+    item,
+    isSelected,
+    onToggle,
+    showUtensilsIcon = false
+}: MenuItemButtonProps) {
+    return (
+        <button
+            type="button"
+            onClick={() => onToggle(item.id)}
+            className={`p-2.5 text-left rounded-xl border transition-all relative overflow-hidden ${
+                isSelected
+                    ? 'bg-primary-600 border-primary-600 text-white font-black shadow-md shadow-primary-200 scale-[1.02]'
+                    : 'bg-white border-gray-100 text-gray-700 hover:border-primary-300 hover:bg-primary-50/50 font-bold'
+            }`}
+        >
+            <div className="text-[11px] font-black leading-tight mb-0.5 line-clamp-2">{item.name}</div>
+            {item.nameTelugu && (
+                <div className={`text-[10px] line-clamp-1 ${isSelected ? 'text-primary-100 font-semibold' : 'text-gray-500 font-normal'}`}>
+                    {item.nameTelugu}
+                </div>
+            )}
+            {item.description && !item.nameTelugu && (
+                <div className={`text-[9px] line-clamp-1 italic ${isSelected ? 'text-primary-100' : 'text-gray-400 font-normal'}`}>
+                    {item.description}
+                </div>
+            )}
+            {showUtensilsIcon && isSelected && (
+                <div className="absolute -top-1 -right-1 opacity-20">
+                    <FaUtensils size={30} />
+                </div>
+            )}
+        </button>
+    );
+});
 
 interface PositionInputProps {
     value: number;
