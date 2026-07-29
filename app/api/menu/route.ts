@@ -3,18 +3,26 @@ import { prisma } from "@/lib/prisma";
 import { validateRequiredFields } from "@/lib/validation";
 import { requireAuth } from "@/lib/require-auth";
 
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+  'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+};
+
+export async function OPTIONS() {
+  return new NextResponse(null, { status: 204, headers: corsHeaders });
+}
+
 export async function GET(request: NextRequest) {
-  const auth = await requireAuth(request);
-  if (auth.response) return auth.response;
   try {
     const menuItems = await prisma.menuItem.findMany({
       orderBy: { name: "asc" },
     });
-    return NextResponse.json(menuItems);
+    return NextResponse.json(menuItems, { status: 200, headers: corsHeaders });
   } catch (error) {
     return NextResponse.json(
       { error: "Failed to fetch menu items" },
-      { status: 500 },
+      { status: 500, headers: corsHeaders },
     );
   }
 }
@@ -28,7 +36,7 @@ export async function POST(request: NextRequest) {
     if (missingFields) {
       return NextResponse.json(
         { error: "Missing required fields", details: missingFields },
-        { status: 400 },
+        { status: 400, headers: corsHeaders },
       );
     }
     const menuItem = await prisma.menuItem.create({
@@ -46,11 +54,11 @@ export async function POST(request: NextRequest) {
         isActive: data.isActive !== undefined ? data.isActive : true,
       } as any,
     });
-    return NextResponse.json(menuItem);
+    return NextResponse.json(menuItem, { status: 201, headers: corsHeaders });
   } catch (error) {
     return NextResponse.json(
       { error: "Failed to create menu item" },
-      { status: 500 },
+      { status: 500, headers: corsHeaders },
     );
   }
 }

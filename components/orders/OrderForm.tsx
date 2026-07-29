@@ -9,6 +9,7 @@ import { toast } from 'sonner'
 import FormError from '@/components/FormError'
 import { Storage } from '@/lib/storage-api'
 
+<<<<<<< HEAD
 const FOOD_CATEGORIES = [
     { id: 'all', label: 'All Items' },
     { id: 'sweets', label: '🍬 Sweets & Desserts' },
@@ -173,6 +174,29 @@ const MenuItemButton = memo(function MenuItemButton({
     );
 });
 
+=======
+export const FOOD_CATEGORIES = [
+    { id: 'all', label: 'All' },
+    { id: 'veg', label: 'Veg' },
+    { id: 'non-veg', label: 'Non-Veg' },
+    { id: 'snacks', label: 'Snacks' },
+    { id: 'sweets', label: 'Sweets' },
+    { id: 'beverages', label: 'Beverages' },
+    { id: 'other', label: 'Other' }
+];
+
+export const getItemSubCategory = (item: any) => {
+    const types = Array.isArray(item.type) ? item.type : [item.type];
+    const typeStrs = types.map((t: string) => t?.toLowerCase() || '');
+    if (typeStrs.includes('veg')) return 'veg';
+    if (typeStrs.includes('non-veg')) return 'non-veg';
+    if (typeStrs.includes('snacks')) return 'snacks';
+    if (typeStrs.includes('sweets')) return 'sweets';
+    if (typeStrs.includes('beverages')) return 'beverages';
+    return 'other';
+};
+
+>>>>>>> 00ca8eb (Update API endpoints for customer order processing and menu queries)
 interface PositionInputProps {
     value: number;
     min: number;
