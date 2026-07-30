@@ -852,15 +852,6 @@ export default function OrderForm({ orderId, isEditMode = false, initialOrderTyp
                     )
                 }
 
-                // 3. Substring match on normalized strings (only if the query is reasonably long to avoid false matches)
-                if (!matchedItem && normLine.length >= 4) {
-                    matchedItem = currentMenuItems.find(item => {
-                        const normItemName = normalizeForMatching(item.name)
-                        // Require the matching part to be at least 4 characters to avoid tiny words matching inside long strings
-                        return normItemName.length >= 4 && (normItemName.includes(normLine) || normLine.includes(normItemName))
-                    })
-                }
-
                 if (matchedItem) {
                     itemIdsToAdd.push(matchedItem.id)
                     newQuantities[matchedItem.id] = '1'
