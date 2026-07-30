@@ -192,7 +192,7 @@ export default function OrderSummaryPage() {
 
   return (
     <div className="p-4 md:p-8 bg-[#f8fafc] min-h-screen">
-      <div className="max-w-5xl mx-auto">
+      <div className="w-full">
         <div className="mb-8 flex items-center justify-end">
           <Link
             href={`/orders/financial/${order.id}`}

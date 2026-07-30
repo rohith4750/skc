@@ -752,7 +752,7 @@ export default function OrderCenterPage() {
   return (
     <div className="p-4 sm:p-6 md:p-8 bg-slate-50/50 min-h-screen pt-16 lg:pt-8">
       {/* Header */}
-      <div className="max-w-7xl mx-auto mb-8 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+      <div className="w-full mb-8 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
           <h1 className="text-3xl font-bold text-slate-900 tracking-tight">Order Hub</h1>
           <p className="text-slate-500 mt-1">Operational command center for all catering events</p>
@@ -786,7 +786,7 @@ export default function OrderCenterPage() {
       </div>
 
       {/* Status Summary */}
-      <div className="max-w-7xl mx-auto grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+      <div className="w-full grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
         <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-6 flex flex-col justify-between hover:shadow-md transition-all">
           <div>
             <div className="flex items-center justify-between mb-4">
@@ -838,7 +838,7 @@ export default function OrderCenterPage() {
 
       {/* Filters */}
       {showFilters && (
-        <div className="max-w-7xl mx-auto mb-8 bg-white rounded-2xl shadow-sm border border-slate-100 p-6">
+        <div className="w-full mb-8 bg-white rounded-2xl shadow-sm border border-slate-100 p-6">
           <div className="flex items-center justify-between mb-6">
             <h3 className="text-lg font-bold text-slate-800 flex items-center gap-2">
               <FaFilter className="text-indigo-500" />
@@ -1217,7 +1217,22 @@ export default function OrderCenterPage() {
 
                                     {/* Sessions List */}
                                     <div className="flex flex-wrap gap-1.5 pl-1 border-l-2 border-slate-100 ml-1">
-                                      {groupedByDate[date].map(({ mealType, key, members }) => (
+                                      {groupedByDate[date].sort((a, b) => {
+                                        const mealOrder: Record<string, number> = {
+                                          breakfast: 1,
+                                          lunch: 2,
+                                          snacks: 3,
+                                          dinner: 4,
+                                          sweets: 5,
+                                          saree: 6,
+                                          special_order: 7
+                                        };
+                                        const aLower = a.mealType?.toLowerCase() || '';
+                                        const bLower = b.mealType?.toLowerCase() || '';
+                                        const orderA = mealOrder[aLower] ?? 99;
+                                        const orderB = mealOrder[bLower] ?? 99;
+                                        return orderA - orderB;
+                                      }).map(({ mealType, key, members }) => (
                                         <div key={key} className="flex items-center gap-1.5 bg-white px-2.5 py-1 rounded-lg border border-slate-200 shadow-sm group/session hover:border-primary-300 transition-colors">
                                           <span className="capitalize text-[11px] font-bold text-slate-700">
                                             {sanitizeMealLabel(mealType)}

@@ -383,7 +383,7 @@ export default function InventoryPage() {
   return (
     <div className="min-h-screen bg-slate-50/50 p-4 md:p-8">
       {/* Header */}
-      <div className="max-w-7xl mx-auto space-y-8">
+      <div className="w-full space-y-8">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
             <h1 className="text-3xl font-bold text-slate-900 tracking-tight">Inventory Management</h1>

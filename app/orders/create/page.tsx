@@ -6,7 +6,7 @@ import { Suspense } from 'react'
 
 export default function CreateOrderPage() {
     return (
-        <div className="p-4 md:p-8 max-w-7xl mx-auto">
+        <div className="p-4 md:p-8 w-full">
             <div className="mb-8">
                 <div>
                     <h1 className="text-2xl md:text-3xl font-black text-gray-800">Create New Order</h1>

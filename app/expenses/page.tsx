@@ -567,7 +567,7 @@ export default function ExpensesPage() {
   return (
     <div className="p-4 sm:p-6 md:p-8 bg-slate-50/50 min-h-screen">
       {/* Header */}
-      <div className="max-w-7xl mx-auto mb-8 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+      <div className="w-full mb-8 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
           <h1 className="text-3xl font-bold text-slate-900 tracking-tight">Expense Registry</h1>
           <p className="text-slate-500 mt-1">Track and manage business expenditures with precision</p>
@@ -603,7 +603,7 @@ export default function ExpensesPage() {
       </div>
 
       {/* Summary Cards */}
-      <div className="max-w-7xl mx-auto grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+      <div className="w-full grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
         <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-6 flex flex-col justify-between hover:shadow-md transition-all">
           <div>
             <div className="flex items-center justify-between mb-4">
@@ -650,7 +650,7 @@ export default function ExpensesPage() {
 
       {/* Filters Panel */}
       {showFilters && (
-        <div className="max-w-7xl mx-auto mb-6 bg-white rounded-2xl shadow-sm border border-slate-100 p-6">
+        <div className="w-full mb-6 bg-white rounded-2xl shadow-sm border border-slate-100 p-6">
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-lg font-bold text-slate-800 flex items-center gap-2">
               <FaFilter className="text-indigo-500" />

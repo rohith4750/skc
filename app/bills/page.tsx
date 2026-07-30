@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useState, useMemo } from 'react'
+import { useRouter } from 'next/navigation'
 import { formatCurrency, formatDateTime, formatDate, sendWhatsAppMessage, sanitizeMealLabel } from '@/lib/utils'
 import { Bill, Order, Customer } from '@/types'
 import {
@@ -65,6 +66,7 @@ const getPlateCount = (order: Order) => {
 }
 
 export default function BillsPage() {
+  const router = useRouter()
   const [bills, setBills] = useState<ExtendedBill[]>([])
   const [loading, setLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState('')
@@ -633,7 +635,7 @@ export default function BillsPage() {
   return (
     <div className="min-h-screen bg-slate-50/50 p-4 md:p-8">
       {/* Header & Stats */}
-      <div className="max-w-7xl mx-auto space-y-8">
+      <div className="w-full space-y-8">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
             <h1 className="text-3xl font-bold text-slate-900 tracking-tight">Financial Ledger</h1>
@@ -839,7 +841,7 @@ export default function BillsPage() {
             <BillCard
               key={bill.id}
               bill={bill}
-              onOpen={() => handleOpenDrawer(bill)}
+              onOpen={() => router.push(`/orders/financial/${bill.orderId}`)}
               onView={() => handleViewBillPDF(bill)}
               onDownload={() => handleDownloadBillPDF(bill)}
               onDownloadImage={() => handleDownloadBillImage(bill)}

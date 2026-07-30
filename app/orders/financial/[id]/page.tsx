@@ -360,7 +360,7 @@ export default function FinancialTrackingPage() {
 
   return (
     <div className="p-4 md:p-8 bg-[#f8fafc] min-h-screen">
-      <div className="max-w-4xl mx-auto">
+      <div className="w-full">
         <div className="mb-8 flex items-center justify-between">
           <div className="flex-1">
             <h1 className="text-3xl font-black text-slate-900">Financial Management</h1>

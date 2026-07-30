@@ -7,7 +7,7 @@ export default function EditRegularOrderPage() {
     const id = params.id as string
 
     return (
-        <div className="p-4 md:p-8 max-w-7xl mx-auto">
+        <div className="p-4 md:p-8 w-full">
             <div className="mb-8">
                 <h1 className="text-3xl font-black text-gray-800">Edit Regular Order</h1>
                 <p className="text-gray-500 mt-1">Update details for this daily/regular order</p>

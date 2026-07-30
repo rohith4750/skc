@@ -1349,12 +1349,26 @@ export default function OrderForm({ orderId, isEditMode = false, initialOrderTyp
                                         </div>
                                         <div>
                                             <label className="block text-sm font-medium text-gray-700 mb-2">Service Time</label>
-                                            <input
-                                                type="time"
-                                                value={mt.time}
+                                            <select
+                                                value={mt.time || ''}
                                                 onChange={(e) => handleUpdateMealType(mt.id, 'time', e.target.value)}
                                                 className="w-full px-4 py-2 bg-gray-50 border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary-500 outline-none"
-                                            />
+                                            >
+                                                <option value="">Select Time</option>
+                                                {Array.from({ length: 48 }).map((_, i) => {
+                                                    const hour24 = Math.floor(i / 2);
+                                                    const minute = i % 2 === 0 ? '00' : '30';
+                                                    const hour12 = hour24 === 0 ? 12 : (hour24 > 12 ? hour24 - 12 : hour24);
+                                                    const ampm = hour24 >= 12 ? 'PM' : 'AM';
+                                                    const timeValue = `${hour24.toString().padStart(2, '0')}:${minute}`;
+                                                    const timeLabel = `${hour12.toString().padStart(2, '0')}:${minute} ${ampm}`;
+                                                    return (
+                                                        <option key={timeValue} value={timeValue}>
+                                                            {timeLabel}
+                                                        </option>
+                                                    );
+                                                })}
+                                            </select>
                                         </div>
                                         <div>
                                             <label className="block text-sm font-medium text-gray-700 mb-2">{formData.orderType === 'EVENT' ? 'Members Group Count' : 'Requested Quantity'}</label>

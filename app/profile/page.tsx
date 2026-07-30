@@ -239,7 +239,7 @@ export default function ProfilePage() {
         <p className="text-gray-600 mt-1 text-xs sm:text-sm md:text-base">Manage your account information and settings</p>
       </div>
 
-      <div className="max-w-3xl mx-auto space-y-4 sm:space-y-6">
+      <div className="w-full space-y-4 sm:space-y-6">
         {/* Profile Card */}
         <div className="bg-white rounded-lg shadow-md border border-gray-200 overflow-hidden">
           {/* Profile Header */}

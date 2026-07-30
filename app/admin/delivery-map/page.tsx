@@ -21,7 +21,7 @@ const MapComponent = dynamic(
 
 export default function DeliveryMapDashboard() {
   return (
-    <div className="p-4 md:p-8 max-w-7xl mx-auto space-y-6">
+    <div className="p-4 md:p-8 w-full space-y-6">
       {/* Header Section */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>

@@ -297,7 +297,7 @@ export default function QuotationsPage() {
 
   return (
     <div className="p-4 sm:p-6 md:p-8 bg-slate-50/50 min-h-screen pt-16 lg:pt-8">
-      <div className="max-w-7xl mx-auto mb-8 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+      <div className="w-full mb-8 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
           <h1 className="text-3xl font-bold text-slate-900 tracking-tight flex items-center gap-3">
             <FaClipboardList className="text-purple-600" /> Quotations
@@ -312,7 +312,7 @@ export default function QuotationsPage() {
         </Link>
       </div>
 
-      <div className="max-w-7xl mx-auto bg-white rounded-3xl shadow-xl border border-slate-100 overflow-hidden mb-8">
+      <div className="w-full bg-white rounded-3xl shadow-xl border border-slate-100 overflow-hidden mb-8">
         <div className="p-6 border-b border-slate-100 bg-slate-50/30 flex flex-col md:flex-row gap-4 justify-between items-center">
             <div className="relative w-full md:w-96">
                 <FaSearch className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
