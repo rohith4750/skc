@@ -304,6 +304,7 @@ export async function PUT(
       remainingAmount: finalRemainingAmount,
       status: data.status || existingOrder.status,
       orderType: data.orderType || "EVENT",
+      createdAt: data.createdAt ? new Date(data.createdAt) : undefined,
       eventName: data.eventName || null,
       eventDate: data.eventDate
         ? new Date(data.eventDate)

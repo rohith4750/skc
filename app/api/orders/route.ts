@@ -144,6 +144,7 @@ export async function POST(request: NextRequest) {
       remainingAmount: finalRemainingAmount,
       status: data.status || "pending",
       orderType: data.orderType || "EVENT",
+      createdAt: data.createdAt ? new Date(data.createdAt) : undefined,
       eventName: data.eventName || null,
       eventDate: data.eventDate
         ? new Date(data.eventDate)

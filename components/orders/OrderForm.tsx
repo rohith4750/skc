@@ -269,6 +269,8 @@ export default function OrderForm({ orderId, isEditMode = false, initialOrderTyp
     const [formData, setFormData] = useState({
         customerId: '',
         eventName: '',
+        orderDate: new Date().toISOString().split('T')[0],
+        orderTime: new Date().toTimeString().split(' ')[0].substring(0, 5),
         orderType: initialOrderType as 'EVENT' | 'LUNCH_PACK',
         mealTypes: [] as Array<{
             id: string
@@ -467,9 +469,13 @@ export default function OrderForm({ orderId, isEditMode = false, initialOrderTyp
                 services: s.services || []
             }))
 
+            const createdAtDate = order.createdAt ? new Date(order.createdAt) : new Date()
+
             setFormData({
                 customerId: order.customerId,
                 eventName: order.eventName || '',
+                orderDate: createdAtDate.toISOString().split('T')[0],
+                orderTime: createdAtDate.toTimeString().split(' ')[0].substring(0, 5),
                 orderType: order.orderType || 'EVENT',
                 mealTypes: mealTypesArray,
                 stalls: stallsArray,
@@ -1080,9 +1086,14 @@ export default function OrderForm({ orderId, isEditMode = false, initialOrderTyp
                 ? (originalAdvancePaid + (parseFloat(formData.advancePaid) || 0))
                 : (parseFloat(formData.advancePaid) || 0)
 
+            const orderDateStr = formData.orderDate || new Date().toISOString().split('T')[0]
+            const orderTimeStr = formData.orderTime || new Date().toTimeString().split(' ')[0].substring(0, 5)
+            const createdAtIso = new Date(`${orderDateStr}T${orderTimeStr}:00`).toISOString()
+
             const orderData: any = {
                 customerId: formData.customerId,
                 eventName: formData.eventName,
+                createdAt: createdAtIso,
                 orderType: formData.orderType,
                 items: [...orderItems, ...stallItems],
                 totalAmount: totals.total,
@@ -1132,7 +1143,7 @@ export default function OrderForm({ orderId, isEditMode = false, initialOrderTyp
                     <FaUser className="text-primary-500" /> Customer Information
                 </h2>
 
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
+                <div className="grid grid-cols-1 md:grid-cols-6 gap-4 items-end">
                     <div className="md:col-span-2 relative" ref={customerSearchRef}>
                         <label className="block text-[10px] font-black text-gray-400 mb-1.5 uppercase tracking-widest">Search Customer</label>
                         <div className="relative">
@@ -1180,7 +1191,7 @@ export default function OrderForm({ orderId, isEditMode = false, initialOrderTyp
                         )}
                     </div>
 
-                    <div>
+                    <div className="md:col-span-1">
                         <label className="block text-[10px] font-black text-gray-400 mb-1.5 uppercase tracking-widest">
                             {formData.orderType === 'EVENT' ? 'Event Name / Title' : 'Order Title (Regular)'}
                         </label>
@@ -1193,7 +1204,27 @@ export default function OrderForm({ orderId, isEditMode = false, initialOrderTyp
                         />
                     </div>
 
-                    <div>
+                    <div className="md:col-span-1">
+                        <label className="block text-[10px] font-black text-gray-400 mb-1.5 uppercase tracking-widest">Order Date</label>
+                        <input
+                            type="date"
+                            value={formData.orderDate}
+                            onChange={(e) => setFormData(prev => ({ ...prev, orderDate: e.target.value }))}
+                            className="w-full px-4 py-2 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary-500 outline-none font-bold text-gray-800 text-sm"
+                        />
+                    </div>
+
+                    <div className="md:col-span-1">
+                        <label className="block text-[10px] font-black text-gray-400 mb-1.5 uppercase tracking-widest">Order Time</label>
+                        <input
+                            type="time"
+                            value={formData.orderTime}
+                            onChange={(e) => setFormData(prev => ({ ...prev, orderTime: e.target.value }))}
+                            className="w-full px-4 py-2 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary-500 outline-none font-bold text-gray-800 text-sm"
+                        />
+                    </div>
+
+                    <div className="md:col-span-1">
                         <label className="block text-[10px] font-black text-gray-400 mb-1.5 uppercase tracking-widest">Status</label>
                         <select
                             value={currentOrderStatus}
