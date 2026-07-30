@@ -71,7 +71,7 @@ export default function StallForm({ stall, menuItems, onClose, onSuccess }: Stal
     const availableItems = filteredItems.filter(item => !selectedItemIds.includes(item.id))
 
     return (
-        <div className="flex flex-col h-full bg-slate-50">
+        <div className="flex flex-col bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden">
             {/* Header */}
             <div className="p-6 bg-white border-b border-slate-200 flex justify-between items-center shrink-0">
                 <div className="flex items-center gap-4">
@@ -86,6 +86,7 @@ export default function StallForm({ stall, menuItems, onClose, onSuccess }: Stal
                     </div>
                 </div>
                 <button
+                    type="button"
                     onClick={onClose}
                     className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-full transition-all"
                 >
@@ -93,8 +94,8 @@ export default function StallForm({ stall, menuItems, onClose, onSuccess }: Stal
                 </button>
             </div>
 
-            <form onSubmit={handleSave} className="flex flex-col flex-1 overflow-hidden">
-                <div className="p-6 space-y-6 overflow-y-auto flex-1">
+            <form onSubmit={handleSave} className="flex flex-col flex-1">
+                <div className="p-6 space-y-6 flex-1">
                     {/* Basic Info */}
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div className="space-y-1.5">

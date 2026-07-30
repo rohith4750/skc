@@ -1,5 +1,5 @@
 "use client";
-import React, { useState } from 'react'
+import React, { useState, forwardRef, useImperativeHandle } from 'react'
 import { MenuItem, StallTemplate } from '@/types'
 import { FaPlus, FaEdit, FaTrash, FaStore, FaSearch, FaHistory } from 'react-icons/fa'
 import { Storage } from '@/lib/storage-api'
@@ -7,15 +7,26 @@ import { toast } from 'sonner'
 import ConfirmModal from '@/components/ConfirmModal'
 import StallForm from '@/components/menu/StallForm'
 
+export interface StallManagementHandle {
+    openCreateModal: () => void;
+}
+
 interface StallManagementProps {
     stallTemplates: StallTemplate[];
     menuItems: MenuItem[];
     onRefresh: () => void;
 }
 
-export default function StallManagement({ stallTemplates, menuItems, onRefresh }: StallManagementProps) {
+const StallManagement = forwardRef<StallManagementHandle, StallManagementProps>(({ stallTemplates, menuItems, onRefresh }, ref) => {
     const [isFormOpen, setIsFormOpen] = useState(false)
     const [editingStall, setEditingStall] = useState<StallTemplate | null>(null)
+
+    useImperativeHandle(ref, () => ({
+        openCreateModal: () => {
+            setEditingStall(null)
+            setIsFormOpen(true)
+        }
+    }))
     const [deleteConfirm, setDeleteConfirm] = useState<{ isOpen: boolean; id: string | null }>({
         isOpen: false,
         id: null,
@@ -53,6 +64,22 @@ export default function StallManagement({ stallTemplates, menuItems, onRefresh }
         stall.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
         stall.description?.toLowerCase().includes(searchTerm.toLowerCase())
     )
+
+    if (isFormOpen) {
+        return (
+            <div className="space-y-6 animate-in fade-in duration-200">
+                <StallForm
+                    stall={editingStall}
+                    menuItems={menuItems}
+                    onClose={() => setIsFormOpen(false)}
+                    onSuccess={() => {
+                        setIsFormOpen(false)
+                        onRefresh()
+                    }}
+                />
+            </div>
+        )
+    }
 
     return (
         <div className="space-y-6">
@@ -163,22 +190,6 @@ export default function StallManagement({ stallTemplates, menuItems, onRefresh }
                 </div>
             )}
 
-            {isFormOpen && (
-                <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-                    <div className="bg-white rounded-[2rem] w-full max-w-2xl max-h-[90vh] overflow-hidden shadow-2xl animate-in fade-in zoom-in duration-200">
-                        <StallForm
-                            stall={editingStall}
-                            menuItems={menuItems}
-                            onClose={() => setIsFormOpen(false)}
-                            onSuccess={() => {
-                                setIsFormOpen(false)
-                                onRefresh()
-                            }}
-                        />
-                    </div>
-                </div>
-            )}
-
             <ConfirmModal
                 isOpen={deleteConfirm.isOpen}
                 title="Delete Stall Template"
@@ -191,5 +202,7 @@ export default function StallManagement({ stallTemplates, menuItems, onRefresh }
             />
         </div>
     )
-}
+})
+
+export default StallManagement
 

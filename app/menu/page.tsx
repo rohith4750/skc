@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState, useMemo } from 'react'
+import { useEffect, useState, useMemo, useRef } from 'react'
 import { Storage } from '@/lib/storage-api'
 import { initializeMenuItems } from '@/lib/initMenu'
 import { MenuItem, StallTemplate } from '@/types'
@@ -10,10 +10,11 @@ import { getMenuItemTableConfig } from '@/components/table-configs'
 import ConfirmModal from '@/components/ConfirmModal'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import StallManagement from '../../components/menu/StallManagement'
+import StallManagement, { StallManagementHandle } from '../../components/menu/StallManagement'
 
 export default function MenuPage() {
   const router = useRouter()
+  const stallManagementRef = useRef<StallManagementHandle>(null)
   const [view, setView] = useState<'items' | 'stalls'>('items')
   const [menuItems, setMenuItems] = useState<MenuItem[]>([])
   const [stallTemplates, setStallTemplates] = useState<StallTemplate[]>([])
@@ -431,31 +432,43 @@ export default function MenuPage() {
           </button>
         </div>
 
-        <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
-          <button
-            onClick={handlePrintMenu}
-            className="bg-purple-600 text-white px-4 sm:px-6 py-2 sm:py-3 rounded-lg hover:bg-purple-700 transition-colors flex items-center justify-center gap-2 text-sm sm:text-base"
-          >
-            <FaPrint /> <span className="hidden sm:inline">Print Menu</span><span className="sm:hidden">Print</span>
-          </button>
-          <button
-            onClick={handleInitialize}
-            className="bg-green-600 text-white px-4 sm:px-6 py-2 sm:py-3 rounded-lg hover:bg-green-700 transition-colors flex items-center justify-center gap-2 text-sm sm:text-base"
-          >
-            <FaDownload /> <span className="hidden sm:inline">Load Predefined Menu</span><span className="sm:hidden">Load Menu</span>
-          </button>
-          <Link
-            href="/menu/create"
-            className="bg-blue-600 text-white px-4 sm:px-6 py-2 sm:py-3 rounded-lg hover:bg-blue-700 transition-colors flex items-center justify-center gap-2 text-sm sm:text-base font-medium"
-          >
-            <FaPlus /> Add Menu Item
-          </Link>
-        </div>
+        {view === 'items' ? (
+          <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
+            <button
+              onClick={handlePrintMenu}
+              className="bg-purple-600 text-white px-4 sm:px-6 py-2 sm:py-3 rounded-lg hover:bg-purple-700 transition-colors flex items-center justify-center gap-2 text-sm sm:text-base"
+            >
+              <FaPrint /> <span className="hidden sm:inline">Print Menu</span><span className="sm:hidden">Print</span>
+            </button>
+            <button
+              onClick={handleInitialize}
+              className="bg-green-600 text-white px-4 sm:px-6 py-2 sm:py-3 rounded-lg hover:bg-green-700 transition-colors flex items-center justify-center gap-2 text-sm sm:text-base"
+            >
+              <FaDownload /> <span className="hidden sm:inline">Load Predefined Menu</span><span className="sm:hidden">Load Menu</span>
+            </button>
+            <Link
+              href="/menu/create"
+              className="bg-blue-600 text-white px-4 sm:px-6 py-2 sm:py-3 rounded-lg hover:bg-blue-700 transition-colors flex items-center justify-center gap-2 text-sm sm:text-base font-medium"
+            >
+              <FaPlus /> Add Menu Item
+            </Link>
+          </div>
+        ) : (
+          <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
+            <button
+              onClick={() => stallManagementRef.current?.openCreateModal()}
+              className="bg-indigo-600 text-white px-4 sm:px-6 py-2 sm:py-3 rounded-lg hover:bg-indigo-700 transition-colors flex items-center justify-center gap-2 text-sm sm:text-base font-medium shadow-md hover:shadow-lg transition-all"
+            >
+              <FaPlus /> Create Stall Template
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Conditional Rendering based on View */}
       {view === 'stalls' ? (
         <StallManagement 
+          ref={stallManagementRef}
           stallTemplates={stallTemplates} 
           menuItems={menuItems} 
           onRefresh={loadStallTemplates} 
