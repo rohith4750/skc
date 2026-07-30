@@ -248,6 +248,7 @@ export default function OrderForm({ orderId, isEditMode = false, initialOrderTyp
     })
     const [collapsedMealTypes, setCollapsedMealTypes] = useState<Record<string, boolean>>({})
     const [collapsedSelectedItems, setCollapsedSelectedItems] = useState<Record<string, boolean>>({})
+    const [collapsedMenuPicker, setCollapsedMenuPicker] = useState<Record<string, boolean>>({})
     const [originalAdvancePaid, setOriginalAdvancePaid] = useState<number>(0)
     const [originalMealTypeAmounts, setOriginalMealTypeAmounts] = useState<Record<string, any>>({})
     const [formError, setFormError] = useState<string>('')
@@ -493,12 +494,17 @@ export default function OrderForm({ orderId, isEditMode = false, initialOrderTyp
             setOriginalAdvancePaid(order.advancePaid || 0)
             setOriginalMealTypeAmounts(mealTypeAmounts || {})
 
-            // Collapse all sessions by default when editing
             const initialCollapsed: Record<string, boolean> = {}
+            const initialCollapsedSelected: Record<string, boolean> = {}
+            const initialCollapsedMenuPicker: Record<string, boolean> = {}
             mealTypesArray.forEach(mt => {
                 initialCollapsed[mt.id] = true
+                initialCollapsedSelected[mt.id] = true
+                initialCollapsedMenuPicker[mt.id] = true
             })
             setCollapsedMealTypes(initialCollapsed)
+            setCollapsedSelectedItems(initialCollapsedSelected)
+            setCollapsedMenuPicker(initialCollapsedMenuPicker)
         } catch (error) {
             console.error('Failed to load order:', error)
             toast.error('Failed to load order data')
@@ -633,7 +639,7 @@ export default function OrderForm({ orderId, isEditMode = false, initialOrderTyp
         const id = uuidv4()
         setFormData(prev => ({
             ...prev,
-            mealTypes: [{
+            mealTypes: [...prev.mealTypes, {
                 id,
                 eventName: '',
                 venue: '',
@@ -651,9 +657,11 @@ export default function OrderForm({ orderId, isEditMode = false, initialOrderTyp
                 itemQuantities: {},
                 itemPrices: {},
                 description: '',
-            }, ...prev.mealTypes]
+            }]
         }))
         setCollapsedMealTypes(prev => ({ ...prev, [id]: false }))
+        setCollapsedSelectedItems(prev => ({ ...prev, [id]: true }))
+        setCollapsedMenuPicker(prev => ({ ...prev, [id]: true }))
     }
 
     const handleSelectCommonItems = (mealTypeId: string) => {
@@ -1268,13 +1276,6 @@ export default function OrderForm({ orderId, isEditMode = false, initialOrderTyp
                     <h2 className="text-xl font-bold text-gray-800 flex items-center gap-2">
                         <FaUtensils className="text-primary-500" /> Meal Sessions
                     </h2>
-                    <button
-                        type="button"
-                        onClick={handleAddMealType}
-                        className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 font-medium flex items-center gap-2 transition-all shadow-md active:scale-95"
-                    >
-                        <FaPlus /> Add Session
-                    </button>
                 </div>
 
                 <div className="space-y-4">
@@ -1490,9 +1491,24 @@ export default function OrderForm({ orderId, isEditMode = false, initialOrderTyp
                                     )}
 
                                     <div className="space-y-6">
-                                        <div className="space-y-3">
-                                            <div className="relative">
-                                                <FaSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                                        <div className="border-t border-gray-50 pt-4 space-y-2">
+                                            <h4 className="font-bold text-gray-800 flex items-center justify-between">
+                                                <span className="flex items-center gap-2">
+                                                    <FaSearch className="text-primary-500" /> Search & Pick Menu
+                                                </span>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setCollapsedMenuPicker(p => ({ ...p, [mt.id]: !p[mt.id] }))}
+                                                    className="text-primary-600 text-sm font-medium hover:underline"
+                                                >
+                                                    {collapsedMenuPicker[mt.id] ? "Show Picker" : "Hide Picker"}
+                                                </button>
+                                            </h4>
+                                            
+                                            {!collapsedMenuPicker[mt.id] && (
+                                                <div className="space-y-3">
+                                                    <div className="relative">
+                                                        <FaSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
                                                 <input
                                                     type="text"
                                                     className="w-full pl-10 pr-4 py-2.5 bg-gray-50 border border-gray-100 rounded-xl outline-none focus:ring-2 focus:ring-primary-500 transition-all font-bold"
@@ -1676,8 +1692,10 @@ export default function OrderForm({ orderId, isEditMode = false, initialOrderTyp
                                                 </div>
                                             )}
                                         </div>
+                                    )}
+                                    </div>
 
-                                        <div className="border-t border-gray-50 pt-4 space-y-2">
+                                    <div className="border-t border-gray-50 pt-4 space-y-2">
                                             <h4 className="font-bold text-gray-800 flex items-center justify-between">
                                                 <span>Selected Menu Items ({mt.selectedMenuItems.length})</span>
                                                 <button
@@ -1792,6 +1810,16 @@ export default function OrderForm({ orderId, isEditMode = false, initialOrderTyp
                             )}
                         </div>
                     ))}
+                </div>
+
+                <div className="flex justify-center mt-4">
+                    <button
+                        type="button"
+                        onClick={handleAddMealType}
+                        className="px-6 py-3 bg-primary-600 text-white rounded-xl hover:bg-primary-700 font-bold flex items-center gap-2 transition-all shadow-md active:scale-95"
+                    >
+                        <FaPlus /> Add Another Session
+                    </button>
                 </div>
             </div>
 
