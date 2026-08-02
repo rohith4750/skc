@@ -6,6 +6,7 @@ import { FaArrowLeft } from 'react-icons/fa'
 import { toast } from 'sonner'
 import Link from 'next/link'
 import FormError from '@/components/FormError'
+import { CustomSelect } from '@/components/ui/CustomSelect'
 
 const WORKFORCE_ROLES = ['supervisor', 'chef', 'labours', 'boys', 'transport', 'gas', 'pan', 'store', 'other']
 
@@ -148,18 +149,15 @@ function CreateWorkforceContent() {
               <label className="block text-sm font-semibold text-gray-700 mb-2">
                 Role *
               </label>
-              <select
+              <CustomSelect
                 value={formData.role}
                 onChange={(e) => setFormData({ ...formData, role: e.target.value })}
-                className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-                required
-              >
-                {WORKFORCE_ROLES.map(role => (
-                  <option key={role} value={role}>
-                    {role.charAt(0).toUpperCase() + role.slice(1)}
-                  </option>
-                ))}
-              </select>
+                options={WORKFORCE_ROLES.map(role => ({
+                  value: role,
+                  label: role.charAt(0).toUpperCase() + role.slice(1)
+                }))}
+                className="w-full"
+              />
             </div>
 
             <div className="flex items-center">

@@ -1,13 +1,14 @@
 "use client";
 import React, { useEffect, useState, useMemo, useRef, useCallback, memo } from 'react'
 import { v4 as uuidv4 } from 'uuid'
-import { formatCurrency, formatDateTime, sanitizeMealLabel } from '@/lib/utils'
+import { formatCurrency, formatDate, formatTime, formatDateTime, sanitizeMealLabel } from '@/lib/utils'
 import { Customer, MenuItem, Order, OrderItem, Supervisor, StallTemplate } from '@/types'
-import { FaSearch, FaPlus, FaTimes, FaUser, FaCalculator, FaWallet, FaUtensils, FaChevronDown, FaChevronUp, FaCalendarAlt, FaClock, FaMapMarkerAlt, FaUsers, FaTag, FaStore, FaTrash } from 'react-icons/fa'
+import { FaSearch, FaPlus, FaTimes, FaUser, FaCalculator, FaWallet, FaUtensils, FaChevronDown, FaChevronUp, FaCalendarAlt, FaClock, FaMapMarkerAlt, FaUsers, FaTag, FaStore, FaTrash, FaSortAmountDown } from 'react-icons/fa'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { toast } from 'sonner'
 import FormError from '@/components/FormError'
 import { Storage } from '@/lib/storage-api'
+import { CustomSelect } from '@/components/ui/CustomSelect'
 
 const FOOD_CATEGORIES = [
     { id: 'all', label: 'All Items' },
@@ -198,7 +199,13 @@ function PositionInput({ value, min, max, onChange }: PositionInputProps) {
             value={localValue}
             min={min}
             max={max}
-            onChange={(e) => setLocalValue(e.target.value)}
+            onChange={(e) => {
+                const val = e.target.value;
+                setLocalValue(val);
+                if (val && parseInt(val) >= min && parseInt(val) <= max) {
+                    onChange(val);
+                }
+            }}
             onBlur={handleBlurOrEnter}
             onKeyDown={(e) => {
                 if (e.key === 'Enter') {
@@ -206,8 +213,8 @@ function PositionInput({ value, min, max, onChange }: PositionInputProps) {
                     handleBlurOrEnter();
                 }
             }}
-            className="w-7 h-6 text-center text-[10px] font-black bg-gray-50 border border-gray-200 rounded-lg focus:ring-1 focus:ring-primary-500 outline-none text-slate-700 p-0"
-            title="Type number and press Enter or click away"
+            className="position-input !w-7 !h-7 !min-h-0 !max-h-none !py-0 !px-0 text-center text-xs font-black bg-orange-50/80 border border-primary-300 text-primary-700 rounded-md focus:ring-2 focus:ring-primary-500 outline-none shrink-0"
+            title="Item position number — change to reorder"
         />
     )
 }
@@ -661,6 +668,30 @@ export default function OrderForm({ orderId, isEditMode = false, initialOrderTyp
         setCollapsedMealTypes(prev => ({ ...prev, [id]: false }))
         setCollapsedSelectedItems(prev => ({ ...prev, [id]: true }))
         setCollapsedMenuPicker(prev => ({ ...prev, [id]: true }))
+    }
+
+    const handleSortMealTypes = () => {
+        setFormData(prev => ({
+            ...prev,
+            mealTypes: [...prev.mealTypes].sort((a, b) => {
+                // Primary: sort by date ascending (blank dates go to end)
+                const dateA = a.date || '9999-99-99'
+                const dateB = b.date || '9999-99-99'
+                if (dateA !== dateB) return dateA.localeCompare(dateB)
+
+                // Secondary: sort by time ascending (blank times go to end)
+                const timeA = a.time || '99:99'
+                const timeB = b.time || '99:99'
+                if (timeA !== timeB) return timeA.localeCompare(timeB)
+
+                // Tertiary: natural meal-time order
+                const mealOrder: Record<string, number> = {
+                    breakfast: 1, lunch: 2, snacks: 3, dinner: 4,
+                    tiffins: 5, sweets: 6, saree: 7, special_order: 8,
+                }
+                return (mealOrder[a.menuType] ?? 99) - (mealOrder[b.menuType] ?? 99)
+            })
+        }))
     }
 
     const handleSelectCommonItems = (mealTypeId: string) => {
@@ -1196,7 +1227,7 @@ export default function OrderForm({ orderId, isEditMode = false, initialOrderTyp
                     <div className="md:col-span-2 relative" ref={customerSearchRef}>
                         <label className="block text-[10px] font-black text-gray-400 mb-1.5 uppercase tracking-widest">Search Customer</label>
                         <div className="relative">
-                            <FaSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs" />
+                            <FaSearch className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 text-sm z-10 pointer-events-none" />
                             <input
                                 type="text"
                                 value={customerSearchTerm}
@@ -1205,7 +1236,7 @@ export default function OrderForm({ orderId, isEditMode = false, initialOrderTyp
                                     setShowCustomerDropdown(true)
                                 }}
                                 onFocus={() => setShowCustomerDropdown(true)}
-                                className="w-full pl-9 pr-4 py-2 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary-500 outline-none transition-all text-sm font-bold"
+                                className="w-full pl-10 pr-4 py-2 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary-500 outline-none transition-all text-sm font-bold"
                                 placeholder="Name or Phone Number"
                             />
                         </div>
@@ -1254,23 +1285,23 @@ export default function OrderForm({ orderId, isEditMode = false, initialOrderTyp
                     </div>
 
                     <div className="md:col-span-1">
-                        <label className="block text-[10px] font-black text-gray-400 mb-1.5 uppercase tracking-widest">Status</label>
-                        <select
+                        <CustomSelect
                             value={currentOrderStatus}
                             onChange={(e) => setCurrentOrderStatus(e.target.value)}
-                            className={`w-full px-4 py-2 rounded-xl border border-gray-200 outline-none font-black text-xs transition-all ${currentOrderStatus === 'quotation' ? 'bg-purple-50 text-purple-700 border-purple-200' :
+                            options={[
+                                { value: 'quotation', label: 'Quotation' },
+                                { value: 'pending', label: 'Pending' },
+                                { value: 'in_progress', label: 'In Progress' },
+                                { value: 'completed', label: 'Completed' },
+                                { value: 'cancelled', label: 'Cancelled' },
+                            ]}
+                            className={`w-full rounded-xl transition-all ${currentOrderStatus === 'quotation' ? 'bg-purple-50 text-purple-700 border-purple-200' :
                                 currentOrderStatus === 'completed' ? 'bg-green-50 text-green-700 border-green-200' :
                                     currentOrderStatus === 'in_progress' ? 'bg-blue-50 text-blue-700 border-blue-200' :
                                         currentOrderStatus === 'cancelled' ? 'bg-red-50 text-red-700 border-red-200' :
                                             'bg-orange-50 text-orange-700 border-orange-200'
                                 }`}
-                        >
-                            <option value="quotation">Quotation</option>
-                            <option value="pending">Pending</option>
-                            <option value="in_progress">In Progress</option>
-                            <option value="completed">Completed</option>
-                            <option value="cancelled">Cancelled</option>
-                        </select>
+                        />
                     </div>
                 </div>
 
@@ -1297,6 +1328,17 @@ export default function OrderForm({ orderId, isEditMode = false, initialOrderTyp
                     <h2 className="text-xl font-bold text-gray-800 flex items-center gap-2">
                         <FaUtensils className="text-primary-500" /> Meal Sessions
                     </h2>
+                    {formData.mealTypes.length > 1 && (
+                        <button
+                            type="button"
+                            onClick={handleSortMealTypes}
+                            title="Sort sessions by date & time"
+                            className="flex items-center gap-2 px-4 py-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 rounded-[5px] text-sm font-medium transition-all active:scale-95 shadow-sm"
+                        >
+                            <FaSortAmountDown size={13} />
+                            Sort by Date & Time
+                        </button>
+                    )}
                 </div>
 
                 <div className="space-y-4">
@@ -1313,9 +1355,9 @@ export default function OrderForm({ orderId, isEditMode = false, initialOrderTyp
                                             {mt.eventName && <span className="ml-2 text-sm font-normal text-gray-500">({mt.eventName})</span>}
                                         </h3>
                                         <div className="flex items-center gap-4 mt-1 text-xs text-gray-500">
-                                            {mt.date && <span className="flex items-center gap-1"><FaCalendarAlt /> {mt.date}</span>}
-                                            {mt.time && <span className="flex items-center gap-1"><FaClock /> {mt.time}</span>}
-                                            {mt.venue && <span className="flex items-center gap-1"><FaMapMarkerAlt /> {mt.venue}</span>}
+                                            {mt.date && <span className="flex items-center gap-1 font-semibold text-primary-700 bg-primary-50 px-2 py-0.5 rounded border border-primary-100/50"><FaCalendarAlt className="text-primary-500" /> {formatDate(mt.date)}</span>}
+                                            {mt.time && <span className="flex items-center gap-1 font-semibold text-amber-700 bg-amber-50 px-2 py-0.5 rounded border border-amber-100/50"><FaClock className="text-amber-500" /> {formatTime(mt.time)}</span>}
+                                            {mt.venue && <span className="flex items-center gap-1 font-medium text-slate-600 bg-slate-100 px-2 py-0.5 rounded"><FaMapMarkerAlt className="text-slate-400" /> {mt.venue}</span>}
                                         </div>
                                     </div>
                                 </div>
@@ -1352,21 +1394,22 @@ export default function OrderForm({ orderId, isEditMode = false, initialOrderTyp
                                         </div>
                                         <div>
                                             <label className="block text-sm font-medium text-gray-700 mb-2">Meal Category</label>
-                                            <select
+                                            <CustomSelect
                                                 value={mt.menuType}
                                                 onChange={(e) => handleUpdateMealType(mt.id, 'menuType', e.target.value)}
-                                                className="w-full px-4 py-2 bg-gray-50 border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary-500 outline-none capitalize"
-                                            >
-                                                <option value="">Select Category</option>
-                                                <option value="breakfast">Breakfast</option>
-                                                <option value="lunch">Lunch</option>
-                                                <option value="dinner">Dinner</option>
-                                                <option value="snacks">Snacks</option>
-                                                <option value="tiffins">Tiffins</option>
-                                                <option value="sweets">Sweets</option>
-                                                <option value="saree">Saree</option>
-                                                <option value="special_order">Special Order</option>
-                                            </select>
+                                                placeholder="Select Category"
+                                                options={[
+                                                    { value: 'breakfast', label: 'Breakfast' },
+                                                    { value: 'lunch', label: 'Lunch' },
+                                                    { value: 'dinner', label: 'Dinner' },
+                                                    { value: 'snacks', label: 'Snacks' },
+                                                    { value: 'tiffins', label: 'Tiffins' },
+                                                    { value: 'sweets', label: 'Sweets' },
+                                                    { value: 'saree', label: 'Saree' },
+                                                    { value: 'special_order', label: 'Special Order' },
+                                                ]}
+                                                className="w-full bg-gray-50 border-gray-200 rounded-lg capitalize"
+                                            />
                                         </div>
                                         <div>
                                             <label className="block text-sm font-medium text-gray-700 mb-2">{formData.orderType === 'EVENT' ? 'Venue' : 'Delivery/Pickup Venue'}</label>
@@ -1402,26 +1445,21 @@ export default function OrderForm({ orderId, isEditMode = false, initialOrderTyp
                                         </div>
                                         <div>
                                             <label className="block text-sm font-medium text-gray-700 mb-2">Service Time</label>
-                                            <select
+                                            <CustomSelect
                                                 value={mt.time || ''}
                                                 onChange={(e) => handleUpdateMealType(mt.id, 'time', e.target.value)}
-                                                className="w-full px-4 py-2 bg-gray-50 border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary-500 outline-none"
-                                            >
-                                                <option value="">Select Time</option>
-                                                {Array.from({ length: 48 }).map((_, i) => {
+                                                placeholder="Select Time"
+                                                options={Array.from({ length: 48 }).map((_, i) => {
                                                     const hour24 = Math.floor(i / 2);
                                                     const minute = i % 2 === 0 ? '00' : '30';
                                                     const hour12 = hour24 === 0 ? 12 : (hour24 > 12 ? hour24 - 12 : hour24);
                                                     const ampm = hour24 >= 12 ? 'PM' : 'AM';
                                                     const timeValue = `${hour24.toString().padStart(2, '0')}:${minute}`;
                                                     const timeLabel = `${hour12.toString().padStart(2, '0')}:${minute} ${ampm}`;
-                                                    return (
-                                                        <option key={timeValue} value={timeValue}>
-                                                            {timeLabel}
-                                                        </option>
-                                                    );
+                                                    return { value: timeValue, label: timeLabel };
                                                 })}
-                                            </select>
+                                                className="w-full bg-gray-50 border-gray-200 rounded-lg"
+                                            />
                                         </div>
                                         <div>
                                             <label className="block text-sm font-medium text-gray-700 mb-2">{formData.orderType === 'EVENT' ? 'Members Group Count' : 'Requested Quantity'}</label>
@@ -1590,7 +1628,7 @@ export default function OrderForm({ orderId, isEditMode = false, initialOrderTyp
                                             {!collapsedMenuPicker[mt.id] && (
                                                 <div className="space-y-3">
                                                     <div className="relative">
-                                                        <FaSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                                                        <FaSearch className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 text-sm z-10 pointer-events-none" />
                                                         <input
                                                             type="text"
                                                             className="w-full pl-10 pr-4 py-2.5 bg-gray-50 border border-gray-100 rounded-xl outline-none focus:ring-2 focus:ring-primary-500 transition-all font-bold"
@@ -1748,7 +1786,7 @@ export default function OrderForm({ orderId, isEditMode = false, initialOrderTyp
                                             )}
                                         </div>
 
-                                        {!collapsedSelectedItems[mt.id] && mt.selectedMenuItems.length > 0 && (
+                                                        {!collapsedSelectedItems[mt.id] && mt.selectedMenuItems.length > 0 && (
                                             <div className="flex flex-wrap gap-3">
                                                 {mt.selectedMenuItems.map((itemId, idx) => {
                                                     const item = menuItems.find(m => m.id === itemId)
@@ -1756,7 +1794,7 @@ export default function OrderForm({ orderId, isEditMode = false, initialOrderTyp
                                                     return (
                                                         <div
                                                             key={`${mt.id}::${itemId}`}
-                                                            className="w-48 flex items-start gap-2.5 p-2 bg-white border border-gray-100 rounded-xl shadow-sm hover:border-primary-200 transition-all"
+                                                            className="w-56 sm:w-60 flex items-start gap-2.5 p-2.5 bg-white border border-gray-200/80 rounded-xl shadow-sm hover:border-primary-300 transition-all group relative"
                                                         >
                                                             <div className="flex-shrink-0 flex items-center justify-center pt-0.5">
                                                                 <PositionInput
@@ -1767,10 +1805,20 @@ export default function OrderForm({ orderId, isEditMode = false, initialOrderTyp
                                                                 />
                                                             </div>
                                                             <div className="flex-1 min-w-0">
-                                                                <div className="font-bold text-gray-800 text-xs truncate leading-tight">{item.name}</div>
+                                                                <div className="flex items-center justify-between gap-1">
+                                                                    <div className="font-bold text-gray-800 text-xs truncate leading-tight flex-1">{item.name}</div>
+                                                                    <button
+                                                                        type="button"
+                                                                        onClick={() => handleMenuItemToggle(mt.id, itemId)}
+                                                                        className="text-gray-300 hover:text-red-500 transition-colors p-0.5 text-xs shrink-0"
+                                                                        title="Remove item"
+                                                                    >
+                                                                        <FaTimes />
+                                                                    </button>
+                                                                </div>
                                                                 <input
                                                                     type="text"
-                                                                    placeholder="Customization..."
+                                                                    placeholder="Add note / custom..."
                                                                     value={mt.itemCustomizations[itemId] || ''}
                                                                     onChange={(e) => {
                                                                         const val = e.target.value
@@ -1779,7 +1827,7 @@ export default function OrderForm({ orderId, isEditMode = false, initialOrderTyp
                                                                             mealTypes: prev.mealTypes.map(m => m.id === mt.id ? { ...m, itemCustomizations: { ...m.itemCustomizations, [itemId]: val } } : m)
                                                                         }))
                                                                     }}
-                                                                    className="text-[9px] w-full mt-0.5 text-gray-500 bg-transparent border-b border-transparent focus:border-primary-300 outline-none placeholder:text-gray-300 font-medium"
+                                                                    className="text-[10px] w-full mt-1.5 px-2 py-1 text-gray-700 bg-gray-50/80 border border-gray-200/70 rounded-md focus:border-primary-400 focus:bg-white outline-none placeholder:text-gray-400 font-medium transition-colors"
                                                                 />
                                                                 {mt.menuType === 'saree' && (
                                                                     <div className="mt-1.5 space-y-1 border-t border-gray-50 pt-1.5">
@@ -1891,20 +1939,13 @@ export default function OrderForm({ orderId, isEditMode = false, initialOrderTyp
                                             <div>
                                                 <label className="block text-[10px] font-black text-slate-400 mb-2 uppercase tracking-widest">Quick Load Template</label>
                                                 <div className="relative group/template">
-                                                    <FaStore className="absolute left-4 top-1/2 -translate-y-1/2 text-primary-500 group-focus-within/template:scale-110 transition-transform" size={12} />
-                                                    <select
-                                                        onChange={(e) => handleLoadStallTemplate(stall.id, e.target.value)}
-                                                        className="w-full pl-10 pr-4 py-3 bg-primary-50 border border-primary-100 rounded-2xl outline-none font-bold text-primary-700 text-xs focus:ring-4 focus:ring-primary-500/10 focus:border-primary-500 appearance-none cursor-pointer transition-all"
+                                                    <CustomSelect
                                                         value=""
-                                                    >
-                                                        <option value="" disabled>Choose a pre-defined stall package...</option>
-                                                        {stallTemplates.map(t => (
-                                                            <option key={t.id} value={t.id}>{t.name}</option>
-                                                        ))}
-                                                    </select>
-                                                    <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-primary-400">
-                                                        <FaChevronDown size={10} />
-                                                    </div>
+                                                        onChange={(e) => handleLoadStallTemplate(stall.id, e.target.value)}
+                                                        placeholder="Choose a pre-defined stall package..."
+                                                        options={stallTemplates.map(t => ({ value: t.id, label: t.name }))}
+                                                        className="w-full"
+                                                    />
                                                 </div>
                                             </div>
                                         )}
@@ -1952,11 +1993,20 @@ export default function OrderForm({ orderId, isEditMode = false, initialOrderTyp
                                             </div>
                                             <div>
                                                 <label className="block text-[10px] font-black text-slate-400 mb-2 uppercase tracking-widest">Time</label>
-                                                <input
-                                                    type="time"
-                                                    value={stall.time}
+                                                <CustomSelect
+                                                    value={stall.time || ''}
                                                     onChange={(e) => handleUpdateStall(stall.id, 'time', e.target.value)}
-                                                    className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl outline-none font-bold text-slate-700 text-xs"
+                                                    placeholder="Select Time"
+                                                    options={Array.from({ length: 48 }).map((_, i) => {
+                                                        const hour24 = Math.floor(i / 2);
+                                                        const minute = i % 2 === 0 ? '00' : '30';
+                                                        const hour12 = hour24 === 0 ? 12 : (hour24 > 12 ? hour24 - 12 : hour24);
+                                                        const ampm = hour24 >= 12 ? 'PM' : 'AM';
+                                                        const timeValue = `${hour24.toString().padStart(2, '0')}:${minute}`;
+                                                        const timeLabel = `${hour12.toString().padStart(2, '0')}:${minute} ${ampm}`;
+                                                        return { value: timeValue, label: timeLabel };
+                                                    })}
+                                                    className="w-full bg-white border-slate-200 rounded-xl"
                                                 />
                                             </div>
                                         </div>
@@ -2058,13 +2108,13 @@ export default function OrderForm({ orderId, isEditMode = false, initialOrderTyp
                                         </h3>
                                         <div className="flex items-center gap-3">
                                             <div className="relative group">
-                                                <FaSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-300 group-focus-within:text-primary-500 transition-colors" size={12} />
+                                                <FaSearch className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-primary-500 transition-colors text-xs z-10 pointer-events-none" size={12} />
                                                 <input
                                                     type="text"
                                                     placeholder="Search specialized stall items..."
                                                     value={menuItemSearch[stall.id] || ''}
                                                     onChange={(e) => setMenuItemSearch(p => ({ ...p, [stall.id]: e.target.value }))}
-                                                    className="pl-9 pr-4 py-2 bg-white border border-slate-200 rounded-xl text-xs font-bold outline-none focus:ring-4 focus:ring-primary-500/10 focus:border-primary-500 w-64 transition-all"
+                                                    className="pl-10 pr-4 py-2 bg-white border border-slate-200 rounded-xl text-xs font-bold outline-none focus:ring-4 focus:ring-primary-500/10 focus:border-primary-500 w-64 transition-all"
                                                 />
                                             </div>
                                         </div>
@@ -2279,7 +2329,8 @@ export default function OrderForm({ orderId, isEditMode = false, initialOrderTyp
                                         <span className="w-5 h-5 rounded-full bg-primary-100 text-primary-600 flex items-center justify-center text-[9px] font-black shrink-0">{i + 1}</span>
                                         <div className="flex-1 min-w-0">
                                             <span className="font-bold text-gray-800 text-sm">{mt.menuType ? sanitizeMealLabel(mt.menuType) : 'Session'}</span>
-                                            {mt.date && <span className="ml-2 text-[10px] text-gray-400">{mt.date}</span>}
+                                            {mt.date && <span className="ml-2 text-[11px] font-medium text-primary-700 bg-primary-50 px-1.5 py-0.5 rounded">{formatDate(mt.date)}</span>}
+                                            {mt.time && <span className="ml-1 text-[11px] font-medium text-amber-700 bg-amber-50 px-1.5 py-0.5 rounded">{formatTime(mt.time)}</span>}
                                             {mt.eventName && <span className="ml-1 text-[10px] text-gray-400">({mt.eventName})</span>}
                                         </div>
                                         {mt.menuType === 'saree' ? (
@@ -2437,14 +2488,14 @@ export default function OrderForm({ orderId, isEditMode = false, initialOrderTyp
                 <button
                     type="button"
                     onClick={() => router.back()}
-                    className="px-6 py-2.5 text-gray-600 font-bold"
+                    className="px-6 h-11 inline-flex items-center justify-center border-2 border-primary-500 text-primary-600 rounded-xl font-bold hover:bg-primary-50 hover:border-primary-600 active:scale-95 transition-all shadow-sm"
                 >
                     Cancel
                 </button>
                 <button
                     type="submit"
                     disabled={loading}
-                    className="px-10 py-3 bg-primary-600 text-white rounded-xl hover:bg-primary-700 font-black shadow-lg hover:shadow-primary-300 transition-all flex items-center gap-2 active:scale-95 disabled:opacity-50"
+                    className="px-10 h-11 inline-flex items-center justify-center bg-primary-600 text-white rounded-xl hover:bg-primary-700 font-bold shadow-lg hover:shadow-primary-300 transition-all gap-2 active:scale-95 disabled:opacity-50"
                 >
                     {loading ? 'Saving...' : isEditMode ? 'Update Order' : 'Create Order'}
                 </button>
@@ -2478,7 +2529,7 @@ export default function OrderForm({ orderId, isEditMode = false, initialOrderTyp
                             <button
                                 type="button"
                                 onClick={() => setShowQuickAddModal(false)}
-                                className="flex-1 py-3 text-gray-600 font-bold"
+                                className="flex-1 py-3 border-2 border-primary-500 text-primary-600 rounded-xl font-bold hover:bg-primary-50 hover:border-primary-600 active:scale-95 transition-all"
                             >
                                 Cancel
                             </button>
@@ -2527,7 +2578,7 @@ export default function OrderForm({ orderId, isEditMode = false, initialOrderTyp
                             </div>
                         </div>
                         <div className="flex gap-4 mt-8">
-                            <button type="button" onClick={() => setShowAddCustomerForm(false)} className="flex-1 py-3 text-gray-600">Cancel</button>
+                            <button type="button" onClick={() => setShowAddCustomerForm(false)} className="flex-1 py-3 border-2 border-primary-500 text-primary-600 rounded-xl font-bold hover:bg-primary-50 transition-colors">Cancel</button>
                             <button
                                 type="button"
                                 onClick={async () => {
@@ -2561,7 +2612,7 @@ export default function OrderForm({ orderId, isEditMode = false, initialOrderTyp
                             <button
                                 type="button"
                                 onClick={() => setConfirmModal(p => ({ ...p, isOpen: false }))}
-                                className="flex-1 py-3 text-gray-600 font-bold text-sm"
+                                className="flex-1 py-3 border-2 border-primary-500 text-primary-600 rounded-xl font-bold text-sm hover:bg-primary-50 transition-colors"
                             >
                                 Cancel
                             </button>

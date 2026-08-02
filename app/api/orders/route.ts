@@ -268,7 +268,7 @@ export async function POST(request: NextRequest) {
       severity: "success",
     });
 
-    // Send email alert to all internal users
+    // Send email alert to all internal users (single consolidated alert)
     sendOrderCreatedAlert(order.id).catch((error) => {
       console.error("Failed to send order created email alert:", error);
     });
@@ -280,11 +280,6 @@ export async function POST(request: NextRequest) {
         message: `${customerName} · Advance ${advancePaid.toFixed(2)}`,
         entityId: order.id,
         severity: "info",
-      });
-
-      // Send payment received email alert
-      sendPaymentReceivedAlert(order.id, advancePaid).catch((error) => {
-        console.error("Failed to send payment received email alert:", error);
       });
     }
 

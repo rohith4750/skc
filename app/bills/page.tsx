@@ -19,6 +19,8 @@ import { applySmartPaging } from '@/lib/pdf-utils'
 import ConfirmModal from '@/components/ConfirmModal'
 import Logo from '@/components/Logo'
 import QuickBillForm from '@/components/bills/QuickBillForm'
+import { CustomSelect } from '@/components/ui/CustomSelect'
+import { CustomDatePicker } from '@/components/ui/CustomDatePicker'
 
 interface ExtendedBill {
   id: string;
@@ -658,49 +660,35 @@ export default function BillsPage() {
 
             <div className="h-8 w-px bg-slate-200 mx-2 hidden md:block"></div>
             {/* Filters */}
-            <div className="flex flex-col sm:flex-row items-center gap-2">
+            <div className="flex flex-col sm:flex-row items-center gap-2.5 relative z-40">
               {/* Specific Date Filter */}
-              <div className="flex items-center bg-white px-3 py-1.5 rounded-xl border border-slate-200 shadow-sm flex-shrink-0">
-                <input
-                  type="date"
-                  value={filterDate}
-                  onChange={(e) => setFilterDate(e.target.value)}
-                  className="bg-transparent text-sm font-bold text-slate-700 outline-none cursor-pointer"
-                />
-                {filterDate && (
-                  <button
-                    onClick={() => setFilterDate('')}
-                    className="ml-2 text-slate-400 hover:text-slate-600 focus:outline-none"
-                    title="Clear Specific Date"
-                  >
-                    ✕
-                  </button>
-                )}
-              </div>
+              <CustomDatePicker
+                value={filterDate}
+                onChange={(val) => setFilterDate(val)}
+                placeholder="dd-mm-yyyy"
+                className="w-44"
+              />
 
               {/* Month/Year Selector */}
-              <div className={`flex items-center gap-2 bg-white px-3 py-1.5 rounded-xl border border-slate-200 shadow-sm transition-opacity duration-300 ${filterDate ? 'opacity-40 pointer-events-none' : 'opacity-100'}`}>
-                <select
-                  value={selectedMonth}
+              <div className={`flex items-center gap-2.5 transition-opacity duration-300 ${filterDate ? 'opacity-40 pointer-events-none' : 'opacity-100'}`}>
+                <CustomSelect
+                  value={String(selectedMonth)}
                   onChange={(e) => setSelectedMonth(parseInt(e.target.value))}
-                  className="bg-transparent text-sm font-bold text-slate-700 outline-none cursor-pointer"
-                >
-                  <option value={0}>All Months</option>
-                  {['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'].map((m, i) => (
-                    <option key={m} value={i + 1}>{m}</option>
-                  ))}
-                </select>
-                <div className="w-px h-4 bg-slate-200"></div>
-                <select
-                  value={selectedYear}
+                  options={[
+                    { value: '0', label: 'All Months' },
+                    ...['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'].map((m, i) => ({ value: String(i + 1), label: m }))
+                  ]}
+                  className="w-28"
+                />
+                <CustomSelect
+                  value={String(selectedYear)}
                   onChange={(e) => setSelectedYear(parseInt(e.target.value))}
-                  className="bg-transparent text-sm font-bold text-slate-700 outline-none cursor-pointer"
-                >
-                  <option value={0}>All Years</option>
-                  {[2023, 2024, 2025, 2026, 2027, 2028, 2029, 2030].map(y => (
-                    <option key={y} value={y}>{y}</option>
-                  ))}
-                </select>
+                  options={[
+                    { value: '0', label: 'All Years' },
+                    ...[2023,2024,2025,2026,2027,2028,2029,2030].map(y => ({ value: String(y), label: String(y) }))
+                  ]}
+                  className="w-24"
+                />
               </div>
             </div>
 

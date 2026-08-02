@@ -21,6 +21,8 @@ import { FaMapMarkerAlt } from "react-icons/fa";
 import { formatCurrency } from "@/lib/utils";
 import { StatCard } from "@/components/dashboard/StatCard";
 import { AnalyticsSection } from "@/components/dashboard/AnalyticsSection";
+import { CustomSelect } from "@/components/ui/CustomSelect";
+import { CustomDatePicker } from "@/components/ui/CustomDatePicker";
 
 export default function Dashboard() {
   const [userRole, setUserRole] = useState<string | null>(null);
@@ -93,7 +95,7 @@ export default function Dashboard() {
   return (
     <div className="p-4 sm:p-6 lg:p-8 pt-20 lg:pt-8 bg-gray-50/50 min-h-screen">
       {/* Header & Filters */}
-      <div className="mb-10 flex flex-col lg:flex-row lg:items-end justify-between gap-6">
+      <div className="mb-10 flex flex-col lg:flex-row lg:items-end justify-between gap-6 relative z-40">
         <div className="animate-fade-in">
           <h1 className="text-3xl sm:text-4xl font-black text-gray-900 tracking-tight">
             Dashboard
@@ -105,37 +107,29 @@ export default function Dashboard() {
           </p>
         </div>
 
-        <div className="flex flex-wrap items-center gap-3 animate-fade-in">
+        <div className="flex flex-wrap items-center gap-3 animate-fade-in relative z-40">
           {/* Specific Date Filter */}
-          <div className="bg-white px-4 py-2 rounded-[4px] flex items-center gap-2 border border-slate-200 shadow-xs">
-            <input
-              type="date"
-              value={selectedDate}
-              onChange={(e) => setSelectedDate(e.target.value)}
-              className="bg-transparent text-sm font-bold text-slate-700 outline-none cursor-pointer"
-            />
-            {selectedDate && (
-              <button onClick={() => setSelectedDate('')} className="text-slate-400 hover:text-red-500 transition-colors">✕</button>
-            )}
-          </div>
+          <CustomDatePicker
+            value={selectedDate}
+            onChange={(val) => setSelectedDate(val)}
+            placeholder="dd-mm-yyyy"
+            className="w-44"
+          />
 
           {/* Month/Year Selector */}
-          <div className={`bg-white px-2 py-1 rounded-[4px] flex items-center gap-1 border border-slate-200 shadow-xs transition-opacity ${selectedDate ? 'opacity-30 pointer-events-none' : ''}`}>
-            <select
-              value={selectedMonth}
+          <div className={`flex items-center gap-2.5 transition-opacity duration-300 ${selectedDate ? 'opacity-40 pointer-events-none' : 'opacity-100'}`}>
+            <CustomSelect
+              value={String(selectedMonth)}
               onChange={(e) => setSelectedMonth(parseInt(e.target.value))}
-              className="bg-transparent text-sm font-bold text-slate-700 outline-none px-3 py-1.5 cursor-pointer"
-            >
-              {DASHBOARD_MONTH_OPTIONS.map((m, i) => <option key={m} value={i + 1}>{m}</option>)}
-            </select>
-            <div className="w-px h-4 bg-slate-200"></div>
-            <select
-              value={selectedYear}
+              options={DASHBOARD_MONTH_OPTIONS.map((m, i) => ({ value: String(i + 1), label: m }))}
+              className="w-28"
+            />
+            <CustomSelect
+              value={String(selectedYear)}
               onChange={(e) => setSelectedYear(parseInt(e.target.value))}
-              className="bg-transparent text-sm font-bold text-slate-700 outline-none px-3 py-1.5 cursor-pointer"
-            >
-              {DASHBOARD_YEAR_OPTIONS.map((y) => <option key={y} value={y}>{y}</option>)}
-            </select>
+              options={DASHBOARD_YEAR_OPTIONS.map((y) => ({ value: String(y), label: String(y) }))}
+              className="w-24"
+            />
           </div>
         </div>
       </div>
@@ -157,56 +151,66 @@ export default function Dashboard() {
       )}
 
       {/* Analytics Sections */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 mb-10">
-        {analyticsCards.map((card, i) => (
-          <AnalyticsSection key={card.title} {...card} index={i} />
-        ))}
+      {analyticsCards.length > 0 && (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 mb-10">
+          {analyticsCards.map((card, i) => (
+            <AnalyticsSection key={card.title} {...card} index={i} />
+          ))}
+        </div>
+      )}
 
-        {/* Address / Location Analytics Card */}
-        <div className="bg-white border border-indigo-200/90 shadow-sm hover:shadow-md transition-all duration-200 rounded-[4px] p-6 animate-fade-in relative overflow-hidden">
-          <div className="flex items-center justify-between mb-6 relative z-10">
-            <div className="flex items-center gap-3">
-              <div className="bg-indigo-50 p-2.5 rounded-[4px] border border-indigo-100 shadow-xs">
-                <FaMapMarkerAlt className="w-5 h-5 text-indigo-600" />
-              </div>
-              <h2 className="text-lg font-black text-slate-800 tracking-tight">
+      {/* Top Order Locations (Address Analytics) — Full Width Horizontal Section */}
+      <div className="bg-white rounded-[4px] p-8 mb-10 border border-slate-200/90 shadow-sm hover:shadow-md transition-all duration-200 animate-fade-in relative overflow-hidden">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6 relative z-10">
+          <div className="flex items-center gap-3">
+            <div className="bg-indigo-50 p-3 rounded-[4px] border border-indigo-100 shadow-xs">
+              <FaMapMarkerAlt className="w-6 h-6 text-indigo-600" />
+            </div>
+            <div>
+              <h2 className="text-xl font-black text-slate-900 tracking-tight">
                 Top Order Locations
               </h2>
+              <p className="text-slate-500 text-xs font-semibold mt-0.5">
+                Top delivery & event destination breakdown by total billing value
+              </p>
             </div>
-            <span className="text-[10px] font-bold uppercase tracking-wider text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-[4px] border border-indigo-100">
-              Address Analytics
-            </span>
           </div>
+          <span className="text-xs font-black uppercase tracking-wider text-indigo-600 bg-indigo-50 px-3 py-1 rounded-[4px] border border-indigo-100 shrink-0 self-start sm:self-center">
+            Address Analytics
+          </span>
+        </div>
 
-          <div className="space-y-3 relative z-10">
-            {!stats.topLocations || stats.topLocations.length === 0 ? (
-              <p className="text-xs text-slate-400 font-medium py-4 text-center">No location address data available yet</p>
-            ) : (
-              stats.topLocations.map((loc, idx) => (
+        <div className="relative z-10">
+          {!stats.topLocations || stats.topLocations.length === 0 ? (
+            <p className="text-xs text-slate-400 font-medium py-6 text-center">No location address data available yet</p>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+              {stats.topLocations.map((loc, idx) => (
                 <div
                   key={idx}
-                  className="p-3 rounded-[4px] bg-slate-50/80 border border-slate-100 hover:bg-slate-100/70 transition-all flex items-center justify-between gap-3 group"
+                  className="p-4 rounded-[4px] bg-slate-50/80 border border-slate-100 hover:bg-indigo-50/40 hover:border-indigo-200 transition-all flex flex-col justify-between gap-3 group"
                 >
-                  <div className="flex items-center gap-2.5 min-w-0">
-                    <span className="w-6 h-6 rounded-[4px] bg-indigo-100 text-indigo-800 text-xs font-black flex items-center justify-center flex-shrink-0">
+                  <div className="flex items-start justify-between gap-2">
+                    <span className="w-7 h-7 rounded-[4px] bg-indigo-100 text-indigo-800 text-xs font-black flex items-center justify-center shrink-0">
                       #{idx + 1}
                     </span>
-                    <div className="min-w-0">
-                      <p className="text-sm font-bold text-slate-900 truncate group-hover:text-indigo-600 transition-colors">
-                        {loc.location}
-                      </p>
-                      <p className="text-[10px] font-semibold text-slate-400">
-                        {loc.orderCount} order(s) · {loc.percentage}% of total
-                      </p>
-                    </div>
+                    <span className="text-sm font-black text-emerald-600 text-right">
+                      {formatCurrency(loc.totalBilled)}
+                    </span>
                   </div>
-                  <span className="text-sm font-black text-emerald-600 flex-shrink-0">
-                    {formatCurrency(loc.totalBilled)}
-                  </span>
+
+                  <div className="min-w-0 mt-1">
+                    <p className="text-sm font-black text-slate-900 truncate group-hover:text-indigo-600 transition-colors" title={loc.location}>
+                      {loc.location}
+                    </p>
+                    <p className="text-[11px] font-bold text-slate-400 mt-0.5">
+                      {loc.orderCount} order(s) · {loc.percentage}% of total
+                    </p>
+                  </div>
                 </div>
-              ))
-            )}
-          </div>
+              ))}
+            </div>
+          )}
         </div>
       </div>
 
@@ -265,7 +269,7 @@ export default function Dashboard() {
                     <h3 className="text-base font-black text-slate-900 mb-1 group-hover:text-indigo-600 transition-colors">
                       {loc.customerName}
                     </h3>
-                    
+
                     {loc.phone && (
                       <p className="text-xs font-semibold text-slate-500 mb-3">
                         📞 {loc.phone}
@@ -363,13 +367,19 @@ export default function Dashboard() {
               </div>
               <h2 className="text-2xl font-black text-slate-800 tracking-tight">Chef Summary</h2>
             </div>
-            <div className="flex items-center gap-2 bg-slate-100 p-1 rounded-[4px] border border-slate-200">
-              <select value={chefMonth} onChange={(e) => setChefMonth(parseInt(e.target.value))} className="bg-transparent text-[10px] font-black px-2 py-1 outline-none cursor-pointer">
-                {DASHBOARD_MONTH_OPTIONS.map((m, i) => <option key={m} value={i + 1}>{m}</option>)}
-              </select>
-              <select value={chefYear} onChange={(e) => setChefYear(parseInt(e.target.value))} className="bg-transparent text-[10px] font-black px-2 py-1 outline-none cursor-pointer">
-                {DASHBOARD_YEAR_OPTIONS.map((y) => <option key={y} value={y}>{y}</option>)}
-              </select>
+            <div className="flex items-center gap-2.5">
+              <CustomSelect
+                value={String(chefMonth)}
+                onChange={(e) => setChefMonth(parseInt(e.target.value))}
+                options={DASHBOARD_MONTH_OPTIONS.map((m, i) => ({ value: String(i + 1), label: m }))}
+                className="w-28"
+              />
+              <CustomSelect
+                value={String(chefYear)}
+                onChange={(e) => setChefYear(parseInt(e.target.value))}
+                options={DASHBOARD_YEAR_OPTIONS.map((y) => ({ value: String(y), label: String(y) }))}
+                className="w-24"
+              />
             </div>
           </div>
           <div className="grid grid-cols-2 gap-4">

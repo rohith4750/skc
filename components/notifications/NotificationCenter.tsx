@@ -18,7 +18,7 @@ export default function NotificationCenter({ compact = false }: { compact?: bool
   if (!enabled) return null
 
   return (
-    <div className="relative">
+    <div className={`relative ${isOpen ? 'z-[100001]' : 'z-50'}`}>
       <button
         type="button"
         onClick={() => setIsOpen((prev) => !prev)}
@@ -37,7 +37,7 @@ export default function NotificationCenter({ compact = false }: { compact?: bool
       </button>
 
       {isOpen && (
-        <div className="absolute right-0 mt-3 w-80 max-w-[90vw] rounded-2xl border border-slate-200 bg-white shadow-2xl overflow-hidden z-50">
+        <div className="absolute right-0 mt-3 w-80 max-w-[90vw] rounded-2xl border border-slate-200/90 bg-white !bg-white shadow-2xl overflow-hidden z-[100001]">
           <div className="flex items-center justify-between border-b border-slate-100 px-4 py-3">
             <div className="flex items-center gap-2">
               <span className="text-sm font-bold text-slate-800">Realtime Updates</span>

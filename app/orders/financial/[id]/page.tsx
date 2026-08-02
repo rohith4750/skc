@@ -10,6 +10,7 @@ import { apiUrl } from '@/lib/api/apiUrl'
 import { toast } from 'sonner'
 import Link from 'next/link'
 import FormError from '@/components/FormError'
+import { LoadingSpinner } from '@/components/ui/LoadingSpinner'
 
 export default function FinancialTrackingPage() {
   const params = useParams()
@@ -348,7 +349,7 @@ export default function FinancialTrackingPage() {
     }
   }
 
-  if (loading) return <div className="p-8 text-center">Loading...</div>
+  if (loading) return <LoadingSpinner message="Loading Financial Ledger" subtext="Fetching order bill and payment entries..." />
   if (!order) return null
 
   return (

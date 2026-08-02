@@ -12,6 +12,7 @@ import jsPDF from 'jspdf'
 import html2canvas from 'html2canvas'
 import { applySmartPaging } from '@/lib/pdf-utils'
 import { FaFilePdf, FaFileImage, FaChevronDown, FaUtensils } from 'react-icons/fa'
+import { CustomSelect } from '@/components/ui/CustomSelect'
 
 export default function OrdersOverviewPage() {
   return (
@@ -542,8 +543,8 @@ function OrdersOverviewContent() {
           {/* Month Selection */}
           <div className="w-full md:w-48">
             <label className="block text-xs font-semibold text-gray-500 uppercase mb-1">Month</label>
-            <select
-              value={selectedMonth}
+            <CustomSelect
+              value={String(selectedMonth)}
               onChange={(e) => {
                 const m = parseInt(e.target.value)
                 setSelectedMonth(m)
@@ -552,21 +553,19 @@ function OrdersOverviewContent() {
                 newDate.setFullYear(selectedYear)
                 setCurrentDate(newDate)
               }}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
-            >
-              {Array.from({ length: 12 }).map((_, i) => (
-                <option key={i} value={i}>
-                  {new Date(0, i).toLocaleString('default', { month: 'long' })}
-                </option>
-              ))}
-            </select>
+              options={Array.from({ length: 12 }).map((_, i) => ({
+                value: String(i),
+                label: new Date(0, i).toLocaleString('default', { month: 'long' })
+              }))}
+              className="w-full"
+            />
           </div>
 
           {/* Year Selection */}
           <div className="w-full md:w-32">
             <label className="block text-xs font-semibold text-gray-500 uppercase mb-1">Year</label>
-            <select
-              value={selectedYear}
+            <CustomSelect
+              value={String(selectedYear)}
               onChange={(e) => {
                 const y = parseInt(e.target.value)
                 setSelectedYear(y)
@@ -575,13 +574,12 @@ function OrdersOverviewContent() {
                 newDate.setMonth(selectedMonth)
                 setCurrentDate(newDate)
               }}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
-            >
-              {Array.from({ length: 5 }).map((_, i) => {
+              options={Array.from({ length: 5 }).map((_, i) => {
                 const year = new Date().getFullYear() - 2 + i
-                return <option key={year} value={year}>{year}</option>
+                return { value: String(year), label: String(year) }
               })}
-            </select>
+              className="w-full"
+            />
           </div>
         </div>
       </div>

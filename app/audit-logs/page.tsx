@@ -23,6 +23,8 @@ import {
   FaSearch,
   FaSync
 } from 'react-icons/fa'
+import { CustomSelect } from '@/components/ui/CustomSelect'
+import { CustomDatePicker } from '@/components/ui/CustomDatePicker'
 import RoleGuard from '@/components/RoleGuard'
 
 interface AuditLog {
@@ -289,64 +291,65 @@ export default function AuditLogsPage() {
               {/* User Filter */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">User</label>
-                <select
+                <CustomSelect
                   value={selectedUser}
                   onChange={(e) => setSelectedUser(e.target.value)}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                >
-                  <option value="all">All Users</option>
-                  {uniqueUsers.map(user => (
-                    <option key={user} value={user}>{user}</option>
-                  ))}
-                </select>
+                  options={[
+                    { value: 'all', label: 'All Users' },
+                    ...uniqueUsers.map(user => ({ value: user, label: user }))
+                  ]}
+                  className="w-full"
+                />
               </div>
 
               {/* Device Filter */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">Device</label>
-                <select
+                <CustomSelect
                   value={selectedDevice}
                   onChange={(e) => setSelectedDevice(e.target.value)}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                >
-                  <option value="all">All Devices</option>
-                  <option value="Desktop">Desktop</option>
-                  <option value="Mobile">Mobile</option>
-                  <option value="Tablet">Tablet</option>
-                </select>
+                  options={[
+                    { value: 'all', label: 'All Devices' },
+                    { value: 'Desktop', label: 'Desktop' },
+                    { value: 'Mobile', label: 'Mobile' },
+                    { value: 'Tablet', label: 'Tablet' },
+                  ]}
+                  className="w-full"
+                />
               </div>
 
               {/* Status Filter */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">Status</label>
-                <select
+                <CustomSelect
                   value={selectedStatus}
                   onChange={(e) => setSelectedStatus(e.target.value)}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                >
-                  <option value="all">All Status</option>
-                  <option value="success">Successful</option>
-                  <option value="failed">Failed</option>
-                </select>
+                  options={[
+                    { value: 'all', label: 'All Status' },
+                    { value: 'success', label: 'Successful' },
+                    { value: 'failed', label: 'Failed' },
+                  ]}
+                  className="w-full"
+                />
               </div>
 
               {/* Date Range */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">From Date</label>
-                <input
-                  type="date"
+                <CustomDatePicker
                   value={dateRange.start}
-                  onChange={(e) => setDateRange({ ...dateRange, start: e.target.value })}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                  onChange={(val) => setDateRange({ ...dateRange, start: val })}
+                  placeholder="dd-mm-yyyy"
+                  className="w-full"
                 />
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">To Date</label>
-                <input
-                  type="date"
+                <CustomDatePicker
                   value={dateRange.end}
-                  onChange={(e) => setDateRange({ ...dateRange, end: e.target.value })}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                  onChange={(val) => setDateRange({ ...dateRange, end: val })}
+                  placeholder="dd-mm-yyyy"
+                  className="w-full"
                 />
               </div>
             </div>

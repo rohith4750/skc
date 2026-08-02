@@ -3,11 +3,13 @@ import { useEffect, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { toast } from 'sonner'
-import { formatCurrency, formatDate, formatDateTime, sanitizeMealLabel, getOrderDate } from '@/lib/utils'
+import { formatCurrency, formatDate, formatTime, formatDateTime, sanitizeMealLabel, getOrderDate } from '@/lib/utils'
 import { getRequest, putRequest, deleteRequest } from '@/lib/api/api'
 import { apiUrl } from '@/lib/api/apiUrl'
 import { Bill, Order, PaymentHistoryEntry } from '@/types'
 import { FaUser, FaCalendarAlt, FaMoneyBillWave, FaHistory, FaUtensils, FaTruck, FaTag, FaArrowLeft, FaEdit, FaCheckCircle, FaExclamationCircle, FaTrash, FaTimes, FaSave, FaWhatsapp } from 'react-icons/fa'
+
+import { LoadingSpinner } from '@/components/ui/LoadingSpinner'
 
 export default function OrderSummaryPage() {
   const params = useParams()
@@ -109,9 +111,7 @@ export default function OrderSummaryPage() {
 
   if (loading) {
     return (
-      <div className="p-8">
-        <div className="bg-white rounded-[5px] shadow p-6">Loading order summary...</div>
-      </div>
+      <LoadingSpinner message="Loading Order Summary" subtext="Fetching details for order..." />
     )
   }
 
@@ -398,19 +398,7 @@ export default function OrderSummaryPage() {
                           <p className="text-[10px] font-bold text-slate-400 uppercase mt-2 tracking-widest">
                             {(() => {
                               const d = detail?.date ? formatDate(detail.date) : 'Date Pending';
-                              if (detail?.time) {
-                                // Convert HH:mm to 12h format
-                                try {
-                                  const [hours, minutes] = detail.time.split(':');
-                                  const h = parseInt(hours);
-                                  const ampm = h >= 12 ? 'PM' : 'AM';
-                                  const h12 = h % 12 || 12;
-                                  return `${d} @ ${h12}:${minutes} ${ampm}`;
-                                } catch (e) {
-                                  return `${d} @ ${detail.time}`;
-                                }
-                              }
-                              return d;
+                              return detail?.time ? `${d} @ ${formatTime(detail.time)}` : d;
                             })()}
                           </p>
                         </div>

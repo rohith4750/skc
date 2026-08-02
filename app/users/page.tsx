@@ -6,6 +6,7 @@ import { toast } from 'sonner'
 import Table from '@/components/Table'
 import ConfirmModal from '@/components/ConfirmModal'
 import RoleGuard from '@/components/RoleGuard'
+import { CustomSelect } from '@/components/ui/CustomSelect'
 import { isSuperAdmin, getUserRole } from '@/lib/auth'
 import FormError from '@/components/FormError'
 import Link from 'next/link'
@@ -330,24 +331,20 @@ export default function UsersPage() {
                   <label className="block text-sm font-medium text-gray-700 mb-1">
                     Role *
                   </label>
-                  <select
+                  <CustomSelect
                     value={formData.role}
                     onChange={(e) => setFormData({ ...formData, role: e.target.value })}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
-                    required
                     disabled={getUserRole() === 'transport_admin'}
-                  >
-                    {getUserRole() === 'transport_admin' ? (
-                      <option value="transport">Transport (Driver)</option>
-                    ) : (
-                      <>
-                        <option value="admin">Admin</option>
-                        <option value="transport_admin">Transport Admin</option>
-                        <option value="transport">Transport (Driver)</option>
-                        <option value="super_admin">Super Admin</option>
-                      </>
-                    )}
-                  </select>
+                    options={getUserRole() === 'transport_admin' ? [
+                      { value: 'transport', label: 'Transport (Driver)' }
+                    ] : [
+                      { value: 'admin', label: 'Admin' },
+                      { value: 'transport_admin', label: 'Transport Admin' },
+                      { value: 'transport', label: 'Transport (Driver)' },
+                      { value: 'super_admin', label: 'Super Admin' },
+                    ]}
+                    className="w-full"
+                  />
                   <p className="text-xs text-gray-500 mt-1">
                     {getUserRole() === 'transport_admin' 
                       ? 'Note: You can only create Transport (Driver) users.' 

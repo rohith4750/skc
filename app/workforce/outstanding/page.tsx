@@ -18,6 +18,7 @@ import {
 } from "react-icons/fa";
 import { toast } from "sonner";
 import { formatCurrency, formatDate, getLocalISODate } from "@/lib/utils";
+import { CustomSelect } from "@/components/ui/CustomSelect";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import RoleGuard from "@/components/RoleGuard";
@@ -676,56 +677,40 @@ function OutstandingContent() {
               <label className="block text-xs font-semibold text-gray-500 uppercase mb-1">
                 Year
               </label>
-              <select
+              <CustomSelect
                 value={filterYear}
                 onChange={(e) => {
                   setFilterYear(e.target.value);
                   if (e.target.value !== "all") setFilterDate("");
                 }}
                 disabled={!!filterDate}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 text-sm disabled:bg-gray-50 disabled:text-gray-400"
-              >
-                <option value="all">All Time</option>
-                {[2024, 2025, 2026, 2027].map((y) => (
-                  <option key={y} value={y.toString()}>
-                    {y}
-                  </option>
-                ))}
-              </select>
+                options={[
+                  { value: 'all', label: 'All Time' },
+                  ...[2024, 2025, 2026, 2027].map(y => ({ value: y.toString(), label: y.toString() }))
+                ]}
+                className="w-full border-gray-300 rounded-lg text-sm disabled:bg-gray-50 disabled:text-gray-400"
+              />
             </div>
             <div className="flex-1 min-w-[150px]">
               <label className="block text-xs font-semibold text-gray-500 uppercase mb-1">
                 Month
               </label>
-              <select
+              <CustomSelect
                 value={filterMonth}
                 onChange={(e) => {
                   setFilterMonth(e.target.value);
                   if (e.target.value !== "all") setFilterDate("");
                 }}
                 disabled={filterYear === "all" || !!filterDate}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 text-sm disabled:bg-gray-50 disabled:text-gray-400"
-              >
-                <option value="all">All Months</option>
-                {[
-                  "January",
-                  "February",
-                  "March",
-                  "April",
-                  "May",
-                  "June",
-                  "July",
-                  "August",
-                  "September",
-                  "October",
-                  "November",
-                  "December",
-                ].map((m, i) => (
-                  <option key={i} value={i.toString()}>
-                    {m}
-                  </option>
-                ))}
-              </select>
+                options={[
+                  { value: 'all', label: 'All Months' },
+                  ...[
+                    "January", "February", "March", "April", "May", "June",
+                    "July", "August", "September", "October", "November", "December",
+                  ].map((m, i) => ({ value: i.toString(), label: m }))
+                ]}
+                className="w-full border-gray-300 rounded-lg text-sm disabled:bg-gray-50 disabled:text-gray-400"
+              />
             </div>
             <div className="flex items-end">
               <button
@@ -1413,7 +1398,7 @@ function OutstandingContent() {
                     <label className="block text-sm font-medium text-gray-700 mb-1">
                       Payment Method
                     </label>
-                    <select
+                    <CustomSelect
                       value={paymentForm.paymentMethod}
                       onChange={(e) =>
                         setPaymentForm((f) => ({
@@ -1421,14 +1406,12 @@ function OutstandingContent() {
                           paymentMethod: e.target.value,
                         }))
                       }
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-                    >
-                      {PAYMENT_METHODS.map((m) => (
-                        <option key={m.value} value={m.value}>
-                          {m.label}
-                        </option>
-                      ))}
-                    </select>
+                      options={PAYMENT_METHODS.map((m) => ({
+                        value: m.value,
+                        label: m.label
+                      }))}
+                      className="w-full border-gray-300 rounded-lg"
+                    />
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -1451,7 +1434,7 @@ function OutstandingContent() {
                       <label className="block text-sm font-medium text-gray-700 mb-1">
                         Select Supervisor
                       </label>
-                      <select
+                      <CustomSelect
                         value={paymentForm.supervisorId}
                         onChange={(e) =>
                           setPaymentForm((f) => ({
@@ -1459,18 +1442,15 @@ function OutstandingContent() {
                             supervisorId: e.target.value,
                           }))
                         }
-                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-                      >
-                        <option value="">All Supervisors (General)</option>
-                        {supervisors.map((s) => (
-                          <option key={s.id} value={s.id}>
-                            {s.name}{" "}
-                            {s.cateringServiceName
-                              ? `(${s.cateringServiceName})`
-                              : "(Workforce)"}
-                          </option>
-                        ))}
-                      </select>
+                        options={[
+                          { value: '', label: 'All Supervisors (General)' },
+                          ...supervisors.map((s) => ({
+                            value: s.id,
+                            label: `${s.name} ${s.cateringServiceName ? `(${s.cateringServiceName})` : "(Workforce)"}`
+                          }))
+                        ]}
+                        className="w-full border-gray-300 rounded-lg"
+                      />
                     </div>
                   )}
                   <div>
@@ -1547,21 +1527,18 @@ function OutstandingContent() {
                   {selectedRole === 'supervisor' && (
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">Select Supervisor</label>
-                      <select
+                      <CustomSelect
                         value={adjustmentForm.supervisorId}
                         onChange={(e) => setAdjustmentForm(f => ({ ...f, supervisorId: e.target.value }))}
-                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-                      >
-                        <option value="">All Supervisors (General)</option>
-                        {supervisors.map((s) => (
-                          <option key={s.id} value={s.id}>
-                            {s.name}{" "}
-                            {s.cateringServiceName
-                              ? `(${s.cateringServiceName})`
-                              : "(Workforce)"}
-                          </option>
-                        ))}
-                      </select>
+                        options={[
+                          { value: '', label: 'All Supervisors (General)' },
+                          ...supervisors.map((s) => ({
+                            value: s.id,
+                            label: `${s.name} ${s.cateringServiceName ? `(${s.cateringServiceName})` : "(Workforce)"}`
+                          }))
+                        ]}
+                        className="w-full border-gray-300 rounded-lg"
+                      />
                     </div>
                   )}
                   <div>

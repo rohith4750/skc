@@ -133,11 +133,11 @@ export default function CustomerForm({ id }: CustomerFormProps) {
     }
 
     return (
-        <div className="bg-white rounded-xl shadow-md border border-gray-200 p-6 max-w-3xl">
+        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 sm:p-8 w-full">
             <form onSubmit={handleSubmit} className="space-y-6">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                     <div>
-                        <label className="block text-sm font-semibold text-gray-700 mb-2">
+                        <label className="block text-sm font-bold text-gray-700 mb-2">
                             Name *
                         </label>
                         <input
@@ -145,39 +145,39 @@ export default function CustomerForm({ id }: CustomerFormProps) {
                             required
                             value={formData.name}
                             onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                            className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                            className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary-500 font-medium text-gray-800"
                             placeholder="Enter customer name"
                         />
                     </div>
 
                     <div>
-                        <label className="block text-sm font-semibold text-gray-700 mb-2">
+                        <label className="block text-sm font-bold text-gray-700 mb-2">
                             Phone
                         </label>
                         <input
                             type="tel"
                             value={formData.phone}
                             onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                            className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                            className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary-500 font-medium text-gray-800"
                             placeholder="Enter phone number (optional)"
                         />
                     </div>
 
                     <div>
-                        <label className="block text-sm font-semibold text-gray-700 mb-2">
+                        <label className="block text-sm font-bold text-gray-700 mb-2">
                             Email
                         </label>
                         <input
                             type="email"
                             value={formData.email}
                             onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                            className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                            className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary-500 font-medium text-gray-800"
                             placeholder="Enter email address (optional)"
                         />
                     </div>
 
-                    <div>
-                        <label className="block text-sm font-semibold text-gray-700 mb-2">
+                    <div className="md:col-span-2 lg:col-span-3">
+                        <label className="block text-sm font-bold text-gray-700 mb-2">
                             Address *
                         </label>
                         <textarea
@@ -185,24 +185,24 @@ export default function CustomerForm({ id }: CustomerFormProps) {
                             value={formData.address}
                             onChange={(e) => setFormData({ ...formData, address: e.target.value })}
                             rows={3}
-                            className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                            className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary-500 font-medium text-gray-800"
                             placeholder="Enter customer address"
                         />
                     </div>
                 </div>
 
-                <div className="flex flex-col-reverse sm:flex-row justify-end gap-4 pt-4 border-t border-gray-200">
+                <div className="flex flex-col-reverse sm:flex-row justify-end gap-4 pt-6 border-t border-gray-100">
                     <FormError message={formError} className="sm:mr-auto sm:self-center" />
                     <Link
                         href="/customers"
-                        className="px-6 py-2.5 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors text-center font-medium"
+                        className="px-6 h-11 inline-flex items-center justify-center border-2 border-primary-500 text-primary-600 rounded-xl font-bold hover:bg-primary-50 hover:border-primary-600 active:scale-95 transition-all shadow-sm text-center"
                     >
                         Cancel
                     </Link>
                     <button
                         type="submit"
                         disabled={saving}
-                        className="px-6 py-2.5 bg-primary-500 text-white rounded-lg hover:bg-primary-600 transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="px-8 h-11 inline-flex items-center justify-center bg-primary-600 text-white rounded-xl hover:bg-primary-700 font-bold transition-all shadow-lg hover:shadow-primary-300 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                         {saving ? 'Saving...' : id ? 'Update Customer' : 'Create Customer'}
                     </button>

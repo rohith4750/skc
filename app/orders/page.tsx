@@ -11,6 +11,7 @@ import {
 import Link from 'next/link'
 import { toast } from 'sonner'
 import ConfirmModal from '@/components/ConfirmModal'
+import { CustomSelect } from '@/components/ui/CustomSelect'
 import { getRequest, deleteRequest, putRequest } from '@/lib/api/api'
 import { apiUrl } from '@/lib/api/apiUrl'
 
@@ -113,17 +114,18 @@ export default function OrdersListPage() {
           />
         </div>
         <div>
-          <select
+          <CustomSelect
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value)}
-            className="w-full px-4 py-3 bg-white rounded-2xl border border-gray-100 shadow-sm focus:ring-2 focus:ring-primary-500 outline-none transition-all font-bold text-gray-700"
-          >
-            <option value="all">All Statuses</option>
-            <option value="pending">Pending</option>
-            <option value="in_progress">In Progress</option>
-            <option value="completed">Completed</option>
-            <option value="cancelled">Cancelled</option>
-          </select>
+            options={[
+              { value: 'all', label: 'All Statuses' },
+              { value: 'pending', label: 'Pending' },
+              { value: 'in_progress', label: 'In Progress' },
+              { value: 'completed', label: 'Completed' },
+              { value: 'cancelled', label: 'Cancelled' },
+            ]}
+            className="w-full"
+          />
         </div>
       </div>
 

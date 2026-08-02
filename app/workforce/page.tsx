@@ -4,6 +4,7 @@ import { FaEdit, FaTrash, FaUtensils, FaUserTie, FaTruck, FaDollarSign, FaReceip
 import { toast } from 'sonner'
 import Table from '@/components/Table'
 import ConfirmModal from '@/components/ConfirmModal'
+import { CustomSelect } from '@/components/ui/CustomSelect'
 import { formatCurrency, formatDate } from '@/lib/utils'
 import Link from 'next/link'
 import jsPDF from 'jspdf'
@@ -668,18 +669,18 @@ export default function WorkforcePage() {
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Role
               </label>
-              <select
+              <CustomSelect
                 value={selectedRole}
                 onChange={(e) => setSelectedRole(e.target.value)}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-              >
-                <option value="all">All Roles</option>
-                {WORKFORCE_ROLES.map(role => (
-                  <option key={role} value={role}>
-                    {role.charAt(0).toUpperCase() + role.slice(1)}
-                  </option>
-                ))}
-              </select>
+                options={[
+                  { value: 'all', label: 'All Roles' },
+                  ...WORKFORCE_ROLES.map(role => ({
+                    value: role,
+                    label: role.charAt(0).toUpperCase() + role.slice(1)
+                  }))
+                ]}
+                className="w-full border-gray-300 rounded-lg"
+              />
             </div>
 
             {/* Status Filter */}
@@ -687,15 +688,16 @@ export default function WorkforcePage() {
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Status
               </label>
-              <select
+              <CustomSelect
                 value={selectedStatus}
                 onChange={(e) => setSelectedStatus(e.target.value)}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-              >
-                <option value="all">All Status</option>
-                <option value="active">Active</option>
-                <option value="inactive">Inactive</option>
-              </select>
+                options={[
+                  { value: 'all', label: 'All Status' },
+                  { value: 'active', label: 'Active' },
+                  { value: 'inactive', label: 'Inactive' },
+                ]}
+                className="w-full border-gray-300 rounded-lg"
+              />
             </div>
           </div>
 
@@ -705,7 +707,7 @@ export default function WorkforcePage() {
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Period Type
               </label>
-              <select
+              <CustomSelect
                 value={datePeriodType}
                 onChange={(e) => {
                   setDatePeriodType(e.target.value as 'all' | 'day' | 'week' | 'month')
@@ -713,13 +715,14 @@ export default function WorkforcePage() {
                   setSelectedWeek('')
                   setSelectedMonth('')
                 }}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-              >
-                <option value="all">All Time</option>
-                <option value="day">Day</option>
-                <option value="week">Week</option>
-                <option value="month">Month</option>
-              </select>
+                options={[
+                  { value: 'all', label: 'All Time' },
+                  { value: 'day', label: 'Day' },
+                  { value: 'week', label: 'Week' },
+                  { value: 'month', label: 'Month' },
+                ]}
+                className="w-full border-gray-300 rounded-lg"
+              />
             </div>
 
             {datePeriodType === 'day' && (
@@ -741,18 +744,16 @@ export default function WorkforcePage() {
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Select Week
                 </label>
-                <select
+                <CustomSelect
                   value={selectedWeek}
                   onChange={(e) => setSelectedWeek(e.target.value)}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-                >
-                  <option value="">Select a week</option>
-                  {weekOptions.map((week: string) => (
-                    <option key={week} value={week}>
-                      {week}
-                    </option>
-                  ))}
-                </select>
+                  placeholder="Select a week"
+                  options={weekOptions.map((week: string) => ({
+                    value: week,
+                    label: week
+                  }))}
+                  className="w-full border-gray-300 rounded-lg"
+                />
               </div>
             )}
 

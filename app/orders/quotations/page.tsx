@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useState, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
-import { formatDateTime, formatDate, formatCurrency, sanitizeMealLabel, getOrderDate } from '@/lib/utils'
+import { formatDateTime, formatDate, formatTime, formatCurrency, sanitizeMealLabel, getOrderDate } from '@/lib/utils'
 import { Order } from '@/types'
 import {
   FaPlus, FaPrint, FaCheck, FaEdit, FaTrash, FaSearch, FaFilter, FaFilePdf, FaFileImage,
@@ -641,7 +641,7 @@ function MenuModal({ order, onClose, onDownloadPDF, onDownloadImage }: {
                           <div>
                             <h4 className="font-black text-slate-900 leading-tight capitalize">{sanitizeMealLabel(detail?.menuType || mealType)}</h4>
                             <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-0.5">
-                              {detail?.time ? detail.time : 'Time not set'} · {detail?.numberOfMembers || 'N/A'} Guests
+                              {detail?.time ? formatTime(detail.time) : 'Time not set'} · {detail?.numberOfMembers || 'N/A'} Guests
                             </p>
                           </div>
                         </div>

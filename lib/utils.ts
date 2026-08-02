@@ -13,11 +13,30 @@ export function formatCurrency(amount: number): string {
 }
 
 export function formatDate(date: string | Date): string {
-  return new Date(date).toLocaleDateString("en-IN", {
-    year: "numeric",
-    month: "long",
+  if (!date) return '';
+  const d = typeof date === 'string' && date.includes('-') && !date.includes('T') ? new Date(date + 'T00:00:00') : new Date(date);
+  if (isNaN(d.getTime())) return String(date);
+  return d.toLocaleDateString("en-US", {
+    month: "short",
     day: "numeric",
+    year: "numeric",
   });
+}
+
+export function formatTime(time: string): string {
+  if (!time) return '';
+  if (time.includes('AM') || time.includes('PM') || time.includes('am') || time.includes('pm')) {
+    return time;
+  }
+  const parts = time.split(':');
+  if (parts.length < 2) return time;
+  const hours = parseInt(parts[0], 10);
+  const minutes = parts[1];
+  if (isNaN(hours)) return time;
+  const period = hours >= 12 ? 'PM' : 'AM';
+  const displayHours = hours % 12 === 0 ? 12 : hours % 12;
+  const formattedHours = displayHours.toString().padStart(2, '0');
+  return `${formattedHours}:${minutes} ${period}`;
 }
 
 export function formatDateTime(date: string | Date): string {

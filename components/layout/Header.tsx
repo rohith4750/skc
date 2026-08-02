@@ -47,7 +47,7 @@ export default function Header() {
   }
 
   return (
-    <header className="fixed top-0 left-0 right-0 lg:left-72 h-14 bg-white border-b border-gray-200 lg:border-l lg:border-gray-200 z-30 shadow-xs">
+    <header className="fixed top-0 left-0 right-0 lg:left-72 h-14 bg-white border-b border-gray-200 lg:border-l lg:border-gray-200 z-[100000] shadow-xs">
       <div className="h-full flex items-center justify-between px-4 lg:pl-6 lg:pr-6">
         {/* Page Title & Back Button */}
         <div className="flex items-center gap-3">

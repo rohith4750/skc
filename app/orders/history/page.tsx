@@ -4,6 +4,8 @@ import { formatDateTime, formatDate, formatCurrency, sanitizeMealLabel, getOrder
 import { Order } from '@/types'
 import { FaTrash, FaFilePdf, FaFileImage, FaChevronLeft, FaChevronRight, FaEdit, FaFilter, FaChartLine, FaClock, FaCheckCircle, FaTimesCircle, FaEnvelope, FaCalendarAlt } from 'react-icons/fa'
 import Link from 'next/link'
+import { CustomSelect } from '@/components/ui/CustomSelect'
+import { CustomDatePicker } from '@/components/ui/CustomDatePicker'
 import jsPDF from 'jspdf'
 import html2canvas from 'html2canvas'
 import { toast } from 'sonner'
@@ -767,17 +769,18 @@ export default function OrderHistoryPage() {
             {/* Status Filter */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">Status</label>
-              <select
+              <CustomSelect
                 value={statusFilter}
                 onChange={(e) => setStatusFilter(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-              >
-                <option value="all">Historical Logs</option>
-                <option value="completed">Completed</option>
-                <option value="cancelled">Cancelled</option>
-                <option value="pending">Pending (Active)</option>
-                <option value="in_progress">In Progress (Active)</option>
-              </select>
+                options={[
+                  { value: 'all', label: 'Historical Logs' },
+                  { value: 'completed', label: 'Completed' },
+                  { value: 'cancelled', label: 'Cancelled' },
+                  { value: 'pending', label: 'Pending (Active)' },
+                  { value: 'in_progress', label: 'In Progress (Active)' },
+                ]}
+                className="w-full"
+              />
             </div>
 
             {/* Customer Search */}
@@ -795,51 +798,34 @@ export default function OrderHistoryPage() {
             {/* Specific Date Filter */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">Specific Date</label>
-              <div className="relative">
-                <input
-                  type="date"
-                  value={filterDate}
-                  onChange={(e) => setFilterDate(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-                />
-                {filterDate && (
-                  <button
-                    onClick={() => setFilterDate('')}
-                    className="absolute right-2 top-1/2 transform -translate-y-1/2 p-1 text-gray-400 hover:text-gray-600 focus:outline-none bg-white rounded-md"
-                    title="Clear Specific Date"
-                  >
-                    ✕
-                  </button>
-                )}
-              </div>
+              <CustomDatePicker
+                value={filterDate}
+                onChange={(val) => setFilterDate(val)}
+                placeholder="dd-mm-yyyy"
+                className="w-full"
+              />
             </div>
 
             {/* Month Filter */}
             <div className={`transition-opacity duration-300 ${filterDate ? 'opacity-40 pointer-events-none' : 'opacity-100'}`}>
               <label className="block text-sm font-medium text-gray-700 mb-2">Month</label>
-              <select
-                value={selectedMonth}
+              <CustomSelect
+                value={String(selectedMonth)}
                 onChange={(e) => setSelectedMonth(parseInt(e.target.value))}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-              >
-                {['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'].map((m, i) => (
-                  <option key={m} value={i + 1}>{m}</option>
-                ))}
-              </select>
+                options={['January','February','March','April','May','June','July','August','September','October','November','December'].map((m, i) => ({ value: String(i + 1), label: m }))}
+                className="w-full"
+              />
             </div>
 
             {/* Year Filter */}
             <div className={`transition-opacity duration-300 ${filterDate ? 'opacity-40 pointer-events-none' : 'opacity-100'}`}>
               <label className="block text-sm font-medium text-gray-700 mb-2">Year</label>
-              <select
-                value={selectedYear}
+              <CustomSelect
+                value={String(selectedYear)}
                 onChange={(e) => setSelectedYear(parseInt(e.target.value))}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-              >
-                {[2024, 2025, 2026].map(y => (
-                  <option key={y} value={y}>{y}</option>
-                ))}
-              </select>
+                options={[2024, 2025, 2026].map(y => ({ value: String(y), label: String(y) }))}
+                className="w-full"
+              />
             </div>
           </div>
           <div className="mt-4 flex justify-end">
@@ -907,19 +893,20 @@ export default function OrderHistoryPage() {
                           {eventDates.length > 1 && <span className="text-slate-500">+{eventDates.length - 1}</span>}
                         </span>
                       )}
-                      <select
+                      <CustomSelect
                         value={order.status}
                         onChange={(e) => {
                           if (e.target.value === order.status) return
                           setStatusConfirm({ isOpen: true, id: order.id, newStatus: e.target.value, oldStatus: order.status })
                         }}
-                        className={`px-3 py-1.5 text-xs font-semibold rounded-full border-0 cursor-pointer touch-manipulation ${order.status === 'completed' ? 'bg-green-100 text-green-800' : order.status === 'in_progress' ? 'bg-yellow-100 text-yellow-800' : order.status === 'cancelled' ? 'bg-red-100 text-red-800' : 'bg-gray-100 text-gray-800'}`}
-                      >
-                        <option value="pending">Pending</option>
-                        <option value="in_progress">In Progress</option>
-                        <option value="completed">Completed</option>
-                        <option value="cancelled">Cancelled</option>
-                      </select>
+                        options={[
+                          { value: 'pending', label: 'Pending' },
+                          { value: 'in_progress', label: 'In Progress' },
+                          { value: 'completed', label: 'Completed' },
+                          { value: 'cancelled', label: 'Cancelled' },
+                        ]}
+                        className="text-xs"
+                      />
                     </div>
                     <div className="flex flex-wrap gap-2 pt-3 border-t border-gray-100 print:hidden">
                       <Link href={`/orders/summary/${order.id}`} className="p-2.5 bg-blue-50 text-blue-600 rounded-lg touch-manipulation" title="Summary"><FaChartLine /></Link>
@@ -1115,7 +1102,7 @@ export default function OrderHistoryPage() {
                           </div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
-                          <select
+                          <CustomSelect
                             value={order.status}
                             onChange={(e) => {
                               if (e.target.value === order.status) return
@@ -1126,17 +1113,14 @@ export default function OrderHistoryPage() {
                                 oldStatus: order.status
                               })
                             }}
-                            className={`px-3 py-1.5 text-xs font-semibold rounded-full border-0 cursor-pointer focus:ring-2 focus:ring-primary-500 focus:outline-none ${order.status === 'completed' ? 'bg-green-100 text-green-800 hover:bg-green-200' :
-                              order.status === 'in_progress' ? 'bg-yellow-100 text-yellow-800 hover:bg-yellow-200' :
-                                order.status === 'cancelled' ? 'bg-red-100 text-red-800 hover:bg-red-200' :
-                                  'bg-gray-100 text-gray-800 hover:bg-gray-200'
-                              }`}
-                          >
-                            <option value="pending">Pending</option>
-                            <option value="in_progress">In Progress</option>
-                            <option value="completed">Completed</option>
-                            <option value="cancelled">Cancelled</option>
-                          </select>
+                            options={[
+                              { value: 'pending', label: 'Pending' },
+                              { value: 'in_progress', label: 'In Progress' },
+                              { value: 'completed', label: 'Completed' },
+                              { value: 'cancelled', label: 'Cancelled' },
+                            ]}
+                            className="w-32"
+                          />
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                           {formatDateTime(order.createdAt)}

@@ -20,6 +20,8 @@ import { apiUrl } from '@/lib/api/apiUrl'
 import { buildOrderPdfHtml } from '@/lib/order-pdf-html'
 import { applySmartPaging } from '@/lib/pdf-utils'
 import { hasRole } from '@/lib/auth'
+import { CustomSelect } from '@/components/ui/CustomSelect'
+import { CustomDatePicker } from '@/components/ui/CustomDatePicker'
 
 export default function OrderCenterPage() {
   const router = useRouter()
@@ -785,53 +787,53 @@ export default function OrderCenterPage() {
         </div>
       </div>
 
-      {/* Status Summary */}
+      {/* Status Summary Cards with Rich Curated Background Colors */}
       <div className="w-full grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-        <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-6 flex flex-col justify-between hover:shadow-md transition-all">
+        <div className="bg-gradient-to-br from-amber-50 via-amber-50/60 to-white rounded-2xl shadow-xs border border-amber-200/80 p-6 flex flex-col justify-between hover:shadow-md hover:border-amber-300 transition-all">
           <div>
             <div className="flex items-center justify-between mb-4">
-              <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider">Pending</h3>
-              <div className="bg-orange-50 p-2 rounded-xl">
-                <FaClock className="w-5 h-5 text-orange-500" />
+              <h3 className="text-xs font-black text-amber-700/80 uppercase tracking-widest">Pending</h3>
+              <div className="bg-amber-100/80 p-2.5 rounded-xl border border-amber-200/60 shadow-xs">
+                <FaClock className="w-4 h-4 text-amber-600" />
               </div>
             </div>
-            <p className="text-2xl font-black text-orange-500">{statusSummary.pending}</p>
+            <p className="text-3xl font-black text-amber-600">{statusSummary.pending}</p>
           </div>
         </div>
 
-        <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-6 flex flex-col justify-between hover:shadow-md transition-all">
+        <div className="bg-gradient-to-br from-blue-50 via-blue-50/60 to-white rounded-2xl shadow-xs border border-blue-200/80 p-6 flex flex-col justify-between hover:shadow-md hover:border-blue-300 transition-all">
           <div>
             <div className="flex items-center justify-between mb-4">
-              <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider">In Progress</h3>
-              <div className="bg-blue-50 p-2 rounded-xl">
-                <FaUtensils className="w-5 h-5 text-blue-500" />
+              <h3 className="text-xs font-black text-blue-700/80 uppercase tracking-widest">In Progress</h3>
+              <div className="bg-blue-100/80 p-2.5 rounded-xl border border-blue-200/60 shadow-xs">
+                <FaUtensils className="w-4 h-4 text-blue-600" />
               </div>
             </div>
-            <p className="text-2xl font-black text-blue-500">{statusSummary.inProgress}</p>
+            <p className="text-3xl font-black text-blue-600">{statusSummary.inProgress}</p>
           </div>
         </div>
 
-        <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-6 flex flex-col justify-between hover:shadow-md transition-all">
+        <div className="bg-gradient-to-br from-emerald-50 via-emerald-50/60 to-white rounded-2xl shadow-xs border border-emerald-200/80 p-6 flex flex-col justify-between hover:shadow-md hover:border-emerald-300 transition-all">
           <div>
             <div className="flex items-center justify-between mb-4">
-              <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider">Completed</h3>
-              <div className="bg-emerald-50 p-2 rounded-xl">
-                <FaCheckCircle className="w-5 h-5 text-emerald-500" />
+              <h3 className="text-xs font-black text-emerald-700/80 uppercase tracking-widest">Completed</h3>
+              <div className="bg-emerald-100/80 p-2.5 rounded-xl border border-emerald-200/60 shadow-xs">
+                <FaCheckCircle className="w-4 h-4 text-emerald-600" />
               </div>
             </div>
-            <p className="text-2xl font-black text-emerald-500">{statusSummary.completed}</p>
+            <p className="text-3xl font-black text-emerald-600">{statusSummary.completed}</p>
           </div>
         </div>
 
-        <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-6 flex flex-col justify-between hover:shadow-md transition-all">
+        <div className="bg-gradient-to-br from-rose-50 via-rose-50/60 to-white rounded-2xl shadow-xs border border-rose-200/80 p-6 flex flex-col justify-between hover:shadow-md hover:border-rose-300 transition-all">
           <div>
             <div className="flex items-center justify-between mb-4">
-              <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider">Cancelled</h3>
-              <div className="bg-red-50 p-2 rounded-xl">
-                <FaTimesCircle className="w-5 h-5 text-red-500" />
+              <h3 className="text-xs font-black text-rose-700/80 uppercase tracking-widest">Cancelled</h3>
+              <div className="bg-rose-100/80 p-2.5 rounded-xl border border-rose-200/60 shadow-xs">
+                <FaTimesCircle className="w-4 h-4 text-rose-600" />
               </div>
             </div>
-            <p className="text-2xl font-black text-red-500">{statusSummary.cancelled}</p>
+            <p className="text-3xl font-black text-rose-600">{statusSummary.cancelled}</p>
           </div>
         </div>
       </div>
@@ -856,18 +858,18 @@ export default function OrderCenterPage() {
             {/* Status Filter */}
             <div>
               <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Status</label>
-              <select
+              <CustomSelect
                 value={statusFilter}
                 onChange={(e) => setStatusFilter(e.target.value)}
-                className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-700 font-bold text-sm focus:ring-2 focus:ring-indigo-500 outline-none transition-all"
-              >
-                <option value="all">All Active Orders</option>
-                <option value="quotation">Quotations</option>
-                <option value="pending">Pending</option>
-                <option value="in_progress">In Progress</option>
-                <option value="completed">Completed (Archived)</option>
-                <option value="cancelled">Cancelled</option>
-              </select>
+                options={[
+                  { value: 'all', label: 'All Active Orders' },
+                  { value: 'quotation', label: 'Quotations' },
+                  { value: 'pending', label: 'Pending' },
+                  { value: 'in_progress', label: 'In Progress' },
+                  { value: 'completed', label: 'Completed (Archived)' },
+                  { value: 'cancelled', label: 'Cancelled' },
+                ]}
+              />
             </div>
 
             {/* Customer Search */}
@@ -888,71 +890,59 @@ export default function OrderCenterPage() {
             {/* Specific Date Filter */}
             <div>
               <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Specific Date</label>
-              <div className="relative">
-                <input
-                  type="date"
-                  value={filterDate}
-                  onChange={(e) => setFilterDate(e.target.value)}
-                  className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-700 font-bold text-sm focus:ring-2 focus:ring-indigo-500 outline-none transition-all"
-                />
-                {filterDate && (
-                  <button
-                    onClick={() => setFilterDate('')}
-                    className="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 text-slate-400 hover:text-slate-600 focus:outline-none bg-slate-50 rounded-lg hover:bg-slate-100 transition-colors"
-                    title="Clear Date"
-                  >
-                    <FaTimes className="w-3 h-3" />
-                  </button>
-                )}
-              </div>
+              <CustomDatePicker
+                value={filterDate}
+                onChange={(val) => setFilterDate(val)}
+                placeholder="dd-mm-yyyy"
+                className="w-full"
+              />
             </div>
 
             {/* Month Filter */}
             <div>
               <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Month</label>
-              <select
-                value={selectedMonth}
+              <CustomSelect
+                value={String(selectedMonth)}
                 onChange={(e) => setSelectedMonth(parseInt(e.target.value))}
-                className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-700 font-bold text-sm focus:ring-2 focus:ring-indigo-500 outline-none transition-all"
-              >
-                <option value={0}>All Months</option>
-                {['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'].map((m, i) => (
-                  <option key={m} value={i + 1}>{m}</option>
-                ))}
-              </select>
+                options={[
+                  { value: '0', label: 'All Months' },
+                  ...['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'].map((m, i) => ({
+                    value: String(i + 1),
+                    label: m
+                  }))
+                ]}
+              />
             </div>
 
             {/* Year Filter */}
             <div>
               <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Year</label>
-              <select
-                value={selectedYear}
+              <CustomSelect
+                value={String(selectedYear)}
                 onChange={(e) => setSelectedYear(parseInt(e.target.value))}
-                className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-700 font-bold text-sm focus:ring-2 focus:ring-indigo-500 outline-none transition-all"
-              >
-                <option value={0}>All Years</option>
-                {[2024, 2025, 2026].map(y => (
-                  <option key={y} value={y}>{y}</option>
-                ))}
-              </select>
+                options={[
+                  { value: '0', label: 'All Years' },
+                  ...[2024, 2025, 2026].map(y => ({ value: String(y), label: String(y) }))
+                ]}
+              />
             </div>
 
             {/* Meal Type Filter */}
             <div>
               <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Meal Type</label>
-              <select
+              <CustomSelect
                 value={mealTypeFilter}
                 onChange={(e) => setMealTypeFilter(e.target.value)}
-                className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-700 font-bold text-sm focus:ring-2 focus:ring-indigo-500 outline-none transition-all"
-              >
-                <option value="all">All Meal Types</option>
-                <option value="breakfast">Breakfast</option>
-                <option value="lunch">Lunch</option>
-                <option value="dinner">Dinner</option>
-                <option value="snacks">Snacks</option>
-                <option value="sweets">Sweets</option>
-                <option value="saree">Saree</option>
-              </select>
+                options={[
+                  { value: 'all', label: 'All Meal Types' },
+                  { value: 'breakfast', label: 'Breakfast' },
+                  { value: 'lunch', label: 'Lunch' },
+                  { value: 'dinner', label: 'Dinner' },
+                  { value: 'snacks', label: 'Snacks' },
+                  { value: 'sweets', label: 'Sweets' },
+                  { value: 'saree', label: 'Saree' },
+                ]}
+              />
             </div>
           </div>
 
@@ -1032,19 +1022,21 @@ export default function OrderCenterPage() {
                           {eventDates.length > 1 && <span className="text-slate-400">+{eventDates.length - 1}</span>}
                         </span>
                       )}
-                      <select
+                      <CustomSelect
                         value={order.status}
                         onChange={(e) => {
                           if (e.target.value === order.status) return
                           setStatusConfirm({ isOpen: true, id: order.id, newStatus: e.target.value, oldStatus: order.status })
                         }}
-                        className={`px-3 py-1 text-[10px] font-bold rounded-full border-0 cursor-pointer uppercase tracking-widest ${order.status === 'completed' ? 'bg-emerald-100 text-emerald-700' : order.status === 'in_progress' ? 'bg-blue-100 text-blue-700' : order.status === 'cancelled' ? 'bg-red-100 text-red-700' : 'bg-orange-100 text-orange-700'}`}
-                      >
-                        <option value="pending">Pending</option>
-                        <option value="in_progress">In Progress</option>
-                        <option value="completed">Completed</option>
-                        <option value="cancelled">Cancelled</option>
-                      </select>
+                        options={[
+                          { value: 'quotation', label: 'Quotation' },
+                          { value: 'pending', label: 'Pending' },
+                          { value: 'in_progress', label: 'In Progress' },
+                          { value: 'completed', label: 'Completed' },
+                          { value: 'cancelled', label: 'Cancelled' },
+                        ]}
+                        className="w-36"
+                      />
                     </div>
                     <div className="flex flex-wrap gap-2 pt-4 border-t border-slate-50 print:hidden">
                       <button onClick={() => handleOpenPreview(order)} className="p-2.5 bg-indigo-50 text-indigo-600 rounded-xl hover:bg-indigo-100 transition-colors" title="Preview Summary"><FaChartLine /></button>
@@ -1277,7 +1269,7 @@ export default function OrderCenterPage() {
                           </div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
-                          <select
+                          <CustomSelect
                             value={order.status}
                             onChange={(e) => {
                               if (e.target.value === order.status) return
@@ -1288,19 +1280,15 @@ export default function OrderCenterPage() {
                                 oldStatus: order.status
                               })
                             }}
-                            className={`px-3 py-1.5 text-xs font-semibold rounded-full border-0 cursor-pointer focus:ring-2 focus:ring-primary-500 focus:outline-none ${order.status === 'completed' ? 'bg-green-100 text-green-800 hover:bg-green-200' :
-                              order.status === 'in_progress' ? 'bg-yellow-100 text-yellow-800 hover:bg-yellow-200' :
-                                order.status === 'cancelled' ? 'bg-red-100 text-red-800 hover:bg-red-200' :
-                                  order.status === 'quotation' ? 'bg-purple-100 text-purple-800 hover:bg-purple-200' :
-                                    'bg-gray-100 text-gray-800 hover:bg-gray-200'
-                              }`}
-                          >
-                            <option value="quotation">Quotation</option>
-                            <option value="pending">Pending</option>
-                            <option value="in_progress">In Progress</option>
-                            <option value="completed">Completed</option>
-                            <option value="cancelled">Cancelled</option>
-                          </select>
+                            options={[
+                              { value: 'quotation', label: 'Quotation' },
+                              { value: 'pending', label: 'Pending' },
+                              { value: 'in_progress', label: 'In Progress' },
+                              { value: 'completed', label: 'Completed' },
+                              { value: 'cancelled', label: 'Cancelled' },
+                            ]}
+                            className="w-36 min-w-[130px]"
+                          />
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                           {formatDateTime(order.createdAt)}

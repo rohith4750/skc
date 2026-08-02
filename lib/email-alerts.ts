@@ -35,12 +35,14 @@ async function getInternalUserEmails(): Promise<string[]> {
       },
     });
 
-    return users
-      .map((u) => u.email)
+    const emails = users
+      .map((u) => u.email?.trim().toLowerCase())
       .filter(
         (email): email is string =>
-          email !== null && email !== undefined && email.includes("@"),
+          !!email && email.includes("@"),
       );
+
+    return Array.from(new Set(emails));
   } catch (error) {
     console.error("Failed to fetch user emails:", error);
     return [];

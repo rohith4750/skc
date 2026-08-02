@@ -387,6 +387,11 @@ select {
   @apply bg-indigo-600 text-white font-bold hover:bg-indigo-700 active:scale-95 transition-all shadow-sm rounded-[5px] px-4 py-2 text-sm;
 }
 
+/* Global outline Cancel button style */
+.btn-cancel {
+  @apply bg-transparent border border-gray-400 text-gray-600 font-bold hover:bg-gray-50 hover:border-gray-500 active:scale-95 transition-all rounded-[5px] px-4 py-2 text-sm;
+}
+
 /* 5. Override ALL Tailwind rounded classes across the entire application */
 .rounded-sm,
 .rounded,
@@ -406,3 +411,172 @@ select {
 nextjs-portal {
   display: none !important;
 }
+
+/* ====================================================== */
+/* GLOBAL FORM FIELD HEIGHT & STYLE CONSISTENCY           */
+/* Enforced globally — same height, border, font for all  */
+/* inputs, selects, and CustomSelect triggers.            */
+/* ====================================================== */
+
+:root {
+  --field-height: 38px;
+  --field-padding-x: 12px;
+  --field-padding-y: 8px;
+  --field-font-size: 0.875rem;
+  --field-border-color: #d1d5db;
+  --field-radius: 5px;
+  --field-focus-border: #ea580c;
+  --field-focus-ring: 0 0 0 2px rgba(234, 88, 12, 0.2);
+}
+
+/* === INPUTS === */
+input[type="text"],
+input[type="email"],
+input[type="password"],
+input[type="tel"],
+input[type="number"],
+input[type="date"],
+input[type="time"],
+input[type="month"],
+input[type="week"],
+input[type="datetime-local"],
+input[type="search"],
+input[type="url"] {
+  height: var(--field-height) !important;
+  min-height: var(--field-height) !important;
+  max-height: var(--field-height) !important;
+  padding-top: var(--field-padding-y) !important;
+  padding-bottom: var(--field-padding-y) !important;
+  padding-left: var(--field-padding-x) !important;
+  padding-right: var(--field-padding-x) !important;
+  font-size: var(--field-font-size) !important;
+  line-height: 1.25rem !important;
+  border: 1px solid var(--field-border-color) !important;
+  border-radius: var(--field-radius) !important;
+  background-color: #ffffff !important;
+  box-sizing: border-box !important;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease !important;
+  vertical-align: middle !important;
+}
+
+/* Allow explicit icon left-padding overrides for inputs with icons */
+input[class*="pl-8"] { padding-left: 2rem !important; }
+input[class*="pl-9"] { padding-left: 2.25rem !important; }
+input[class*="pl-10"] { padding-left: 2.5rem !important; }
+input[class*="pl-11"] { padding-left: 2.75rem !important; }
+input[class*="pl-12"] { padding-left: 3rem !important; }
+input[class*="pl-14"] { padding-left: 3.5rem !important; }
+
+/* Allow explicit position number inputs to override field height rules */
+input.position-input {
+  height: 28px !important;
+  min-height: 28px !important;
+  max-height: 28px !important;
+  padding: 0 !important;
+  line-height: 26px !important;
+  text-align: center !important;
+  font-size: 11px !important;
+  font-weight: 800 !important;
+}
+
+input[type="text"]:focus,
+input[type="email"]:focus,
+input[type="password"]:focus,
+input[type="tel"]:focus,
+input[type="number"]:focus,
+input[type="date"]:focus,
+input[type="time"]:focus,
+input[type="month"]:focus,
+input[type="week"]:focus,
+input[type="datetime-local"]:focus,
+input[type="search"]:focus,
+input[type="url"]:focus {
+  outline: none !important;
+  border-color: var(--field-focus-border) !important;
+  box-shadow: var(--field-focus-ring) !important;
+}
+
+/* === TEXTAREA === */
+textarea {
+  padding-top: var(--field-padding-y) !important;
+  padding-bottom: var(--field-padding-y) !important;
+  padding-left: var(--field-padding-x) !important;
+  padding-right: var(--field-padding-x) !important;
+  font-size: var(--field-font-size) !important;
+  line-height: 1.5rem !important;
+  border: 1px solid var(--field-border-color) !important;
+  border-radius: var(--field-radius) !important;
+  background-color: #ffffff !important;
+  box-sizing: border-box !important;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease !important;
+}
+
+textarea:focus {
+  outline: none !important;
+  border-color: var(--field-focus-border) !important;
+  box-shadow: var(--field-focus-ring) !important;
+}
+
+/* === CustomSelect Trigger — mirrors input height exactly === */
+.custom-select-trigger,
+.custom-date-picker-trigger {
+  height: var(--field-height) !important;
+  min-height: var(--field-height) !important;
+  max-height: var(--field-height) !important;
+  padding-top: var(--field-padding-y) !important;
+  padding-bottom: var(--field-padding-y) !important;
+  padding-left: var(--field-padding-x) !important;
+  padding-right: var(--field-padding-x) !important;
+  font-size: var(--field-font-size) !important;
+  line-height: 1.25rem !important;
+  border: 1px solid var(--field-border-color) !important;
+  border-radius: var(--field-radius) !important;
+  background-color: #ffffff !important;
+  box-sizing: border-box !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  width: 100% !important;
+  cursor: pointer !important;
+  color: #1f2937 !important;
+  text-align: left !important;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease !important;
+  vertical-align: middle !important;
+}
+
+.custom-select-trigger:hover:not(:disabled),
+.custom-date-picker-trigger:hover:not(:disabled) {
+  border-color: #6b7280 !important;
+}
+
+.custom-select-trigger[data-open="true"],
+.custom-date-picker-trigger[data-open="true"] {
+  border-color: var(--field-focus-border) !important;
+  box-shadow: var(--field-focus-ring) !important;
+  outline: none !important;
+}
+
+.custom-select-trigger:disabled,
+.custom-date-picker-trigger:disabled {
+  background-color: #f9fafb !important;
+  color: rgba(0,0,0,0.38) !important;
+  cursor: not-allowed !important;
+  border-color: #e5e7eb !important;
+}
+
+/* === Global Orange Outline Button & Cancel Button Styling === */
+.btn-cancel,
+.btn-outline-orange {
+  background-color: #ffffff !important;
+  border: 2px solid var(--primary-500) !important;
+  color: var(--primary-600) !important;
+  font-weight: 600 !important;
+  transition: all 0.2s ease !important;
+}
+
+.btn-cancel:hover,
+.btn-outline-orange:hover {
+  background-color: var(--primary-50) !important;
+  border-color: var(--primary-600) !important;
+  color: var(--primary-700) !important;
+}

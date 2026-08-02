@@ -39,6 +39,8 @@ import {
 import { toast } from 'sonner'
 import Table from '@/components/Table'
 import ConfirmModal from '@/components/ConfirmModal'
+import { CustomSelect } from '@/components/ui/CustomSelect'
+import { CustomDatePicker } from '@/components/ui/CustomDatePicker'
 import Link from 'next/link'
 import jsPDF from 'jspdf'
 import html2canvas from 'html2canvas'
@@ -802,63 +804,43 @@ export default function ExpensesPage() {
             {/* Specific Date Filter */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">Specific Date</label>
-              <div className="relative">
-                <input
-                  type="date"
-                  value={filterDate}
-                  onChange={(e) => {
-                    setFilterDate(e.target.value)
-                    setCurrentPage(1)
-                  }}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-                />
-                {filterDate && (
-                  <button
-                    onClick={() => {
-                      setFilterDate('')
-                      setCurrentPage(1)
-                    }}
-                    className="absolute right-2 top-1/2 transform -translate-y-1/2 p-1 bg-white text-gray-400 hover:text-gray-600 focus:outline-none rounded-md"
-                    title="Clear Specific Date"
-                  >
-                    ✕
-                  </button>
-                )}
-              </div>
+              <CustomDatePicker
+                value={filterDate}
+                onChange={(val) => {
+                  setFilterDate(val)
+                  setCurrentPage(1)
+                }}
+                placeholder="dd-mm-yyyy"
+                className="w-full"
+              />
             </div>
 
             {/* Month Filter */}
             <div className={`transition-opacity ${filterDate ? 'opacity-40 pointer-events-none' : 'opacity-100'}`}>
               <label className="block text-sm font-medium text-gray-700 mb-2">Month</label>
-              <select
-                value={selectedMonth}
+              <CustomSelect
+                value={String(selectedMonth)}
                 onChange={(e) => {
                   setSelectedMonth(parseInt(e.target.value))
                   setCurrentPage(1)
                 }}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-              >
-                {['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'].map((m, i) => (
-                  <option key={m} value={i + 1}>{m}</option>
-                ))}
-              </select>
+                options={['January','February','March','April','May','June','July','August','September','October','November','December'].map((m, i) => ({ value: String(i + 1), label: m }))}
+                className="w-full"
+              />
             </div>
 
             {/* Year Filter */}
             <div className={`transition-opacity ${filterDate ? 'opacity-40 pointer-events-none' : 'opacity-100'}`}>
               <label className="block text-sm font-medium text-gray-700 mb-2">Year</label>
-              <select
-                value={selectedYear}
+              <CustomSelect
+                value={String(selectedYear)}
                 onChange={(e) => {
                   setSelectedYear(parseInt(e.target.value))
                   setCurrentPage(1)
                 }}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-              >
-                {[2024, 2025, 2026].map(y => (
-                  <option key={y} value={y}>{y}</option>
-                ))}
-              </select>
+                options={[2024, 2025, 2026].map(y => ({ value: String(y), label: String(y) }))}
+                className="w-full"
+              />
             </div>
 
             {/* Order Filter */}
@@ -866,21 +848,21 @@ export default function ExpensesPage() {
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Event/Order
               </label>
-              <select
+              <CustomSelect
                 value={selectedOrder}
                 onChange={(e) => {
                   setSelectedOrder(e.target.value)
                   setCurrentPage(1)
                 }}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-              >
-                <option value="all">All Events/Orders</option>
-                {orders.map((order: any) => (
-                  <option key={order.id} value={order.id}>
-                    {order.customer?.name || 'Unknown'} - {formatDate(getOrderDate(order))}
-                  </option>
-                ))}
-              </select>
+                options={[
+                  { value: 'all', label: 'All Events/Orders' },
+                  ...orders.map((order: any) => ({
+                    value: order.id,
+                    label: `${order.customer?.name || 'Unknown'} - ${formatDate(getOrderDate(order))}`
+                  }))
+                ]}
+                className="w-full"
+              />
             </div>
 
             {/* Category Filter */}

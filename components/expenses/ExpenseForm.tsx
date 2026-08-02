@@ -7,6 +7,9 @@ import { toast } from 'sonner'
 import Link from 'next/link'
 import { formatCurrency, getLocalISODate, getOrderDate } from '@/lib/utils'
 import FormError from '@/components/FormError'
+import { CustomSelect } from '@/components/ui/CustomSelect'
+import { CustomDatePicker } from '@/components/ui/CustomDatePicker'
+import { LoadingSpinner } from '@/components/ui/LoadingSpinner'
 
 const EXPENSE_CATEGORIES = [
     'supervisor',
@@ -607,7 +610,7 @@ export default function ExpenseForm({ id: expenseId }: ExpenseFormProps) {
         }
     }
 
-    if (loading) return <div className="text-center py-10">Loading...</div>
+    if (loading) return <LoadingSpinner message="Loading Expense Details" subtext="Fetching expense & event records..." />
 
     return (
         <div className="bg-white rounded-xl shadow-md border border-gray-200 p-6">
@@ -626,46 +629,45 @@ export default function ExpenseForm({ id: expenseId }: ExpenseFormProps) {
                     <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
                         <div>
                             <label className="block text-xs font-medium text-gray-500 mb-1">Specific Date</label>
-                            <input
-                                type="date"
+                            <CustomDatePicker
                                 value={filterDate}
-                                onChange={(e) => setFilterDate(e.target.value)}
-                                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-1 focus:ring-primary-500"
+                                onChange={(val) => setFilterDate(val)}
+                                placeholder="dd-mm-yyyy"
+                                className="w-full"
                             />
                         </div>
                         <div>
                             <label className="block text-xs font-medium text-gray-500 mb-1">Month</label>
-                            <select
+                            <CustomSelect
                                 value={filterMonth}
                                 onChange={(e) => {
                                     setFilterMonth(e.target.value)
                                     if (e.target.value !== 'all') setFilterDate('')
                                 }}
                                 disabled={!!filterDate}
-                                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-1 focus:ring-primary-500 disabled:bg-gray-50 disabled:text-gray-400"
-                            >
-                                <option value="all">All Months</option>
-                                {['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'].map((month, idx) => (
-                                    <option key={month} value={idx}>{month}</option>
-                                ))}
-                            </select>
+                                options={[
+                                    { value: 'all', label: 'All Months' },
+                                    ...['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'].map((month, idx) => ({
+                                        value: String(idx),
+                                        label: month
+                                    }))
+                                ]}
+                            />
                         </div>
                         <div>
                             <label className="block text-xs font-medium text-gray-500 mb-1">Year</label>
-                            <select
+                            <CustomSelect
                                 value={filterYear}
                                 onChange={(e) => {
                                     setFilterYear(e.target.value)
                                     if (e.target.value !== 'all') setFilterDate('')
                                 }}
                                 disabled={!!filterDate}
-                                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-1 focus:ring-primary-500 disabled:bg-gray-50 disabled:text-gray-400"
-                            >
-                                <option value="all">All Years</option>
-                                {[2024, 2025, 2026, 2027].map(year => (
-                                    <option key={year} value={year}>{year}</option>
-                                ))}
-                            </select>
+                                options={[
+                                    { value: 'all', label: 'All Years' },
+                                    ...[2024, 2025, 2026, 2027].map(year => ({ value: String(year), label: String(year) }))
+                                ]}
+                            />
                         </div>
                         <div>
                             <label className="block text-xs font-medium text-gray-500 mb-1">Search Event/Customer</label>
@@ -697,7 +699,7 @@ export default function ExpenseForm({ id: expenseId }: ExpenseFormProps) {
                 </div>
 
                 {/* Event Selection Dropdown */}
-                <div className="relative">
+                <div className={`relative ${isEventDropdownOpen ? 'z-[9999]' : 'z-20'}`}>
                     <label className="block text-sm font-semibold text-gray-700 mb-2">
                         Event/Order (Optional)
                     </label>
@@ -721,7 +723,7 @@ export default function ExpenseForm({ id: expenseId }: ExpenseFormProps) {
                     </div>
 
                     {isEventDropdownOpen && (
-                        <div className="absolute z-10 w-full mt-2 bg-white border border-gray-200 rounded-lg shadow-xl overflow-hidden">
+                        <div className="absolute z-[9999] w-full mt-2 bg-white !bg-white border border-gray-200 rounded-xl shadow-2xl overflow-hidden">
                             <div className="max-h-64 overflow-y-auto p-2">
                                 <label className="flex items-center gap-3 p-3 rounded-lg hover:bg-gray-50 cursor-pointer">
                                     <input
@@ -784,51 +786,51 @@ export default function ExpenseForm({ id: expenseId }: ExpenseFormProps) {
                 </div>
 
                 {/* Category and Calculation Method */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 relative z-10">
                     <div>
                         <label className="block text-sm font-semibold text-gray-700 mb-2">Category *</label>
-                        <select
-                            required
+                        <CustomSelect
                             value={formData.category}
-                            onChange={(e) => setFormData({
-                                ...formData,
-                                category: e.target.value,
-                                customCategoryName: e.target.value !== 'other' ? '' : formData.customCategoryName,
-                                calculationMethod: 'total',
-                                amount: '',
-                                plates: '',
-                                numberOfLabours: '',
-                                labourAmount: '',
-                                dressedBoys: '',
-                                dressedBoyAmount: '',
-                                nonDressedBoys: '',
-                                nonDressedBoyAmount: '',
-                                recipient: '',
-                                selectedMealTypes: [],
-                            })}
-                            className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-                        >
-                            {EXPENSE_CATEGORIES.map(cat => (
-                                <option key={cat} value={cat}>
-                                    {cat.charAt(0).toUpperCase() + cat.slice(1)}
-                                </option>
-                            ))}
-                        </select>
+                            onChange={(e) => {
+                                const newCat = e.target.value;
+                                const members = workforce.filter(m => m.role === newCat);
+                                const defaultRecipient = members.length > 0 ? members[0].name : '';
+                                setFormData({
+                                    ...formData,
+                                    category: newCat,
+                                    customCategoryName: newCat !== 'other' ? '' : formData.customCategoryName,
+                                    calculationMethod: 'total',
+                                    amount: '',
+                                    plates: '',
+                                    numberOfLabours: '',
+                                    labourAmount: '',
+                                    dressedBoys: '',
+                                    dressedBoyAmount: '',
+                                    nonDressedBoys: '',
+                                    nonDressedBoyAmount: '',
+                                    recipient: defaultRecipient,
+                                    selectedMealTypes: [],
+                                });
+                            }}
+                            options={EXPENSE_CATEGORIES.map(cat => ({
+                                value: cat,
+                                label: cat.charAt(0).toUpperCase() + cat.slice(1)
+                            }))}
+                        />
                     </div>
 
                     {formData.category === 'chef' && (
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div>
                                 <label className="block text-sm font-semibold text-gray-700 mb-2">Calculation Method *</label>
-                                <select
-                                    required
+                                <CustomSelect
                                     value={formData.calculationMethod}
                                     onChange={(e) => setFormData({ ...formData, calculationMethod: e.target.value as 'plate-wise' | 'total', amount: '', plates: '' })}
-                                    className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-                                >
-                                    <option value="total">Total Amount</option>
-                                    <option value="plate-wise">Plate-wise</option>
-                                </select>
+                                    options={[
+                                        { value: 'total', label: 'Total Amount' },
+                                        { value: 'plate-wise', label: 'Plate-wise' },
+                                    ]}
+                                />
                             </div>
                             {selectedOrderIds.length > 0 && availableMealTypes.length > 0 && (
                                 <div className="md:col-span-2">
@@ -874,19 +876,17 @@ export default function ExpenseForm({ id: expenseId }: ExpenseFormProps) {
                                     </button>
                                 </div>
                                 {customCategoryInputType === 'select' ? (
-                                    <select
-                                        required
+                                    <CustomSelect
                                         value={formData.customCategoryName}
                                         onChange={(e) => setFormData({ ...formData, customCategoryName: e.target.value })}
-                                        className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
-                                    >
-                                        <option value="">Select a category...</option>
-                                        {customCategories.map((cat) => (
-                                            <option key={cat} value={cat}>
-                                                {cat.charAt(0).toUpperCase() + cat.slice(1)}
-                                            </option>
-                                        ))}
-                                    </select>
+                                        options={[
+                                            { value: '', label: 'Select a category...' },
+                                            ...customCategories.map((cat) => ({
+                                                value: cat,
+                                                label: cat.charAt(0).toUpperCase() + cat.slice(1)
+                                            }))
+                                        ]}
+                                    />
                                 ) : (
                                     <input
                                         type="text"
@@ -1003,12 +1003,11 @@ export default function ExpenseForm({ id: expenseId }: ExpenseFormProps) {
                             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                                 <div>
                                     <label className="block text-sm font-medium text-gray-700 mb-2">Event Date *</label>
-                                    <input
-                                        type="date"
-                                        required
+                                    <CustomDatePicker
                                         value={formData.eventDate}
-                                        onChange={(e) => setFormData({ ...formData, eventDate: e.target.value })}
-                                        className="w-full px-4 py-2.5 border border-gray-300 rounded-lg"
+                                        onChange={(val) => setFormData({ ...formData, eventDate: val })}
+                                        placeholder="dd-mm-yyyy"
+                                        className="w-full"
                                     />
                                 </div>
                                 <div>
@@ -1044,12 +1043,11 @@ export default function ExpenseForm({ id: expenseId }: ExpenseFormProps) {
                             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                                 <div className="md:col-span-2 lg:col-span-4">
                                     <label className="block text-sm font-medium text-gray-700 mb-2">Event Date *</label>
-                                    <input
-                                        type="date"
-                                        required
+                                    <CustomDatePicker
                                         value={formData.eventDate}
-                                        onChange={(e) => setFormData({ ...formData, eventDate: e.target.value })}
-                                        className="w-full px-4 py-2.5 border border-gray-300 rounded-lg"
+                                        onChange={(val) => setFormData({ ...formData, eventDate: val })}
+                                        placeholder="dd-mm-yyyy"
+                                        className="w-full"
                                     />
                                 </div>
                                 <div>
@@ -1110,27 +1108,25 @@ export default function ExpenseForm({ id: expenseId }: ExpenseFormProps) {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
                         <label className="block text-sm font-semibold text-gray-700 mb-2">Payment Date *</label>
-                        <input
-                            type="date"
-                            required
+                        <CustomDatePicker
                             value={formData.paymentDate}
-                            onChange={(e) => setFormData({ ...formData, paymentDate: e.target.value })}
-                            className="w-full px-4 py-2.5 border border-gray-300 rounded-lg"
+                            onChange={(val) => setFormData({ ...formData, paymentDate: val })}
+                            placeholder="dd-mm-yyyy"
+                            className="w-full"
                         />
                     </div>
                     <div>
                         <label className="block text-sm font-semibold text-gray-700 mb-2">Recipient</label>
                         {WORKFORCE_RECIPIENT_ROLES.includes(formData.category) && workforce.some(m => m.role === formData.category) ? (
-                            <select
+                            <CustomSelect
                                 value={formData.recipient}
                                 onChange={(e) => setFormData({ ...formData, recipient: e.target.value })}
-                                className="w-full px-4 py-2.5 border border-gray-300 rounded-lg"
-                            >
-                                <option value="">Select recipient</option>
-                                {workforce.filter(m => m.role === formData.category).map(member => (
-                                    <option key={member.id} value={member.name}>{member.name}</option>
-                                ))}
-                            </select>
+                                placeholder="Select recipient"
+                                options={workforce.filter(m => m.role === formData.category).map(member => ({
+                                    value: member.name,
+                                    label: member.name
+                                }))}
+                            />
                         ) : (
                             <input
                                 type="text"
@@ -1167,15 +1163,15 @@ export default function ExpenseForm({ id: expenseId }: ExpenseFormProps) {
                         </div>
                         <div>
                             <label className="block text-sm font-semibold text-gray-700 mb-2">Payment Status</label>
-                            <select
+                            <CustomSelect
                                 value={formData.paymentStatus}
                                 onChange={(e) => setFormData({ ...formData, paymentStatus: e.target.value as 'pending' | 'partial' | 'paid' })}
-                                className="w-full px-4 py-2.5 border border-gray-300 rounded-lg"
-                            >
-                                <option value="pending">Pending</option>
-                                <option value="partial">Partial</option>
-                                <option value="paid">Paid</option>
-                            </select>
+                                options={[
+                                    { value: 'pending', label: 'Pending' },
+                                    { value: 'partial', label: 'Partial' },
+                                    { value: 'paid', label: 'Paid' },
+                                ]}
+                            />
                         </div>
                     </div>
                 </div>
@@ -1235,7 +1231,7 @@ export default function ExpenseForm({ id: expenseId }: ExpenseFormProps) {
                 )}
 
                 <div className="flex justify-end gap-3 pt-4 border-t border-gray-100">
-                    <button type="button" onClick={() => router.push('/expenses')} className="px-6 py-2.5 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors">Cancel</button>
+                    <button type="button" onClick={() => router.push('/expenses')} className="px-6 py-2.5 border-2 border-primary-500 text-primary-600 rounded-xl font-bold hover:bg-primary-50 hover:border-primary-600 active:scale-95 transition-all shadow-sm">Cancel</button>
                     <button type="submit" disabled={saving} className="px-10 py-2.5 bg-primary-600 text-white rounded-lg hover:bg-primary-700 font-bold shadow-md disabled:bg-gray-400 transition-all">
                         {saving ? 'Saving...' : expenseId ? 'Update Expense' : 'Create Expense'}
                     </button>
