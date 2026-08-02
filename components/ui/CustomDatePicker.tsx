@@ -1,6 +1,7 @@
 "use client";
 
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import { FaCalendarAlt, FaChevronLeft, FaChevronRight, FaTimes } from 'react-icons/fa';
 
 interface CustomDatePickerProps {
@@ -26,9 +27,11 @@ export function CustomDatePicker({
     disabled = false,
 }: CustomDatePickerProps) {
     const [isOpen, setIsOpen] = useState(false);
-    const wrapperRef = useRef<HTMLDivElement>(null);
+    const [mounted, setMounted] = useState(false);
+    const triggerRef = useRef<HTMLButtonElement>(null);
+    const popoverRef = useRef<HTMLDivElement>(null);
+    const [coords, setCoords] = useState<{ top: number; left: number }>({ top: 0, left: 0 });
 
-    // Parse value YYYY-MM-DD
     const parsedDate = React.useMemo(() => {
         if (!value) return null;
         const [y, m, d] = value.split('-').map(Number);
@@ -38,8 +41,11 @@ export function CustomDatePicker({
         return null;
     }, [value]);
 
-    // View state for calendar navigation (year & month)
     const [viewDate, setViewDate] = useState<Date>(() => parsedDate || new Date());
+
+    useEffect(() => {
+        setMounted(true);
+    }, []);
 
     useEffect(() => {
         if (parsedDate) {
@@ -47,17 +53,51 @@ export function CustomDatePicker({
         }
     }, [parsedDate]);
 
-    useEffect(() => {
-        const handleClickOutside = (event: MouseEvent) => {
-            if (wrapperRef.current && !wrapperRef.current.contains(event.target as Node)) {
-                setIsOpen(false);
-            }
-        };
-        document.addEventListener('mousedown', handleClickOutside);
-        return () => document.removeEventListener('mousedown', handleClickOutside);
+    const updateCoords = useCallback(() => {
+        if (!triggerRef.current) return;
+        const rect = triggerRef.current.getBoundingClientRect();
+        const popoverWidth = 288;
+        const popoverHeight = 320;
+        const spaceBelow = window.innerHeight - rect.bottom;
+        const placeAbove = spaceBelow < popoverHeight && rect.top > popoverHeight;
+
+        let left = rect.left;
+        if (left + popoverWidth > window.innerWidth - 8) {
+            left = Math.max(8, window.innerWidth - popoverWidth - 8);
+        }
+
+        setCoords({
+            top: placeAbove ? Math.max(8, rect.top - popoverHeight - 4) : rect.bottom + 4,
+            left: Math.max(8, left),
+        });
     }, []);
 
-    // Format display string e.g. "14 April, 2021" or "28 Aug, 2026"
+    useEffect(() => {
+        if (isOpen) {
+            updateCoords();
+            const handleScrollOrResize = () => updateCoords();
+            window.addEventListener('scroll', handleScrollOrResize, true);
+            window.addEventListener('resize', handleScrollOrResize);
+
+            const handleClickOutside = (event: MouseEvent) => {
+                const target = event.target as Node;
+                if (
+                    triggerRef.current && !triggerRef.current.contains(target) &&
+                    popoverRef.current && !popoverRef.current.contains(target)
+                ) {
+                    setIsOpen(false);
+                }
+            };
+            document.addEventListener('mousedown', handleClickOutside);
+
+            return () => {
+                window.removeEventListener('scroll', handleScrollOrResize, true);
+                window.removeEventListener('resize', handleScrollOrResize);
+                document.removeEventListener('mousedown', handleClickOutside);
+            };
+        }
+    }, [isOpen, updateCoords]);
+
     const displayString = React.useMemo(() => {
         if (!parsedDate) return '';
         const day = parsedDate.getDate();
@@ -66,7 +106,6 @@ export function CustomDatePicker({
         return `${day} ${month}, ${year}`;
     }, [parsedDate]);
 
-    // Month navigation handlers
     const prevMonth = () => {
         setViewDate(prev => new Date(prev.getFullYear(), prev.getMonth() - 1, 1));
     };
@@ -77,7 +116,7 @@ export function CustomDatePicker({
 
     const handleSelectDay = (day: number) => {
         const selectedYear = viewDate.getFullYear();
-        const selectedMonth = viewDate.getMonth() + 1; // 1-indexed
+        const selectedMonth = viewDate.getMonth() + 1;
         const formatted = `${selectedYear}-${String(selectedMonth).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
         onChange?.(formatted);
         setIsOpen(false);
@@ -99,12 +138,11 @@ export function CustomDatePicker({
         setIsOpen(false);
     };
 
-    // Calculate calendar grid days
     const currentYear = viewDate.getFullYear();
     const currentMonth = viewDate.getMonth();
 
     const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
-    const firstDayOfWeek = new Date(currentYear, currentMonth, 1).getDay(); // 0 (Sun) to 6 (Sat)
+    const firstDayOfWeek = new Date(currentYear, currentMonth, 1).getDay();
     const prevMonthDays = new Date(currentYear, currentMonth, 0).getDate();
 
     const todayDate = new Date();
@@ -112,9 +150,9 @@ export function CustomDatePicker({
         todayDate.getFullYear() === currentYear && todayDate.getMonth() === currentMonth;
 
     return (
-        <div ref={wrapperRef} className={`relative inline-block ${isOpen ? 'z-[9999]' : 'z-30'} ${className}`}>
-            {/* Trigger Button — uses .custom-date-picker-trigger CSS class for 100% height equality */}
+        <div className={`relative inline-block ${className}`}>
             <button
+                ref={triggerRef}
                 type="button"
                 disabled={disabled}
                 data-open={isOpen ? 'true' : 'false'}
@@ -140,15 +178,19 @@ export function CustomDatePicker({
                 </div>
             </button>
 
-            {/* Calendar Popover */}
-            {isOpen && (
+            {isOpen && mounted && createPortal(
                 <div
-                    className="absolute top-full left-0 mt-2 bg-white rounded-2xl border border-slate-200 shadow-2xl p-4 w-72 z-[9999] select-none animate-fade-in"
+                    ref={popoverRef}
+                    className="fixed bg-white rounded-2xl border border-slate-200/90 shadow-2xl p-4 w-72 select-none animate-fade-in"
                     style={{
-                        boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.15), 0 8px 10px -6px rgba(0, 0, 0, 0.1)',
+                        position: 'fixed',
+                        top: `${coords.top}px`,
+                        left: `${coords.left}px`,
+                        backgroundColor: '#ffffff',
+                        boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.25), 0 8px 10px -6px rgba(0, 0, 0, 0.15)',
+                        zIndex: 999999,
                     }}
                 >
-                    {/* Header: Month Year + Controls */}
                     <div className="flex items-center justify-between mb-4 px-1">
                         <div className="text-base font-black text-slate-800">
                             {MONTH_NAMES[currentMonth]} {currentYear}
@@ -171,7 +213,6 @@ export function CustomDatePicker({
                         </div>
                     </div>
 
-                    {/* Weekday Headers */}
                     <div className="grid grid-cols-7 gap-1 text-center mb-2">
                         {WEEKDAYS.map(day => (
                             <div key={day} className="text-xs font-bold text-slate-400 py-1">
@@ -180,9 +221,7 @@ export function CustomDatePicker({
                         ))}
                     </div>
 
-                    {/* Days Grid */}
                     <div className="grid grid-cols-7 gap-1 text-center">
-                        {/* Previous month padding days */}
                         {Array.from({ length: firstDayOfWeek }).map((_, idx) => {
                             const pDay = prevMonthDays - firstDayOfWeek + idx + 1;
                             return (
@@ -192,7 +231,6 @@ export function CustomDatePicker({
                             );
                         })}
 
-                        {/* Current month days */}
                         {Array.from({ length: daysInMonth }).map((_, idx) => {
                             const dayNum = idx + 1;
                             const isSelected =
@@ -224,7 +262,6 @@ export function CustomDatePicker({
                         })}
                     </div>
 
-                    {/* Footer Actions */}
                     <div className="flex items-center justify-between pt-3 mt-3 border-t border-slate-100 text-xs font-bold">
                         <button
                             type="button"
@@ -243,7 +280,8 @@ export function CustomDatePicker({
                             </button>
                         )}
                     </div>
-                </div>
+                </div>,
+                document.body
             )}
         </div>
     );

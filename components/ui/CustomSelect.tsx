@@ -1,6 +1,7 @@
 "use client";
 
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import { FaChevronDown } from 'react-icons/fa';
 
 export interface SelectOption {
@@ -41,24 +42,73 @@ export function CustomSelect({
     ...props
 }: CustomSelectProps) {
     const [isOpen, setIsOpen] = useState(false);
-    const wrapperRef = useRef<HTMLDivElement>(null);
+    const [mounted, setMounted] = useState(false);
+    const triggerRef = useRef<HTMLButtonElement>(null);
+    const dropdownRef = useRef<HTMLDivElement>(null);
+    const [coords, setCoords] = useState<{ top: number; left: number; width: number; placeAbove: boolean }>({
+        top: 0,
+        left: 0,
+        width: 0,
+        placeAbove: false,
+    });
 
     const hasValue = value !== undefined && value !== null && value !== '';
     const displayValue = options.find(opt => opt.value === String(value))?.label;
     const strVal = String(value || '').toLowerCase();
     const statusDotClass = hasValue ? STATUS_DOTS[strVal] : undefined;
-
     const hasEmptyOption = options.some(opt => opt.value === '');
 
     useEffect(() => {
-        const handleClickOutside = (event: MouseEvent) => {
-            if (wrapperRef.current && !wrapperRef.current.contains(event.target as Node)) {
-                setIsOpen(false);
-            }
-        };
-        document.addEventListener('mousedown', handleClickOutside);
-        return () => document.removeEventListener('mousedown', handleClickOutside);
+        setMounted(true);
     }, []);
+
+    const updateCoords = useCallback(() => {
+        if (!triggerRef.current) return;
+        const rect = triggerRef.current.getBoundingClientRect();
+        const dropdownHeight = Math.min(240, Math.max(80, (options.length + (placeholder && !hasEmptyOption ? 1 : 0)) * 36 + 12));
+        const spaceBelow = window.innerHeight - rect.bottom;
+        const placeAbove = spaceBelow < dropdownHeight && rect.top > dropdownHeight;
+
+        let left = rect.left;
+        let width = Math.max(rect.width, 120);
+
+        if (left + width > window.innerWidth - 8) {
+            left = Math.max(8, window.innerWidth - width - 8);
+        }
+
+        setCoords({
+            top: placeAbove ? Math.max(8, rect.top - dropdownHeight - 4) : rect.bottom + 4,
+            left: Math.max(8, left),
+            width,
+            placeAbove,
+        });
+    }, [options.length, placeholder, hasEmptyOption]);
+
+    useEffect(() => {
+        if (isOpen) {
+            updateCoords();
+            const handleScrollOrResize = () => updateCoords();
+            window.addEventListener('scroll', handleScrollOrResize, true);
+            window.addEventListener('resize', handleScrollOrResize);
+
+            const handleClickOutside = (event: MouseEvent) => {
+                const target = event.target as Node;
+                if (
+                    triggerRef.current && !triggerRef.current.contains(target) &&
+                    dropdownRef.current && !dropdownRef.current.contains(target)
+                ) {
+                    setIsOpen(false);
+                }
+            };
+            document.addEventListener('mousedown', handleClickOutside);
+
+            return () => {
+                window.removeEventListener('scroll', handleScrollOrResize, true);
+                window.removeEventListener('resize', handleScrollOrResize);
+                document.removeEventListener('mousedown', handleClickOutside);
+            };
+        }
+    }, [isOpen, updateCoords]);
 
     const handleSelect = (optionValue: string) => {
         if (disabled) return;
@@ -81,9 +131,9 @@ export function CustomSelect({
     };
 
     return (
-        <div ref={wrapperRef} className={`relative ${isOpen ? 'z-[9999]' : 'z-30'} ${className}`}>
-            {/* Trigger button — clean white background with subtle border and crisp text */}
+        <div className={`relative inline-block ${className}`}>
             <button
+                ref={triggerRef}
                 type="button"
                 disabled={disabled}
                 data-open={isOpen ? 'true' : 'false'}
@@ -99,23 +149,26 @@ export function CustomSelect({
                     </span>
                 </span>
                 <FaChevronDown
-                    className={`flex-shrink-0 ml-2 text-slate-400 transition-transform duration-200 ${isOpen ? 'rotate-180 text-primary-600' : ''
-                        }`}
+                    className={`flex-shrink-0 ml-2 text-slate-400 transition-transform duration-200 ${isOpen ? 'rotate-180 text-primary-600' : ''}`}
                     size={11}
                 />
             </button>
 
-            {/* Dropdown menu — solid white card floating above all sibling z-index contexts (z-[9999]) */}
-            {isOpen && (
+            {isOpen && mounted && createPortal(
                 <div
-                    className="absolute z-[9999] w-full min-w-[120px] left-0 mt-1 bg-white !bg-white py-1.5 overflow-auto rounded-xl border border-slate-200/90 shadow-2xl"
+                    ref={dropdownRef}
+                    className="fixed py-1.5 overflow-auto rounded-xl border border-slate-200/90 shadow-2xl bg-white !bg-white animate-fade-in"
                     style={{
+                        position: 'fixed',
+                        top: `${coords.top}px`,
+                        left: `${coords.left}px`,
+                        width: `${coords.width}px`,
                         maxHeight: '240px',
                         backgroundColor: '#ffffff',
-                        boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.2), 0 8px 10px -6px rgba(0, 0, 0, 0.1)',
+                        boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.25), 0 8px 10px -6px rgba(0, 0, 0, 0.15)',
+                        zIndex: 999999,
                     }}
                 >
-                    {/* Placeholder / clear option (only render if options doesn't already have empty value) */}
                     {placeholder && !hasEmptyOption && (
                         <div
                             onClick={() => handleSelect('')}
@@ -157,7 +210,8 @@ export function CustomSelect({
                             </div>
                         );
                     })}
-                </div>
+                </div>,
+                document.body
             )}
         </div>
     );

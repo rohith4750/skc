@@ -51,7 +51,7 @@ export default function Sidebar() {
       {/* Mobile Menu Button */}
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="lg:hidden fixed top-4 left-0 z-50 bg-slate-900/90 backdrop-blur-md text-white p-3 rounded-r-2xl shadow-[0_4px_20px_rgba(0,0,0,0.3)] border border-slate-700/50 border-l-0 hover:bg-slate-800 active:scale-95 transition-all duration-300 touch-manipulation"
+        className="lg:hidden fixed top-4 left-0 z-[100002] bg-slate-900/90 backdrop-blur-md text-white p-3 rounded-r-2xl shadow-[0_4px_20px_rgba(0,0,0,0.3)] border border-slate-700/50 border-l-0 hover:bg-slate-800 active:scale-95 transition-all duration-300 touch-manipulation"
         aria-label="Toggle menu"
       >
         {isOpen ? (
@@ -64,7 +64,7 @@ export default function Sidebar() {
       {/* Overlay for mobile */}
       {isOpen && (
         <div
-          className="lg:hidden fixed inset-0 bg-black bg-opacity-50 z-40"
+          className="lg:hidden fixed inset-0 bg-black/60 backdrop-blur-xs z-[100000]"
           onClick={() => setIsOpen(false)}
         />
       )}
@@ -72,7 +72,7 @@ export default function Sidebar() {
       {/* Sidebar */}
       <div
         className={`
-          fixed lg:static inset-y-0 left-0 z-40
+          fixed lg:static inset-y-0 left-0 z-[100001] lg:z-40
           w-56 lg:w-72 bg-gradient-to-b from-slate-950 via-slate-900 to-slate-950 text-slate-100 shadow-[4px_0_24px_rgba(0,0,0,0.4)] border-r border-slate-800/50
           transform transition-all duration-500 ease-[cubic-bezier(0.16,1,0.3,1)]
           ${isOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
