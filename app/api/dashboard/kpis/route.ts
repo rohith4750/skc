@@ -49,6 +49,12 @@ export async function GET(request: NextRequest) {
             createdAt: true,
             totalAmount: true,
             numberOfMembers: true,
+            customer: {
+              select: {
+                name: true,
+                address: true,
+              },
+            },
             items: {
               select: {
                 menuItemId: true,
@@ -193,6 +199,59 @@ export async function GET(request: NextRequest) {
         color: ['text-blue-600', 'text-green-600', 'text-purple-600', 'text-orange-600', 'text-pink-600'][index % 5]
       }));
 
+    // Top Order Locations (Address-Based Business Intelligence)
+    const locationCounts: Record<string, { count: number; totalBilled: number }> = {};
+    
+    orders.forEach((order: any) => {
+      let rawAddress = order.customer?.address || 'Direct Catering';
+      let locationName = rawAddress.trim();
+      
+      if (locationName.includes(',')) {
+        const parts = locationName.split(',').map((p: string) => p.trim()).filter(Boolean);
+        locationName = parts[parts.length - 1] || parts[0] || 'Unknown Location';
+        if (locationName.match(/^\d+$/) && parts.length > 1) {
+          locationName = parts[parts.length - 2];
+        }
+      }
+      
+      if (!locationName) locationName = 'General Catering';
+
+      if (!locationCounts[locationName]) {
+        locationCounts[locationName] = { count: 0, totalBilled: 0 };
+      }
+      locationCounts[locationName].count += 1;
+      locationCounts[locationName].totalBilled += parseFloat(order.totalAmount || 0);
+    });
+
+    const topLocations = Object.entries(locationCounts)
+      .sort((a, b) => b[1].count - a[1].count)
+      .slice(0, 5)
+      .map(([name, data], index) => ({
+        location: name,
+        orderCount: data.count,
+        totalBilled: data.totalBilled,
+        percentage: orders.length > 0 ? ((data.count / orders.length) * 100).toFixed(1) : '0',
+        color: ['text-indigo-600', 'text-amber-600', 'text-emerald-600', 'text-blue-600', 'text-purple-600'][index % 5]
+      }));
+
+    // Upcoming Event Destinations ("Where We Are Going")
+    const todayMidnight = new Date();
+    todayMidnight.setHours(0, 0, 0, 0);
+
+    const upcomingLocations = rawOrders
+      .filter((o: any) => o.status !== 'cancelled' && new Date(getOrderDate(o)) >= todayMidnight)
+      .sort((a: any, b: any) => new Date(getOrderDate(a)).getTime() - new Date(getOrderDate(b)).getTime())
+      .slice(0, 6)
+      .map((o: any) => ({
+        id: o.id,
+        customerName: o.customer?.name || 'Catering Event',
+        phone: o.customer?.phone || '',
+        address: o.customer?.address || 'Venue Address Pending',
+        eventDate: getOrderDate(o),
+        numberOfMembers: o.numberOfMembers || 0,
+        totalAmount: o.totalAmount || 0,
+      }));
+
     // Admin stats
     let adminStats = { users: 0, workforce: 0, stockItems: 0, lowStockItems: 0, inventoryItems: 0 };
     if (isSuperAdminUser) {
@@ -248,6 +307,8 @@ export async function GET(request: NextRequest) {
       chefPlateType: topChef,
       ChefTotalAmount,
       topItems,
+      topLocations,
+      upcomingLocations,
     };
 
     return NextResponse.json(responseData);

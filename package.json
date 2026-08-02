@@ -12,6 +12,7 @@
     "db:push:local": "npx dotenv-cli -e .env.local -- npx prisma db push",
     "db:push:prod": "npx dotenv-cli -e .env.production -- npx prisma db push",
     "db:migrate:prod:safe": "node scripts/apply-safe-all-migration.js",
+    "test:whatsapp": "node scripts/test-whatsapp-api.js",
     "db:studio:local": "npx dotenv-cli -e .env.local -- npx prisma studio",
     "db:studio:prod": "npx dotenv-cli -e .env.production -- npx prisma studio",
     "electron-dev": "electron .",

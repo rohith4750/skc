@@ -94,13 +94,6 @@ const StallManagement = forwardRef<StallManagementHandle, StallManagementProps>(
                         className="w-full pl-10 pr-4 py-2 border border-slate-200 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none transition-all"
                     />
                 </div>
-                <button
-                    onClick={handleCreate}
-                    className="flex items-center gap-2 bg-indigo-600 text-white px-6 py-2.5 rounded-xl hover:bg-indigo-700 transition-all shadow-md hover:shadow-lg active:scale-95 font-medium"
-                >
-                    <FaPlus className="w-4 h-4" />
-                    <span>Create Stall Template</span>
-                </button>
             </div>
 
             {filteredStalls.length === 0 ? (

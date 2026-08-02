@@ -28,7 +28,13 @@ import {
   FaPrint,
   FaLayerGroup,
   FaChevronDown,
-  FaChevronUp
+  FaChevronUp,
+  FaExternalLinkAlt,
+  FaMoneyBillWave,
+  FaChartPie,
+  FaListUl,
+  FaList,
+  FaBuilding
 } from 'react-icons/fa'
 import { toast } from 'sonner'
 import Table from '@/components/Table'
@@ -85,6 +91,9 @@ export default function ExpensesPage() {
   const [currentPage, setCurrentPage] = useState(1)
   const [itemsPerPage, setItemsPerPage] = useState<number>(10)
   const [showFilters, setShowFilters] = useState(false)
+  const [viewMode, setViewMode] = useState<'events' | 'items'>('events')
+  const [eventModalOrderId, setEventModalOrderId] = useState<string | null>(null)
+  const [expandedGroupedEventId, setExpandedGroupedEventId] = useState<string | null>(null)
   const [deleteConfirm, setDeleteConfirm] = useState<{ isOpen: boolean; id: string | null }>({
     isOpen: false,
     id: null,
@@ -184,6 +193,55 @@ export default function ExpensesPage() {
     })
     return totals
   }, [filteredExpenses])
+
+  // Group expenses by Event/Order for Event-Based View
+  const eventsGrouped = useMemo(() => {
+    const groupedMap: Record<string, {
+      orderId: string;
+      order?: Order;
+      customerName: string;
+      eventDateStr: string;
+      orderRevenue: number;
+      expenses: Expense[];
+      totalExpenses: number;
+      categoryTotals: Record<string, number>;
+      netProfit: number;
+    }> = {}
+
+    // Group filtered expenses by orderId
+    filteredExpenses.forEach((expense) => {
+      const orderId = expense.orderId || 'unassigned'
+      if (!groupedMap[orderId]) {
+        const order = expense.order || orders.find((o) => o.id === expense.orderId)
+        const customerName = order?.customer?.name || order?.eventName || (orderId === 'unassigned' ? 'General / Overhead Expenses' : 'Catering Event')
+        const eventDateStr = order ? formatDate(getOrderDate(order)) : (expense.paymentDate ? formatDate(expense.paymentDate) : 'General')
+        const orderRevenue = order ? Number(order.totalAmount || 0) : 0
+
+        groupedMap[orderId] = {
+          orderId,
+          order,
+          customerName,
+          eventDateStr,
+          orderRevenue,
+          expenses: [],
+          totalExpenses: 0,
+          categoryTotals: {},
+          netProfit: 0,
+        }
+      }
+
+      groupedMap[orderId].expenses.push(expense)
+      groupedMap[orderId].totalExpenses += expense.amount
+      groupedMap[orderId].categoryTotals[expense.category] = (groupedMap[orderId].categoryTotals[expense.category] || 0) + expense.amount
+    })
+
+    // Calculate net profit for each event group
+    Object.values(groupedMap).forEach((group) => {
+      group.netProfit = group.orderRevenue > 0 ? group.orderRevenue - group.totalExpenses : 0
+    })
+
+    return Object.values(groupedMap).sort((a, b) => b.totalExpenses - a.totalExpenses)
+  }, [filteredExpenses, orders])
 
   const monthlyExpenses = useMemo(() => {
     const monthly: Record<string, number> = {}
@@ -445,12 +503,20 @@ export default function ExpensesPage() {
                   </div>
                   <div className="space-y-1">
                     {allocations.map((a: any) => (
-                      <div key={a.orderId} className="flex justify-between text-xs">
-                        <span className="text-gray-700 truncate max-w-[140px]">
+                      <div key={a.orderId} className="flex justify-between items-center text-xs gap-1">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setSelectedOrder(a.orderId)
+                            setCurrentPage(1)
+                          }}
+                          className="text-indigo-700 hover:text-indigo-900 font-medium truncate max-w-[130px] hover:underline text-left"
+                          title="Filter expenses for this event"
+                        >
                           {a.orderName?.split(' - ')[0] || 'Unknown'}
-                          {row.allocationMethod === 'by-plates' && a.plates ? ` (${a.plates} plates)` : ''}
-                        </span>
-                        <span className="font-medium text-indigo-700">{formatCurrency(a.amount)}</span>
+                          {row.allocationMethod === 'by-plates' && a.plates ? ` (${a.plates}p)` : ''}
+                        </button>
+                        <span className="font-bold text-indigo-800">{formatCurrency(a.amount)}</span>
                       </div>
                     ))}
                   </div>
@@ -459,15 +525,51 @@ export default function ExpensesPage() {
             </div>
           )
         }
-        if (row.order?.customer) {
+        if (row.order?.customer || row.orderId) {
+          const eventTitle = row.order?.customer?.name || row.order?.eventName || 'Event Order'
+          const eventDateStr = row.order ? formatDate(getOrderDate(row.order)) : ''
+          const isCurrentSelected = selectedOrder === row.orderId
+
           return (
-            <div>
-              <div className="text-sm font-medium text-gray-900">{row.order.customer.name}</div>
-              <div className="text-xs text-gray-500">{formatDate(getOrderDate(row.order))}</div>
+            <div className="flex items-center gap-1.5 group">
+              <button
+                type="button"
+                onClick={() => {
+                  if (row.orderId) setEventModalOrderId(row.orderId)
+                  else setSelectedOrder(row.orderId || 'all')
+                }}
+                className={`text-left rounded-xl p-2 -m-1 transition-all border ${
+                  isCurrentSelected
+                    ? 'bg-indigo-50 border-indigo-300 text-indigo-900 font-bold'
+                    : 'bg-slate-50/80 hover:bg-indigo-50 border-slate-200 hover:border-indigo-200 text-slate-900'
+                }`}
+                title="Click to view full categorized expense breakdown"
+              >
+                <div className="text-xs font-black text-indigo-900 flex items-center gap-1">
+                  {eventTitle}
+                  <span className="text-[10px] bg-indigo-600 text-white px-1.5 py-0.2 rounded font-medium">
+                    Categorized View
+                  </span>
+                </div>
+                {eventDateStr && (
+                  <div className="text-[11px] text-slate-500 font-normal">{eventDateStr}</div>
+                )}
+              </button>
+
+              {row.orderId && (
+                <button
+                  type="button"
+                  onClick={() => setEventModalOrderId(row.orderId || null)}
+                  className="p-1.5 text-indigo-600 hover:bg-indigo-100 rounded-lg transition-colors border border-indigo-200 bg-indigo-50"
+                  title="Open Categorized Event Expense Modal"
+                >
+                  <FaChartPie className="w-3.5 h-3.5" />
+                </button>
+              )}
             </div>
           )
         }
-        return <span className="text-gray-400 text-sm">No event</span>
+        return <span className="text-slate-400 text-sm italic">Unassigned</span>
       },
     },
     {
@@ -824,7 +926,288 @@ export default function ExpensesPage() {
         </div>
       )}
 
-      {/* Desktop Table View */}
+      {/* Active Event Filter Banner */}
+      {selectedOrder !== 'all' && (() => {
+        const activeOrder = orders.find((o: any) => o.id === selectedOrder)
+        const activeOrderName = activeOrder?.customer?.name || activeOrder?.eventName || 'Selected Event'
+        const activeOrderDate = activeOrder ? formatDate(getOrderDate(activeOrder)) : ''
+
+        return (
+          <div className="w-full mb-6 bg-gradient-to-r from-indigo-900 to-indigo-800 text-white rounded-2xl p-5 shadow-lg border border-indigo-700 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+            <div className="flex items-center gap-4">
+              <div className="bg-indigo-700/80 p-3 rounded-xl border border-indigo-500/30">
+                <FaUtensils className="w-6 h-6 text-amber-400" />
+              </div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <span className="text-xs uppercase tracking-widest text-indigo-300 font-bold">Event Expense Filter Active</span>
+                  <span className="text-[10px] bg-amber-400/20 text-amber-300 border border-amber-400/30 px-2 py-0.5 rounded-full font-bold">
+                    {filteredExpenses.length} Expense Items
+                  </span>
+                </div>
+                <h3 className="text-xl font-black tracking-tight text-white mt-0.5">
+                  {activeOrderName} {activeOrderDate && <span className="text-sm font-normal text-indigo-200">({activeOrderDate})</span>}
+                </h3>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-3 w-full md:w-auto justify-end">
+              <Link
+                href={`/orders/summary/${selectedOrder}`}
+                className="flex items-center gap-2 px-4 py-2 bg-indigo-700/80 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold transition-all border border-indigo-500/40"
+              >
+                <FaExternalLinkAlt className="w-3 h-3" /> View Event Summary
+              </Link>
+              <button
+                onClick={() => setSelectedOrder('all')}
+                className="flex items-center gap-1.5 px-4 py-2 bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-xs rounded-xl transition-all shadow-md active:scale-95"
+              >
+                <FaTimes className="w-3 h-3" /> Reset Filter
+              </button>
+            </div>
+          </div>
+        )
+      })()}
+
+      {/* View Mode Switcher Header */}
+      <div className="w-full mb-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 bg-white p-4 rounded-2xl border border-slate-200 shadow-xs">
+        <div className="flex items-center gap-2 bg-slate-100 p-1 rounded-xl">
+          <button
+            onClick={() => setViewMode('events')}
+            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-bold transition-all ${
+              viewMode === 'events'
+                ? 'bg-slate-900 text-white shadow-md'
+                : 'text-slate-600 hover:text-slate-900'
+            }`}
+          >
+            <FaUtensils className="w-3.5 h-3.5 text-amber-400" />
+            <span>Event-Based View ({eventsGrouped.length} Events)</span>
+          </button>
+          <button
+            onClick={() => setViewMode('items')}
+            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-bold transition-all ${
+              viewMode === 'items'
+                ? 'bg-slate-900 text-white shadow-md'
+                : 'text-slate-600 hover:text-slate-900'
+            }`}
+          >
+            <FaListUl className="w-3.5 h-3.5 text-indigo-400" />
+            <span>Itemized List View ({filteredExpenses.length} Items)</span>
+          </button>
+        </div>
+
+        <div className="text-xs text-slate-500 font-medium">
+          {viewMode === 'events'
+            ? 'Click any event card to view/expand all expense categories'
+            : 'Showing flat itemized list of all expense records'}
+        </div>
+      </div>
+
+      {/* EVENT-BASED CATEGORIZED VIEW */}
+      {viewMode === 'events' && (
+        <div className="space-y-4 mb-8">
+          {eventsGrouped.length === 0 ? (
+            <div className="bg-white rounded-2xl p-10 text-center border border-slate-200 text-slate-500">
+              No events found matching your filter criteria.
+            </div>
+          ) : (
+            eventsGrouped.map((group) => {
+              const isExpanded = expandedGroupedEventId === group.orderId
+
+              return (
+                <div key={group.orderId} className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden transition-all hover:shadow-md">
+                  {/* Event Card Header (Light Mode Design) */}
+                  <div
+                    onClick={() => setExpandedGroupedEventId(isExpanded ? null : group.orderId)}
+                    className="p-5 bg-white hover:bg-slate-50/90 text-slate-900 cursor-pointer flex flex-col md:flex-row justify-between items-start md:items-center gap-4 transition-all border-b border-slate-200"
+                  >
+                    <div className="flex items-center gap-4">
+                      <div className="bg-indigo-50 text-indigo-600 p-3 rounded-[5px] border border-indigo-100 shadow-xs">
+                        <FaUtensils className="w-6 h-6 text-indigo-600" />
+                      </div>
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <span className="text-[10px] uppercase tracking-widest text-indigo-600 font-black">Catering Function</span>
+                          <span className="text-[10px] bg-slate-100 text-slate-700 px-2 py-0.5 rounded-[5px] font-bold border border-slate-200">
+                            {group.expenses.length} Expense Item(s)
+                          </span>
+                        </div>
+                        <h3 className="text-xl font-black text-slate-900 mt-0.5 flex items-center gap-2">
+                          {group.customerName}
+                          <span className="text-sm font-normal text-slate-500">({group.eventDateStr})</span>
+                        </h3>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-6 w-full md:w-auto justify-between md:justify-end border-t md:border-t-0 border-slate-200 pt-3 md:pt-0">
+                      <div className="text-right">
+                        <span className="text-[10px] text-slate-400 uppercase tracking-widest block font-bold">Total Event Expenses</span>
+                        <span className="text-2xl font-black text-rose-600">{formatCurrency(group.totalExpenses)}</span>
+                      </div>
+
+                      {group.orderRevenue > 0 && (
+                        <div className="text-right border-l border-slate-200 pl-6">
+                          <span className="text-[10px] text-slate-400 uppercase tracking-widest block font-bold">Net Profit</span>
+                          <span className={`text-2xl font-black ${group.netProfit >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
+                            {formatCurrency(group.netProfit)}
+                          </span>
+                        </div>
+                      )}
+
+                      <div className="flex items-center gap-2">
+                        {group.orderId !== 'unassigned' && (
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              setEventModalOrderId(group.orderId)
+                            }}
+                            className="px-3 py-1.5 bg-amber-500 text-white font-black text-xs rounded-[5px] hover:bg-amber-600 transition-all shadow-xs flex items-center gap-1"
+                            title="Open Categorized Breakdown Window"
+                          >
+                            <FaChartPie className="w-3.5 h-3.5" />
+                            <span>Categorized Modal</span>
+                          </button>
+                        )}
+                        <button
+                          type="button"
+                          className="p-2.5 bg-slate-100 text-slate-700 border border-slate-200 rounded-[5px] hover:bg-slate-200 transition-colors"
+                        >
+                          {isExpanded ? <FaChevronUp className="w-4 h-4" /> : <FaChevronDown className="w-4 h-4" />}
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Expense Categories Quick Badges Bar */}
+                  <div className="p-4 bg-slate-50 border-b border-slate-200 flex flex-wrap items-center justify-between gap-3">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="text-xs font-bold text-slate-500 uppercase tracking-wider mr-1">Incurred Categories:</span>
+                      {Object.entries(group.categoryTotals).map(([cat, amount]) => {
+                        const Icon = CATEGORY_ICONS[cat] || FaBox
+                        const colorClass = CATEGORY_COLORS[cat] || CATEGORY_COLORS.other
+
+                        return (
+                          <span key={cat} className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold border capitalize shadow-xs ${colorClass}`}>
+                            <Icon className="text-xs" />
+                            {cat}: {formatCurrency(amount)}
+                          </span>
+                        )
+                      })}
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      {group.orderId !== 'unassigned' && (
+                        <Link
+                          href={`/expenses/create?orderId=${group.orderId}`}
+                          className="px-3 py-1.5 bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs rounded-xl transition-all shadow-sm flex items-center gap-1.5"
+                        >
+                          <FaPlus className="w-3 h-3" /> Add Expense
+                        </Link>
+                      )}
+                      <button
+                        onClick={() => setExpandedGroupedEventId(isExpanded ? null : group.orderId)}
+                        className="px-3 py-1.5 bg-indigo-100 hover:bg-indigo-200 text-indigo-900 font-bold text-xs rounded-xl transition-all flex items-center gap-1"
+                      >
+                        {isExpanded ? 'Hide Expense Items' : `Show All ${group.expenses.length} Expense Items`}
+                        {isExpanded ? <FaChevronUp className="text-xs ml-1" /> : <FaChevronDown className="text-xs ml-1" />}
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Expanded Itemized Table for this Event */}
+                  {isExpanded && (
+                    <div className="p-5 bg-white space-y-4">
+                      <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center gap-2">
+                        <FaListUl className="text-indigo-600" /> Itemized Expenses for {group.customerName}
+                      </h4>
+                      <div className="overflow-x-auto rounded-xl border border-slate-200">
+                        <table className="w-full text-left text-xs">
+                          <thead className="bg-slate-50 text-slate-600 uppercase font-bold text-[10px] tracking-wider border-b border-slate-200">
+                            <tr>
+                              <th className="p-3">Payment Date</th>
+                              <th className="p-3">Category</th>
+                              <th className="p-3">Recipient / Details</th>
+                              <th className="p-3 text-right">Amount</th>
+                              <th className="p-3 text-center">Status</th>
+                              <th className="p-3 text-right">Actions</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-slate-100 font-medium text-slate-700">
+                            {group.expenses.map((expense) => {
+                              const Icon = CATEGORY_ICONS[expense.category] || FaBox
+                              const colorClass = CATEGORY_COLORS[expense.category] || CATEGORY_COLORS.other
+                              const isPaid = expense.paymentStatus === 'paid'
+
+                              return (
+                                <tr key={expense.id} className="hover:bg-slate-50/80 transition-colors">
+                                  <td className="p-3 font-semibold text-slate-900">
+                                    {expense.paymentDate ? formatDate(expense.paymentDate) : 'No date'}
+                                  </td>
+                                  <td className="p-3">
+                                    <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-bold border capitalize ${colorClass}`}>
+                                      <Icon className="text-xs" />
+                                      {expense.category}
+                                    </span>
+                                  </td>
+                                  <td className="p-3">
+                                    <div className="font-bold text-slate-900">{expense.recipient || '-'}</div>
+                                    {expense.description && (
+                                      <div className="text-[11px] text-slate-500 italic">{expense.description}</div>
+                                    )}
+                                  </td>
+                                  <td className="p-3 text-right font-black text-slate-900 text-sm">
+                                    {formatCurrency(expense.amount)}
+                                  </td>
+                                  <td className="p-3 text-center">
+                                    <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${isPaid ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
+                                      {isPaid ? 'Paid' : 'Pending'}
+                                    </span>
+                                  </td>
+                                  <td className="p-3 text-right">
+                                    <div className="flex items-center justify-end gap-1">
+                                      <button
+                                        onClick={() => handleGeneratePDF(expense)}
+                                        className="p-1.5 text-indigo-600 hover:bg-indigo-50 rounded"
+                                        title="Print Receipt"
+                                      >
+                                        <FaPrint />
+                                      </button>
+                                      <button
+                                        onClick={() => handleEdit(expense)}
+                                        className="p-1.5 text-amber-600 hover:bg-amber-50 rounded"
+                                        title="Edit"
+                                      >
+                                        <FaEdit />
+                                      </button>
+                                      <button
+                                        onClick={() => handleDelete(expense.id)}
+                                        className="p-1.5 text-rose-600 hover:bg-rose-50 rounded"
+                                        title="Delete"
+                                      >
+                                        <FaTrash />
+                                      </button>
+                                    </div>
+                                  </td>
+                                </tr>
+                              )
+                            })}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )
+            })
+          )}
+        </div>
+      )}
+
+      {/* FLAT ITEMIZED LIST VIEW */}
+      {viewMode === 'items' && (
+        <>
+          {/* Desktop Table View */}
       <div className="hidden sm:block bg-white rounded-xl shadow-md border border-gray-200 overflow-hidden">
         <Table
           columns={columns}
@@ -995,6 +1378,200 @@ export default function ExpensesPage() {
           </div>
         )}
       </div>
+      </>
+      )}
+
+      {/* Categorized Event Expense Breakdown Modal */}
+      {eventModalOrderId && (() => {
+        const modalOrder = orders.find((o: any) => o.id === eventModalOrderId)
+        const modalExpenses = expenses.filter((e: any) => e.orderId === eventModalOrderId)
+        const customerName = modalOrder?.customer?.name || modalOrder?.eventName || 'Event'
+        const eventDateStr = modalOrder ? formatDate(getOrderDate(modalOrder)) : 'N/A'
+        const totalOrderBill = modalOrder ? Number(modalOrder.totalAmount || 0) : 0
+        const totalEventExpenses = modalExpenses.reduce((sum, e) => sum + e.amount, 0)
+        const netProfit = totalOrderBill > 0 ? totalOrderBill - totalEventExpenses : 0
+        const marginPct = totalOrderBill > 0 ? ((netProfit / totalOrderBill) * 100).toFixed(1) : '0'
+
+        // Group expenses by category for this event
+        const categoryMap: Record<string, { total: number; items: Expense[] }> = {}
+        modalExpenses.forEach((exp) => {
+          if (!categoryMap[exp.category]) {
+            categoryMap[exp.category] = { total: 0, items: [] }
+          }
+          categoryMap[exp.category].total += exp.amount
+          categoryMap[exp.category].items.push(exp)
+        })
+
+        return (
+          <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto">
+            <div className="bg-white rounded-3xl shadow-2xl border border-slate-200 w-full max-w-4xl max-h-[90vh] overflow-y-auto flex flex-col my-auto">
+              {/* Modal Header */}
+              <div className="bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 text-white p-6 rounded-t-3xl flex justify-between items-center sticky top-0 z-10 shadow-md">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="bg-amber-400 text-slate-950 text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full">
+                      Event Expense Breakdown
+                    </span>
+                    <span className="text-xs text-indigo-200 font-medium">🗓️ {eventDateStr}</span>
+                  </div>
+                  <h2 className="text-2xl font-black text-white mt-1 flex items-center gap-2">
+                    <FaUtensils className="text-amber-400 w-5 h-5" />
+                    {customerName}
+                  </h2>
+                </div>
+                <div className="flex items-center gap-3">
+                  <Link
+                    href={`/orders/summary/${eventModalOrderId}`}
+                    className="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold rounded-xl transition-all flex items-center gap-1.5"
+                  >
+                    <FaExternalLinkAlt className="w-3 h-3" /> View Order Bill
+                  </Link>
+                  <button
+                    onClick={() => setEventModalOrderId(null)}
+                    className="p-2 bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white rounded-xl transition-colors"
+                  >
+                    <FaTimes className="w-5 h-5" />
+                  </button>
+                </div>
+              </div>
+
+              {/* Modal Body */}
+              <div className="p-6 space-y-6 flex-1">
+                {/* Financial Summary Cards */}
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                  <div className="bg-blue-50 border border-blue-200 rounded-2xl p-4">
+                    <span className="text-xs font-bold text-blue-600 uppercase tracking-wider">Order Revenue (Bill)</span>
+                    <p className="text-2xl font-black text-blue-700 mt-1">{formatCurrency(totalOrderBill)}</p>
+                  </div>
+                  <div className="bg-rose-50 border border-rose-200 rounded-2xl p-4">
+                    <span className="text-xs font-bold text-rose-600 uppercase tracking-wider">Total Event Expenses</span>
+                    <p className="text-2xl font-black text-rose-700 mt-1">{formatCurrency(totalEventExpenses)}</p>
+                  </div>
+                  <div className={`border rounded-2xl p-4 ${netProfit >= 0 ? 'bg-emerald-50 border-emerald-200' : 'bg-red-50 border-red-200'}`}>
+                    <span className={`text-xs font-bold uppercase tracking-wider ${netProfit >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
+                      Estimated Net Profit
+                    </span>
+                    <div className="flex items-baseline justify-between mt-1">
+                      <p className={`text-2xl font-black ${netProfit >= 0 ? 'text-emerald-700' : 'text-red-700'}`}>
+                        {formatCurrency(netProfit)}
+                      </p>
+                      {totalOrderBill > 0 && (
+                        <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${netProfit >= 0 ? 'bg-emerald-200 text-emerald-900' : 'bg-red-200 text-red-900'}`}>
+                          {marginPct}% margin
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Categorized Summary Badges Grid */}
+                <div>
+                  <div className="flex items-center justify-between mb-3">
+                    <h3 className="text-sm font-bold text-slate-800 uppercase tracking-wider flex items-center gap-2">
+                      <FaChartPie className="text-indigo-600" /> Categorized Expense Totals
+                    </h3>
+                    <Link
+                      href={`/expenses/create?orderId=${eventModalOrderId}`}
+                      className="px-3 py-1.5 bg-slate-900 text-white text-xs font-bold rounded-xl hover:bg-slate-800 transition-all flex items-center gap-1.5"
+                    >
+                      <FaPlus className="w-3 h-3" /> Add Expense to Event
+                    </Link>
+                  </div>
+
+                  {Object.keys(categoryMap).length === 0 ? (
+                    <div className="bg-slate-50 rounded-2xl p-6 text-center border border-slate-200 text-slate-500">
+                      No expenses recorded for this event yet.
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+                      {Object.entries(categoryMap).map(([cat, data]) => {
+                        const Icon = CATEGORY_ICONS[cat] || FaBox
+                        const colorClass = CATEGORY_COLORS[cat] || CATEGORY_COLORS.other
+
+                        return (
+                          <div key={cat} className="bg-white rounded-xl p-3.5 border border-slate-200 shadow-sm flex flex-col justify-between">
+                            <div className="flex items-center justify-between mb-2">
+                              <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold border capitalize ${colorClass}`}>
+                                <Icon className="text-xs" />
+                                {cat}
+                              </span>
+                              <span className="text-[10px] font-bold text-slate-400">{data.items.length} item(s)</span>
+                            </div>
+                            <p className="text-lg font-black text-slate-900">{formatCurrency(data.total)}</p>
+                          </div>
+                        )
+                      })}
+                    </div>
+                  )}
+                </div>
+
+                {/* Itemized Expenses Table */}
+                <div>
+                  <h3 className="text-sm font-bold text-slate-800 uppercase tracking-wider mb-3 flex items-center gap-2">
+                    <FaListUl className="text-indigo-600" /> All Event Expenses ({modalExpenses.length})
+                  </h3>
+                  <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm">
+                    <div className="divide-y divide-slate-100">
+                      {modalExpenses.map((expense) => {
+                        const Icon = CATEGORY_ICONS[expense.category] || FaBox
+                        const colorClass = CATEGORY_COLORS[expense.category] || CATEGORY_COLORS.other
+                        const isPaid = expense.paymentStatus === 'paid'
+
+                        return (
+                          <div key={expense.id} className="p-4 hover:bg-slate-50 transition-colors flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+                            <div className="flex items-start gap-3">
+                              <div className={`p-2.5 rounded-xl mt-0.5 ${colorClass.split(' ')[0]} ${colorClass.split(' ')[1]}`}>
+                                <Icon className="text-base" />
+                              </div>
+                              <div>
+                                <div className="flex items-center gap-2">
+                                  <span className="font-bold text-slate-900 capitalize">{expense.category}</span>
+                                  <span className="text-xs text-slate-500 font-medium">({expense.recipient || 'Recipient unassigned'})</span>
+                                </div>
+                                {expense.description && (
+                                  <p className="text-xs text-slate-600 mt-0.5">{expense.description}</p>
+                                )}
+                                <p className="text-[10px] text-slate-400 mt-1">
+                                  Date: {expense.paymentDate ? formatDate(expense.paymentDate) : 'No date'}
+                                </p>
+                              </div>
+                            </div>
+
+                            <div className="flex items-center justify-between sm:justify-end w-full sm:w-auto gap-4">
+                              <div className="text-left sm:text-right">
+                                <p className="font-black text-slate-900 text-base">{formatCurrency(expense.amount)}</p>
+                                <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold ${isPaid ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
+                                  {isPaid ? 'Paid' : 'Pending'}
+                                </span>
+                              </div>
+                              <div className="flex items-center gap-1">
+                                <button
+                                  onClick={() => handleGeneratePDF(expense)}
+                                  className="p-2 text-indigo-600 hover:bg-indigo-50 rounded-lg"
+                                  title="Print Receipt"
+                                >
+                                  <FaPrint />
+                                </button>
+                                <button
+                                  onClick={() => handleEdit(expense)}
+                                  className="p-2 text-amber-600 hover:bg-amber-50 rounded-lg"
+                                  title="Edit"
+                                >
+                                  <FaEdit />
+                                </button>
+                              </div>
+                            </div>
+                          </div>
+                        )
+                      })}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        )
+      })()}
 
       <ConfirmModal
         isOpen={deleteConfirm.isOpen}

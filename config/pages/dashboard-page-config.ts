@@ -51,6 +51,16 @@ export interface DashboardStats {
   chefPlateType: string;
   ChefTotalAmount: number;
   topItems: Array<{ name: string; count: number; color: string }>;
+  topLocations?: Array<{ location: string; orderCount: number; totalBilled: number; percentage: string; color: string }>;
+  upcomingLocations?: Array<{
+    id: string;
+    customerName: string;
+    phone: string;
+    address: string;
+    eventDate: string | Date;
+    numberOfMembers: number;
+    totalAmount: number;
+  }>;
 }
 
 export const DASHBOARD_MONTH_OPTIONS = [

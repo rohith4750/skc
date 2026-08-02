@@ -24,32 +24,32 @@ export function AnalyticsSection({
 }: AnalyticsSectionProps) {
   return (
     <div
-      className="glass rounded-3xl p-6 animate-fade-in relative overflow-hidden"
+      className="bg-white border border-slate-200/90 shadow-sm hover:shadow-md transition-all duration-200 rounded-[4px] p-6 animate-fade-in relative overflow-hidden"
       style={{ animationDelay: `${index * 150}ms` }}
     >
       <div className="flex items-center gap-3 mb-6 relative z-10">
-        <div className="bg-primary-50 p-2.5 rounded-xl shadow-sm">
-          <Icon className="w-5 h-5 text-primary-600" />
+        <div className="bg-indigo-50 p-2.5 rounded-[4px] border border-indigo-100 shadow-xs">
+          <Icon className="w-5 h-5 text-indigo-600" />
         </div>
-        <h2 className="text-lg font-black text-gray-800 tracking-tight">
+        <h2 className="text-lg font-black text-slate-800 tracking-tight">
           {title}
         </h2>
       </div>
       
-      <div className="space-y-4 relative z-10">
+      <div className="space-y-3 relative z-10">
         {items.map((item, idx) => {
           const ItemIcon = item.icon;
           return (
             <div
               key={idx}
-              className="flex items-center justify-between p-3 rounded-xl hover:bg-white/50 transition-colors group"
+              className="flex items-center justify-between p-3 rounded-[4px] bg-slate-50/70 border border-slate-100 hover:bg-slate-100/70 transition-colors group"
             >
-              <span className="text-sm font-bold text-gray-500 group-hover:text-gray-700 transition-colors">
+              <span className="text-sm font-bold text-slate-600 group-hover:text-slate-900 transition-colors">
                 {item.label}
               </span>
               <div className="flex items-center gap-2">
                 {ItemIcon && (
-                  <ItemIcon className={`w-3.5 h-3.5 ${item.color} animate-float`} />
+                  <ItemIcon className={`w-3.5 h-3.5 ${item.color}`} />
                 )}
                 <span className={`text-sm font-black ${item.color}`}>
                   {item.value}
@@ -59,9 +59,6 @@ export function AnalyticsSection({
           );
         })}
       </div>
-
-      {/* Background decoration */}
-      <div className="absolute top-0 right-0 w-32 h-32 bg-primary-500/5 blur-[60px] rounded-full"></div>
     </div>
   );
 }

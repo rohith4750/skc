@@ -90,7 +90,8 @@
 
 html {
   font-size: 14px;
-  /* Reduce base font size from default 16px to 14px */
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 body {
@@ -98,6 +99,35 @@ body {
   background: linear-gradient(to bottom,
       transparent,
       rgb(var(--background-end-rgb))) rgb(var(--background-start-rgb));
+  font-weight: 400 !important;
+}
+
+/* ====================================================== */
+/* LIGHTWEIGHT ELEGANT TYPOGRAPHY ENFORCEMENT */
+/* ====================================================== */
+
+/* Soften heavy extra-bold/black font weights globally */
+.font-black,
+.font-extrabold {
+  font-weight: 600 !important;
+  letter-spacing: -0.015em;
+}
+
+.font-bold {
+  font-weight: 500 !important;
+}
+
+.font-semibold {
+  font-weight: 500 !important;
+}
+
+.font-medium {
+  font-weight: 400 !important;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  font-weight: 600 !important;
+  letter-spacing: -0.02em;
 }
 
 /* Ensure input fields have proper text color - visible at all times */
@@ -122,6 +152,18 @@ textarea::placeholder {
   color: #9ca3af !important;
   opacity: 1;
   -webkit-text-fill-color: #9ca3af !important;
+}
+
+/* Hide number input spinners (up and down arrows) globally */
+input[type="number"]::-webkit-outer-spin-button,
+input[type="number"]::-webkit-inner-spin-button {
+  -webkit-appearance: none !important;
+  margin: 0 !important;
+}
+
+input[type="number"] {
+  -moz-appearance: textfield !important;
+  appearance: textfield !important;
 }
 
 /* Fix input autofill background color on mobile browsers */
@@ -188,17 +230,16 @@ select:-webkit-autofill:active {
     color: var(--accent-500);
   }
 
-  /* Premium Design Utilities */
   .glass {
-    @apply bg-white/70 backdrop-blur-md border border-white/20 shadow-xl;
+    @apply bg-white/90 backdrop-blur-md border border-slate-200/90 shadow-sm rounded-[4px];
   }
 
   .glass-dark {
-    @apply bg-gray-900/70 backdrop-blur-md border border-gray-700/30 shadow-2xl;
+    @apply bg-slate-900/90 backdrop-blur-md border border-slate-800 shadow-md rounded-[4px];
   }
 
   .card-premium {
-    @apply relative overflow-hidden transition-all duration-500 hover:shadow-2xl hover:-translate-y-1 border border-white/10;
+    @apply relative overflow-hidden transition-all duration-300 hover:shadow-md border border-slate-200/90 rounded-[4px];
   }
 
   .card-premium::before {
@@ -219,13 +260,27 @@ select:-webkit-autofill:active {
   }
 
   @keyframes float {
-    0%, 100% { transform: translateY(0); }
-    50% { transform: translateY(-10px); }
+
+    0%,
+    100% {
+      transform: translateY(0);
+    }
+
+    50% {
+      transform: translateY(-10px);
+    }
   }
 
   @keyframes fadeIn {
-    from { opacity: 0; transform: translateY(10px); }
-    to { opacity: 1; transform: translateY(0); }
+    from {
+      opacity: 0;
+      transform: translateY(10px);
+    }
+
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
   }
 }
 
@@ -262,20 +317,87 @@ select:-webkit-autofill:active {
 }
 
 .dark-scrollbar::-webkit-scrollbar-track {
-  background: rgba(15, 23, 42, 0.5); /* slate-950 transparent */
+  background: rgba(15, 23, 42, 0.5);
+  /* slate-950 transparent */
 }
 
 .dark-scrollbar::-webkit-scrollbar-thumb {
-  background: #334155; /* slate-700 */
+  background: #334155;
+  /* slate-700 */
   border-radius: 4px;
-  border: 1px solid #1e293b; /* slate-800 */
+  border: 1px solid #1e293b;
+  /* slate-800 */
 }
 
 .dark-scrollbar::-webkit-scrollbar-thumb:hover {
-  background: #475569; /* slate-600 */
+  background: #475569;
+  /* slate-600 */
 }
 
 .dark-scrollbar {
   scrollbar-width: thin;
   scrollbar-color: #334155 rgba(15, 23, 42, 0.5);
+}
+
+/* ====================================================== */
+/* ENTIRE APPLICATION 5PX BORDER RADIUS ENFORCEMENT */
+/* ====================================================== */
+
+/* 1. Global Button Corner Radius (Strictly 5px across all pages) */
+button,
+.btn,
+[role="button"],
+input[type="button"],
+input[type="submit"],
+input[type="reset"],
+a.btn,
+a.button {
+  border-radius: 5px !important;
+}
+
+/* 2. Global Form Inputs, Textareas & Selects */
+input,
+textarea,
+select {
+  border-radius: 5px !important;
+}
+
+/* 3. Global Badge, Chip, Tag, Cards, Glass Containers & Modals */
+.badge,
+.chip,
+.tag,
+.card,
+.card-premium,
+.glass,
+.glass-dark,
+.modal {
+  border-radius: 5px !important;
+}
+
+/* 4. Unified Button Themes for Brand Consistency */
+.btn-primary {
+  @apply bg-slate-900 text-white font-bold hover:bg-slate-800 active:scale-95 transition-all shadow-sm rounded-[5px] px-4 py-2 text-sm;
+}
+
+.btn-secondary {
+  @apply bg-white border border-slate-200 text-slate-700 font-bold hover:bg-slate-50 hover:border-slate-300 active:scale-95 transition-all shadow-sm rounded-[5px] px-4 py-2 text-sm;
+}
+
+.btn-indigo {
+  @apply bg-indigo-600 text-white font-bold hover:bg-indigo-700 active:scale-95 transition-all shadow-sm rounded-[5px] px-4 py-2 text-sm;
+}
+
+/* 5. Override ALL Tailwind rounded classes across the entire application */
+.rounded-sm,
+.rounded,
+.rounded-md,
+.rounded-lg,
+.rounded-xl,
+.rounded-2xl,
+.rounded-3xl,
+.rounded-4xl,
+.rounded-\[2rem\],
+.rounded-\[1\.5rem\],
+.rounded-\[1rem\] {
+  border-radius: 5px !important;
 }
