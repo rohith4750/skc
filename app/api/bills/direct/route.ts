@@ -61,10 +61,11 @@ export async function POST(request: NextRequest) {
             // 3. Prepare Order Data
             const totalMealAmount = sessions.reduce((sum: number, s: any) => sum + (parseFloat(s.amount) || 0), 0)
             const transportCost = parseFloat(financials.transport) || 0
+            const serviceCost = parseFloat(financials.serviceCost) || 0
             const discount = parseFloat(financials.discount) || 0
             const advancePaid = parseFloat(financials.advancePaid) || 0
             
-            const totalAmount = totalMealAmount + transportCost - discount
+            const totalAmount = totalMealAmount + transportCost + serviceCost - discount
             const remainingAmount = Math.max(0, totalAmount - advancePaid)
 
             const mealTypeAmounts: Record<string, any> = {}
@@ -95,6 +96,7 @@ export async function POST(request: NextRequest) {
                     mealTypeAmounts,
                     events: mealTypeAmounts,
                     transportCost,
+                    serviceCost,
                     discount,
                     items: {
                         create: [

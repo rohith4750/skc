@@ -89,6 +89,7 @@ export async function POST(request: NextRequest) {
     const advancePaid = parseFloat(data.advancePaid) || 0;
     const discount = parseFloat(data.discount) || 0;
     const transportCost = parseFloat(data.transportCost) || 0;
+    const serviceCost = parseFloat(data.serviceCost) || 0;
     const waterBottlesCost = parseFloat(data.waterBottlesCost) || 0;
 
     // --- RECALCULATE TOTAL AMOUNT AS SAFETY CHECK ---
@@ -103,6 +104,7 @@ export async function POST(request: NextRequest) {
       0,
       recalculatedMealTypesTotal +
         transportCost +
+        serviceCost +
         waterBottlesCost +
         (data.stalls || []).reduce(
           (sum: number, s: any) => {
@@ -178,6 +180,7 @@ export async function POST(request: NextRequest) {
           ? data.stalls
           : null,
       transportCost: transportCost,
+      serviceCost: serviceCost,
       waterBottlesCost: waterBottlesCost,
       discount: discount,
       internalNote: data.internalNote || null,

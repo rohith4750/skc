@@ -1074,8 +1074,9 @@ export default function BillsPage() {
                       <p className="font-black text-slate-900">{formatCurrency(selectedBill!.order?.totalAmount)}</p>
                     </div>
 
-                    <div className="grid grid-cols-3 gap-2 mt-3 pt-3 border-t border-slate-50">
+                    <div className="grid grid-cols-4 gap-2 mt-3 pt-3 border-t border-slate-50">
                       <MiniDetail label="Transport" value={formatCurrency(Number(selectedBill!.order?.transportCost || 0))} />
+                      <MiniDetail label="Service" value={formatCurrency(Number((selectedBill!.order as any)?.serviceCost || 0))} />
                       <MiniDetail label="Water" value={formatCurrency(Number((selectedBill!.order as any)?.waterBottlesCost || 0))} />
                       <MiniDetail label="Discount" value={formatCurrency(Number(selectedBill!.order?.discount || 0))} accent="red" />
                     </div>

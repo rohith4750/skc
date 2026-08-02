@@ -96,6 +96,7 @@ export interface Order {
   }> | null;
   numberOfMembers?: number | null;
   transportCost?: number;
+  serviceCost?: number;
   waterBottlesCost?: number;
   supervisorId?: string;
   supervisor?: Supervisor;

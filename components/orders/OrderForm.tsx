@@ -311,6 +311,7 @@ export default function OrderForm({ orderId, isEditMode = false, initialOrderTyp
         }>,
         discount: '',
         transportCost: '',
+        serviceCost: '',
         waterBottlesCost: '',
         totalAmount: '',
         advancePaid: '',
@@ -478,6 +479,7 @@ export default function OrderForm({ orderId, isEditMode = false, initialOrderTyp
                 stalls: stallsArray,
                 discount: (order.discount || 0).toString(),
                 transportCost: (order.transportCost || 0).toString(),
+                serviceCost: (order.serviceCost || 0).toString(),
                 waterBottlesCost: (order.waterBottlesCost || 0).toString(),
                 totalAmount: (order.totalAmount || 0).toString(),
                 advancePaid: '',
@@ -549,31 +551,31 @@ export default function OrderForm({ orderId, isEditMode = false, initialOrderTyp
 
         formData.mealTypes.forEach(mt => {
             let mtTotal = 0
+            
+            // Check water bottles from selected items
             mt.selectedMenuItems.forEach(itemId => {
                 const item = menuItems.find(m => m.id === itemId)
                 if (item && item.price) {
                     const qty = parseFloat(mt.itemQuantities[itemId] || '1')
                     if (item.name.toLowerCase().includes('water') && item.name.toLowerCase().includes('bottle')) {
                         waterTotal += item.price * qty
-                    } else {
-                        mtTotal += item.price * qty
                     }
                 }
             })
 
             if (mt.pricingMethod === 'plate-based') {
                 const plates = parseFloat(mt.numberOfPlates) || parseFloat(mt.numberOfMembers) || 0
-                mtTotal += plates * (parseFloat(mt.platePrice) || 0)
+                mtTotal = plates * (parseFloat(mt.platePrice) || 0)
             } else if (mt.menuType === 'saree') {
                 // Sum individual item prices for Saree sessions (multiplied by quantity)
-                const sareeTotal = mt.selectedMenuItems.reduce((sum, itemId) => {
+                mtTotal = mt.selectedMenuItems.reduce((sum, itemId) => {
                     const price = parseFloat(mt.itemPrices?.[itemId] || '0') || 0
                     const qty = parseFloat(mt.itemQuantities[itemId] || '1') || 0
                     return sum + (price * qty)
                 }, 0)
-                mtTotal += sareeTotal
             } else {
-                mtTotal += parseFloat(mt.manualAmount) || 0
+                // Manual pricing: exact manual amount entered by user
+                mtTotal = parseFloat(mt.manualAmount) || 0
             }
             mealTypesTotal += mtTotal
 
@@ -596,10 +598,11 @@ export default function OrderForm({ orderId, isEditMode = false, initialOrderTyp
             return sum + sTotal
         }, 0) : 0
         const transport = parseFloat(formData.transportCost) || 0
+        const service = parseFloat(formData.serviceCost) || 0
         const discount = parseFloat(formData.discount) || 0
         const waterBottles = waterTotal > 0 ? waterTotal : (parseFloat(formData.waterBottlesCost) || 0)
 
-        const total = Math.max(0, mealTypesTotal + transport + waterBottles + stallsTotal - discount)
+        const total = Math.max(0, mealTypesTotal + transport + service + waterBottles + stallsTotal - discount)
         const currentAdvance = parseFloat(formData.advancePaid) || 0
         const totalAdvance = isEditMode ? originalAdvancePaid + currentAdvance : currentAdvance
         const balance = Math.max(0, total - totalAdvance)
@@ -1106,6 +1109,7 @@ export default function OrderForm({ orderId, isEditMode = false, initialOrderTyp
                 mealTypeAmounts,
                 stalls: stallsPayload,
                 transportCost: parseFloat(formData.transportCost) || 0,
+                serviceCost: parseFloat(formData.serviceCost) || 0,
                 waterBottlesCost: parseFloat(formData.waterBottlesCost) || 0,
                 discount: parseFloat(formData.discount) || 0,
                 paymentMethod: formData.paymentMethod,
@@ -1117,8 +1121,50 @@ export default function OrderForm({ orderId, isEditMode = false, initialOrderTyp
                 await Storage.updateOrder(orderId, orderData)
                 toast.success('Order updated')
             } else {
-                await Storage.saveOrder(orderData)
-                toast.success('Order created')
+                const saveRes = await Storage.saveOrder(orderData)
+                const createdOrder = saveRes?.data || saveRes
+                toast.success('Order created successfully')
+
+                // Build complete order object for WhatsApp message & summary link
+                const fullOrder = {
+                    ...createdOrder,
+                    id: createdOrder?.id || saveRes?.data?.id || saveRes?.id,
+                    customer: createdOrder?.customer || selectedCustomer,
+                    customerName: selectedCustomer?.name,
+                    eventName: createdOrder?.eventName || formData.eventName || 'Catering Event',
+                    eventDate: createdOrder?.eventDate || formData.mealTypes[0]?.date,
+                    totalAmount: createdOrder?.totalAmount ?? totals.total,
+                    advancePaid: createdOrder?.advancePaid ?? totalAdvanceToStore,
+                    remainingAmount: createdOrder?.remainingAmount ?? totals.balance,
+                    mealTypeAmounts: createdOrder?.mealTypeAmounts || mealTypeAmounts,
+                }
+
+                // Send automatic WhatsApp Notification to Customer
+                try {
+                    toast.loading('Sending WhatsApp notification to customer...', { id: 'wa-send' })
+                    const res = await fetch('/api/whatsapp/send', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            orderId: fullOrder.id,
+                            order: fullOrder,
+                            phone: selectedCustomer?.phone || fullOrder.customer?.phone
+                        })
+                    })
+                    const waResult = await res.json()
+                    if (waResult.success) {
+                        toast.success('WhatsApp menu & bill sent to customer! 📱', { id: 'wa-send' })
+                    } else if (waResult.fallbackUrl) {
+                        toast.dismiss('wa-send')
+                        toast.info('Opening WhatsApp to share bill...', { duration: 3000 })
+                        window.open(waResult.fallbackUrl, '_blank')
+                    } else {
+                        toast.dismiss('wa-send')
+                    }
+                } catch (waErr) {
+                    console.error('WhatsApp notification error:', waErr)
+                    toast.dismiss('wa-send')
+                }
             }
             router.push('/orders/center')
         } catch (error: any) {
@@ -2295,7 +2341,7 @@ export default function OrderForm({ orderId, isEditMode = false, initialOrderTyp
                     </div>
                 )}
 
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
                     <div>
                         <label className="block text-sm font-medium text-gray-700 mb-2">Transport Cost</label>
                         <div className="relative">
@@ -2304,6 +2350,18 @@ export default function OrderForm({ orderId, isEditMode = false, initialOrderTyp
                                 type="number"
                                 value={formData.transportCost}
                                 onChange={(e) => setFormData(p => ({ ...p, transportCost: e.target.value }))}
+                                className="w-full pl-8 pr-4 py-2 bg-gray-50 border border-gray-200 rounded-lg outline-none"
+                            />
+                        </div>
+                    </div>
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">Service Cost</label>
+                        <div className="relative">
+                            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">₹</span>
+                            <input
+                                type="number"
+                                value={formData.serviceCost}
+                                onChange={(e) => setFormData(p => ({ ...p, serviceCost: e.target.value }))}
                                 className="w-full pl-8 pr-4 py-2 bg-gray-50 border border-gray-200 rounded-lg outline-none"
                             />
                         </div>

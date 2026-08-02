@@ -7,7 +7,7 @@ import { formatCurrency, formatDate, formatDateTime, sanitizeMealLabel, getOrder
 import { getRequest, putRequest, deleteRequest } from '@/lib/api/api'
 import { apiUrl } from '@/lib/api/apiUrl'
 import { Bill, Order, PaymentHistoryEntry } from '@/types'
-import { FaUser, FaCalendarAlt, FaMoneyBillWave, FaHistory, FaUtensils, FaTruck, FaTag, FaArrowLeft, FaEdit, FaCheckCircle, FaExclamationCircle, FaTrash, FaTimes, FaSave } from 'react-icons/fa'
+import { FaUser, FaCalendarAlt, FaMoneyBillWave, FaHistory, FaUtensils, FaTruck, FaTag, FaArrowLeft, FaEdit, FaCheckCircle, FaExclamationCircle, FaTrash, FaTimes, FaSave, FaWhatsapp } from 'react-icons/fa'
 
 export default function OrderSummaryPage() {
   const params = useParams()
@@ -193,10 +193,43 @@ export default function OrderSummaryPage() {
   return (
     <div className="p-4 md:p-8 bg-[#f8fafc] min-h-screen">
       <div className="w-full">
-        <div className="mb-8 flex items-center justify-end">
+        <div className="mb-8 flex items-center justify-end gap-3">
+          <button
+            onClick={async () => {
+              try {
+                toast.loading('Sending WhatsApp notification...', { id: 'wa-send-summary' })
+                const res = await fetch('/api/whatsapp/send', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({
+                    orderId: order.id,
+                    order,
+                    phone: order.customer?.phone
+                  })
+                })
+                const waResult = await res.json()
+                if (waResult.success) {
+                  toast.success('WhatsApp menu & bill sent to customer! 📱', { id: 'wa-send-summary' })
+                } else if (waResult.fallbackUrl) {
+                  toast.dismiss('wa-send-summary')
+                  toast.info('Opening WhatsApp to send bill...', { duration: 3000 })
+                  window.open(waResult.fallbackUrl, '_blank')
+                } else {
+                  toast.dismiss('wa-send-summary')
+                  toast.error(waResult.error || 'Failed to send WhatsApp message')
+                }
+              } catch (err: any) {
+                toast.dismiss('wa-send-summary')
+                toast.error('Failed to send WhatsApp message')
+              }
+            }}
+            className="flex items-center px-5 py-2.5 bg-emerald-600 text-white rounded-[5px] font-bold hover:bg-emerald-700 transition-all shadow-lg shadow-emerald-200 active:scale-95 text-sm"
+          >
+            <FaWhatsapp className="mr-2 text-lg" /> Send WhatsApp Bill
+          </button>
           <Link
             href={`/orders/financial/${order.id}`}
-            className="flex items-center px-6 py-2.5 bg-primary-600 text-white rounded-[5px] font-bold hover:bg-primary-700 transition-all shadow-lg shadow-primary-200 active:scale-95"
+            className="flex items-center px-6 py-2.5 bg-primary-600 text-white rounded-[5px] font-bold hover:bg-primary-700 transition-all shadow-lg shadow-primary-200 active:scale-95 text-sm"
           >
             <FaMoneyBillWave className="mr-2" /> Financial Summary
           </Link>
@@ -265,6 +298,10 @@ export default function OrderSummaryPage() {
                 <div className="p-4 bg-slate-50 rounded-[5px] border border-slate-100">
                   <span className="text-[10px] font-bold text-slate-400 uppercase block mb-1">Transport</span>
                   <span className="text-sm font-black text-slate-900">{formatCurrency(order.transportCost || 0)}</span>
+                </div>
+                <div className="p-4 bg-slate-50 rounded-[5px] border border-slate-100">
+                  <span className="text-[10px] font-bold text-slate-400 uppercase block mb-1">Service Cost</span>
+                  <span className="text-sm font-black text-slate-900">{formatCurrency((order as any).serviceCost || 0)}</span>
                 </div>
                 <div className="p-4 bg-slate-50 rounded-[5px] border border-slate-100">
                   <span className="text-[10px] font-bold text-slate-400 uppercase block mb-1">Water Bottles</span>

@@ -297,8 +297,26 @@ export function buildOrderPdfHtml(
 
       meals.forEach((meal) => {
         const count = Number(meal.numberOfPlates || meal.numberOfMembers || meal.count || 0);
-        const amount = Number(meal.amount || 0);
-        const rate = count > 0 ? amount / count : 0;
+        const manualAmount = Number(meal.manualAmount || 0);
+        const storedAmount = Number(meal.amount || 0);
+        const pricingMethod = meal.pricingMethod || (manualAmount > 0 ? 'manual' : 'plate-based');
+        const platePrice = Number(meal.platePrice || 0);
+
+        let amount = storedAmount;
+        if (pricingMethod === 'manual' && manualAmount > 0) {
+          amount = manualAmount;
+        } else if (amount === 0 && manualAmount > 0) {
+          amount = manualAmount;
+        }
+
+        let rate = 0;
+        if (pricingMethod === 'plate-based') {
+          if (platePrice > 0) {
+            rate = platePrice;
+          } else if (count > 0 && amount > 0) {
+            rate = amount / count;
+          }
+        }
 
         summaryRowsHtml += `
                 <tr class="pdf-row">
@@ -591,6 +609,10 @@ export function buildOrderPdfHtml(
                  <div style="display: flex; justify-content: space-between; padding: 4px 12px; font-size: 11px; font-weight: 700;">
                     <div>Transport Cost:</div>
                     <div>${order.transportCost && Number(order.transportCost) > 0 ? formatCurrency(Number(order.transportCost)) : "-"}</div>
+                 </div>
+                 <div style="display: flex; justify-content: space-between; padding: 4px 12px; font-size: 11px; font-weight: 700;">
+                    <div>Service Cost:</div>
+                    <div>${order.serviceCost && Number(order.serviceCost) > 0 ? formatCurrency(Number(order.serviceCost)) : "-"}</div>
                  </div>
                  <div style="display: flex; justify-content: space-between; padding: 4px 12px; font-size: 11px; font-weight: 700;">
                     <div>Water Bottles:</div>

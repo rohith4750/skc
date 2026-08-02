@@ -29,6 +29,7 @@ export interface PDFTemplateData {
   financial?: {
     sariAmount?: number
     transport?: number
+    serviceCost?: number
     waterBottlesCost?: number
     extra?: number
     totalAmount: number
@@ -515,12 +516,14 @@ function generateBillContent(data: PDFTemplateData): string {
       sessions.forEach(session => {
         const persons = session.numberOfMembers || 0
         const amount = session.amount || 0
-        const pricingMethod = session.pricingMethod || 'manual'
-        const platePrice = session.platePrice || 0
         const manualAmount = session.manualAmount || 0
+        const pricingMethod = session.pricingMethod || (manualAmount > 0 ? 'manual' : 'plate-based')
+        const platePrice = session.platePrice || 0
 
         let displayAmount = amount
         if (pricingMethod === 'manual' && manualAmount > 0) {
+          displayAmount = manualAmount
+        } else if (pricingMethod === 'manual' && (displayAmount === 0 || !displayAmount)) {
           displayAmount = manualAmount
         }
 
@@ -624,16 +627,22 @@ function generateBillContent(data: PDFTemplateData): string {
           ` : ''}
           
           <div style="margin-top: 15px; border-top: 1px solid #ccc; padding-top: 10px;">
-            ${showFullFinancial && financial.waterBottlesCost ? `
-            <div class="financial-row">
-              <span class="financial-label">Water Bottles:</span>
-              <span class="financial-value">${formatCurrency(financial.waterBottlesCost)}</span>
-            </div>
-            ` : ''}
             ${showFullFinancial && financial.transport ? `
             <div class="financial-row">
               <span class="financial-label">Transport:</span>
               <span class="financial-value">${formatCurrency(financial.transport)}</span>
+            </div>
+            ` : ''}
+            ${showFullFinancial && financial.serviceCost ? `
+            <div class="financial-row">
+              <span class="financial-label">Service Cost:</span>
+              <span class="financial-value">${formatCurrency(financial.serviceCost)}</span>
+            </div>
+            ` : ''}
+            ${showFullFinancial && financial.waterBottlesCost ? `
+            <div class="financial-row">
+              <span class="financial-label">Water Bottles:</span>
+              <span class="financial-value">${formatCurrency(financial.waterBottlesCost)}</span>
             </div>
             ` : ''}
             

@@ -23,6 +23,7 @@ export default function FinancialTrackingPage() {
 
   const [formData, setFormData] = useState({
     transportCost: '0',
+    serviceCost: '0',
     waterBottlesCost: '0',
     discount: '0',
     stalls: [] as Array<{ category: string; description: string; cost: string }>,
@@ -76,6 +77,7 @@ export default function FinancialTrackingPage() {
       // Initialize form with existing values
       setFormData({
         transportCost: data.transportCost?.toString() || '0',
+        serviceCost: data.serviceCost?.toString() || '0',
         waterBottlesCost: data.waterBottlesCost?.toString() || '0',
         discount: data.discount?.toString() || '0',
         stalls: (data.stalls || []).map((s: any) => ({
@@ -206,17 +208,6 @@ export default function FinancialTrackingPage() {
       }
     }
 
-    if (next.pricingMethod === 'manual' && prevMembers > 0 && nextMembers !== prevMembers) {
-      const currentManualAmount = parseFloat(mealType.manualAmount) || 0
-      if (currentManualAmount > 0) {
-        const unitRate = currentManualAmount / prevMembers
-        const newAmount = Math.round(unitRate * nextMembers)
-        return {
-          ...next,
-          manualAmount: newAmount.toString()
-        }
-      }
-    }
     return next
   }
 
@@ -257,11 +248,12 @@ export default function FinancialTrackingPage() {
 
     // 2. Add current adjustments from form
     const transport = parseFloat(formData.transportCost) || 0
+    const service = parseFloat(formData.serviceCost) || 0
     const waterBottles = parseFloat(formData.waterBottlesCost) || 0
     const discount = parseFloat(formData.discount) || 0
     const stallsTotal = formData.stalls.reduce((sum, s) => sum + (parseFloat(s.cost) || 0), 0)
 
-    const newTotal = Math.max(0, mealTypesTotal + transport + waterBottles + stallsTotal - discount)
+    const newTotal = Math.max(0, mealTypesTotal + transport + service + waterBottles + stallsTotal - discount)
 
     // 3. Payments
     const basePaid = parseFloat(formData.baseAdvancePaid) || 0
@@ -323,6 +315,7 @@ export default function FinancialTrackingPage() {
       const payload = {
         ...order, // Keep everything else (logistics) same
         transportCost: parseFloat(formData.transportCost) || 0,
+        serviceCost: parseFloat(formData.serviceCost) || 0,
         waterBottlesCost: parseFloat(formData.waterBottlesCost) || 0,
         discount: parseFloat(formData.discount) || 0,
         stalls: formData.stalls,
@@ -578,7 +571,7 @@ export default function FinancialTrackingPage() {
                   <div className="w-1.5 h-4 bg-primary-500 rounded-full"></div>
                   Core Adjustments
                 </h2>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                   <div>
                     <label className="block text-xs font-black text-slate-600 uppercase tracking-widest mb-2">Transport Cost</label>
                     <div className="relative">
@@ -587,6 +580,19 @@ export default function FinancialTrackingPage() {
                         type="number"
                         value={formData.transportCost}
                         onChange={(e) => setFormData({ ...formData, transportCost: e.target.value })}
+                        className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-100 rounded-[5px] focus:ring-2 focus:ring-primary-500 outline-none font-bold text-slate-700"
+                        placeholder="0.00"
+                      />
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-black text-slate-600 uppercase tracking-widest mb-2">Service Cost</label>
+                    <div className="relative">
+                      <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300 font-bold">₹</span>
+                      <input
+                        type="number"
+                        value={formData.serviceCost}
+                        onChange={(e) => setFormData({ ...formData, serviceCost: e.target.value })}
                         className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-100 rounded-[5px] focus:ring-2 focus:ring-primary-500 outline-none font-bold text-slate-700"
                         placeholder="0.00"
                       />

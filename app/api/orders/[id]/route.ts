@@ -188,6 +188,8 @@ export async function PUT(
     }
     const discount = parseFloat(data.discount) || 0;
     const transportCost = parseFloat(data.transportCost) || 0;
+    const serviceCost = parseFloat(data.serviceCost) || 0;
+    const waterBottlesCost = parseFloat(data.waterBottlesCost) || 0;
     const additionalPayment = parseFloat(data.additionalPayment) || 0;
     const paymentDate =
       typeof data.paymentDate === "string" && data.paymentDate.trim()
@@ -265,7 +267,8 @@ export async function PUT(
       0,
       recalculatedMealTypesTotal +
         transportCost +
-        (parseFloat(data.waterBottlesCost) || 0) +
+        serviceCost +
+        waterBottlesCost +
         (data.stalls || []).reduce(
           (sum: number, s: any) => {
             let sCost = 0;
@@ -331,6 +334,7 @@ export async function PUT(
           ? data.stalls
           : null,
       transportCost,
+      serviceCost,
       waterBottlesCost: parseFloat(data.waterBottlesCost) || 0,
       discount,
       internalNote: data.internalNote || null,

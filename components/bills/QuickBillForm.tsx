@@ -51,6 +51,7 @@ export default function QuickBillForm({ onSuccess, onCancel }: QuickBillFormProp
         eventVenue: '',
         sessions: [...DEFAULT_SESSIONS],
         transportCost: '',
+        serviceCost: '',
         discount: '',
         advancePaid: '',
         paymentMethod: 'cash'
@@ -120,8 +121,9 @@ export default function QuickBillForm({ onSuccess, onCancel }: QuickBillFormProp
     const calculateTotal = () => {
         const sessionTotal = form.sessions.reduce((sum, s) => sum + (parseFloat(s.amount) || 0), 0);
         const transport = parseFloat(form.transportCost) || 0;
+        const service = parseFloat(form.serviceCost) || 0;
         const discount = parseFloat(form.discount) || 0;
-        return Math.max(0, sessionTotal + transport - discount);
+        return Math.max(0, sessionTotal + transport + service - discount);
     };
 
     const handleSubmit = async (e: React.FormEvent) => {
@@ -145,6 +147,7 @@ export default function QuickBillForm({ onSuccess, onCancel }: QuickBillFormProp
                 sessions: form.sessions,
                 financials: {
                     transport: form.transportCost,
+                    serviceCost: form.serviceCost,
                     discount: form.discount,
                     advancePaid: form.advancePaid,
                     paymentMethod: form.paymentMethod
@@ -399,13 +402,23 @@ export default function QuickBillForm({ onSuccess, onCancel }: QuickBillFormProp
                         <h4 className="text-[10px] font-black text-slate-500 uppercase tracking-widest flex items-center gap-2">
                             <FaCalculator /> Summary & Adjustments
                         </h4>
-                        <div className="grid grid-cols-2 gap-4">
+                        <div className="grid grid-cols-3 gap-3">
                             <div>
                                 <label className="block text-xs font-bold text-slate-600 mb-1">Transport Cost</label>
                                 <input
                                     type="number"
                                     value={form.transportCost}
                                     onChange={(e) => setForm(prev => ({ ...prev, transportCost: e.target.value }))}
+                                    placeholder="₹ 0"
+                                    className="w-full px-4 py-2 bg-white border border-slate-200 rounded-xl outline-none font-bold"
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-xs font-bold text-slate-600 mb-1">Service Cost</label>
+                                <input
+                                    type="number"
+                                    value={form.serviceCost}
+                                    onChange={(e) => setForm(prev => ({ ...prev, serviceCost: e.target.value }))}
                                     placeholder="₹ 0"
                                     className="w-full px-4 py-2 bg-white border border-slate-200 rounded-xl outline-none font-bold"
                                 />
