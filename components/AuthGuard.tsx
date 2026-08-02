@@ -115,7 +115,7 @@ export default function AuthGuard({ children }: { children: React.ReactNode }) {
       <Sidebar />
       <div className="flex-1 flex flex-col lg:ml-0 overflow-hidden">
         <Header />
-        <main className="flex-1 overflow-y-auto overflow-x-hidden pt-16 pb-12">
+        <main className="flex-1 overflow-y-auto overflow-x-hidden pt-16 pb-14">
           {children}
         </main>
         <Footer />
