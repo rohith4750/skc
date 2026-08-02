@@ -90,6 +90,7 @@ export default function Sidebar() {
                 alt="SKC Logo"
                 width={80}
                 height={80}
+                unoptimized
                 className="drop-shadow-[0_0_15px_rgba(245,158,11,0.3)] w-20 h-20 lg:w-24 lg:h-24"
                 priority
               />

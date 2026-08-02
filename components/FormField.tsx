@@ -1,7 +1,7 @@
 "use client";
 import { useState } from 'react'
 import { IconType } from 'react-icons'
-import { FaEye, FaEyeSlash } from 'react-icons/fa'
+import { HiOutlineEye, HiOutlineEyeSlash } from 'react-icons/hi2'
 
 interface FormFieldProps {
   name: string
@@ -77,10 +77,10 @@ export default function FormField({
           <button
             type="button"
             onClick={() => setShowPassword(!showPassword)}
-            className="absolute inset-y-0 right-0 pr-3 sm:pr-4 flex items-center text-gray-400 hover:text-gray-600 transition-colors touch-manipulation min-w-[44px] min-h-[44px] flex items-center justify-center"
+            className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-700 transition-colors focus:outline-none flex items-center justify-center p-1"
             aria-label={showPassword ? 'Hide password' : 'Show password'}
           >
-            {showPassword ? <FaEyeSlash className="text-base sm:text-lg lg:text-base xl:text-lg" /> : <FaEye className="text-base sm:text-lg lg:text-base xl:text-lg" />}
+            {showPassword ? <HiOutlineEyeSlash className="w-5 h-5 text-slate-400 hover:text-slate-700" /> : <HiOutlineEye className="w-5 h-5 text-slate-400 hover:text-slate-700" />}
           </button>
         )}
       </div>

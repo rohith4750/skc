@@ -115,38 +115,52 @@ function LoginPageContent() {
   }
 
   return (
-    <div className="h-screen bg-gradient-to-br from-gray-50 via-orange-50 to-red-50 overflow-hidden">
+    <div className="h-screen bg-white overflow-hidden flex flex-col lg:flex-row">
       {/* Mobile & Tablet Header with Logo */}
-      <div className="lg:hidden bg-gradient-to-r from-red-800 via-red-900 to-amber-900 text-white py-4 sm:py-6 md:py-8 px-4">
+      <div className="lg:hidden bg-gradient-to-r from-red-800 via-red-900 to-amber-900 text-white py-6 px-4">
         <div className="flex flex-col items-center">
           <Image 
             src="/images/logo-dark.png" 
             alt="SKC Logo" 
             width={120} 
             height={120}
-            className="drop-shadow-lg w-24 h-24 sm:w-28 sm:h-28 md:w-32 md:h-32"
+            className="drop-shadow-lg w-24 h-24 sm:w-28 sm:h-28"
             priority
           />
-          <p className="text-amber-200 text-xs sm:text-sm md:text-base mt-2">Pure Vegetarian • Since 1989</p>
+          <p className="text-amber-200 text-xs sm:text-sm mt-2 font-medium">Pure Vegetarian • Since 1989</p>
         </div>
       </div>
 
-      <div className="flex flex-col lg:flex-row h-[calc(100vh-100px)] sm:h-[calc(100vh-120px)] lg:h-screen">
+      <div className="flex flex-col lg:flex-row w-full h-[calc(100vh-100px)] sm:h-[calc(100vh-120px)] lg:h-screen">
         {/* Left Side - Login Form */}
-        <div className="flex-1 flex items-center justify-center p-4 sm:p-6 md:p-8 lg:p-4 xl:p-6 overflow-y-auto">
-          <div className="w-full max-w-md lg:max-w-lg xl:max-w-xl">
-            {/* Welcome Text */}
-            <div className="mb-4 sm:mb-5 md:mb-6 lg:mb-3 xl:mb-4 text-center lg:text-left">
-              <h1 className="text-2xl sm:text-3xl md:text-4xl lg:text-2xl xl:text-3xl font-bold text-gray-900 mb-2">
-                Welcome Back
-              </h1>
-              <p className="text-gray-600 text-sm sm:text-base md:text-lg lg:text-sm xl:text-base">
-                Sign in to manage your catering business
-              </p>
-            </div>
+        <div className="flex-1 flex items-center justify-center p-6 sm:p-8 md:p-12 bg-white overflow-y-auto">
+          <div className="w-full max-w-md lg:max-w-lg">
+            {/* Single Border Card Container containing Logo, Welcome Header & Form */}
+            <div className="bg-white rounded-[5px] p-6 sm:p-8 border border-slate-200 shadow-sm transition-all">
+              {/* Logo & Welcome Header inside the card */}
+              <div className="mb-6 text-center sm:text-left flex flex-col items-center sm:items-start">
+                <div className="flex flex-col sm:flex-row items-center sm:items-center gap-3 mb-4">
+                  <Image 
+                    src="/images/logo-dark.png" 
+                    alt="SKC Caterers Logo" 
+                    width={90} 
+                    height={90}
+                    unoptimized
+                    className="w-16 h-16 sm:w-20 sm:h-20 object-contain"
+                    priority
+                  />
+                  <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-amber-50 text-amber-900 text-xs font-black rounded-[5px] border border-amber-200 shadow-xs">
+                    ✨ Serving Quality Catering Since 1989
+                  </span>
+                </div>
+                <h1 className="text-2xl sm:text-3xl font-black text-slate-900 mb-1 tracking-tight">
+                  Welcome Back
+                </h1>
+                <p className="text-slate-500 text-xs sm:text-sm font-medium">
+                  Sign in to manage your catering business
+                </p>
+              </div>
 
-            {/* Login Form Card */}
-            <div className="bg-white rounded-xl sm:rounded-2xl shadow-lg sm:shadow-xl p-4 sm:p-6 md:p-7 lg:p-5 xl:p-6 border border-gray-100 hover:shadow-2xl transition-shadow duration-300">
               <FormEngine
                 fields={loginFields}
                 onSubmit={handleFormSubmit}
@@ -156,20 +170,20 @@ function LoginPageContent() {
                 submitButtonText="Sign In"
                 submitButtonIcon={FaUtensils}
               >
-                <div className="flex items-center justify-between text-xs sm:text-sm md:text-base lg:text-xs xl:text-sm gap-2">
-                  <label className="flex items-center cursor-pointer touch-manipulation min-h-[44px] lg:min-h-[32px] xl:min-h-[36px]">
+                <div className="flex items-center justify-between text-xs sm:text-sm gap-2">
+                  <label className="flex items-center cursor-pointer touch-manipulation">
                     <input
                       type="checkbox"
                       checked={formData.rememberMe}
                       onChange={(e) => setFormData({ ...formData, rememberMe: e.target.checked })}
-                      className="rounded border-gray-300 text-primary-500 focus:ring-primary-500 w-4 h-4 cursor-pointer"
+                      className="rounded-[3px] border-slate-300 text-amber-600 focus:ring-amber-500 w-4 h-4 cursor-pointer"
                     />
-                    <span className="ml-2 sm:ml-3 text-gray-600">Remember me</span>
+                    <span className="ml-2 text-slate-600 font-medium">Remember me</span>
                   </label>
                   <button
                     type="button"
                     onClick={() => router.push('/reset-password')}
-                    className="text-primary-600 hover:text-primary-700 font-medium transition-colors touch-manipulation min-h-[44px] lg:min-h-[32px] xl:min-h-[36px] px-2"
+                    className="text-amber-700 hover:text-amber-800 font-bold transition-colors text-xs"
                   >
                     Forgot password?
                   </button>
@@ -237,8 +251,8 @@ function LoginPageContent() {
             </div>
 
             {/* Footer */}
-            <div className="mt-4 sm:mt-6 md:mt-8 lg:mt-3 xl:mt-4 text-center text-[10px] sm:text-xs md:text-sm text-gray-500 px-4">
-              <p>© 2024 Srivatsasa & Koundinya Caterers. All rights reserved.</p>
+            <div className="mt-6 text-center text-xs text-slate-500 font-medium px-4">
+              <p>© {new Date().getFullYear()} SKC Caterers (Srivatsasa & Koundinya Caterers). All rights reserved.</p>
             </div>
           </div>
         </div>
@@ -247,10 +261,8 @@ function LoginPageContent() {
         <div className="hidden lg:flex lg:flex-1 lg:flex-col lg:items-center lg:justify-center lg:p-4 xl:p-6 bg-gradient-to-br from-red-800 via-red-900 to-amber-900 relative overflow-y-auto">
           {/* Decorative Elements */}
           <div className="absolute inset-0 overflow-hidden pointer-events-none">
-            <div className="absolute top-10 right-10 w-64 h-64 border border-amber-400/20 rounded-full"></div>
-            <div className="absolute top-10 right-10 w-80 h-80 border border-amber-400/10 rounded-full"></div>
-            <div className="absolute bottom-20 left-10 w-48 h-48 border border-amber-400/20 rounded-full"></div>
-            <div className="absolute bottom-20 left-10 w-64 h-64 border border-amber-400/10 rounded-full"></div>
+            <div className="absolute -top-20 -right-20 w-[450px] h-[450px] border border-amber-400/15 rounded-full"></div>
+            <div className="absolute -bottom-20 -left-20 w-[450px] h-[450px] border border-amber-400/15 rounded-full"></div>
             <div className="absolute top-1/4 right-1/4 w-96 h-96 bg-amber-500/10 rounded-full blur-3xl animate-pulse"></div>
             <div className="absolute bottom-1/4 left-1/4 w-72 h-72 bg-red-500/10 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '1s' }}></div>
           </div>
@@ -264,6 +276,7 @@ function LoginPageContent() {
                 alt="SKC Logo" 
                 width={160} 
                 height={160}
+                unoptimized
                 className="drop-shadow-2xl mx-auto w-28 h-28 lg:w-32 lg:h-32 xl:w-36 xl:h-36"
                 priority
               />

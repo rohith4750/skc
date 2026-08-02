@@ -1,16 +1,17 @@
 "use client";
+import Image from 'next/image'
 import { useState, useEffect, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { FaLock, FaEnvelope, FaEye, FaEyeSlash, FaKey, FaCheckCircle } from 'react-icons/fa'
+import { FaLock, FaEnvelope, FaKey, FaCheckCircle } from 'react-icons/fa'
+import { HiOutlineEye, HiOutlineEyeSlash } from 'react-icons/hi2'
 import { toast } from 'sonner'
-import Logo from '@/components/Logo'
 import FormError from '@/components/FormError'
 
 export default function ResetPasswordPage() {
   return (
     <Suspense fallback={
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600"></div>
+      <div className="min-h-screen flex items-center justify-center bg-white">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-amber-600"></div>
       </div>
     }>
       <ResetPasswordContent />
@@ -143,22 +144,30 @@ function ResetPasswordContent() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-50 via-orange-50 to-red-50 p-4">
-      <div className="w-full max-w-md">
-        {/* Logo */}
-        <div className="mb-8 text-center">
-          <Logo variant="compact" size="lg" textColor="dark" />
-          <p className="text-gray-600 text-sm mt-2">Since 1989 - Serving Excellence</p>
-        </div>
-
-        {/* Reset Password Form */}
-        <div className="bg-white rounded-2xl shadow-xl p-6 sm:p-8 border border-gray-100">
-          <div className="mb-6">
-            <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-2">Reset Password</h1>
-            <p className="text-gray-600 text-sm">
+    <div className="min-h-screen flex items-center justify-center bg-slate-50/60 p-4 sm:p-6">
+      <div className="w-full max-w-md sm:max-w-lg">
+        {/* Single Unified Border Card Div */}
+        <div className="bg-white rounded-[5px] p-6 sm:p-8 border border-slate-200 shadow-sm transition-all">
+          {/* Header & Logo inside the card */}
+          <div className="mb-6 text-center flex flex-col items-center">
+            <Image 
+              src="/images/logo-dark.png" 
+              alt="SKC Caterers Logo" 
+              width={90} 
+              height={90}
+              className="w-16 h-16 sm:w-20 sm:h-20 mb-3 object-contain"
+              priority
+            />
+            <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-amber-50 text-amber-900 text-xs font-black rounded-[5px] border border-amber-200 shadow-xs mb-4">
+              ✨ SKC Caterers • Est. 1989
+            </span>
+            <h1 className="text-2xl sm:text-3xl font-black text-slate-900 mb-1 tracking-tight">
+              Reset Password
+            </h1>
+            <p className="text-slate-500 text-xs sm:text-sm font-medium leading-relaxed max-w-sm">
               {codeSent 
                 ? 'Enter the verification code sent to your email and your new password.'
-                : 'Enter your email address and we\'ll send you a verification code to reset your password.'}
+                : 'Enter your email address and we\'ll send you a 6-digit verification code to reset your password.'}
             </p>
           </div>
 
@@ -167,27 +176,27 @@ function ResetPasswordContent() {
               <FormError message={formError} />
               {/* Email Field */}
               <div>
-                <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-2">
+                <label htmlFor="email" className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">
                   Enter Email
                 </label>
                 <div className="relative">
-                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                    <FaEnvelope className="text-gray-400" />
+                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
+                    <FaEnvelope />
                   </div>
                   <input
                     id="email"
                     type="email"
                     value={formData.email}
                     onChange={handleEmailChange}
-                    className={`block w-full pl-10 pr-10 py-3 border rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 ${
-                      emailValid && formData.email ? 'border-green-500' : 'border-gray-300'
+                    className={`block w-full pl-10 pr-10 py-3 border rounded-[5px] text-sm font-medium transition-all outline-none ${
+                      emailValid && formData.email ? 'border-emerald-500 focus:ring-2 focus:ring-emerald-500/20' : 'border-slate-300 focus:border-amber-600 focus:ring-2 focus:ring-amber-500/20'
                     }`}
-                    placeholder="Enter your email"
+                    placeholder="Enter your registered email"
                     required
                   />
                   {emailValid && formData.email && (
                     <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
-                      <FaCheckCircle className="text-green-500" />
+                      <FaCheckCircle className="text-emerald-500" />
                     </div>
                   )}
                 </div>
@@ -197,19 +206,19 @@ function ResetPasswordContent() {
               <button
                 type="submit"
                 disabled={isSendingCode || !emailValid}
-                className="w-full bg-primary-500 text-white py-3 rounded-lg font-semibold hover:bg-primary-600 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                className="w-full bg-gradient-to-r from-red-700 to-amber-700 text-white py-3 rounded-[5px] font-bold text-sm hover:from-red-800 hover:to-amber-800 focus:outline-none transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-xs"
               >
-                {isSendingCode ? 'Sending...' : 'Send Code'}
+                {isSendingCode ? 'Sending Code...' : 'Send Verification Code'}
               </button>
 
               {/* Back to Login */}
-              <div className="text-center">
+              <div className="text-center pt-2">
                 <button
                   type="button"
                   onClick={() => router.push('/login')}
-                  className="text-sm text-primary-600 hover:text-primary-700 font-medium"
+                  className="text-xs text-amber-700 hover:text-amber-800 font-bold transition-colors"
                 >
-                  Back to Login
+                  ← Back to Sign In
                 </button>
               </div>
             </form>
@@ -218,111 +227,111 @@ function ResetPasswordContent() {
               <FormError message={formError} />
               {/* Email Field - Read Only */}
               <div>
-                <label htmlFor="reset-email" className="block text-sm font-medium text-gray-700 mb-2">
-                  Enter Email
+                <label htmlFor="reset-email" className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">
+                  Email Address
                 </label>
                 <div className="relative">
-                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                    <FaEnvelope className="text-gray-400" />
+                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
+                    <FaEnvelope />
                   </div>
                   <input
                     id="reset-email"
                     type="email"
                     value={formData.email}
                     readOnly
-                    className="block w-full pl-10 pr-3 py-3 border border-gray-300 rounded-lg bg-gray-50 text-gray-600 cursor-not-allowed"
+                    className="block w-full pl-10 pr-3 py-3 border border-slate-200 rounded-[5px] bg-slate-50 text-slate-600 font-medium cursor-not-allowed text-sm"
                   />
                 </div>
               </div>
 
               {/* Code Field */}
               <div>
-                <label htmlFor="code" className="block text-sm font-medium text-gray-700 mb-2">
-                  Enter Code
+                <label htmlFor="code" className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">
+                  Enter 6-Digit Code
                 </label>
                 <div className="relative">
-                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                    <FaKey className="text-gray-400" />
+                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
+                    <FaKey />
                   </div>
                   <input
                     id="code"
                     type="text"
                     value={formData.code}
                     onChange={(e) => setFormData({ ...formData, code: e.target.value.replace(/\D/g, '').slice(0, 6) })}
-                    className="block w-full pl-10 pr-3 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                    className="block w-full pl-10 pr-3 py-3 border border-slate-300 rounded-[5px] focus:border-amber-600 focus:ring-2 focus:ring-amber-500/20 text-sm font-medium tracking-widest"
                     placeholder="Enter Code"
                     maxLength={6}
                     required
                   />
                 </div>
-                <p className="mt-1 text-xs text-gray-500">Enter the 6-digit code sent to your email</p>
+                <p className="mt-1.5 text-[11px] text-slate-400 font-medium">Enter the 6-digit code sent to your email</p>
               </div>
 
               {/* New Password Field */}
               <div>
-                <label htmlFor="newPassword" className="block text-sm font-medium text-gray-700 mb-2">
-                  Enter New Password <span className="text-red-500">*</span>
+                <label htmlFor="newPassword" className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">
+                  Enter New Password <span className="text-rose-500">*</span>
                 </label>
                 <div className="relative">
-                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                    <FaLock className="text-gray-400" />
+                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
+                    <FaLock />
                   </div>
                   <input
                     id="newPassword"
                     type={showPassword ? 'text' : 'password'}
                     value={formData.newPassword}
                     onChange={(e) => setFormData({ ...formData, newPassword: e.target.value })}
-                    className="block w-full pl-10 pr-10 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                    className="block w-full pl-10 pr-10 py-3 border border-slate-300 rounded-[5px] focus:border-amber-600 focus:ring-2 focus:ring-amber-500/20 text-sm font-medium"
                     placeholder="Enter New Password"
                     required
                   />
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
-                    className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600"
+                    className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-700 transition-colors focus:outline-none flex items-center justify-center p-1"
                   >
-                    {showPassword ? <FaEyeSlash /> : <FaEye />}
+                    {showPassword ? <HiOutlineEyeSlash className="w-5 h-5" /> : <HiOutlineEye className="w-5 h-5" />}
                   </button>
                 </div>
-                <p className="mt-1 text-xs text-gray-500">Minimum 6 characters</p>
+                <p className="mt-1.5 text-[11px] text-slate-400 font-medium">Minimum 6 characters</p>
               </div>
 
               {/* Submit Button */}
               <button
                 type="submit"
                 disabled={isLoading}
-                className="w-full bg-primary-500 text-white py-3 rounded-lg font-semibold hover:bg-primary-600 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                className="w-full bg-gradient-to-r from-red-700 to-amber-700 text-white py-3 rounded-[5px] font-bold text-sm hover:from-red-800 hover:to-amber-800 transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-xs"
               >
-                SUBMIT
+                {isLoading ? 'Resetting Password...' : 'SUBMIT RESET PASSWORD'}
               </button>
 
               {/* Back Button */}
-              <div className="flex gap-3">
+              <div className="flex gap-3 pt-1">
                 <button
                   type="button"
                   onClick={() => {
                     setCodeSent(false)
                     setFormData({ ...formData, code: '', newPassword: '' })
                   }}
-                  className="flex-1 px-4 py-3 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors font-medium"
+                  className="flex-1 px-4 py-2.5 border border-slate-200 rounded-[5px] text-slate-700 hover:bg-slate-50 transition-colors text-xs font-bold"
                 >
-                  Back
+                  Change Email
                 </button>
                 <button
                   type="button"
                   onClick={() => router.push('/login')}
-                  className="flex-1 px-4 py-3 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors font-medium"
+                  className="flex-1 px-4 py-2.5 border border-slate-200 rounded-[5px] text-slate-700 hover:bg-slate-50 transition-colors text-xs font-bold"
                 >
                   Cancel
                 </button>
               </div>
             </form>
           )}
-        </div>
 
-        {/* Info Message */}
-        <div className="mt-4 text-center text-sm text-gray-600">
-          <p>Didn't receive a code? Check your spam folder or request a new one.</p>
+          {/* Help Info Message inside the single card */}
+          <div className="mt-6 pt-4 border-t border-slate-100 text-center text-xs text-slate-400 font-medium">
+            <p>Didn't receive a code? Check your spam folder or request a new one.</p>
+          </div>
         </div>
       </div>
     </div>

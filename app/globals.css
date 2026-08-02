@@ -401,3 +401,8 @@ select {
 .rounded-\[1rem\] {
   border-radius: 5px !important;
 }
+
+/* Hide Next.js dev indicator overlay badge */
+nextjs-portal {
+  display: none !important;
+}
