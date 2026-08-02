@@ -7,8 +7,26 @@ import { FaSearch, FaPlus, FaTimes, FaUser, FaCalculator, FaWallet, FaUtensils, 
 import { useRouter, useSearchParams } from 'next/navigation'
 import { toast } from 'sonner'
 import FormError from '@/components/FormError'
+import { getRequest } from '@/lib/api/api'
+import { apiUrl } from '@/lib/api/apiUrl'
 import { Storage } from '@/lib/storage-api'
 import { CustomSelect } from '@/components/ui/CustomSelect'
+
+const STANDARD_STALL_CATEGORIES = [
+    'Fruit Stall',
+    'Ice Cream & Dessert Counter',
+    'Mocktail & Juice Bar',
+    'Pan / Beeda Stall',
+    'Tea & Coffee Bar',
+    'Chaat & Street Food Counter',
+    'Panipuri Live Counter',
+    'Live Dosa Counter',
+    'North Indian Tandoor Counter',
+    'Chinese & Starters Counter',
+    'Popcorn & Candy Stall',
+    'LED Counter Setup',
+    'Other (Custom Category)',
+];
 
 const FOOD_CATEGORIES = [
     { id: 'all', label: 'All Items' },
@@ -1935,29 +1953,43 @@ export default function OrderForm({ orderId, isEditMode = false, initialOrderTyp
 
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
                                     <div className="space-y-4">
-                                        {stallTemplates.length > 0 && (
-                                            <div>
-                                                <label className="block text-[10px] font-black text-slate-400 mb-2 uppercase tracking-widest">Quick Load Template</label>
-                                                <div className="relative group/template">
-                                                    <CustomSelect
-                                                        value=""
-                                                        onChange={(e) => handleLoadStallTemplate(stall.id, e.target.value)}
-                                                        placeholder="Choose a pre-defined stall package..."
-                                                        options={stallTemplates.map(t => ({ value: t.id, label: t.name }))}
-                                                        className="w-full"
-                                                    />
-                                                </div>
-                                            </div>
-                                        )}
                                         <div>
-                                            <label className="block text-[10px] font-black text-slate-400 mb-2 uppercase tracking-widest">Stall Name / Category</label>
-                                            <input
-                                                type="text"
-                                                value={stall.category}
-                                                onChange={(e) => handleUpdateStall(stall.id, 'category', e.target.value)}
-                                                placeholder="e.g., Coffee Stall, LED Counter..."
-                                                className="w-full px-5 py-3 bg-white border border-slate-200 rounded-2xl outline-none font-bold text-slate-700 focus:ring-4 focus:ring-primary-500/10 focus:border-primary-500 transition-all text-sm"
+                                            <label className="block text-[10px] font-black text-slate-400 mb-2 uppercase tracking-widest">Stall Package / Category</label>
+                                            <CustomSelect
+                                                value={
+                                                    STANDARD_STALL_CATEGORIES.includes(stall.category)
+                                                        ? stall.category
+                                                        : stall.category
+                                                            ? 'Other (Custom Category)'
+                                                            : ''
+                                                }
+                                                onChange={(e) => {
+                                                    const val = e.target.value;
+                                                    if (val.startsWith('template:')) {
+                                                        const templateId = val.replace('template:', '');
+                                                        handleLoadStallTemplate(stall.id, templateId);
+                                                    } else if (val === 'Other (Custom Category)') {
+                                                        handleUpdateStall(stall.id, 'category', stall.category && !STANDARD_STALL_CATEGORIES.includes(stall.category) ? stall.category : '');
+                                                    } else {
+                                                        handleUpdateStall(stall.id, 'category', val);
+                                                    }
+                                                }}
+                                                placeholder="Select stall package or category..."
+                                                options={[
+                                                    ...(stallTemplates.map(t => ({ value: `template:${t.id}`, label: `✨ Package: ${t.name}` }))),
+                                                    ...STANDARD_STALL_CATEGORIES.map(cat => ({ value: cat, label: cat }))
+                                                ]}
+                                                className="w-full"
                                             />
+                                            {(stall.category === 'Other (Custom Category)' || (!STANDARD_STALL_CATEGORIES.includes(stall.category) && stall.category !== '' && !stallTemplates.some(t => t.name === stall.category))) && (
+                                                <input
+                                                    type="text"
+                                                    value={STANDARD_STALL_CATEGORIES.includes(stall.category) ? '' : stall.category}
+                                                    onChange={(e) => handleUpdateStall(stall.id, 'category', e.target.value)}
+                                                    placeholder="Enter custom stall name / category..."
+                                                    className="w-full mt-2.5 px-4 py-2.5 bg-white border border-slate-200 rounded-xl outline-none font-bold text-slate-700 focus:ring-2 focus:ring-primary-500 text-xs animate-fade-in"
+                                                />
+                                            )}
                                         </div>
 
                                         <div className="grid grid-cols-2 gap-4">
