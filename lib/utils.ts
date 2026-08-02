@@ -1,4 +1,5 @@
 import { v4 as uuidv4 } from "uuid";
+import { toast } from "sonner";
 
 export function generateId(): string {
   return uuidv4();
@@ -53,38 +54,44 @@ export function sendEmail(email: string, subject: string, message: string) {
   window.open(mailtoLink);
 }
 
-export function sendWhatsAppMessage(phone: string, message: string) {
-  // Format phone number for WhatsApp (handles Indian numbers)
-  let cleanPhone = phone.replace(/[^0-9]/g, "");
-
-  // If it's a 10-digit Indian number, add country code +91
+export async function sendWhatsAppMessage(phone: string, message: string) {
+  let cleanPhone = phone ? phone.replace(/[^0-9]/g, "") : "";
   if (cleanPhone.length === 10 && !cleanPhone.startsWith("91")) {
     cleanPhone = "91" + cleanPhone;
   }
-
-  // Remove leading 0 if present (e.g., 091 -> 91)
   if (cleanPhone.startsWith("0")) {
     cleanPhone = cleanPhone.substring(1);
   }
 
-  // Create WhatsApp link - works with both WhatsApp and WhatsApp Business
-  // On mobile: Opens WhatsApp/WhatsApp Business app directly with message pre-filled
-  // On desktop: Opens WhatsApp Web
-  const whatsappLink = `https://wa.me/${cleanPhone}?text=${encodeURIComponent(message)}`;
+  const toastId = toast.loading("Sending WhatsApp message directly to customer...");
 
-  // Detect mobile device
-  const isMobile =
-    /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(
-      navigator.userAgent,
-    );
+  try {
+    const res = await fetch('/api/whatsapp/send', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ phone: cleanPhone, message }),
+    });
 
-  if (isMobile) {
-    // On mobile: Open directly (will open WhatsApp Business app if installed, otherwise regular WhatsApp)
-    // User just needs to tap "Send" button
-    window.location.href = whatsappLink;
-  } else {
-    // On desktop: Open WhatsApp Web in new tab
-    window.open(whatsappLink, "_blank");
+    const data = await res.json();
+
+    if (data.success) {
+      toast.success("✅ WhatsApp message delivered directly to customer!", { id: toastId });
+      return true;
+    }
+
+    // Fallback if Meta API is unconfigured or test token expired
+    console.warn("Meta API Send warning:", data);
+    toast.info("Opening WhatsApp fallback...", { id: toastId });
+
+    const fallbackUrl = data.fallbackUrl || `https://wa.me/${cleanPhone}?text=${encodeURIComponent(message)}`;
+    window.open(fallbackUrl, "_blank");
+    return false;
+  } catch (error: any) {
+    console.error("Error sending WhatsApp message via API:", error);
+    toast.error("Failed to connect to WhatsApp API. Opening fallback...", { id: toastId });
+    const fallbackUrl = `https://wa.me/${cleanPhone}?text=${encodeURIComponent(message)}`;
+    window.open(fallbackUrl, "_blank");
+    return false;
   }
 }
 

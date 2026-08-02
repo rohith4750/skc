@@ -18,12 +18,16 @@ export function formatWhatsAppPhone(phone: string): string {
 export async function sendMetaWhatsAppMessage({
   to,
   message,
+  customToken,
+  customPhoneId,
 }: {
   to: string;
   message: string;
+  customToken?: string;
+  customPhoneId?: string;
 }) {
-  const token = process.env.WHATSAPP_TOKEN;
-  const phoneNumberId = process.env.WHATSAPP_PHONE_NUMBER_ID;
+  const token = customToken || process.env.WHATSAPP_TOKEN;
+  const phoneNumberId = customPhoneId || process.env.WHATSAPP_PHONE_NUMBER_ID;
 
   if (!token || !phoneNumberId || phoneNumberId === 'your_phone_id_here') {
     console.warn('WhatsApp API credentials not configured in environment variables.');
