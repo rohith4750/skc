@@ -3,7 +3,12 @@ import React, { useEffect, useState, useMemo, useRef, useCallback, memo } from '
 import { v4 as uuidv4 } from 'uuid'
 import { formatCurrency, formatDate, formatTime, formatDateTime, sanitizeMealLabel } from '@/lib/utils'
 import { Customer, MenuItem, Order, OrderItem, Supervisor, StallTemplate } from '@/types'
-import { FaSearch, FaPlus, FaTimes, FaUser, FaCalculator, FaWallet, FaUtensils, FaChevronDown, FaChevronUp, FaCalendarAlt, FaClock, FaMapMarkerAlt, FaUsers, FaTag, FaStore, FaTrash, FaSortAmountDown } from 'react-icons/fa'
+import { 
+    FaSearch, FaPlus, FaTimes, FaUser, FaCalculator, FaWallet, FaUtensils, 
+    FaChevronDown, FaChevronUp, FaCalendarAlt, FaClock, FaMapMarkerAlt, 
+    FaUsers, FaTag, FaStore, FaTrash, FaSortAmountDown, FaBirthdayCake, 
+    FaGlassMartiniAlt, FaConciergeBell, FaBreadSlice, FaPepperHot, FaCoffee 
+} from 'react-icons/fa'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { toast } from 'sonner'
 import FormError from '@/components/FormError'
@@ -29,17 +34,17 @@ const STANDARD_STALL_CATEGORIES = [
 ];
 
 const FOOD_CATEGORIES = [
-    { id: 'all', label: 'All Items' },
-    { id: 'sweets', label: '🍬 Sweets & Desserts' },
-    { id: 'rice', label: '🍚 Rices & Biryani' },
-    { id: 'curry', label: '🍛 Curries & Gravies' },
-    { id: 'dal', label: '🍲 Dal & Liquids' },
-    { id: 'roti', label: '🫓 Rotis & Breads' },
-    { id: 'starter', label: '🧆 Starters & Frys' },
-    { id: 'chutney', label: '🥒 Pickles & Chutneys' },
-    { id: 'drinks', label: '🍹 Drinks & Soups' },
-    { id: 'breakfast', label: '🥞 Breakfast / Tiffins' },
-    { id: 'common', label: '🍽️ Common & Extras' },
+    { id: 'all', label: 'All Items', icon: FaUtensils, color: 'text-slate-600' },
+    { id: 'sweets', label: 'Sweets & Desserts', icon: FaBirthdayCake, color: 'text-pink-500' },
+    { id: 'rice', label: 'Rices & Biryani', icon: FaUtensils, color: 'text-amber-600' },
+    { id: 'curry', label: 'Curries & Gravies', icon: FaPepperHot, color: 'text-orange-500' },
+    { id: 'dal', label: 'Dal & Liquids', icon: FaUtensils, color: 'text-yellow-600' },
+    { id: 'roti', label: 'Rotis & Breads', icon: FaBreadSlice, color: 'text-amber-700' },
+    { id: 'starter', label: 'Starters & Frys', icon: FaPepperHot, color: 'text-rose-500' },
+    { id: 'chutney', label: 'Pickles & Chutneys', icon: FaPepperHot, color: 'text-emerald-600' },
+    { id: 'drinks', label: 'Drinks & Soups', icon: FaGlassMartiniAlt, color: 'text-blue-500' },
+    { id: 'breakfast', label: 'Breakfast / Tiffins', icon: FaCoffee, color: 'text-indigo-500' },
+    { id: 'common', label: 'Common & Extras', icon: FaConciergeBell, color: 'text-purple-500' },
 ];
 
 const getItemSubCategory = (item: MenuItem): string => {
@@ -1659,17 +1664,19 @@ export default function OrderForm({ orderId, isEditMode = false, initialOrderTyp
                                                     <div className="flex items-center gap-1.5 overflow-x-auto pb-1 no-scrollbar pt-1">
                                                         {FOOD_CATEGORIES.map(cat => {
                                                             const isSelected = (selectedSubFilter[mt.id] || 'all') === cat.id;
+                                                            const Icon = cat.icon;
                                                             return (
                                                                 <button
                                                                     key={cat.id}
                                                                     type="button"
                                                                     onClick={() => setSelectedSubFilter(p => ({ ...p, [mt.id]: cat.id }))}
-                                                                    className={`px-3 py-1.5 rounded-lg text-[11px] font-black whitespace-nowrap transition-all flex items-center gap-1 ${isSelected
+                                                                    className={`px-3 py-1.5 rounded-xl text-[11px] font-bold whitespace-nowrap transition-all flex items-center gap-1.5 ${isSelected
                                                                             ? 'bg-primary-600 text-white shadow-sm scale-[1.02]'
-                                                                            : 'bg-white border border-gray-100 text-gray-600 hover:bg-gray-50 hover:border-gray-200'
+                                                                            : 'bg-white border border-gray-200 text-slate-700 hover:bg-gray-50'
                                                                         }`}
                                                                 >
-                                                                    {cat.label}
+                                                                    <Icon className={`w-3.5 h-3.5 ${isSelected ? 'text-white' : cat.color}`} />
+                                                                    <span>{cat.label}</span>
                                                                 </button>
                                                             );
                                                         })}
@@ -2156,17 +2163,19 @@ export default function OrderForm({ orderId, isEditMode = false, initialOrderTyp
                                         <div className="flex items-center gap-1.5 overflow-x-auto pb-2 no-scrollbar">
                                             {FOOD_CATEGORIES.map(cat => {
                                                 const isSelected = (selectedSubFilter[stall.id] || 'all') === cat.id;
+                                                const Icon = cat.icon;
                                                 return (
                                                     <button
                                                         key={cat.id}
                                                         type="button"
                                                         onClick={() => setSelectedSubFilter(p => ({ ...p, [stall.id]: cat.id }))}
-                                                        className={`px-3 py-1.5 rounded-lg text-[11px] font-black whitespace-nowrap transition-all flex items-center gap-1 ${isSelected
+                                                        className={`px-3 py-1.5 rounded-xl text-[11px] font-bold whitespace-nowrap transition-all flex items-center gap-1.5 ${isSelected
                                                                 ? 'bg-primary-600 text-white shadow-sm scale-[1.02]'
-                                                                : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-50'
+                                                                : 'bg-white border border-slate-200 text-slate-700 hover:bg-slate-50'
                                                             }`}
                                                     >
-                                                        {cat.label}
+                                                        <Icon className={`w-3.5 h-3.5 ${isSelected ? 'text-white' : cat.color}`} />
+                                                        <span>{cat.label}</span>
                                                     </button>
                                                 );
                                             })}
