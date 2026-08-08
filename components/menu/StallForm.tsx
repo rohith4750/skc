@@ -10,9 +10,10 @@ interface StallFormProps {
     menuItems: MenuItem[];
     onClose: () => void;
     onSuccess: () => void;
+    onRefresh?: () => void;
 }
 
-export default function StallForm({ stall, menuItems, onClose, onSuccess }: StallFormProps) {
+export default function StallForm({ stall, menuItems, onClose, onSuccess, onRefresh }: StallFormProps) {
     const [name, setName] = useState(stall?.name || '')
     const [description, setDescription] = useState(stall?.description || '')
     const [selectedItemIds, setSelectedItemIds] = useState<string[]>(stall?.menuItemIds || [])
@@ -20,8 +21,23 @@ export default function StallForm({ stall, menuItems, onClose, onSuccess }: Stal
     const [selectedCategory, setSelectedCategory] = useState<string>('all')
     const [saveLoading, setSaveLoading] = useState(false)
 
+    // Quick Add Menu Item states
+    const [isQuickAddOpen, setIsQuickAddOpen] = useState(false)
+    const [newItemName, setNewItemName] = useState('')
+    const [newItemNameTelugu, setNewItemNameTelugu] = useState('')
+    const [newItemPrice, setNewItemPrice] = useState('')
+    const [newItemDesc, setNewItemDesc] = useState('')
+    const [newItemUnit, setNewItemUnit] = useState('plate')
+    const [quickAddLoading, setQuickAddLoading] = useState(false)
+
+    const [localMenuItems, setLocalMenuItems] = useState<MenuItem[]>(menuItems)
+
+    useEffect(() => {
+        setLocalMenuItems(menuItems)
+    }, [menuItems])
+
     // Filter to only include menu items of type 'live' / 'LIVE' (and already selected items)
-    const liveMenuItems = menuItems.filter(item => 
+    const liveMenuItems = localMenuItems.filter(item => 
         item.type.some(t => t.toLowerCase() === 'live') || selectedItemIds.includes(item.id)
     )
 
@@ -39,6 +55,48 @@ export default function StallForm({ stall, menuItems, onClose, onSuccess }: Stal
             setSelectedItemIds(selectedItemIds.filter(itemId => itemId !== id))
         } else {
             setSelectedItemIds([...selectedItemIds, id])
+        }
+    }
+
+    const handleQuickAddSubmit = async (e: React.FormEvent) => {
+        e.preventDefault()
+        if (!newItemName.trim()) {
+            toast.error('Please enter the item name')
+            return
+        }
+
+        try {
+            setQuickAddLoading(true)
+            const savedItem = await Storage.saveMenuItem({
+                name: newItemName.trim(),
+                nameTelugu: newItemNameTelugu.trim() || null,
+                type: ['live'],
+                description: newItemDesc.trim() || 'LIVE COUNTER',
+                price: newItemPrice ? parseFloat(newItemPrice) : null,
+                unit: newItemUnit || 'plate',
+                isActive: true,
+                isCommon: false
+            })
+
+            toast.success(`"${savedItem.name}" added to stall menu items!`)
+            
+            setSelectedItemIds(prev => [...prev, savedItem.id])
+            setLocalMenuItems(prev => [...prev, savedItem])
+
+            setNewItemName('')
+            setNewItemNameTelugu('')
+            setNewItemPrice('')
+            setNewItemDesc('')
+            setIsQuickAddOpen(false)
+
+            if (onRefresh) {
+                onRefresh()
+            }
+        } catch (error) {
+            console.error('Failed to create stall item:', error)
+            toast.error('Failed to create stall item')
+        } finally {
+            setQuickAddLoading(false)
         }
     }
 
@@ -128,8 +186,17 @@ export default function StallForm({ stall, menuItems, onClose, onSuccess }: Stal
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6 h-[50vh]">
                         {/* Selector Area */}
-                        <div className="flex flex-col space-y-3">
-                            <label className="text-xs font-bold text-slate-500 uppercase tracking-wider ml-1">Available Menu Items</label>
+                        <div className="flex flex-col space-y-3 relative">
+                            <div className="flex justify-between items-center ml-1">
+                                <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Available Menu Items</label>
+                                <button
+                                    type="button"
+                                    onClick={() => setIsQuickAddOpen(true)}
+                                    className="text-xs text-indigo-600 hover:text-indigo-800 font-bold flex items-center gap-1 transition-colors"
+                                >
+                                    <FaPlusCircle className="w-3.5 h-3.5" /> Quick Add Stall Item
+                                </button>
+                            </div>
                             <div className="bg-white border border-slate-200 rounded-[2rem] p-4 flex flex-col h-full overflow-hidden shadow-sm">
                                 <div className="space-y-3 mb-4 shrink-0">
                                     <div className="relative">
@@ -251,6 +318,114 @@ export default function StallForm({ stall, menuItems, onClose, onSuccess }: Stal
                     </button>
                 </div>
             </form>
+
+            {/* Quick Add Stall Menu Item Modal */}
+            {isQuickAddOpen && (
+                <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center z-[100002] animate-in fade-in duration-200">
+                    <div className="bg-white rounded-[2rem] w-full max-w-md p-6 border border-slate-200 shadow-2xl flex flex-col space-y-4 animate-in zoom-in-95 duration-200">
+                        <div className="flex justify-between items-center pb-2 border-b border-slate-100">
+                            <h4 className="text-lg font-bold text-slate-800 flex items-center gap-2">
+                                <FaUtensils className="text-indigo-600 w-4 h-4" /> Add New Stall Menu Item
+                            </h4>
+                            <button
+                                type="button"
+                                onClick={() => setIsQuickAddOpen(false)}
+                                className="p-1.5 text-slate-400 hover:text-slate-600 hover:bg-slate-50 rounded-full transition-all"
+                            >
+                                <FaTimes className="w-4 h-4" />
+                            </button>
+                        </div>
+
+                        <form onSubmit={handleQuickAddSubmit} className="space-y-4">
+                            <div className="space-y-1">
+                                <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Item Name (English) *</label>
+                                <input
+                                    type="text"
+                                    required
+                                    value={newItemName}
+                                    onChange={(e) => setNewItemName(e.target.value)}
+                                    placeholder="e.g., Gobi Manchurian"
+                                    className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-indigo-500/20 text-sm font-medium"
+                                />
+                            </div>
+
+                            <div className="space-y-1">
+                                <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Item Name (Telugu - Optional)</label>
+                                <input
+                                    type="text"
+                                    value={newItemNameTelugu}
+                                    onChange={(e) => setNewItemNameTelugu(e.target.value)}
+                                    placeholder="e.g., గోబీ మంచూరియా"
+                                    className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-indigo-500/20 text-sm font-medium"
+                                />
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-4">
+                                <div className="space-y-1">
+                                    <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Price (Optional)</label>
+                                    <input
+                                        type="number"
+                                        step="0.01"
+                                        value={newItemPrice}
+                                        onChange={(e) => setNewItemPrice(e.target.value)}
+                                        placeholder="e.g., 150"
+                                        className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-indigo-500/20 text-sm font-medium"
+                                    />
+                                </div>
+                                <div className="space-y-1">
+                                    <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Serving Unit</label>
+                                    <select
+                                        value={newItemUnit}
+                                        onChange={(e) => setNewItemUnit(e.target.value)}
+                                        className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-indigo-500/20 text-sm font-medium"
+                                    >
+                                        <option value="plate">Plate</option>
+                                        <option value="bottle">Bottle</option>
+                                        <option value="box">Box</option>
+                                        <option value="cup">Cup</option>
+                                        <option value="piece">Piece</option>
+                                        <option value="liters">Liter</option>
+                                        <option value="kg">KG</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <div className="space-y-1">
+                                <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Description / Note</label>
+                                <input
+                                    type="text"
+                                    value={newItemDesc}
+                                    onChange={(e) => setNewItemDesc(e.target.value)}
+                                    placeholder="e.g., Spicy Live Counter item"
+                                    className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-indigo-500/20 text-sm font-medium"
+                                />
+                            </div>
+
+                            <div className="pt-3 border-t border-slate-100 flex justify-end gap-2">
+                                <button
+                                    type="button"
+                                    onClick={() => setIsQuickAddOpen(false)}
+                                    className="px-4 py-2 bg-slate-100 text-slate-600 rounded-xl font-bold hover:bg-slate-200 transition-all text-xs"
+                                >
+                                    Cancel
+                                </button>
+                                <button
+                                    type="submit"
+                                    disabled={quickAddLoading}
+                                    className="px-6 py-2 bg-indigo-600 text-white rounded-xl font-bold hover:bg-indigo-700 transition-all text-xs flex items-center gap-1.5 shadow-md shadow-indigo-100"
+                                >
+                                    {quickAddLoading ? (
+                                        <div className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                                    ) : (
+                                        <FaCheck className="w-3 h-3" />
+                                    )}
+                                    Save Item
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            )}
         </div>
     )
 }

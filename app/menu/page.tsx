@@ -471,7 +471,10 @@ export default function MenuPage() {
           ref={stallManagementRef}
           stallTemplates={stallTemplates} 
           menuItems={menuItems} 
-          onRefresh={loadStallTemplates} 
+          onRefresh={async () => {
+            await loadStallTemplates()
+            await loadMenuItems()
+          }} 
         />
       ) : (
         <>

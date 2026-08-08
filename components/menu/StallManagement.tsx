@@ -76,6 +76,7 @@ const StallManagement = forwardRef<StallManagementHandle, StallManagementProps>(
                         setIsFormOpen(false)
                         onRefresh()
                     }}
+                    onRefresh={onRefresh}
                 />
             </div>
         )
