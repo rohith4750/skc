@@ -20,10 +20,15 @@ export default function StallForm({ stall, menuItems, onClose, onSuccess }: Stal
     const [selectedCategory, setSelectedCategory] = useState<string>('all')
     const [saveLoading, setSaveLoading] = useState(false)
 
-    // Extract unique categories from menu items for filtering
-    const allCategories = ['all', ...Array.from(new Set(menuItems.flatMap(item => item.type)))].sort()
+    // Filter to only include menu items of type 'live' / 'LIVE' (and already selected items)
+    const liveMenuItems = menuItems.filter(item => 
+        item.type.some(t => t.toLowerCase() === 'live') || selectedItemIds.includes(item.id)
+    )
 
-    const filteredItems = menuItems.filter(item => {
+    // Extract unique categories from menu items for filtering
+    const allCategories = ['all', ...Array.from(new Set(liveMenuItems.flatMap(item => item.type)))].sort()
+
+    const filteredItems = liveMenuItems.filter(item => {
         const matchesSearch = item.name.toLowerCase().includes(searchTerm.toLowerCase())
         const matchesCategory = selectedCategory === 'all' || item.type.includes(selectedCategory)
         return matchesSearch && matchesCategory
