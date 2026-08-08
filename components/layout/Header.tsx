@@ -15,7 +15,7 @@ export default function Header() {
 
   useEffect(() => {
     setUserRole(getUserRole())
-    
+
     // Update time every minute
     const timer = setInterval(() => {
       setCurrentTime(new Date())
@@ -30,24 +30,24 @@ export default function Header() {
   }
 
   const formatTime = (date: Date) => {
-    return date.toLocaleTimeString('en-US', { 
-      hour: '2-digit', 
+    return date.toLocaleTimeString('en-US', {
+      hour: '2-digit',
       minute: '2-digit',
-      hour12: true 
+      hour12: true
     })
   }
 
   const formatDate = (date: Date) => {
-    return date.toLocaleDateString('en-US', { 
+    return date.toLocaleDateString('en-US', {
       weekday: 'short',
-      month: 'short', 
+      month: 'short',
       day: 'numeric',
       year: 'numeric'
     })
   }
 
   return (
-    <header className="fixed top-0 left-0 right-0 lg:left-72 h-14 bg-white border-b border-gray-200 lg:border-l lg:border-gray-200 z-[100000] shadow-xs">
+    <header className="fixed top-0 left-0 right-0 lg:left-64 xl:left-72 h-14 bg-white border-b border-gray-200 lg:border-l lg:border-gray-200 z-[100000] shadow-xs">
       <div className="h-full flex items-center justify-between px-4 lg:pl-6 lg:pr-6">
         {/* Page Title & Back Button */}
         <div className="flex items-center gap-3">

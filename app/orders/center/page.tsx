@@ -601,6 +601,9 @@ export default function OrderCenterPage() {
       // Create PDF from canvas (JPEG for smaller size - avoids 413 on email send)
       const imgData = canvas.toDataURL('image/jpeg', 0.85)
       const pdf = new jsPDF('p', 'mm', 'a4')
+      pdf.setProperties({
+        title: `SKC-Order-${order.orderNumber || 'Invoice'}`
+      })
       const imgWidth = 210 // A4 width in mm
       const pageHeight = 297 // A4 height in mm
       const imgHeight = (canvas.height * imgWidth) / canvas.width

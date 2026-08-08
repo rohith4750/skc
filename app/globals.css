@@ -80,18 +80,17 @@
   }
 }
 
+html {
+  font-size: 14px;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
 /* Increase base font size for large screens */
 @media (min-width: 1024px) {
   html {
     font-size: 12px;
   }
-}
-
-
-html {
-  font-size: 14px;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
 }
 
 body {

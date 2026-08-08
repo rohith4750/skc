@@ -162,6 +162,9 @@ export default function QuotationsPage() {
 
       const imgData = canvas.toDataURL('image/jpeg', 0.85)
       const pdf = new jsPDF('p', 'mm', 'a4')
+      pdf.setProperties({
+        title: `SKC-Quotation-${type}-${order.customer?.name || 'Draft'}`
+      })
       const imgWidth = 210
       const pageHeight = 297
       const imgHeight = (canvas.height * imgWidth) / canvas.width

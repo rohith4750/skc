@@ -282,6 +282,16 @@ export const menuData: RouteConfigItem[] = [
     roles: ["super_admin", "transport_admin"],
   },
   {
+    name: "Permissions",
+    route: "/admin/permissions",
+    file: "app/admin/permissions/page.tsx",
+    icon: "users",
+    permissions: "SUPER_ADMIN_ONLY",
+    showInSideMenu: true,
+    section: "system",
+    roles: ["super_admin"],
+  },
+  {
     name: "Login Audit Logs",
     route: "/audit-logs",
     file: "app/audit-logs/page.tsx",
@@ -459,15 +469,26 @@ export function matchesRoute(pathname: string, routePattern: string): boolean {
 
 export function canAccessRoute(
   route: RouteConfigItem,
-  userRole: UserRole | null,
+  userRole: string | null,
   userPermissions: string[] = [],
 ): boolean {
-  if (route.hideForRoles?.includes(userRole as UserRole)) return false;
+  if (userRole === "super_admin") return true;
+
+  if (userPermissions && userPermissions.length > 0) {
+    return userPermissions.includes(route.route) || userPermissions.includes(`${route.route}:read`);
+  }
+
+  // If logged in and the route requires specific roles, but permissions array is empty (cleared), deny access.
+  if (userRole && route.roles && route.roles.length > 0) {
+    return false;
+  }
+
+  if (route.hideForRoles?.includes(userRole as any)) return false;
 
   if (
     route.roles &&
     route.roles.length > 0 &&
-    (!userRole || !route.roles.includes(userRole))
+    (!userRole || !route.roles.includes(userRole as any))
   ) {
     return false;
   }
@@ -479,8 +500,7 @@ export function canAccessRoute(
   if (route.permissions === "ADMIN_AND_SUPER_ADMIN")
     return userRole === "admin" || userRole === "super_admin";
 
-  if (userRole === "super_admin") return true;
-  return userPermissions.includes(route.permissions);
+  return false;
 }
 
 export function getRouteConfig(pathname: string): RouteConfigItem | undefined {
@@ -507,7 +527,7 @@ export function getRouteTitle(pathname: string): string {
 }
 
 export function getSidebarSections(
-  userRole: UserRole | null,
+  userRole: string | null,
   userPermissions: string[] = [],
 ): Array<{ key: MenuSection; title: string; items: RouteConfigItem[] }> {
   const visibleItems = menuData.filter(

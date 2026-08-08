@@ -15,10 +15,8 @@ const allowedOrigins = new Set([
 const allowedMethods = 'POST, OPTIONS'
 const allowedHeaders = 'Content-Type'
 
-const buildCorsHeaders = (origin: string | null) => {
-  if (!origin) return null
-  if (!allowedOrigins.has(origin)) return null
-
+const buildCorsHeaders = (origin: string | null): Record<string, string> => {
+  if (!origin) return { 'Access-Control-Allow-Origin': '*' };
   return {
     'Access-Control-Allow-Origin': origin,
     'Access-Control-Allow-Methods': allowedMethods,

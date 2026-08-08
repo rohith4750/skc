@@ -30,6 +30,8 @@ enum UserRole {
   super_admin
   transport_admin
   transport
+  chef
+  supervisor
 }
 
 enum StockTransactionType {
@@ -266,6 +268,7 @@ model User {
   email             String   @unique
   passwordHash      String
   role              UserRole @default(admin) // "admin" or "super_admin" only
+  permissions       String[] @default([])
   resetToken        String?
   resetTokenExpiry  DateTime?
   isActive          Boolean  @default(true)
@@ -274,6 +277,16 @@ model User {
   loginLogs         LoginAuditLog[]
 
   @@map("users")
+}
+
+model RolePermission {
+  id          String   @id @default(uuid())
+  role        String   @unique // e.g., "admin", "super_admin", "transport_admin", "transport", "chef", "supervisor"
+  permissions String[] @default([]) // List of accessible route paths or custom permission keys
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("role_permissions")
 }
 
 model LoginAuditLog {
@@ -401,4 +414,18 @@ model StallTemplate {
   updatedAt   DateTime @updatedAt
 
   @@map("stall_templates")
+}
+
+model FreelanceInquiry {
+  id           String   @id @default(uuid())
+  name         String
+  email        String
+  businessName String?  @map("business_name")
+  serviceType  String   @map("service_type")
+  message      String
+  ipAddress    String?  @map("ip_address")
+  source       String?  @default("freelance-portfolio")
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  @@map("freelance_inquiries")
 }

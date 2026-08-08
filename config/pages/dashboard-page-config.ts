@@ -230,7 +230,7 @@ export const getDashboardMainStatCards = (stats: DashboardStats) => [
     color: "text-primary-600",
     bgColor: "bg-primary-50",
     href: "/bills",
-    subValue: `Collected: ${formatCurrency(stats.totalCollected)}`,
+    subValue: `Pending: ${formatCurrency(stats.totalBilled - stats.totalCollected)}`,
   },
   {
     title: "Total Collected",
@@ -239,7 +239,7 @@ export const getDashboardMainStatCards = (stats: DashboardStats) => [
     color: "text-green-600",
     bgColor: "bg-green-50",
     href: "/bills",
-    subValue: `Collected: ${formatCurrency(stats.totalCollected)}`,
+    subValue: `${stats.totalBilled > 0 ? ((stats.totalCollected / stats.totalBilled) * 100).toFixed(1) : "0.0"}% collected`,
   },
   {
     title: "Net Profit",

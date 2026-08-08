@@ -73,7 +73,7 @@ export default function Sidebar() {
       <div
         className={`
           fixed lg:static inset-y-0 left-0 z-[100001] lg:z-40
-          w-56 lg:w-72 bg-gradient-to-b from-slate-950 via-slate-900 to-slate-950 text-slate-100 shadow-[4px_0_24px_rgba(0,0,0,0.4)] border-r border-slate-800/50
+          w-56 lg:w-64 xl:w-72 bg-gradient-to-b from-slate-950 via-slate-900 to-slate-950 text-slate-100 shadow-[4px_0_24px_rgba(0,0,0,0.4)] border-r border-slate-800/50
           transform transition-all duration-500 ease-[cubic-bezier(0.16,1,0.3,1)]
           ${isOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
           flex flex-col h-screen
@@ -88,10 +88,10 @@ export default function Sidebar() {
               <Image
                 src="/images/logo-dark.png"
                 alt="SKC Logo"
-                width={80}
-                height={80}
+                width={150}
+                height={150}
                 unoptimized
-                className="drop-shadow-[0_0_15px_rgba(245,158,11,0.3)] w-20 h-20 lg:w-24 lg:h-24"
+                className="drop-shadow-[0_0_15px_rgba(245,158,11,0.3)] w-32 h-32 lg:w-36 lg:h-36"
                 priority
               />
             </div>

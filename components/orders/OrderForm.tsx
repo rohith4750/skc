@@ -3,11 +3,11 @@ import React, { useEffect, useState, useMemo, useRef, useCallback, memo } from '
 import { v4 as uuidv4 } from 'uuid'
 import { formatCurrency, formatDate, formatTime, formatDateTime, sanitizeMealLabel } from '@/lib/utils'
 import { Customer, MenuItem, Order, OrderItem, Supervisor, StallTemplate } from '@/types'
-import { 
-    FaSearch, FaPlus, FaTimes, FaUser, FaCalculator, FaWallet, FaUtensils, 
-    FaChevronDown, FaChevronUp, FaCalendarAlt, FaClock, FaMapMarkerAlt, 
-    FaUsers, FaTag, FaStore, FaTrash, FaSortAmountDown, FaBirthdayCake, 
-    FaGlassMartiniAlt, FaConciergeBell, FaBreadSlice, FaPepperHot, FaCoffee 
+import {
+    FaSearch, FaPlus, FaTimes, FaUser, FaCalculator, FaWallet, FaUtensils,
+    FaChevronDown, FaChevronUp, FaCalendarAlt, FaClock, FaMapMarkerAlt,
+    FaUsers, FaTag, FaStore, FaTrash, FaSortAmountDown, FaBirthdayCake,
+    FaGlassMartiniAlt, FaConciergeBell, FaBreadSlice, FaPepperHot, FaCoffee
 } from 'react-icons/fa'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { toast } from 'sonner'
@@ -171,11 +171,10 @@ const MenuItemButton = memo(function MenuItemButton({
         <button
             type="button"
             onClick={() => onToggle(item.id)}
-            className={`p-2.5 text-left rounded-xl border transition-all relative overflow-hidden ${
-                isSelected
+            className={`p-2.5 text-left rounded-xl border transition-all relative overflow-hidden ${isSelected
                     ? 'bg-primary-600 border-primary-600 text-white font-black shadow-md shadow-primary-200 scale-[1.02]'
                     : 'bg-white border-gray-100 text-gray-700 hover:border-primary-300 hover:bg-primary-50/50 font-bold'
-            }`}
+                }`}
         >
             <div className="text-[11px] font-black leading-tight mb-0.5 line-clamp-2">{item.name}</div>
             {item.nameTelugu && (
@@ -581,7 +580,7 @@ export default function OrderForm({ orderId, isEditMode = false, initialOrderTyp
 
         formData.mealTypes.forEach(mt => {
             let mtTotal = 0
-            
+
             // Check water bottles from selected items
             mt.selectedMenuItems.forEach(itemId => {
                 const item = menuItems.find(m => m.id === itemId)
@@ -1587,7 +1586,7 @@ export default function OrderForm({ orderId, isEditMode = false, initialOrderTyp
                                                     onClick={() => {
                                                         setQuickAddMealTypeId(mt.id)
                                                         setShowQuickAddModal(true)
-                                                     }}
+                                                    }}
                                                     className="flex-1 p-2 text-[10px] font-black text-center text-primary-600 border border-dashed border-primary-100 rounded-lg hover:bg-primary-50 transition-all flex items-center justify-center gap-1"
                                                 >
                                                     <FaPlus className="text-[8px]" /> QUICK ADD
@@ -1647,7 +1646,7 @@ export default function OrderForm({ orderId, isEditMode = false, initialOrderTyp
                                                     {collapsedMenuPicker[mt.id] ? "Show Picker" : "Hide Picker"}
                                                 </button>
                                             </h4>
-                                            
+
                                             {!collapsedMenuPicker[mt.id] && (
                                                 <div className="space-y-3">
                                                     <div className="relative">
@@ -1671,8 +1670,8 @@ export default function OrderForm({ orderId, isEditMode = false, initialOrderTyp
                                                                     type="button"
                                                                     onClick={() => setSelectedSubFilter(p => ({ ...p, [mt.id]: cat.id }))}
                                                                     className={`px-3 py-1.5 rounded-xl text-[11px] font-bold whitespace-nowrap transition-all flex items-center gap-1.5 ${isSelected
-                                                                            ? 'bg-primary-600 text-white shadow-sm scale-[1.02]'
-                                                                            : 'bg-white border border-gray-200 text-slate-700 hover:bg-gray-50'
+                                                                        ? 'bg-primary-600 text-white shadow-sm scale-[1.02]'
+                                                                        : 'bg-white border border-gray-200 text-slate-700 hover:bg-gray-50'
                                                                         }`}
                                                                 >
                                                                     <Icon className={`w-3.5 h-3.5 ${isSelected ? 'text-white' : cat.color}`} />
@@ -1782,7 +1781,7 @@ export default function OrderForm({ orderId, isEditMode = false, initialOrderTyp
                                             )}
                                         </div>
 
-                                    <div className="border-t border-gray-50 pt-4 space-y-2">
+                                        <div className="border-t border-gray-50 pt-4 space-y-2">
                                             <h4 className="font-bold text-gray-800 flex items-center justify-between">
                                                 <span>Selected Menu Items ({mt.selectedMenuItems.length})</span>
                                                 <button
@@ -1811,7 +1810,7 @@ export default function OrderForm({ orderId, isEditMode = false, initialOrderTyp
                                             )}
                                         </div>
 
-                                                        {!collapsedSelectedItems[mt.id] && mt.selectedMenuItems.length > 0 && (
+                                        {!collapsedSelectedItems[mt.id] && mt.selectedMenuItems.length > 0 && (
                                             <div className="flex flex-wrap gap-3">
                                                 {mt.selectedMenuItems.map((itemId, idx) => {
                                                     const item = menuItems.find(m => m.id === itemId)
@@ -2170,8 +2169,8 @@ export default function OrderForm({ orderId, isEditMode = false, initialOrderTyp
                                                         type="button"
                                                         onClick={() => setSelectedSubFilter(p => ({ ...p, [stall.id]: cat.id }))}
                                                         className={`px-3 py-1.5 rounded-xl text-[11px] font-bold whitespace-nowrap transition-all flex items-center gap-1.5 ${isSelected
-                                                                ? 'bg-primary-600 text-white shadow-sm scale-[1.02]'
-                                                                : 'bg-white border border-slate-200 text-slate-700 hover:bg-slate-50'
+                                                            ? 'bg-primary-600 text-white shadow-sm scale-[1.02]'
+                                                            : 'bg-white border border-slate-200 text-slate-700 hover:bg-slate-50'
                                                             }`}
                                                     >
                                                         <Icon className={`w-3.5 h-3.5 ${isSelected ? 'text-white' : cat.color}`} />
@@ -2525,7 +2524,7 @@ export default function OrderForm({ orderId, isEditMode = false, initialOrderTyp
                 </div>
             </div>
 
-            <div className="fixed bottom-0 left-0 lg:left-72 xl:left-80 right-0 p-4 bg-white border-t border-gray-200 shadow-2xl z-40 flex justify-between items-center sm:px-20 transition-all duration-300">
+            <div className="fixed bottom-0 left-0 lg:left-64 xl:left-72 right-0 p-4 bg-white border-t border-gray-200 shadow-2xl z-40 flex justify-between items-center sm:px-20 transition-all duration-300">
                 <button
                     type="button"
                     onClick={() => router.back()}

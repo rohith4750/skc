@@ -38,6 +38,7 @@ export async function GET(request: NextRequest) {
         email: true,
         role: true,
         isActive: true,
+        permissions: true,
       },
     })
 
@@ -48,6 +49,34 @@ export async function GET(request: NextRequest) {
       )
     }
 
+    // Fetch role permissions
+    const rolePermissionsRec = await prisma.rolePermission.findUnique({
+      where: { role: user.role as any }
+    })
+    
+    let permissionsList: string[] = []
+    if (rolePermissionsRec) {
+      permissionsList = rolePermissionsRec.permissions
+    } else {
+      const { menuData } = require('@/constants/menu')
+      if (user.role === 'super_admin') {
+        permissionsList = menuData.map((m: any) => m.route)
+      } else if (user.role === 'admin') {
+        permissionsList = menuData
+          .filter((m: any) => !['/expenses', '/expenses/store-calculator', '/workforce/outstanding', '/workforce', '/analytics', '/audit-logs', '/enquiries', '/stock', '/inventory'].includes(m.route))
+          .map((m: any) => m.route)
+      } else if (user.role === 'transport_admin') {
+        permissionsList = ['/', '/alerts', '/admin/delivery-map', '/users', '/profile']
+      } else if (user.role === 'transport') {
+        permissionsList = ['/', '/admin/delivery-map', '/profile']
+      } else if (user.role === 'chef' || user.role === 'supervisor') {
+        permissionsList = ['/', '/reports/prep-list', '/profile']
+      }
+    }
+
+    const userPermissions = user.permissions || []
+    const mergedPermissions = Array.from(new Set([...permissionsList, ...userPermissions]))
+
     // Return user data
     return NextResponse.json({
       isAuthenticated: true,
@@ -57,6 +86,7 @@ export async function GET(request: NextRequest) {
         email: user.email,
         role: user.role,
       },
+      permissions: mergedPermissions,
     })
   } catch (error: any) {
     console.error('Token validation error:', error)

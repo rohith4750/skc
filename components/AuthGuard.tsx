@@ -12,6 +12,7 @@ import {
 import Sidebar from '@/components/layout/Sidebar'
 import Header from '@/components/layout/Header'
 import Footer from '@/components/layout/Footer'
+import { canAccessRoute, menuData } from '@/constants/menu'
 
 export default function AuthGuard({ children }: { children: React.ReactNode }) {
   const router = useRouter()
@@ -65,6 +66,21 @@ export default function AuthGuard({ children }: { children: React.ReactNode }) {
           router.push('/login?reason=session_expired')
           return
         }
+        const data = await res.json()
+        if (data.isAuthenticated && data.user) {
+          localStorage.setItem('userRole', data.user.role)
+          localStorage.setItem('user', JSON.stringify(data.user))
+          localStorage.setItem('permissions', JSON.stringify(data.permissions || []))
+        }
+
+        const userRole = data.user?.role || localStorage.getItem('userRole')
+        const permissions = data.permissions || JSON.parse(localStorage.getItem('permissions') || '[]')
+        const currentRoute = menuData.find(m => m.route === pathname || (m.route !== '/' && pathname.startsWith(m.route)))
+        if (currentRoute && !canAccessRoute(currentRoute, userRole, permissions)) {
+          router.push('/profile?error=unauthorized')
+          return
+        }
+
         setAuthenticated(true)
         setIsLoading(false)
         setTimeout(() => {

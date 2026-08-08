@@ -157,6 +157,35 @@ export async function POST(request: NextRequest) {
     })
 
     const role = (user.role || 'admin') as string
+    
+    // Fetch role permissions
+    const rolePermissionsRec = await prisma.rolePermission.findUnique({
+      where: { role: role as any }
+    })
+    
+    let permissionsList: string[] = []
+    if (rolePermissionsRec) {
+      permissionsList = rolePermissionsRec.permissions
+    } else {
+      const { menuData } = require('@/constants/menu')
+      if (role === 'super_admin') {
+        permissionsList = menuData.map((m: any) => m.route)
+      } else if (role === 'admin') {
+        permissionsList = menuData
+          .filter((m: any) => !['/expenses', '/expenses/store-calculator', '/workforce/outstanding', '/workforce', '/analytics', '/audit-logs', '/enquiries', '/stock', '/inventory'].includes(m.route))
+          .map((m: any) => m.route)
+      } else if (role === 'transport_admin') {
+        permissionsList = ['/', '/alerts', '/admin/delivery-map', '/users', '/profile']
+      } else if (role === 'transport') {
+        permissionsList = ['/', '/admin/delivery-map', '/profile']
+      } else if (role === 'chef' || role === 'supervisor') {
+        permissionsList = ['/', '/reports/prep-list', '/profile']
+      }
+    }
+
+    const userPermissions = user.permissions || []
+    const mergedPermissions = Array.from(new Set([...permissionsList, ...userPermissions]))
+
     const accessToken = await createAccessToken({
       userId: user.id,
       username: user.username,
@@ -175,6 +204,7 @@ export async function POST(request: NextRequest) {
         email: user.email,
         role,
       },
+      permissions: mergedPermissions,
       accessToken,
       refreshToken,
     })
