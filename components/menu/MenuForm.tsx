@@ -195,7 +195,8 @@ export default function MenuForm({ id, onSuccess, onCancel }: MenuFormProps) {
                                 { id: 'snacks', label: 'Snacks' },
                                 { id: 'sweets', label: 'Sweets' },
                                 { id: 'saree', label: 'Saree' },
-                                { id: 'water_bottles', label: 'Water Bottles' }
+                                { id: 'water_bottles', label: 'Water Bottles' },
+                                { id: 'live', label: 'Live Stall Item' }
                             ].map(type => (
                                 <label key={type.id} className="flex items-center group cursor-pointer">
                                     <div className="relative flex items-center">
