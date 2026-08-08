@@ -2525,11 +2525,11 @@ export default function OrderForm({ orderId, isEditMode = false, initialOrderTyp
                 </div>
             </div>
 
-            <div className="fixed bottom-0 left-0 lg:left-72 right-0 p-4 bg-white border-t border-gray-200 shadow-2xl z-40 flex justify-between items-center sm:px-20 transition-all duration-300">
+            <div className="fixed bottom-0 left-0 lg:left-72 xl:left-80 right-0 p-4 bg-white border-t border-gray-200 shadow-2xl z-40 flex justify-between items-center sm:px-20 transition-all duration-300">
                 <button
                     type="button"
                     onClick={() => router.back()}
-                    className="px-6 h-11 inline-flex items-center justify-center border-2 border-primary-500 text-primary-600 rounded-xl font-bold hover:bg-primary-50 hover:border-primary-600 active:scale-95 transition-all shadow-sm"
+                    className="px-6 h-11 inline-flex items-center justify-center border border-primary-500 text-primary-600 rounded-xl font-bold hover:bg-primary-50 hover:border-primary-600 active:scale-95 transition-all shadow-sm"
                 >
                     Cancel
                 </button>
@@ -2570,7 +2570,7 @@ export default function OrderForm({ orderId, isEditMode = false, initialOrderTyp
                             <button
                                 type="button"
                                 onClick={() => setShowQuickAddModal(false)}
-                                className="flex-1 py-3 border-2 border-primary-500 text-primary-600 rounded-xl font-bold hover:bg-primary-50 hover:border-primary-600 active:scale-95 transition-all"
+                                className="flex-1 py-3 border border-primary-500 text-primary-600 rounded-xl font-bold hover:bg-primary-50 hover:border-primary-600 active:scale-95 transition-all"
                             >
                                 Cancel
                             </button>
@@ -2619,7 +2619,7 @@ export default function OrderForm({ orderId, isEditMode = false, initialOrderTyp
                             </div>
                         </div>
                         <div className="flex gap-4 mt-8">
-                            <button type="button" onClick={() => setShowAddCustomerForm(false)} className="flex-1 py-3 border-2 border-primary-500 text-primary-600 rounded-xl font-bold hover:bg-primary-50 transition-colors">Cancel</button>
+                            <button type="button" onClick={() => setShowAddCustomerForm(false)} className="flex-1 py-3 border border-primary-500 text-primary-600 rounded-xl font-bold hover:bg-primary-50 transition-colors">Cancel</button>
                             <button
                                 type="button"
                                 onClick={async () => {
@@ -2653,7 +2653,7 @@ export default function OrderForm({ orderId, isEditMode = false, initialOrderTyp
                             <button
                                 type="button"
                                 onClick={() => setConfirmModal(p => ({ ...p, isOpen: false }))}
-                                className="flex-1 py-3 border-2 border-primary-500 text-primary-600 rounded-xl font-bold text-sm hover:bg-primary-50 transition-colors"
+                                className="flex-1 py-3 border border-primary-500 text-primary-600 rounded-xl font-bold text-sm hover:bg-primary-50 transition-colors"
                             >
                                 Cancel
                             </button>

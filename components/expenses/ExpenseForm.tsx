@@ -1231,7 +1231,7 @@ export default function ExpenseForm({ id: expenseId }: ExpenseFormProps) {
                 )}
 
                 <div className="flex justify-end gap-3 pt-4 border-t border-gray-100">
-                    <button type="button" onClick={() => router.push('/expenses')} className="px-6 py-2.5 border-2 border-primary-500 text-primary-600 rounded-xl font-bold hover:bg-primary-50 hover:border-primary-600 active:scale-95 transition-all shadow-sm">Cancel</button>
+                    <button type="button" onClick={() => router.push('/expenses')} className="px-6 py-2.5 border border-primary-500 text-primary-600 rounded-xl font-bold hover:bg-primary-50 hover:border-primary-600 active:scale-95 transition-all shadow-sm">Cancel</button>
                     <button type="submit" disabled={saving} className="px-10 py-2.5 bg-primary-600 text-white rounded-lg hover:bg-primary-700 font-bold shadow-md disabled:bg-gray-400 transition-all">
                         {saving ? 'Saving...' : expenseId ? 'Update Expense' : 'Create Expense'}
                     </button>

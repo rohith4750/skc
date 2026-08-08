@@ -53,7 +53,7 @@ export default function ConfirmModal({
           <div className="flex flex-col-reverse sm:flex-row justify-end gap-3">
             <button
               onClick={onCancel}
-              className="px-5 py-2 rounded-lg text-sm font-semibold bg-white border-2 border-primary-500 text-primary-600 hover:bg-primary-50 hover:border-primary-600 active:scale-95 transition-all shadow-sm"
+              className="px-5 py-2 rounded-lg text-sm font-semibold bg-white border border-primary-500 text-primary-600 hover:bg-primary-50 hover:border-primary-600 active:scale-95 transition-all shadow-sm cursor-pointer select-none"
             >
               {cancelText}
             </button>

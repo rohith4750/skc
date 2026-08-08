@@ -195,7 +195,7 @@ export default function CustomerForm({ id }: CustomerFormProps) {
                     <FormError message={formError} className="sm:mr-auto sm:self-center" />
                     <Link
                         href="/customers"
-                        className="px-6 h-11 inline-flex items-center justify-center border-2 border-primary-500 text-primary-600 rounded-xl font-bold hover:bg-primary-50 hover:border-primary-600 active:scale-95 transition-all shadow-sm text-center"
+                        className="px-6 h-11 inline-flex items-center justify-center border border-primary-500 text-primary-600 rounded-xl font-bold hover:bg-primary-50 hover:border-primary-600 active:scale-95 transition-all shadow-sm text-center"
                     >
                         Cancel
                     </Link>

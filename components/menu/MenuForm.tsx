@@ -312,7 +312,7 @@ export default function MenuForm({ id, onSuccess, onCancel }: MenuFormProps) {
                     <button
                         type="button"
                         onClick={() => onCancel ? onCancel() : router.back()}
-                        className="px-4 sm:px-6 py-2 border-2 border-primary-500 text-primary-600 rounded-xl font-bold hover:bg-primary-50 hover:border-primary-600 active:scale-95 transition-all shadow-sm text-sm sm:text-base"
+                        className="px-4 sm:px-6 py-2 border border-primary-500 text-primary-600 rounded-xl font-bold hover:bg-primary-50 hover:border-primary-600 active:scale-95 transition-all shadow-sm text-sm sm:text-base"
                     >
                         Cancel
                     </button>

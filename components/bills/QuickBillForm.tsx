@@ -487,7 +487,7 @@ export default function QuickBillForm({ onSuccess, onCancel }: QuickBillFormProp
                         <button
                             type="button"
                             onClick={onCancel}
-                            className="flex-1 sm:flex-none px-8 py-3 bg-white border-2 border-primary-500 text-primary-600 rounded-2xl font-black hover:bg-primary-50 hover:border-primary-600 active:scale-95 transition-all shadow-sm"
+                            className="flex-1 sm:flex-none px-8 py-3 bg-white border border-primary-500 text-primary-600 rounded-2xl font-black hover:bg-primary-50 hover:border-primary-600 active:scale-95 transition-all shadow-sm cursor-pointer select-none"
                         >
                             Cancel
                         </button>
