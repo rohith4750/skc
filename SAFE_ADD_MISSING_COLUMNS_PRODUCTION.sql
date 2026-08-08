@@ -95,4 +95,30 @@ BEGIN
         RAISE NOTICE 'Added trackingToken column to workforce';
     END IF;
 
+    -- 11. permissions column on users table
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.columns 
+        WHERE table_schema = 'public' AND table_name = 'users' AND column_name = 'permissions'
+    ) THEN
+        ALTER TABLE "users" ADD COLUMN "permissions" TEXT[] DEFAULT ARRAY[]::TEXT[];
+        RAISE NOTICE 'Added permissions column to users';
+    END IF;
+
+    -- 12. role_permissions table
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.tables 
+        WHERE table_schema = 'public' AND table_name = 'role_permissions'
+    ) THEN
+        CREATE TABLE "role_permissions" (
+            "id" TEXT NOT NULL,
+            "role" TEXT NOT NULL,
+            "permissions" TEXT[] DEFAULT ARRAY[]::TEXT[],
+            "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            CONSTRAINT "role_permissions_pkey" PRIMARY KEY ("id")
+        );
+        CREATE UNIQUE INDEX "role_permissions_role_key" ON "role_permissions"("role");
+        RAISE NOTICE 'Created role_permissions table';
+    END IF;
+
 END $$;
