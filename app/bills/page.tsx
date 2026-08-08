@@ -417,9 +417,10 @@ export default function BillsPage() {
       tempDiv = null;
 
       const imgData = canvas.toDataURL('image/jpeg', 0.85)
+      const billNumber = bill.serialNumber?.toString() || bill.id.slice(0, 8).toUpperCase()
       const pdf = new jsPDF('p', 'mm', 'a4')
       pdf.setProperties({
-        title: `SKC-Bill-${bill.billNumber || 'Invoice'}`
+        title: `SKC-Bill-${billNumber}`
       })
       const imgWidth = 210
       const pageHeight = 297
